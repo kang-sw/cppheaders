@@ -5,7 +5,7 @@
 #include <spdlog/fmt/fmt.h>
 #endif
 
-namespace perfkit {
+namespace KANGSW_TEMPLATE_NAMESPACE {
 namespace util {
 
 class format_context {
