@@ -77,7 +77,9 @@ class format_context {
       return std::apply(*this, std::move(_tup));
     }
 
-    std::string string() const { return (std::string)(*this); }
+    std::string string() {
+      return std::apply(*this, std::move(_tup));
+    }
   };
 
  public:
@@ -115,5 +117,4 @@ inline util::format_context operator""_fmt(char const* ch, size_t) {
   return {ch};
 }
 }  // namespace literals
-}  // namespace perfkit
-
+}  // namespace KANGSW_TEMPLATE_NAMESPACE
