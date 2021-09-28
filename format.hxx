@@ -110,6 +110,11 @@ auto&& operator<<(Str_&& str, format_context::_proxy<Args_...>&& prx) {
   return prx.operator>>(std::forward<Str_>(str));
 }
 
+template <typename... Args_>
+std::string to_string(format_context::_proxy<Args_...>&& prx) {
+  return prx.string();
+}
+
 }  // namespace util
 
 inline namespace literals {
