@@ -62,7 +62,7 @@ class allocator {
  private:
  private:
   template <typename Ty_>
-  friend class handle<Ty_>;
+  friend class handle;
 
   std::unique_ptr<char[]> _buffer;
   memblk* _head;
