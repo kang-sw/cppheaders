@@ -9,6 +9,10 @@
 #pragma once
 #include <atomic>
 
+#if !defined(KANGSW_TEMPLATE_SPINLOCK_ALIGNMENT)
+#define KANGSW_TEMPLATE_SPINLOCK_ALIGNMENT alignas(64)
+#endif
+
 namespace std::this_thread {
 void yield() noexcept;
 }
@@ -16,7 +20,7 @@ void yield() noexcept;
 namespace KANGSW_TEMPLATE_NAMESPACE {
 //! @see https://rigtorp.se/spinlock/
 //! Applied slight modification to use atomic_flag
-struct spinlock {
+struct KANGSW_TEMPLATE_SPINLOCK_ALIGNMENT spinlock {
   std::atomic_bool lock_;
 
   void lock() noexcept {
@@ -44,4 +48,4 @@ struct spinlock {
     lock_.store(false, std::memory_order_release);
   }
 };
-}  // namespace perfkit
+}  // namespace KANGSW_TEMPLATE_NAMESPACE
