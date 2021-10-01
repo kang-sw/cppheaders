@@ -125,11 +125,15 @@ class circular_queue {
 
   void push(Ty_ const& s) { new (_data[_reserve()].data()) Ty_(s); }
   void push(Ty_&& s) { new (_data[_reserve()].data()) Ty_(std::move(s)); }
-  void pop() { _release(); }
+  void pop() { _pop(); }
   void push_back(Ty_ const& s) { this->rotate(s); }
   void push_back(Ty_&& s) { this->rotate(std::move(s)); }
 
   void rotate(Ty_ const& s) { is_full() && (pop(), 0) || (this->push(s), 1); }
+  void pop(Ty_& dst) {
+    dst = std::move(front());
+    _pop();
+  }
 
   void push_rotate(Ty_&& s) {
     if (is_full()) { pop(); }
@@ -209,7 +213,7 @@ class circular_queue {
     return i - _tail * (i >= _tail) + (_cap() - _tail) * (i < _tail);
   }
 
-  void _release() {
+  void _pop() {
     assert(!empty());
     reinterpret_cast<Ty_&>(_data[_tail]).~Ty_();
     _tail = _next(_tail);
@@ -241,4 +245,4 @@ class circular_queue {
   size_t _head = {};
   size_t _tail = {};
 };
-}  // namespace perfkit
+}  // namespace KANGSW_TEMPLATE_NAMESPACE
