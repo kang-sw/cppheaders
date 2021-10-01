@@ -123,22 +123,17 @@ class circular_queue {
     *this = std::move(next);
   }
 
-  void push(Ty_ const& s) { new (_data[_reserve()].data()) Ty_(s); }
-  void push(Ty_&& s) { new (_data[_reserve()].data()) Ty_(std::move(s)); }
+  template <typename RTy_>
+  void push(RTy_&& s) { new (_data[_reserve()].data()) RTy_(std::forward<RTy_>(s)); }
+
+  template <typename RTy_>
+  void rotate(RTy_&& s) { is_full() && (pop(), 0) || (this->push(std::forward<RTy_>(s)), 1); }
+
+  template <typename RTy_>
+  void push_back(RTy_&& s) { this->rotate(std::forward<RTy_>(s)); }
+
   void pop() { _pop(); }
-  void push_back(Ty_ const& s) { this->rotate(s); }
-  void push_back(Ty_&& s) { this->rotate(std::move(s)); }
-
-  void rotate(Ty_ const& s) { is_full() && (pop(), 0) || (this->push(s), 1); }
-  void pop(Ty_& dst) {
-    dst = std::move(front());
-    _pop();
-  }
-
-  void push_rotate(Ty_&& s) {
-    if (is_full()) { pop(); }
-    this->push(std::move(s));
-  }
+  void pop(Ty_& dst) { (dst = std::move(front())), _pop(); }
 
   size_t size() const {
     return _head >= _tail ? _head - _tail : _head + _cap() - _tail;
