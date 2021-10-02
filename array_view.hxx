@@ -93,7 +93,7 @@ template <typename Range_>
 constexpr auto make_view(Range_&& array) {
   return array_view{array.data(), array.size()};
 }
-}  // namespace KANGSW_ARRAY_VIEW_NAMESPACE
+}  // namespace KANGSW_TEMPLATE_NAMESPACE
 
 #if __has_include(<range/v3/range/concepts.hpp>)
 #include <range/v3/range/concepts.hpp>
