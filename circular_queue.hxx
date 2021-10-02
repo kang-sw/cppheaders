@@ -178,6 +178,16 @@ class circular_queue {
     while (!empty()) { pop(); }
   }
 
+  template <typename Fn_>
+  void flat(Fn_&& fn) {
+    if (_tail < _head) {
+      fn(&_data[_tail], &_data[_head]);
+    } else if (_head < _tail) {
+      fn(&_data[_tail], &_data[_capacity]);
+      fn(&_data[0], &_data[_head]);
+    }
+  }
+
   ~circular_queue() { clear(); }
 
  private:
