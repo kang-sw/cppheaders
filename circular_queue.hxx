@@ -124,13 +124,22 @@ class circular_queue {
   }
 
   template <typename RTy_>
-  void push(RTy_&& s) { new (_data[_reserve()].data()) RTy_(std::forward<RTy_>(s)); }
+  void push(RTy_&& s) { new (_data[_reserve()].data()) Ty_(std::forward<RTy_>(s)); }
+
+  template <typename... Args_>
+  void emplace(Args_&&... args) { new (_data[_reserve()].data()) Ty_(std::forward<Args_>(args)...); }
 
   template <typename RTy_>
   void rotate(RTy_&& s) { is_full() && (pop(), 0) || (this->push(std::forward<RTy_>(s)), 1); }
 
+  template <typename... Args_>
+  void emplace_rotate(Args_&&... args) { is_full() && (pop(), 0) || (this->emplace(std::forward<Args_>(args)...), 1); }
+
   template <typename RTy_>
   void push_back(RTy_&& s) { this->rotate(std::forward<RTy_>(s)); }
+
+  template <typename... Args_>
+  void emplace_back(Args_&&... args) { this->emplace_rotate(std::forward<Args_>(args)...); }
 
   void pop() { _pop(); }
   void pop(Ty_& dst) { (dst = std::move(front())), _pop(); }
