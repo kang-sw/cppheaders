@@ -144,6 +144,15 @@ class circular_queue {
   void pop() { _pop(); }
   void pop(Ty_& dst) { (dst = std::move(front())), _pop(); }
 
+  template <typename... Args_>
+  void enqueue(Args_&&... args) { this->emplace_rotate(std::forward<Args_>(args)...); }
+
+  Ty_ dequeue() {
+    Ty_ r = std::move(front());
+    _pop();
+    return r;
+  }
+
   size_t size() const {
     return _head >= _tail ? _head - _tail : _head + _cap() - _tail;
   }
