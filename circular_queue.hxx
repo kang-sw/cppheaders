@@ -86,9 +86,10 @@ class circular_queue {
  public:
   circular_queue(size_t capacity) noexcept
           : _capacity(capacity + 1), _data(capacity ? std::make_unique<chunk_t[]>(_capacity) : nullptr) {}
-  circular_queue(const circular_queue& op) noexcept { *this = op; }
+  circular_queue(const circular_queue& op) { *this = op; }
   circular_queue(circular_queue&& op) noexcept = default;
-  circular_queue& operator                     =(circular_queue&& op) noexcept {
+
+  circular_queue& operator=(circular_queue&& op) noexcept {
     std::swap(_head, op._head);
     std::swap(_tail, op._tail);
     std::swap(_data, op._data);
@@ -96,7 +97,7 @@ class circular_queue {
     return *this;
   }
 
-  circular_queue& operator=(const circular_queue& op) noexcept {
+  circular_queue& operator=(const circular_queue& op) {
     clear();
     _head     = {};
     _tail     = {};
@@ -171,16 +172,16 @@ class circular_queue {
   auto rbegin() noexcept { return iterator<false, true>(this, _tail); }
   auto rend() noexcept { return iterator<false, true>(this, _head); }
 
-  constexpr size_t capacity() const { return _capacity - 1; }
-  bool empty() const { return _head == _tail; }
+  constexpr size_t capacity() const noexcept { return _capacity - 1; }
+  bool empty() const noexcept { return _head == _tail; }
 
-  Ty_& front() { return _front(); }
-  Ty_ const& front() const { return _front(); }
+  Ty_& front() noexcept { return _front(); }
+  Ty_ const& front() const noexcept { return _front(); }
 
-  Ty_& back() { return _back(); }
-  Ty_ const& back() const { return _back(); }
+  Ty_& back() noexcept { return _back(); }
+  Ty_ const& back() const noexcept { return _back(); }
 
-  bool is_full() const { return _next(_head) == _tail; }
+  bool is_full() const noexcept { return _next(_head) == _tail; }
 
   template <class Fn_>
   void for_each(Fn_&& fn) {
@@ -193,7 +194,11 @@ class circular_queue {
   }
 
   void clear() {
-    while (!empty()) { pop(); }
+    if constexpr (std::is_trivially_destructible_v<Ty_>) {
+      _tail = _head;
+    } else {
+      while (!empty()) { pop(); }
+    }
   }
 
   template <typename Fn_>
