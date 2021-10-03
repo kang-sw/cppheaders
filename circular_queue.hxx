@@ -32,7 +32,7 @@ class circular_queue {
     iterator(const iterator&) noexcept = default;
     iterator& operator=(const iterator&) noexcept = default;
 
-    auto& operator*() const {
+    reference operator*() const {
       if constexpr (Reverse_) {
         return _owner->_r_at(_head);
       } else {
@@ -40,7 +40,7 @@ class circular_queue {
       }
     }
 
-    auto operator->() const { return &*(*this); }
+    pointer operator->() const { return &*(*this); }
 
     bool operator==(iterator const& op) const noexcept { return _head == op._head; }
     bool operator!=(iterator const& op) const noexcept { return _head != op._head; }
@@ -199,10 +199,10 @@ class circular_queue {
   template <typename Fn_>
   void flat(Fn_&& fn) {
     if (_tail < _head) {
-      fn(&_data[_tail], &_data[_head]);
+      fn(&_at(_tail), &_at(_head));
     } else if (_head < _tail) {
-      fn(&_data[_tail], &_data[_capacity]);
-      fn(&_data[0], &_data[_head]);
+      fn(&_at(_tail), &_at(_capacity));
+      fn(&_at(0), &_at(_head));
     }
   }
 
