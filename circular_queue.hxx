@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <memory>
@@ -152,6 +153,26 @@ class circular_queue {
     Ty_ r = std::move(front());
     _pop();
     return r;
+  }
+
+  template <typename OutIt_>
+  void dequeue_n(size_t n, OutIt_ oit) {
+    if (n > size()) {
+      throw std::out_of_range{
+              std::to_string(n)
+                      .append(" is larger than queue size ")
+                      .append(std::to_string(size()))};
+    }
+
+    if constexpr (std::is_trivially_destructible_v<Ty_>) {
+      std::copy(begin(), begin() + n, oit);
+      _tail = _jmp(_tail, n);
+    } else {
+      while (n--) {
+        oit = std::move(front());
+        pop();
+      }
+    }
   }
 
   size_t size() const {
