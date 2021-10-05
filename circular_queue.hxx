@@ -16,6 +16,9 @@ class circular_queue {
  public:
   using value_type = Ty_;
 
+  constexpr static bool is_safe_ctor = std::is_nothrow_constructible_v<Ty_>;
+  constexpr static bool is_safe_dtor = std::is_nothrow_destructible_v<Ty_>;
+
  public:
   template <bool Constant_ = true, bool Reverse_ = false>
   class iterator {
@@ -87,8 +90,12 @@ class circular_queue {
  public:
   circular_queue(size_t capacity) noexcept
           : _capacity(capacity + 1), _data(capacity ? std::make_unique<chunk_t[]>(_capacity) : nullptr) {}
-  circular_queue(const circular_queue& op) { *this = op; }
-  circular_queue(circular_queue&& op) noexcept = default;
+
+  circular_queue(const circular_queue& op) noexcept(is_safe_ctor) { *this = op; }
+
+  circular_queue(circular_queue&& op) noexcept {
+    *this = std::move(op);
+  }
 
   circular_queue& operator=(circular_queue&& op) noexcept {
     std::swap(_head, op._head);
@@ -98,7 +105,7 @@ class circular_queue {
     return *this;
   }
 
-  circular_queue& operator=(const circular_queue& op) {
+  circular_queue& operator=(const circular_queue& op) noexcept(is_safe_ctor) {
     clear();
     _head     = {};
     _tail     = {};
@@ -109,7 +116,7 @@ class circular_queue {
     return *this;
   }
 
-  void reserve_shrink(size_t new_cap) {
+  void reserve_shrink(size_t new_cap) noexcept(is_safe_ctor) {
     if (new_cap == capacity()) { return; }
     if (new_cap == 0) { clear(), _data.reset(), _capacity = 1; }
     auto n_copy = std::min(size(), new_cap);
@@ -126,42 +133,61 @@ class circular_queue {
   }
 
   template <typename RTy_>
-  void push(RTy_&& s) { new (_data[_reserve()].data()) Ty_(std::forward<RTy_>(s)); }
+  void push(RTy_&& s) noexcept(is_safe_ctor) {
+    new (_data[_reserve()].data()) Ty_(std::forward<RTy_>(s));
+  }
 
   template <typename... Args_>
-  void emplace(Args_&&... args) { new (_data[_reserve()].data()) Ty_(std::forward<Args_>(args)...); }
+  void emplace(Args_&&... args) noexcept(is_safe_ctor) {
+    new (_data[_reserve()].data()) Ty_(std::forward<Args_>(args)...);
+  }
 
   template <typename RTy_>
-  void rotate(RTy_&& s) { is_full() && (pop(), 0) || (this->push(std::forward<RTy_>(s)), 1); }
+  void rotate(RTy_&& s) noexcept(is_safe_ctor) {
+    is_full() && (pop(), 0) || (this->push(std::forward<RTy_>(s)), 1);
+  }
 
   template <typename... Args_>
-  void emplace_rotate(Args_&&... args) { is_full() && (pop(), 0) || (this->emplace(std::forward<Args_>(args)...), 1); }
+  void emplace_rotate(Args_&&... args) noexcept(is_safe_ctor) {
+    is_full() && (pop(), 0) || (this->emplace(std::forward<Args_>(args)...), 1);
+  }
 
   template <typename RTy_>
-  void push_back(RTy_&& s) { this->rotate(std::forward<RTy_>(s)); }
+  void push_back(RTy_&& s) noexcept(is_safe_ctor) {
+    this->rotate(std::forward<RTy_>(s));
+  }
 
   template <typename... Args_>
-  void emplace_back(Args_&&... args) { this->emplace_rotate(std::forward<Args_>(args)...); }
+  void emplace_back(Args_&&... args) noexcept(is_safe_ctor) {
+    this->emplace_rotate(std::forward<Args_>(args)...);
+  }
 
-  void pop() { _pop(); }
-  void pop(Ty_& dst) { (dst = std::move(front())), _pop(); }
+  void pop() noexcept(is_safe_dtor) {
+    _pop();
+  }
+
+  void pop(Ty_& dst) noexcept(is_safe_ctor&& is_safe_dtor) {
+    (dst = std::move(front())), _pop();
+  }
 
   template <typename... Args_>
-  void enqueue(Args_&&... args) { this->emplace_rotate(std::forward<Args_>(args)...); }
+  void enqueue(Args_&&... args) noexcept(is_safe_ctor) {
+    this->emplace_rotate(std::forward<Args_>(args)...);
+  }
 
-  Ty_ dequeue() {
+  Ty_ dequeue() noexcept(is_safe_ctor&& is_safe_dtor) {
     Ty_ r = std::move(front());
     _pop();
     return r;
   }
 
   template <typename OutIt_>
-  void dequeue_n(size_t n, OutIt_ oit) {
+  void dequeue_n(size_t n, OutIt_ oit) noexcept(is_safe_ctor&& is_safe_dtor) {
     if (n > size()) {
       throw std::out_of_range{
-              std::to_string(n)
+              to_string(n)
                       .append(" is larger than queue size ")
-                      .append(std::to_string(size()))};
+                      .append(to_string(size()))};
     }
 
     if constexpr (std::is_trivially_destructible_v<Ty_>) {
@@ -175,7 +201,7 @@ class circular_queue {
     }
   }
 
-  size_t size() const {
+  size_t size() const noexcept {
     return _head >= _tail ? _head - _tail : _head + _cap() - _tail;
   }
 
@@ -214,7 +240,7 @@ class circular_queue {
     for (size_t it = _tail; it != _head; it = _next(it)) { fn(static_cast<const Ty_&>(_at(it))); }
   }
 
-  void clear() {
+  void clear() noexcept(is_safe_dtor) {
     if constexpr (std::is_trivially_destructible_v<Ty_>) {
       _tail = _head;
     } else {
@@ -232,7 +258,7 @@ class circular_queue {
     }
   }
 
-  ~circular_queue() { clear(); }
+  ~circular_queue() noexcept(is_safe_dtor) { clear(); }
 
  private:
   size_t _cap() const noexcept { return _capacity; }
