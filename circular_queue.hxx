@@ -138,8 +138,8 @@ class circular_queue {
   }
 
   template <typename... Args_>
-  void emplace(Args_&&... args) noexcept(is_safe_ctor) {
-    new (_data[_reserve()].data()) Ty_(std::forward<Args_>(args)...);
+  auto& emplace(Args_&&... args) noexcept(is_safe_ctor) {
+    return *new (_data[_reserve()].data()) Ty_(std::forward<Args_>(args)...);
   }
 
   template <typename RTy_>
@@ -148,8 +148,10 @@ class circular_queue {
   }
 
   template <typename... Args_>
-  void emplace_rotate(Args_&&... args) noexcept(is_safe_ctor) {
-    is_full() && (pop(), 0) || (this->emplace(std::forward<Args_>(args)...), 1);
+  auto& emplace_rotate(Args_&&... args) noexcept(is_safe_ctor) {
+    Ty_* retv;
+    is_full() && (pop(), 0) || (retv = &this->emplace(std::forward<Args_>(args)...), 1);
+    return *retv;
   }
 
   template <typename RTy_>
@@ -158,8 +160,8 @@ class circular_queue {
   }
 
   template <typename... Args_>
-  void emplace_back(Args_&&... args) noexcept(is_safe_ctor) {
-    this->emplace_rotate(std::forward<Args_>(args)...);
+  auto& emplace_back(Args_&&... args) noexcept(is_safe_ctor) {
+    return this->emplace_rotate(std::forward<Args_>(args)...);
   }
 
   void pop() noexcept(is_safe_dtor) {
@@ -171,8 +173,8 @@ class circular_queue {
   }
 
   template <typename... Args_>
-  void enqueue(Args_&&... args) noexcept(is_safe_ctor) {
-    this->emplace_rotate(std::forward<Args_>(args)...);
+  auto& enqueue(Args_&&... args) noexcept(is_safe_ctor) {
+    return this->emplace_rotate(std::forward<Args_>(args)...);
   }
 
   Ty_ dequeue() noexcept(is_safe_ctor&& is_safe_dtor) {
