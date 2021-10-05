@@ -26,7 +26,7 @@ class circular_queue {
     using owner_type        = std::conditional_t<Constant_, circular_queue const, circular_queue>;
     using value_type        = Ty_;
     using value_type_actual = std::conditional_t<Constant_, Ty_ const, Ty_>;
-    using pointer           = value_type_actual const*;
+    using pointer           = value_type_actual*;
     using reference         = value_type_actual&;
     using difference_type   = ptrdiff_t;
     using iterator_category = std::random_access_iterator_tag;
@@ -308,7 +308,8 @@ class circular_queue {
 
   Ty_& _r_at(size_t i) const {
     assert(!empty());
-    return _at(_jmp(_head, -_idx_linear(i + 1)));
+    auto idx = _head - 1 - (i - _tail);
+    return _at(idx == -1 ? _cap() - 1 : idx);
   }
 
   Ty_& _back() const {
