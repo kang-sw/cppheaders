@@ -185,12 +185,7 @@ class circular_queue {
 
   template <typename OutIt_>
   void dequeue_n(size_t n, OutIt_ oit) noexcept(is_safe_ctor&& is_safe_dtor) {
-    if (n > size()) {
-      throw std::out_of_range{
-              to_string(n)
-                      .append(" is larger than queue size ")
-                      .append(to_string(size()))};
-    }
+    assert(n <= size());
 
     if constexpr (std::is_trivially_destructible_v<Ty_>) {
       std::copy(begin(), begin() + n, oit);
