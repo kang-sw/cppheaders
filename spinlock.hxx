@@ -9,10 +9,6 @@
 #pragma once
 #include <atomic>
 
-#if !defined(KANGSW_TEMPLATE_SPINLOCK_ALIGNMENT)
-#define KANGSW_TEMPLATE_SPINLOCK_ALIGNMENT alignas(64)
-#endif
-
 namespace std::this_thread {
 void yield() noexcept;
 }
@@ -20,8 +16,8 @@ void yield() noexcept;
 namespace KANGSW_TEMPLATE_NAMESPACE {
 //! @see https://rigtorp.se/spinlock/
 //! Applied slight modification to use atomic_flag
-struct KANGSW_TEMPLATE_SPINLOCK_ALIGNMENT spinlock {
-  std::atomic_bool lock_;
+struct spinlock {
+  std::atomic_bool lock_{false};
 
   void lock() noexcept {
     for (;;) {
