@@ -118,6 +118,7 @@ std::string to_string(format_context::_proxy<Args_...>&& prx) {
 }  // namespace util
 
 inline namespace literals {
+using namespace std::literals;
 inline util::format_context operator""_fmt(char const* ch, size_t) {
   return {ch};
 }
