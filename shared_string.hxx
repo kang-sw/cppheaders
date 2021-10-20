@@ -1,19 +1,31 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace KANGSW_TEMPLATE_NAMESPACE {
 
 template <typename CharTy_, typename Traits_, typename Alloc_>
 class basic_shared_string {
  public:
-  using string_type = std::basic_string<CharTy_, Traits_, Alloc_>;
+  using string_type      = std::basic_string<CharTy_, Traits_, Alloc_>;
+  using string_view_type = std::basic_string_view<CharTy_, Traits_>;
 
  public:
   basic_shared_string() noexcept = default;
 
-  explicit basic_shared_string(string_type str) noexcept
+  template <size_t N_>
+  basic_shared_string(CharTy_ const (&str)[N_]) noexcept
+          : _string(std::make_shared<string_type>(str)) {}
+
+  basic_shared_string(CharTy_ const* str) noexcept
+          : _string(std::make_shared<string_type>(str)) {}
+
+  basic_shared_string(string_type str) noexcept
           : _string(std::make_shared<string_type>(std::move(str))) {}
+
+  explicit basic_shared_string(string_view_type str) noexcept
+          : _string(std::make_shared<string_type>(str)) {}
 
   basic_shared_string(basic_shared_string const& r) noexcept = default;
   basic_shared_string(basic_shared_string&& r) noexcept      = default;
@@ -32,12 +44,14 @@ class basic_shared_string {
   bool is_valid() const noexcept { return _string; }
   operator bool() const noexcept { return is_valid(); }
 
+  operator string_type const&() const noexcept { return *_string; }
+  operator string_view_type() const noexcept { return *_string; };
+  std::string const& operator*() const noexcept { return *_string; }
+  std::string const* operator->() const noexcept { return &*_string; }
+
   size_t size() const noexcept { return _string->size(); }
   bool empty() const noexcept { return _string->empty(); }
   char const* c_str() const noexcept { return _string->c_str(); }
-  operator std::string const&() const noexcept { return *_string; }
-  std::string const& operator*() const noexcept { return *_string; }
-  std::string const* operator->() const noexcept { return &*_string; }
 
   auto begin() noexcept { return _string->begin(); }
   auto end() noexcept { return _string->end(); }
