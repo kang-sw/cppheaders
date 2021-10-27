@@ -82,7 +82,7 @@ class _counter<Ty_, 1> {
  */
 template <typename Ty_>
 // requires std::is_arithmetic_v<Ty_>&& std::is_integral_v<Ty_>
-class _counter<Ty_, -1> {
+class _counter<Ty_, ~size_t{}> {
  public:
   using iterator_category = std::random_access_iterator_tag;
   using difference_type   = ptrdiff_t;
@@ -241,8 +241,8 @@ constexpr auto rcounter(SizeTy_ size) {
   struct min_counter_gen {
     SizeTy_ begin_;
     SizeTy_ end_;
-    constexpr _counter<SizeTy_, -1> begin() const { return {begin_}; }
-    constexpr _counter<SizeTy_, -1> end() const { return {end_}; }
+    constexpr _counter<SizeTy_, ~size_t{}> begin() const { return {begin_}; }
+    constexpr _counter<SizeTy_, ~size_t{}> end() const { return {end_}; }
   };
 
   return min_counter_gen{.begin_ = SizeTy_(size - 1), .end_ = SizeTy_(-1)};
