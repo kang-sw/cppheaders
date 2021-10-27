@@ -107,12 +107,12 @@ class circular_queue {
 
   circular_queue& operator=(const circular_queue& op) noexcept(is_safe_ctor) {
     clear();
-    _head     = {};
-    _tail     = {};
+    _head     = 0;
+    _tail     = 0;
     _capacity = op._capacity;
     _data     = std::make_unique<chunk_t[]>(_capacity);
 
-    std::copy(op.begin(), op.end(), begin());
+    std::copy(op.begin(), op.end(), std::back_inserter(*this));
     return *this;
   }
 
