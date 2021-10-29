@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <iterator>
 #include <memory>
 
 namespace KANGSW_TEMPLATE_NAMESPACE {
