@@ -254,9 +254,13 @@ constexpr auto counter(SizeTy_ size, Ints_... args) {
   using size_type      = std::decay_t<SizeTy_>;
   _count_index<size_type, n_dim> counter{};
   counter.max[0] = std::forward<SizeTy_>(size);
+  bool has_zero  = false;
   tuple_for_each(
           std::forward_as_tuple(std::forward<Ints_>(args)...),
-          [&]<typename Int_>(Int_&& r, size_t i) { counter.max[i + 1] = std::forward<Int_>(r); });
+          [&](auto&& r, size_t i) { counter.max[i + 1] = (r); has_zero |= r == 0; });
+
+  if (has_zero)
+    counter.max = {};
   return counter;
 }
 
