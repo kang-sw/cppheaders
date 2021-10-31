@@ -22,7 +22,7 @@ class basic_poll_timer {
   bool operator()() noexcept {
     auto now = clock_type::now();
     if (now > _tp) {
-      _latest_dt = now - _tp - _interval;
+      _latest_dt = now - (_tp - _interval);
       _tp += _interval;
 
       if (_tp < now)
