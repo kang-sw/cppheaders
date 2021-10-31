@@ -22,6 +22,7 @@ class basic_poll_timer {
   bool operator()() noexcept {
     auto now = clock_type::now();
     if (now > _tp) {
+      _latest_dt = now - _tp - _interval;
       _tp += _interval;
 
       if (_tp < now)
@@ -31,6 +32,14 @@ class basic_poll_timer {
     } else {
       return false;
     }
+  }
+
+  duration dt() const noexcept {
+    return _latest_dt;
+  }
+
+  std::chrono::duration<double> delta() const noexcept {
+    return dt();
   }
 
   template <typename Duration_>
@@ -44,8 +53,9 @@ class basic_poll_timer {
   }
 
  private:
-  timepoint _tp      = {};
-  duration _interval = {};
+  timepoint _tp       = {};
+  duration _interval  = {};
+  duration _latest_dt = {};
 };
 
 using poll_timer = basic_poll_timer<std::chrono::steady_clock>;
