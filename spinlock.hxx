@@ -8,10 +8,7 @@
  */
 #pragma once
 #include <atomic>
-
-namespace std::this_thread {
-void yield() noexcept;
-}
+#include <thread>
 
 namespace KANGSW_TEMPLATE_NAMESPACE {
 //! @see https://rigtorp.se/spinlock/
