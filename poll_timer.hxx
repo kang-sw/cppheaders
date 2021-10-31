@@ -3,7 +3,7 @@
 
 namespace KANGSW_TEMPLATE_NAMESPACE {
 template <typename Clock_ = std::chrono::steady_clock>
-class poll_timer {
+class basic_poll_timer {
  public:
   using clock_type = Clock_;
   using timepoint  = typename clock_type::time_point;
@@ -11,11 +11,11 @@ class poll_timer {
 
  public:
   template <typename Duration_>
-  poll_timer(Duration_&& dt) noexcept {
+  basic_poll_timer(Duration_&& dt) noexcept {
     this->reset(std::forward<Duration_>(dt));
   }
 
-  poll_timer() noexcept {
+  basic_poll_timer() noexcept {
     this->reset();
   }
 
@@ -48,4 +48,5 @@ class poll_timer {
   duration _interval = {};
 };
 
+using poll_timer = basic_poll_timer<std::chrono::steady_clock>;
 }  // namespace KANGSW_TEMPLATE_NAMESPACE
