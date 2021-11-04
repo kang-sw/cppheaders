@@ -26,6 +26,10 @@ class array_view {
   constexpr array_view(Range_&& p) noexcept
           : array_view(p.data(), p.size()) {}
 
+  template <size_t N_>
+  constexpr array_view(Ty_ (&p)[N_]) noexcept
+          : array_view(p, N_) {}
+
   constexpr auto size() const noexcept { return _size; }
   constexpr auto data() const noexcept { return _ptr; }
   constexpr auto data() noexcept { return _ptr; }
