@@ -101,6 +101,11 @@
                   return _fn(args...) ? delegate_invoke_result::ok
                                       : delegate_invoke_result::expire;
                 });
+      } else if constexpr (std::is_invocable_v<Callable_>) {
+        ptr = std::make_shared<event_fn>(
+                [_fn = std::forward<Callable_>(fn)](auto&&... args) {
+                  return _fn(), delegate_invoke_result::ok;
+                });
       } else {
         ptr = std::make_shared<event_fn>(
                 [_fn = std::forward<Callable_>(fn)](auto&&... args) {
