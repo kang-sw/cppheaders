@@ -51,6 +51,20 @@
     };
 
    public:
+    basic_delegate() noexcept = default;
+    basic_delegate(basic_delegate&& rhs) noexcept { *this = std::move(rhs); }
+    basic_delegate(basic_delegate const& rhs) noexcept { *this = rhs; }
+    basic_delegate& operator=(basic_delegate&& rhs) noexcept {
+      std::lock(_mtx, rhs._mtx);
+      _events = std::move(rhs._events);
+      _mtx.unlock(), rhs._mtx.unlock();
+    }
+    basic_delegate& operator=(basic_delegate const& rhs) noexcept {
+      std::lock(_mtx, rhs._mtx);
+      _events = rhs._events;
+      _mtx.unlock(), rhs._mtx.unlock();
+    }
+
     template <typename... FnArgs_>
     void invoke(FnArgs_&&... args) {
       std::unique_lock lock{_mtx};
