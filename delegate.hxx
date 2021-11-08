@@ -94,7 +94,7 @@
                 });
       }
 
-      _events.template emplace_back(std::move(ptr));
+      _events.emplace_back(std::move(ptr));
       auto iter = --_events.end();
       return handle{this, iter, *iter};
     }
