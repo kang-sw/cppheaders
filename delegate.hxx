@@ -32,14 +32,22 @@
    public:
     class handle {
       friend class basic_delegate;
+      basic_delegate* owner   = {};
       container_iterator iter = {};
       event_weak_pointer ptr  = {};
 
-      handle(container_iterator i, event_weak_pointer p) noexcept : iter(i), ptr(p) {}
+      handle(basic_delegate* o, container_iterator i, event_weak_pointer p) noexcept
+              : owner(o), iter(i), ptr(p) {}
 
      public:
-      auto& operator=(handle&& o) noexcept { std::swap(iter, o.iter), std::swap(ptr, o.ptr); }
+      auto& operator=(handle&& o) noexcept {
+        std::memcpy(this, &o, sizeof *this);
+        std::memset(&o, 0, sizeof o);
+      }
+
       handle(handle&& other) noexcept { (*this) = std::move(other); }
+      void expire() noexcept { owner->remove(std::move(*this)); }
+      bool valid() noexcept { return owner != nullptr; }
     };
 
    public:
@@ -88,7 +96,7 @@
 
       _events.template emplace_back(std::move(ptr));
       auto iter = --_events.end();
-      return handle{iter, *iter};
+      return handle{this, iter, *iter};
     }
 
     void remove(handle it) {
