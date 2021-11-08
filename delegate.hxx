@@ -75,7 +75,6 @@
 
    private:
     container _events;
-    container_iterator _locked_handle;
     mutable Mutex_ _mtx;
   };
 
