@@ -9,10 +9,20 @@
 //
 #include "__namespace__.h"
 {
+  enum class delegate_invoke_result {
+    ok      = 0,
+    expire  = 1,
+    consume = 2,
+  };
+
+  delegate_invoke_result operator|(delegate_invoke_result a, delegate_invoke_result b) {
+    return (delegate_invoke_result)(int(a) | int(b));
+  }
+
   template <typename Mutex_, typename... Args_>
   class basic_delegate {
    public:
-    using event_fn           = std::function<bool(Args_...)>;
+    using event_fn           = std::function<delegate_invoke_result(Args_...)>;
     using event_pointer      = std::shared_ptr<event_fn>;
     using event_weak_pointer = std::weak_ptr<event_fn>;
     using container          = std::list<event_pointer>;
@@ -36,13 +46,16 @@
           _events.erase(it++);
         } else {
           lock.unlock();
-          auto still_valid = (*ptr)(std::forward<FnArgs_>(args)...);
+          auto invoke_result = (int)(*ptr)(std::forward<FnArgs_>(args)...);
           lock.lock();
 
-          if (not still_valid)
+          if (invoke_result & (int)delegate_invoke_result::expire)
             _events.erase(it++);
           else
             ++it;
+
+          if (invoke_result & (int)delegate_invoke_result::consume)
+            break;
         }
       }
     }
@@ -50,17 +63,24 @@
     template <typename Callable_>
     handle add(Callable_&& fn) noexcept {
       std::lock_guard _{_mtx};
+      event_pointer ptr;
 
-      if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>) {
-        _events.emplace_back(std::make_shared<event_fn>(std::forward<Callable_>(fn)));
+      if constexpr (std::is_invocable_r_v<delegate_invoke_result, Callable_, Args_...>) {
+        ptr = std::make_shared<event_fn>(std::forward<Callable_>(fn));
+      } else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>) {
+        ptr = std::make_shared<event_fn>(
+                [_fn = std::forward<Callable_>(fn)](auto&&... args) {
+                  return _fn(args...) ? delegate_invoke_result::ok
+                                      : delegate_invoke_result::expire;
+                });
       } else {
-        _events.emplace_back(
-                std::make_shared<event_fn>(
-                        [_fn = std::forward<Callable_>(fn)](auto&&... args) {
-                          return _fn(args...), true;
-                        }));
+        ptr = std::make_shared<event_fn>(
+                [_fn = std::forward<Callable_>(fn)](auto&&... args) {
+                  return _fn(args...), delegate_invoke_result::ok;
+                });
       }
 
+      _events.template emplace_back(std::move(ptr));
       handle h;
       h.iter = --_events.end();
       h.ptr  = *h.iter;
