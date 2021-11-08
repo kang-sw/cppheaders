@@ -5,7 +5,9 @@
 
 #include "tuple_for_each.hxx"
 
-namespace KANGSW_TEMPLATE_NAMESPACE {
+//
+#include "__namespace__.h"
+{
 inline namespace counters {
 
 template <typename Ty_, size_t Dim_ = 1>

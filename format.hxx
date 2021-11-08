@@ -5,7 +5,9 @@
 #include <spdlog/fmt/fmt.h>
 #endif
 
-namespace KANGSW_TEMPLATE_NAMESPACE {
+//
+#include "__namespace__.h"
+{
 namespace util {
 
 class format_context {
