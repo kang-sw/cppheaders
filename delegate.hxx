@@ -15,7 +15,7 @@
     consume = 2,
   };
 
-  delegate_invoke_result operator|(delegate_invoke_result a, delegate_invoke_result b) {
+  inline delegate_invoke_result operator|(delegate_invoke_result a, delegate_invoke_result b) {
     return (delegate_invoke_result)(int(a) | int(b));
   }
 
@@ -32,8 +32,14 @@
    public:
     class handle {
       friend class basic_delegate;
-      container_iterator iter;
-      event_weak_pointer ptr;
+      container_iterator iter = {};
+      event_weak_pointer ptr  = {};
+
+      handle(container_iterator i, event_weak_pointer p) noexcept : iter(i), ptr(p) {}
+
+     public:
+      auto& operator=(handle&& o) noexcept { std::swap(iter, o.iter), std::swap(ptr, o.ptr); }
+      handle(handle&& other) noexcept { (*this) = std::move(other); }
     };
 
    public:
@@ -81,13 +87,11 @@
       }
 
       _events.template emplace_back(std::move(ptr));
-      handle h;
-      h.iter = --_events.end();
-      h.ptr  = *h.iter;
-      return h;
+      auto iter = --_events.end();
+      return handle{iter, *iter};
     }
 
-    void remove(handle const& it) {
+    void remove(handle it) {
       std::lock_guard _{_mtx};
       if (not it.ptr.expired())
         it.iter->reset();
