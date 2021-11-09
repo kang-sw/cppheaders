@@ -2,7 +2,11 @@
 #include <cstddef>
 #include <cstdint>
 //
-#include "__namespace__.h"
+#if __has_include("../__cppheaders_ns__.h")
+#include "../__cppheaders_ns__.h"
+#else
+namespace KANGSW_TEMPLATE_NAMESPACE
+#endif
 {
   namespace hasher {
   constexpr static uint64_t FNV_PRIME       = 0x100000001b3ull;
@@ -29,4 +33,4 @@
     return fnv1a_64(buf, buf + N_, base);
   }
   }  // namespace hasher
-}
+}  // namespace KANGSW_TEMPLATE_NAMESPACE

@@ -2,7 +2,11 @@
 #include <tuple>
 
 //
-#include "__namespace__.h"
+#if __has_include("../__cppheaders_ns__.h")
+#include "../__cppheaders_ns__.h"
+#else
+namespace KANGSW_TEMPLATE_NAMESPACE
+#endif
 {
   /**
    * @see https://stackoverflow.com/questions/1198260/how-can-you-iterate-over-the-elements-of-an-stdtuple

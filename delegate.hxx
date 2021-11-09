@@ -7,7 +7,11 @@
 #include "spinlock.hxx"
 
 //
-#include "__namespace__.h"
+#if __has_include("../__cppheaders_ns__.h")
+#include "../__cppheaders_ns__.h"
+#else
+namespace KANGSW_TEMPLATE_NAMESPACE
+#endif
 {
   enum class delegate_invoke_result {
     ok      = 0,

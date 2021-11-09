@@ -1,7 +1,11 @@
 #pragma once
 #include <type_traits>
 
-#include "__namespace__.h"
+#if __has_include("../__cppheaders_ns__.h")
+#include "../__cppheaders_ns__.h"
+#else
+namespace KANGSW_TEMPLATE_NAMESPACE
+#endif
 {
   template <typename Callable_>
   class cleanup {
@@ -12,4 +16,4 @@
    private:
     Callable_ _callable;
   };
-}
+}  // namespace KANGSW_TEMPLATE_NAMESPACE

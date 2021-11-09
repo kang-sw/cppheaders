@@ -2,7 +2,11 @@
 #include <chrono>
 
 //
-#include "__namespace__.h"
+#if __has_include("../__cppheaders_ns__.h")
+#include "../__cppheaders_ns__.h"
+#else
+namespace KANGSW_TEMPLATE_NAMESPACE
+#endif
 {
   template <typename Clock_ = std::chrono::steady_clock>
   class basic_poll_timer {

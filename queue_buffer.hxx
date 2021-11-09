@@ -9,7 +9,11 @@
  *  As internal memory of circular queue is totally reallocated when internal buffer is full,
  */
 //
-#include "__namespace__.h"
+#if __has_include("../__cppheaders_ns__.h")
+#include "../__cppheaders_ns__.h"
+#else
+namespace KANGSW_TEMPLATE_NAMESPACE
+#endif
 ::circular_buffer {
   class allocator;
 

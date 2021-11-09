@@ -4,7 +4,11 @@
 #include <string_view>
 
 //
-#include "__namespace__.h"
+#if __has_include("../__cppheaders_ns__.h")
+#include "../__cppheaders_ns__.h"
+#else
+namespace KANGSW_TEMPLATE_NAMESPACE
+#endif
 {
   template <typename CharTy_, typename Traits_, typename Alloc_>
   class basic_shared_string {
@@ -45,7 +49,7 @@
     bool is_valid() const noexcept { return _string; }
     operator bool() const noexcept { return is_valid(); }
 
-    operator string_type const&() const noexcept { return *_string; }
+    operator string_type const &() const noexcept { return *_string; }
     operator string_view_type() const noexcept { return *_string; };
     std::string const& operator*() const noexcept { return *_string; }
     std::string const* operator->() const noexcept { return &*_string; }
