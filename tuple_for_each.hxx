@@ -2,12 +2,9 @@
 #include <tuple>
 
 //
-#if __has_include("../__cppheaders_ns__.h")
-#include "../__cppheaders_ns__.h"
-#else
-namespace KANGSW_TEMPLATE_NAMESPACE
-#endif
-{
+#include "__namespace__.h"
+
+namespace CPPHEADERS_NS_ {
   /**
    * @see https://stackoverflow.com/questions/1198260/how-can-you-iterate-over-the-elements-of-an-stdtuple
    * Iterate over tempalte
