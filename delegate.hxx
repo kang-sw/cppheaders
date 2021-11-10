@@ -128,6 +128,16 @@ namespace KANGSW_TEMPLATE_NAMESPACE
         it.iter->reset();
     }
 
+    bool empty() const noexcept {
+      std::lock_guard _{_mtx};
+      return _events.empty();
+    }
+
+    bool size() const noexcept {
+      std::lock_guard _{_mtx};
+      return _events.size();
+    }
+
    private:
     container _events;
     mutable Mutex_ _mtx;
