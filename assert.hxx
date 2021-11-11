@@ -13,9 +13,9 @@ void _assert_fails(
         char const* file, char const* func, int line, char const* expr)  //
 #if defined(CPPHEADERS_IMPLEMENT_ASSERTIONS)
 {
-  char buf[1024];
-  snprintf(buf, sizeof buf, "%s:%d (%s): (%s) == false", file, line, func, expr);
-  fprintf(stderr, "ASSERTION FAILED: %s", buf);
+  fprintf(stderr,
+          "ASSERTION FAILED: %s\n\t%s:%d\n\t  in function: %s()\n\n",
+          expr, file, line, func);
 
   fflush(stderr);
   *((volatile int*)nullptr) = 0;  // generate segmentation fault
