@@ -113,23 +113,23 @@ class ndarray {
 
   const_reference at(dimension_type const& i) const { return data_.at(_get_index(i)); }
   reference at(dimension_type const& i) { return data_.at(_get_index(i)); }
-  const_reference operator[](dimension_type const& i) const { return data_[_get_index(i)]; }
-  reference operator[](dimension_type const& i) { return data_[_get_index(i)]; }
+  const_reference operator[](dimension_type const& i) const noexcept { return data_[_get_index(i)]; }
+  reference operator[](dimension_type const& i) noexcept { return data_[_get_index(i)]; }
 
-  auto begin() { return data_.begin(); }
-  auto cbegin() const { return data_.cbegin(); }
-  auto end() { return data_.end(); }
-  auto cend() const { return data_.cend(); }
+  auto begin() noexcept { return data_.begin(); }
+  auto cbegin() const noexcept { return data_.cbegin(); }
+  auto end() noexcept { return data_.end(); }
+  auto cend() const noexcept { return data_.cend(); }
 
-  auto size() const { return data_.size(); }
-  auto dims() const { return dim_; }
+  auto size() const noexcept { return data_.size(); }
+  auto dims() const noexcept { return dim_; }
   auto shrink_to_fit() { data_.shrink_to_fit(); }
 
-  auto data() const { return data_.data(); }
-  auto data() { return data_.data(); }
+  auto data() const noexcept { return data_.data(); }
+  auto data() noexcept { return data_.data(); }
 
-  auto& vector() { return data_; }
-  auto& vector() const { return data_; }
+  auto& vector() noexcept { return data_; }
+  auto& vector() const noexcept { return data_; }
 
   template <typename It_>
   void assign(It_ first, It_ last) {
@@ -139,8 +139,8 @@ class ndarray {
 
   void assign(std::initializer_list<value_type> values) { assign(values.begin(), values.end()); }
 
-  bool operator==(ndarray const& r) const { return dim_ == r.dim_ && data_ == r.data_; }
-  bool operator!=(ndarray const& r) const { return !(*this == r); }
+  bool operator==(ndarray const& r) const noexcept { return dim_ == r.dim_ && data_ == r.data_; }
+  bool operator!=(ndarray const& r) const noexcept { return !(*this == r); }
 
  private:
   dimension_type dim_;
