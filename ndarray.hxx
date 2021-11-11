@@ -72,8 +72,10 @@ class ndarray {
   ndarray& operator=(ndarray const&) noexcept = default;
 
  public:
-  template <typename... Values_>
-  //  requires((sizeof...(Values_) == dimension) && (std::is_integral_v<Values_> && ...))  //
+  template <typename... Values_,
+            typename = std::enable_if_t<
+                    sizeof...(Values_) == dimension
+                    && (std::is_integral_v<Values_> && ...)>>
   void reshape(Values_... values) {
     static_assert(sizeof...(values) == dimension);
     auto value = {size_type(values)...};
@@ -87,26 +89,34 @@ class ndarray {
     _apply_reshape();
   }
 
-  template <typename... Idxs_>
-  // requires((sizeof...(Idxs_) == dimension) && (std::is_integral_v<Idxs_> && ...))
+  template <typename... Idxs_,
+            typename = std::enable_if_t<
+                    sizeof...(Idxs_) == dimension
+                    && (std::is_integral_v<Idxs_> && ...)>>
   reference operator()(Idxs_... index) {
     return data_[_reduce_index<0>(index...)];
   }
 
-  template <typename... Idxs_>
-  // requires((sizeof...(Idxs_) == dimension) && (std::is_integral_v<Idxs_> && ...))
+  template <typename... Idxs_,
+            typename = std::enable_if_t<
+                    sizeof...(Idxs_) == dimension
+                    && (std::is_integral_v<Idxs_> && ...)>>
   const_reference operator()(Idxs_... index) const {
     return data_[_reduce_index<0>(index...)];
   }
 
-  template <typename... Idxs_>
-  // requires((sizeof...(Idxs_) == dimension) && (std::is_integral_v<Idxs_> && ...))
+  template <typename... Idxs_,
+            typename = std::enable_if_t<
+                    sizeof...(Idxs_) == dimension
+                    && (std::is_integral_v<Idxs_> && ...)>>
   reference at(Idxs_... index) {
     return data_[_reduce_index<0, true>(index...)];
   }
 
-  template <typename... Idxs_>
-  // requires((sizeof...(Idxs_) == dimension) && (std::is_integral_v<Idxs_> && ...))
+  template <typename... Idxs_,
+            typename = std::enable_if_t<
+                    sizeof...(Idxs_) == dimension
+                    && (std::is_integral_v<Idxs_> && ...)>>
   const_reference at(Idxs_... index) const {
     return data_[_reduce_index<0, true>(index...)];
   }
