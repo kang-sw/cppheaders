@@ -1,5 +1,4 @@
 #pragma once
-#include <cassert>
 
 // assert always
 #include "__namespace__.h"
@@ -26,11 +25,10 @@ void _assert_fails(
 #endif
 }  // namespace cppheaders_internals
 
-#ifdef NDEBUG
-#undef assert
-#define assert(expr)                                 \
-  (!(expr)                                           \
-   && (cppheaders_internals::_assert_fails(          \
-               __FILE__, __LINE__, __func__, #expr), \
-       0))
-#endif
+#define assert_(expr)                                      \
+  (void)(!(expr)                                           \
+         && (cppheaders_internals::_assert_fails(          \
+                     __FILE__, __func__, __LINE__, #expr), \
+             0))
+
+#define UNIMPLEMENTED() assert_(("NOT IMPLEMENTED", 0))
