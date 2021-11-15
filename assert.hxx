@@ -6,6 +6,10 @@
 #if defined(CPPHEADERS_IMPLEMENT_ASSERTIONS)
 #include <cstdio>
 #include <stdexcept>
+
+#include "third/backward.hpp"
+//
+#include "third/backward.cpp.inl"
 #endif
 
 namespace cppheaders_internals {
