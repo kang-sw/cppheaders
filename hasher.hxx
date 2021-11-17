@@ -25,7 +25,8 @@ static constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base = FNV_OF
   return fnv1a_64((char const*)&val, (char const*)(&val + 1), base);
 }
 
-template <typename Ch_, size_t N_>
+template <typename Ch_, size_t N_,
+          typename = std::enable_if_t<sizeof(Ch_) == 1>>
 static constexpr inline uint64_t fnv1a_64(Ch_ (&buf)[N_], uint64_t base = FNV_OFFSET_BASE) {
   return fnv1a_64(buf, buf + N_, base);
 }
