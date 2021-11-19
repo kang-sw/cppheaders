@@ -40,7 +40,7 @@ constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base) {
   if constexpr (type_traits::is_detected_v<_is_range_t, Ty_>) {
     return fnv1a_64(std::begin(val), std::end(val));
   } else if constexpr (std::is_trivial_v<Ty_>) {
-    return fnv1a_64((char const*)&val, (char const*)(&val + 1), base);
+    return fnv1a_64(reinterpret_cast<std::array<char const, sizeof(Ty_)> const&>(val), base);
   } else {
     val.GENERATE_STATIC_ASSERT();
   }
