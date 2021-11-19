@@ -10,7 +10,7 @@ namespace CPPHEADERS_NS_ {
  * N-dimensional array
  * Basically, wrapper of an vector
  */
-template <typename Ty_, size_t Dim_ = 1>
+template <typename Ty_, size_t Dim_>
 class ndarray {
  public:
   using value_type      = typename std::vector<Ty_>::value_type;
