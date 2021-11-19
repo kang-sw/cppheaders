@@ -38,7 +38,7 @@ struct lock_guard {
   Mutex_& _ref;
 };
 
-using delegate_key = key_base<class LABEL_delegate_key>;
+using delegate_key = basic_key<class LABEL_delegate_key>;
 
 enum class delegate_invoke_result {
   ok      = 0,

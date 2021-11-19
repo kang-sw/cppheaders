@@ -48,19 +48,22 @@ constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base) {
 }  // namespace hasher
 
 template <typename Label_>
-struct key_base {
-  bool operator<(key_base const& other) const noexcept { return value < other.value; }
-  bool operator==(key_base const& other) const noexcept { return value == other.value; }
+struct basic_key {
+  bool operator<(basic_key const& other) const noexcept { return value < other.value; }
+  bool operator==(basic_key const& other) const noexcept { return value == other.value; }
 
   template <typename Other_,
             typename = std::enable_if_t<std::is_arithmetic_v<Other_>>>
-  friend bool operator<(Other_&& v, key_base const& self) noexcept { return v < self.value; }
+  friend bool operator<(Other_&& v, basic_key const& self) noexcept { return v < self.value; }
 
   template <typename Other_,
             typename = std::enable_if_t<std::is_arithmetic_v<Other_>>>
-  friend bool operator<(key_base const& self, Other_&& v) noexcept { return self.value < v; }
+  friend bool operator<(basic_key const& self, Other_&& v) noexcept { return self.value < v; }
 
   operator bool() const noexcept { return value != 0; }
+
+  template <typename Ty_>
+  static basic_key create(Ty_&& r) noexcept { return hasher::fnv1a_64(r); }
 
  public:
   uint64_t value = {};
@@ -70,8 +73,8 @@ struct key_base {
 
 namespace std {
 template <typename Label_>
-struct hash<CPPHEADERS_NS_::key_base<Label_>> {
-  auto operator()(CPPHEADERS_NS_::key_base<Label_> const& s) const noexcept {
+struct hash<CPPHEADERS_NS_::basic_key<Label_>> {
+  auto operator()(CPPHEADERS_NS_::basic_key<Label_> const& s) const noexcept {
     return ::std::hash<uint64_t>{}(s.value);
   }
 };
