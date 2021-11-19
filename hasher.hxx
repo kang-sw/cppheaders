@@ -2,6 +2,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+
+#include "type_traits.hxx"
+
 //
 #include "__namespace__.h"
 
@@ -29,22 +32,18 @@ constexpr inline uint64_t fnv1a_64(It_ begin, It_&& end, uint64_t base = FNV_OFF
   return base;
 }
 
-template <typename Ty_,
-          typename = std::enable_if_t<std::is_trivial_v<Ty_>>>
+template <typename T>
+using _is_range_t = decltype(std::begin(std::declval<T>()));
+
+template <typename Ty_>
 constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base) {
-  return fnv1a_64((char const*)&val, (char const*)(&val + 1), base);
-}
-
-template <typename Ch_, size_t N_,
-          typename = std::enable_if_t<sizeof(Ch_) == 1>>
-constexpr inline uint64_t fnv1a_64(Ch_ (&buf)[N_], uint64_t base = FNV_OFFSET_BASE) {
-  return fnv1a_64(buf, buf + N_, base);
-}
-
-template <typename Range_,
-          typename = decltype(std::begin(Range_{}))>
-constexpr inline uint64_t fnv1a_64(Range_&& r, uint64_t base = FNV_OFFSET_BASE) noexcept {
-  return fnv1a_64(std::begin(r), std::end(r), base);
+  if constexpr (type_traits::is_detected_v<_is_range_t, Ty_>) {
+    return fnv1a_64(std::begin(val), std::end(val));
+  } else if constexpr (std::is_trivial_v<Ty_>) {
+    return fnv1a_64((char const*)&val, (char const*)(&val + 1), base);
+  } else {
+    val.GENERATE_STATIC_ASSERT();
+  }
 }
 }  // namespace hasher
 
