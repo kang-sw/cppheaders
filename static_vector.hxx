@@ -88,6 +88,18 @@ class static_vector {
     }
   }
 
+  template <bool Move_, typename It_>
+  void _insert(iterator at, It_ begin, It_ end) noexcept(_nt_dtor&& _nt_ctor_move) {
+    auto num_insert = std::distance(begin, end);
+    _move_range(at, this->end(), begin + num_insert);
+    _size += num_insert;
+    for (; begin != end; ++begin)
+      if constexpr (Move_)
+        _construct_at(at++, std::move(*begin));
+      else
+        _construct_at(at++, *begin);
+  }
+
  public:
   constexpr static_vector() noexcept = default;
 
@@ -96,8 +108,21 @@ class static_vector {
     assign(begin, end);
   };
 
-  constexpr static_vector(std::initializer_list<Ty_> list)
+  constexpr static_vector(std::initializer_list<Ty_> list) noexcept(_nt_ctor_move)
           : static_vector(list.begin(), list.end()) {}
+
+  constexpr static_vector(size_t n, Ty_ const& t = {}) noexcept(_nt_ctor_default) {
+    resize(n, t);
+  }
+
+  auto& operator=(static_vector const& r) noexcept(_nt_ctor_copy&& _nt_move&& _nt_dtor) {
+    assign(r.begin(), r.end());
+  }
+
+  auto& operator=(static_vector&& r) noexcept(_nt_ctor_move&& _nt_dtor) {
+    erase(begin(), end());
+    _insert<true>(begin(), r.begin(), r.end());
+  }
 
   constexpr auto size() const noexcept { return _size; }
   constexpr auto data() const noexcept { return _ptr; }
@@ -138,22 +163,21 @@ class static_vector {
     erase(begin(), end());
   }
 
-  void resize(size_t new_size) noexcept(_nt_dtor&& _nt_ctor_default) {
+  void resize(size_t new_size, Ty_ const& t = {}) noexcept(_nt_dtor&& _nt_ctor_default) {
     if (new_size < _size)
       erase(begin() + new_size, end());
-    else if (_size < new_size)
+    else if (_size < new_size) {
+      _verify_space(new_size - _size);
       while (_size < new_size)
-        _construct_at(_ptr + _size++);
+        _construct_at(_ptr + _size++, t);
+    }
   }
 
   template <typename It_>
   constexpr void insert(iterator at, It_ begin, It_ end)  //
           noexcept(std::is_nothrow_constructible_v<Ty_, decltype(*std::declval<It_>())>&& _nt_move) {
-    auto num_insert = std::distance(begin, end);
-    _move_range(at, this->end(), num_insert);
-    _size += num_insert;
-    for (; begin != end; ++begin)
-      _construct_at(at++, *begin);
+    _insert<std::is_rvalue_reference_v<decltype(*std::declval<It_>())>>(
+            at, begin, end);
   }
 
   constexpr void insert(iterator at, Ty_ const& v)  //
@@ -233,7 +257,7 @@ class static_vector {
 
  private:
   std::array<std::byte, sizeof(Ty_) * N_> _buffer;
-  Ty_* _ptr = reinterpret_cast<Ty_*>(_buffer.data());
-  size_t _size;
+  Ty_* _ptr    = reinterpret_cast<Ty_*>(_buffer.data());
+  size_t _size = 0;
 };
 }  // namespace CPPHEADERS_NS_
