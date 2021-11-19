@@ -111,17 +111,27 @@ class static_vector {
   constexpr static_vector(std::initializer_list<Ty_> list) noexcept(_nt_ctor_move)
           : static_vector(list.begin(), list.end()) {}
 
+  constexpr static_vector(static_vector const& s) noexcept(_nt_ctor_move) {
+    *this = s;
+  }
+
+  constexpr static_vector(static_vector&& s) noexcept(_nt_ctor_move) {
+    *this = std::move(s);
+  }
+
   constexpr static_vector(size_t n, Ty_ const& t = {}) noexcept(_nt_ctor_default) {
     resize(n, t);
   }
 
   auto& operator=(static_vector const& r) noexcept(_nt_ctor_copy&& _nt_move&& _nt_dtor) {
     assign(r.begin(), r.end());
+    return *this;
   }
 
   auto& operator=(static_vector&& r) noexcept(_nt_ctor_move&& _nt_dtor) {
     erase(begin(), end());
     _insert<true>(begin(), r.begin(), r.end());
+    return *this;
   }
 
   constexpr auto size() const noexcept { return _size; }
