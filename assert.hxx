@@ -29,10 +29,10 @@ void _assert_fails(
 #endif
 }  // namespace cppheaders_internals
 
-#define assert_(expr)                                      \
-  (void)((expr)                                            \
-         || (cppheaders_internals::_assert_fails(          \
-                     __FILE__, __func__, __LINE__, #expr), \
-             0))
+#define assert_(expr)                                       \
+  ((void)((expr)                                            \
+          || (cppheaders_internals::_assert_fails(          \
+                      __FILE__, __func__, __LINE__, #expr), \
+              0)))
 
 #define UNIMPLEMENTED() assert_(("NOT IMPLEMENTED", 0))
