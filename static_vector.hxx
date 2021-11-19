@@ -190,6 +190,14 @@ class static_vector {
             at, begin, end);
   }
 
+  template <typename... Args_>
+  constexpr auto& emplace(iterator at, Args_&&... args)  //
+          noexcept(_nt_dtor&& _nt_ctor_move) {
+    _move_range(at, end(), at + 1);
+    ++_size;
+    return *_construct_at(at, std::forward<Args_>(args)...);
+  }
+
   constexpr void insert(iterator at, Ty_ const& v)  //
           noexcept(_nt_ctor_copy&& _nt_move) {
     _move_range(at, end(), at + 1);
