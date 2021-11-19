@@ -38,9 +38,9 @@ using _is_range_t = decltype(std::begin(std::declval<T>()));
 template <typename Ty_>
 constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base) {
   if constexpr (type_traits::is_detected_v<_is_range_t, Ty_>) {
-    return fnv1a_64(std::begin(val), std::end(val));
+    return fnv1a_64(std::begin(val), std::end(val), base);
   } else if constexpr (std::is_trivial_v<Ty_>) {
-    return fnv1a_64(reinterpret_cast<std::array<char const, sizeof(Ty_)> const&>(val), base);
+    return fnv1a_64((char const*)(&val), (char const*)(&val + 1), base);
   } else {
     val.GENERATE_STATIC_ASSERT();
   }
@@ -63,7 +63,7 @@ struct basic_key {
   operator bool() const noexcept { return value != 0; }
 
   template <typename Ty_>
-  static basic_key create(Ty_&& r) noexcept { return hasher::fnv1a_64(r); }
+  static basic_key create(Ty_&& r) noexcept { return {hasher::fnv1a_64(r)}; }
 
  public:
   uint64_t value = {};
