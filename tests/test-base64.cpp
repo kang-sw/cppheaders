@@ -17,11 +17,11 @@ static void identical(char const (&S)[N_], std::string_view enc) {
   CHECK(cpph::base64::decode(encoded, decoded.begin()));
 
   INFO(""
-          << "\n\tsource:            " << S
-          << "\n\tencoded:           " << std::string_view(encoded.data(), encoded.size())
-          << "\n\tencoded should be: " << enc
-          << "\n\tdecoded:           " << std::string_view(decoded.data(), decoded.size())
-          << "\n\tdecoded should be: " << str);
+       << "\n\tsource:            " << S
+       << "\n\tencoded:           " << std::string_view(encoded.data(), encoded.size())
+       << "\n\tencoded should be: " << enc
+       << "\n\tdecoded:           " << std::string_view(decoded.data(), decoded.size())
+       << "\n\tdecoded should be: " << str);
 
   CHECK(std::equal(std::begin(enc), std::end(enc), encoded.begin(), encoded.end()));
   CHECK(std::equal(std::begin(str), std::end(str), decoded.begin(), decoded.end()));
