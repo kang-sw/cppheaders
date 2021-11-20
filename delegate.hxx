@@ -258,6 +258,6 @@ template <typename... Args_>
 using delegate = basic_delegate<spinlock, Args_...>;
 
 template <typename... Args_>
-using delegate_single_thread = basic_delegate<null_mutex, Args_...>;
+using delegate_st = basic_delegate<null_mutex, Args_...>;
 
 }  // namespace CPPHEADERS_NS_
