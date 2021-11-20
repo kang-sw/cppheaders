@@ -1,5 +1,4 @@
 #pragma once
-#include "assert.hxx"
 
 //
 #include "__namespace__.h"
