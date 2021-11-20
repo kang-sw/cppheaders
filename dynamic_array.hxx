@@ -16,7 +16,7 @@ class dynamic_array : public array_view<Ty_> {
           : array_view<Ty_>(new Ty_[num_elems], num_elems),
             _buf(this->data()) {}
 
-  dynamic_array() noexcept() = default;
+  dynamic_array() noexcept = default;
   dynamic_array(dynamic_array&& other) noexcept { *this = std::move(other); }
   dynamic_array& operator=(dynamic_array&& other) noexcept {
     this->array_view<Ty_>::operator =(other);
