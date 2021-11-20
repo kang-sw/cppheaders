@@ -63,7 +63,10 @@ struct basic_key {
   operator bool() const noexcept { return value != 0; }
 
   template <typename Ty_>
-  static basic_key create(Ty_&& r) noexcept { return {hasher::fnv1a_64(r)}; }
+  constexpr static basic_key create(Ty_&& r) noexcept { return {hasher::fnv1a_64(r)}; }
+
+  template <size_t N_>
+  constexpr basic_key(char const (&str)[N_]) noexcept : value(hasher::fnv1a_64(str, str + N_)) {}
 
  public:
   uint64_t value = {};
