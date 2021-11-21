@@ -1,4 +1,5 @@
-#pragma once
+#ifndef KANGSW_CPPHEADERS_ASSERT_HXX // uses legacy include guard, to protect macros.
+#define KANGSW_CPPHEADERS_ASSERT_HXX
 
 // assert always
 #include "__namespace__.h"
@@ -36,3 +37,4 @@ void _assert_fails(
               0)))
 
 #define UNIMPLEMENTED() assert_(("NOT IMPLEMENTED", 0))
+#endif

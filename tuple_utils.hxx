@@ -57,9 +57,9 @@ struct _borrowed_range {
 };
 
 template <typename Begin_, typename End_>
-auto make_iterable(Begin_&& begin, End_&& end) -> _borrowed_range<Begin_, End_> {
+constexpr auto
+make_iterable(Begin_&& begin, End_&& end) -> _borrowed_range<Begin_, End_> {
   return {std::forward<Begin_>(begin), std::forward<End_>(end)};
 }
-
 
 }  // namespace CPPHEADERS_NS_
