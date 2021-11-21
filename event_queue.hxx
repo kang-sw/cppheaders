@@ -8,37 +8,25 @@
  *                             // (1 node + 1 node per parameter) per message
  *
  *
- *   event_queue::dispatcher dp{s};
- *
  *   // producer
- *   dp.message(
- *      [&](event_queue::dispatcher::proxy p) {
- *        p.strand({572});   // events that have same strand will always be invoked sequentially.
- *                           // otherwise, its sequentiality is not guaranteed.
- *                           // strand is initialized with 0 in default, which can always be
- *                           //  invoked in parallel context(default).
+ *   auto msg_id = s.message()  // := context::message_build_proxy<>
+ *      .param<int[]>(1024, [&](array_view<int>&) {}) // := context::message_build_proxy<array<int,1024>>
+ *      .param<std::string>("hello, world!") // := context::message_build_proxy<array<int,1024>, std::string>
+ *      .strand(strand_key_t{1211})
+ *      .preprocess([](array_view<int>&, std::string&) {})
+ *      .commit([](array_view<int>, std::string&&) {}) // register handler.
  *
- *        p.function(
- *          [](array_view<int> param1, std::string&& param2, double param3) {
- *            // do some operation
- *          });
- *
- *        // must be ordered correctly, and
- *        auto v = p.param<int[]>(1611);
- *        std::iota(v.begin(), v.end(), 0);
- *
- *        auto& str = p.param<std::string>();
- *        str.append("vlvlv");
- *
- *        p.param<double>() = 6.11;
- *      }
- *   );
+ *   s.message()
+ *    ...
+ *    .after(msg_id) // can control invocation flow
+ *    ...
+ *    .commit(...);
  *
  *   // consumer has various context data to perform optimized strand sort, etc ...
  *   // consumer must be created per-thread if in concurrency context.
  *   event_consumer ed {event_queue};
  *   ed.consume_one();
- *   ed.consume();
+ *   ed.consume(); // run until empty
  *   ed.consume_for(100ms);
  *   ed.consume_until(steady_clock::now() + 591ms);
  *
@@ -56,7 +44,7 @@
 #include "__namespace__.h"
 
 namespace CPPHEADERS_NS_::event_queue {
-using strand_t = basic_key<class LABEL_node_strand_t>;
+using strand_key_t = basic_key<class LABEL_node_strand_t>;
 
 }  // namespace CPPHEADERS_NS_::event_queue
 
@@ -66,12 +54,12 @@ struct parameter_size_mismatch_exception : std::exception {
 };
 
 class context {
-};
-
-// proxy class of context
-class dispatcher {
   class proxy {
+   public:
+    void strand(event_queue::strand_t group_key);
 
+    template <typename Fn_>
+    void function(Fn_&& callable);
   };
 };
 
@@ -108,7 +96,7 @@ struct node_t {
   int64_t fence = 0;
 
   std::atomic<node_state> state = {};
-  strand_t strand               = {};
+  strand_key_t strand           = {};
   std::function<void()> event_fn;
   node_parameter_t* root_param = {};  // parameter node root
 
