@@ -10,9 +10,11 @@
 
 namespace CPPHEADERS_NS_ {
 /**
-   * 스레드에 매우 안전하지 않은 클래스입니다.
-   * 별도의 스레드와 사용 시 반드시 락 필요
-   */
+ * 스레드에 매우 안전하지 않은 클래스입니다.
+ * 별도의 스레드와 사용 시 반드시 락 필요
+ *
+ * TODO: rbegin(), rend() 에러 고치기
+ */
 template <typename Ty_>
 class circular_queue {
   using chunk_t = std::array<int8_t, sizeof(Ty_)>;

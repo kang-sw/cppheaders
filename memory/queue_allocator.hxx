@@ -1,11 +1,15 @@
 /**
  * allocates byte array sequentially.
  * \code
- *   basic_queue_allocator<std::allocator<char>> alloc {1024};
+ *   using queue_allocator = basic_queue_allocator<std::allocator<char>>;
+ *   queue_allocator alloc {
+ *      128,  // number of maxtimum entities
+ *      8192  // maximum buffer allocations.
+ *   };
  *
  *   // alloc.resize(); queue allocator doesn't provide way to resize buffer in runtime
  *   //                 if size adjustment is required, a new allocator must be assigned.
- *   alloc = basic_queue_allocator<std::allocator>{2048};
+ *   alloc = basic_queue_allocator<std::allocator>{256, 65536};
  *
  *   // template<typename Ty_> Ty_& ..::push(Ty_&&);
  *   alloc.push(3);
@@ -13,6 +17,10 @@
  *   // template<typename Ty_, typename... Args_>
  *   // Ty_& ..::emplace(Args_...);
  *   alloc.emplace<std::string>("hell, world!");
+ *
+ *   // can visit arbitrary node. [0] is same as front() (element which will be popped next)
+ *   alloc.at<int>(0); // -> int&
+ *   alloc.at<std::string>(1); // -> std::string&
  *
  *   alloc.pop();
  *
@@ -25,6 +33,8 @@
  *
  *   // or simply pop.
  *   alloc.pop();
+ *
+ *
  *
  *   // allocate array
  *   // in this case,
