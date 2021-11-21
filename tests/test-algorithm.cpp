@@ -1,5 +1,5 @@
 #include <algorithm/base64.hxx>
-#include <archiving/helper_macros.hxx>
+#include <archiving/nlohmann_json_helper.hxx>
 #include <counter.hxx>
 #include <dynamic_array.hxx>
 
@@ -51,7 +51,7 @@ TEST_SUITE("json-macro-helper") {
     std::string s;
     std::optional<int> k;
 
-    CPPHEADERS_DEFINE_ARCHIVE_METHODS(
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             my_serialized,
             s,
             k);

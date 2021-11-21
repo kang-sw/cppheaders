@@ -21,9 +21,13 @@ class dynamic_array : public array_view<Ty_> {
   dynamic_array& operator=(dynamic_array&& other) noexcept {
     this->array_view<Ty_>::operator=(other);
     _buf                           = std::move(other._buf);
-    
+
     other.array_view<Ty_>::operator=({});
     return *this;
+  }
+
+  void resize(size_t new_size) {
+    *this = dynamic_array<Ty_>{new_size};
   }
 
  private:
