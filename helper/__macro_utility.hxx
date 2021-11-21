@@ -6,7 +6,7 @@
 #include "tuple_utils.hxx"
 
 //
-#include "__namespace__.h"
+#include "../__namespace__.h"
 
 namespace CPPHEADERS_NS_::archiving::detail {
 template <const auto& s>
