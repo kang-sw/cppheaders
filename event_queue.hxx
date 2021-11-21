@@ -4,31 +4,50 @@
  * \see https://stackoverflow.com/questions/8224648/retrieve-function-arguments-as-a-tuple-in-c
  *
  * \code
- *   event_queue::context s; // node limit, memory limit.
- *                             // (1 node + 1 node per parameter) per message
+ *   event_queue::context s{
+ *      NUM_ALLOC_NODES,
+ *      MAX_BUFFER_BYTES,
+ *      CONCURRENCY_HINT // number of consumer context size. default is 1
+ *   };
+ *   // node limit, memory limit.
+ *   // (1 node + 1 node per parameter) per message
  *
  *
- *   // producer
+ *   // produce messgae.
+ *   // .message() to commit(), is critical section.
+ *   // if proxy destroyed before commit(), it'll throw.
  *   auto msg_id = s.message()  // := context::message_build_proxy<>
- *      .param<int[]>(1024, [&](array_view<int>&) {}) // := context::message_build_proxy<array<int,1024>>
- *      .param<std::string>("hello, world!") // := context::message_build_proxy<array<int,1024>, std::string>
+ *      .arg<int[]>(1024, [&](array_view<int>&) {}) // := context::message_build_proxy<array<int,1024>>
+ *      .arg<std::string>("hello, world!") // := context::message_build_proxy<array<int,1024>, std::string>
  *      .strand(strand_key_t{1211})
- *      .preprocess([](array_view<int>&, std::string&) {})
  *      .commit([](array_view<int>, std::string&&) {}) // register handler.
  *
  *   s.message()
- *    ...
- *    .after(msg_id) // can control invocation flow
- *    ...
- *    .commit(...);
+ *      ...
+ *      .after(msg_id) // can control invocation flow
+ *      ...
+ *      .commit(...);
  *
- *   // consumer has various context data to perform optimized strand sort, etc ...
- *   // consumer must be created per-thread if in concurrency context.
- *   event_consumer ed {event_queue};
- *   ed.consume_one();
- *   ed.consume(); // run until empty
- *   ed.consume_for(100ms);
- *   ed.consume_until(steady_clock::now() + 591ms);
+ *   // otherwise, an allocate() call can be made to escape critical section
+ *   //  as fast as possible. with allocate() call, proxy remains valid, thus you can
+ *   //  call handle() method separately.
+ *   // However, strand() call must be made before allocate(). (within critical section)
+ *   // as .param<>() call
+ *   s.message()
+ *      .strand({1944})
+ *      .arg<char[]>(564)
+ *      .arg<std::string>("hello!")
+ *      .arg<int>(564)
+ *      .arg<std::future>(std::async(sqrt, 3.14)) // full_proxy<...>
+ *      .allocate()                               // escaped_proxy<...>
+ *      .modify<0>([](array_view<char>) {})
+ *      .modify([](array_view<char>
+ *      .commit(...)
+ *
+ *   s.consume_one();
+ *   s.consume(); // run until empty
+ *   s.consume_for(100ms);
+ *   s.consume_until(steady_clock::now() + 591ms);
  *
  *   // abort all deferred consume operations
  *   s.abort();
@@ -61,10 +80,12 @@ class context {
     template <typename Fn_>
     void function(Fn_&& callable);
   };
-};
 
-// proxy class of consumer
-class consumer {
+  // proxy class of context consumer logic
+  // context는 컨슈머 참조 리스트를 물고, 새 이벤트가 commit 될 때마다 비는 컨슈머를 찾아 이벤트 꽂고
+  //  notify 날린다. 이 때 배열은 round-robin 방식으로 순환. 각 consumer 인스턴스의
+  class consumer {
+  };
 };
 
 }  // namespace CPPHEADERS_NS_::event_queue
@@ -79,9 +100,9 @@ namespace CPPHEADERS_NS_::event_queue {
 namespace detail {
 enum class node_state {
   uninitialized,
-  building,
-  waiting,
-  occupied,
+  allocated,       // being built. finish_allocation() is called.
+  committed,       // commit() is called.
+  running,         // being invocated
   erasing,         // got into erasing sequence.
   erase_deferred,  // this node wasn't foremost node when it finished invocation.
   MAX
@@ -97,11 +118,12 @@ struct node_t {
 
   std::atomic<node_state> state = {};
   strand_key_t strand           = {};
-  std::function<void()> event_fn;
-  node_parameter_t* root_param = {};  // parameter node root
+  node_parameter_t* root_param  = {};  // parameter node root
 
   uint8_t occupation = 1;  // number of total occupied queue_allocator node
-  uint8_t num_params = 0;  // number of allcoated parameters
+  uint8_t num_params = 0;  // number of all allcoated parameters
+
+  std::function<void()> event_fn;
 };
 
 }  // namespace detail
