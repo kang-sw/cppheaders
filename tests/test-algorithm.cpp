@@ -1,7 +1,7 @@
 #include <algorithm/base64.hxx>
-#include <archiving/nlohmann_json_helper.hxx>
 #include <counter.hxx>
 #include <dynamic_array.hxx>
+#include <helper/nlohmann_json_macros.hxx>
 
 #include "doctest.h"
 
