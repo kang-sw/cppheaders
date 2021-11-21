@@ -19,7 +19,7 @@ template <typename Array_>
 class _array_reinterpret_accessor {
  public:
   template <typename RTy_>
-  auto* as(size_t offset = 0) const {
+  auto& as(size_t offset = 0) const {
     using value_type = typename Array_::value_type;
     enum { is_const = std::is_const_v<value_type> };
 
@@ -29,7 +29,7 @@ class _array_reinterpret_accessor {
     // verify
     (void)((Array_*)this)->at(offset + sizeof(RTy_) - 1);
 
-    return &reinterpret_cast<rtype>(buf);
+    return reinterpret_cast<rtype>(buf);
   }
 };
 
