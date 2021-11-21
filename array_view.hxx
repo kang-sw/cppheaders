@@ -29,7 +29,7 @@ class _array_reinterpret_accessor {
     // verify
     (void)((Array_*)this)->at(offset + sizeof(RTy_) - 1);
 
-    return reinterpret_cast<rtype>(buf);
+    return reinterpret_cast<rtype>(*buf);
   }
 };
 

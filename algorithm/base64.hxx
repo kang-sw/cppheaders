@@ -4,10 +4,10 @@
 #include <cstdint>
 #include <string_view>
 
-#include "array_view.hxx"
+#include "../array_view.hxx"
 
 // assert always
-#include "__namespace__.h"
+#include "../__namespace__.h"
 
 namespace CPPHEADERS_NS_::base64 {
 namespace detail {
