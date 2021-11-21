@@ -12,7 +12,35 @@
 
 namespace CPPHEADERS_NS_ {
 template <typename Ty_>
-class array_view {
+constexpr bool _is_buffer_elem_v
+        = (sizeof(Ty_) == 1) && std::is_trivial_v<Ty_>;
+
+template <typename Array_>
+class _array_reinterpret_accessor {
+ public:
+  template <typename RTy_>
+  auto* as(size_t offset = 0) const {
+    using value_type = typename Array_::value_type;
+    enum { is_const = std::is_const_v<value_type> };
+
+    using rtype = std::conditional_t<is_const, std::add_const_t<RTy_>, RTy_>&;
+    auto buf    = &((Array_*)this)->at(offset);
+
+    // verify
+    (void)((Array_*)this)->at(offset + sizeof(RTy_) - 1);
+
+    return &reinterpret_cast<rtype>(buf);
+  }
+};
+
+struct _empty_base {};
+template <typename Array_, typename Ty_>
+using _array_view_base = std::conditional_t<_is_buffer_elem_v<Ty_>,
+                                            _array_reinterpret_accessor<Array_>,
+                                            _empty_base>;
+
+template <typename Ty_>
+class array_view : public _array_view_base<array_view<Ty_>, Ty_> {
  public:
   using value_type    = Ty_;
   using pointer       = value_type*;
@@ -102,7 +130,7 @@ constexpr auto make_view(Range_&& array) {
 }  // namespace CPPHEADERS_NS_
 
 #if __has_include(<range/v3/range/concepts.hpp>)
-#include <range/v3/range/concepts.hpp>
+#  include <range/v3/range/concepts.hpp>
 
 namespace ranges {
 template <typename Ty_>
