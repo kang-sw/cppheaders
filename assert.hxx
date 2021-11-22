@@ -1,16 +1,16 @@
-#ifndef KANGSW_CPPHEADERS_ASSERT_HXX // uses legacy include guard, to protect macros.
+#ifndef KANGSW_CPPHEADERS_ASSERT_HXX  // uses legacy include guard, to protect macros.
 #define KANGSW_CPPHEADERS_ASSERT_HXX
 
 // assert always
 #include "__namespace__.h"
 
 #if defined(CPPHEADERS_IMPLEMENT_ASSERTIONS)
-#include <cstdio>
-#include <stdexcept>
+#  include <cstdio>
+#  include <stdexcept>
 
-#include "third/backward.hpp"
+#  include "third/backward.hpp"
 //
-#include "third/backward.cpp.inl"
+#  include "third/backward.cpp.inl"
 #endif
 
 namespace cppheaders_internals {
@@ -36,5 +36,6 @@ void _assert_fails(
                       __FILE__, __func__, __LINE__, #expr), \
               0)))
 
-#define UNIMPLEMENTED() assert_(("NOT IMPLEMENTED", 0))
+#define UNIMPLEMENTED() assert_(("NOT IMPLEMENTED", 0)), throw;
+
 #endif
