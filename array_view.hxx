@@ -127,6 +127,11 @@ template <typename Range_>
 constexpr auto make_view(Range_&& array) {
   return array_view{array.data(), array.size()};
 }
+
+template <typename Range_>
+constexpr auto view_array(Range_&& array) {
+  return array_view{array.data(), array.size()};
+}
 }  // namespace CPPHEADERS_NS_
 
 #if __has_include(<range/v3/range/concepts.hpp>)
