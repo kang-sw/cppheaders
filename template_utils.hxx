@@ -54,6 +54,12 @@ struct _borrowed_range {
 
   auto begin() noexcept { return _begin; }
   auto end() noexcept { return _end; }
+
+  bool size() const noexcept { return std::distance(_begin, _end); }
+  bool empty() const noexcept { return _begin == _end; }
+
+  auto& front() const noexcept { return *_begin; }
+  auto& back() const noexcept { return *--_end; }
 };
 
 template <typename Begin_, typename End_>
