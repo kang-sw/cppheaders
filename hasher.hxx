@@ -79,12 +79,3 @@ struct hash<CPPHEADERS_NS_::basic_key<Label_>> {
   }
 };
 }  // namespace std
-
-#ifndef CPPH_UNIQUE_KEY_TYPE
-#  define INTERNAL_CPPH_CONCAT2(A, B) A##B
-#  define INTERNAL_CPPH_CONCAT(A, B)  INTERNAL_CPPH_CONCAT2(A, B)
-
-#  define CPPH_UNIQUE_KEY_TYPE(TYPE) \
-    using TYPE = CPPHEADERS_NS_::basic_key<          \
-            INTERNAL_CPPH_CONCAT(class LABEL0##CPPH_NAMESPACE0##TYPE##II, __LINE__)>
-#endif
