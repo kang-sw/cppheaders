@@ -45,17 +45,36 @@
  * \endcode
  */
 #pragma once
-#include <memory>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 
 //
 #include "../__namespace__.h"
 
 namespace CPPHEADERS_NS_ {
-template <class Alloc_ = std::allocator<char>>
+namespace detail {
+struct queue_buffer_block {
+  uint32_t defferred : 1;
+  uint32_t offset    : 31;  // units are in sizeof(_node_type)
+
+  // there's no field to indicate next pos.
+  // ((_blk_type*)_mem + size) will point next memory block header.
+  // if offset + size exceeds capacity, it implicitly means its next node is _refer(0).
+  uint32_t size;
+};
+
+static_assert(sizeof(queue_buffer_block) == 8);
+}  // namespace detail
+
+template <class Alloc_>
 class basic_queue_buffer {
  public:
   using allocator_type = Alloc_;
   enum { block_size = 8 };
+
+ private:
+  using blk_type = detail::queue_buffer_block;
 
  public:
   template <typename OtherAlloc_>
@@ -98,17 +117,6 @@ class basic_queue_buffer {
   }
 
  private:
-  struct _blk_type {
-    uint32_t defferred : 1;
-    uint32_t offset    : 31;  // units are in sizeof(_node_type)
-
-    // there's no field to indicate next pos.
-    // ((_blk_type*)_mem + size) will point next memory block header.
-    // if offset + size exceeds capacity, it implicitly means its next node is _refer(0).
-    uint32_t size;
-  };
-  static_assert(sizeof(_blk_type) == 8);
-
   void* _alloc(size_t n) {
     if (not _tail) {
       _tail = _head = _create_at(0, n);
@@ -119,10 +127,13 @@ class basic_queue_buffer {
   }
 
   void _dealloc(void* p) noexcept {
-    auto _node = (_blk_type*)p - 1;
+    auto* _node = (blk_type*)p - 1;
+    if (_node != _head) {
+      _node->defferred = true;
+    }
   }
 
-  _blk_type* _create_at(uint32_t offset, uint32_t size) noexcept {
+  blk_type* _create_at(uint32_t offset, uint32_t size) noexcept {
     auto* node      = _refer(offset);
     node->offset    = offset;
     node->defferred = 0;
@@ -130,8 +141,8 @@ class basic_queue_buffer {
     return node;
   }
 
-  _blk_type* _refer(uint32_t offset) noexcept {
-    return ((_blk_type*)_mem)[offset];
+  blk_type* _refer(uint32_t offset) noexcept {
+    return &((blk_type*)_mem)[offset];
   }
 
   constexpr static size_t _aligned_size(uint32_t n) noexcept {
@@ -142,8 +153,8 @@ class basic_queue_buffer {
   Alloc_ _allocator;
   size_t _capacity;
   void* _mem;
-  _blk_type* _head = nullptr;  // defined as forward-list
-  _blk_type* _tail = nullptr;
+  blk_type* _head = nullptr;  // defined as forward-list
+  blk_type* _tail = nullptr;
 };
 
 }  // namespace CPPHEADERS_NS_
