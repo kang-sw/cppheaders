@@ -35,6 +35,7 @@
  *   // as .param<>() call
  *   s.message()
  *      .strand({1944})
+ *      .arg(&s) // can deduce from parameter
  *      .arg<char[]>(564)
  *      .arg<std::string>("hello!")
  *      .arg<int>(564)
@@ -62,10 +63,10 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_::event_queue {
+namespace CPPHEADERS_NS_::task_queue {
 using strand_key_t = basic_key<class LABEL_node_strand_t>;
 
-}  // namespace CPPHEADERS_NS_::event_queue
+}  // namespace CPPHEADERS_NS_::task_queue
 
 struct parameter_size_mismatch_exception : std::exception {
   size_t specified;
