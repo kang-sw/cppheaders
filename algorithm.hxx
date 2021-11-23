@@ -9,13 +9,16 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
-inline namespace algorithm {
-#define INTERNAL_CPPH_DEFINE_WRAPPER(FUNC)                                      \
-  template <typename Container_, typename... Args_>                             \
-  auto FUNC(Container_&& a, Args_&&... args) {                                  \
-    return std::FUNC(std::begin(a), std::end(a), std::forward<Args_>(args)...); \
-  }
+namespace CPPHEADERS_NS_
+{
+inline namespace algorithm
+{
+#define INTERNAL_CPPH_DEFINE_WRAPPER(FUNC)                                          \
+    template <typename Container_, typename... Args_>                               \
+    auto FUNC(Container_&& a, Args_&&... args)                                      \
+    {                                                                               \
+        return std::FUNC(std::begin(a), std::end(a), std::forward<Args_>(args)...); \
+    }
 
 INTERNAL_CPPH_DEFINE_WRAPPER(all_of)
 INTERNAL_CPPH_DEFINE_WRAPPER(any_of)

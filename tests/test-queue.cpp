@@ -2,6 +2,6 @@
 
 #include "doctest.h"
 
-TEST_SUITE("queue_allocator") {
-
+TEST_SUITE("queue_allocator")
+{
 }

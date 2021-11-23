@@ -9,8 +9,10 @@
 // assert always
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_::base64 {
-namespace detail {
+namespace CPPHEADERS_NS_::base64
+{
+namespace detail
+{
 constexpr std::string_view tb_encode
         = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
           "abcdefghijklmnopqrstuvwxyz"
@@ -55,151 +57,170 @@ using bytes_t = std::array<char, 3>;
 using frame_t = std::array<char, 4>;
 static_assert(sizeof(bytes_t) == 3);
 
-constexpr frame_t _encode_single_frame(uint32_t b) noexcept {
-  b = ((b & 0x0000ff) << 16) | (b & 0x00ff00) | ((b & 0xff0000) >> 16);
+constexpr frame_t _encode_single_frame(uint32_t b) noexcept
+{
+    b = ((b & 0x0000ff) << 16) | (b & 0x00ff00) | ((b & 0xff0000) >> 16);
 
-  return {(tb_encode[(b >> 18) & 0b111111]),
-          (tb_encode[(b >> 12) & 0b111111]),
-          (tb_encode[(b >> 6) & 0b111111]),
-          (tb_encode[(b >> 0) & 0b111111])};
+    return {(tb_encode[(b >> 18) & 0b111111]),
+            (tb_encode[(b >> 12) & 0b111111]),
+            (tb_encode[(b >> 6) & 0b111111]),
+            (tb_encode[(b >> 0) & 0b111111])};
 }
 
-constexpr frame_t encode_single_frame(bytes_t const* bytes) noexcept {
-  auto b = *(uint32_t const*)bytes & 0x00'ffffff;
-  return _encode_single_frame(b);
+constexpr frame_t encode_single_frame(bytes_t const* bytes) noexcept
+{
+    auto b = *(uint32_t const*)bytes & 0x00'ffffff;
+    return _encode_single_frame(b);
 }
 
-enum class bytes_length {
-  _1 = 1,
-  _2 = 2
+enum class bytes_length
+{
+    _1 = 1,
+    _2 = 2
 };
 
-constexpr frame_t encode_single_frame_with_padding(char const* bytes, bytes_length len) noexcept {
-  auto b = *(uint32_t const*)bytes & (len == bytes_length::_1 ? 0x000000'ff : 0x0000'ffff);
-  auto d = _encode_single_frame(b);
+constexpr frame_t encode_single_frame_with_padding(char const* bytes, bytes_length len) noexcept
+{
+    auto b = *(uint32_t const*)bytes & (len == bytes_length::_1 ? 0x000000'ff : 0x0000'ffff);
+    auto d = _encode_single_frame(b);
 
-  if (len == bytes_length::_1)
-    d[2] = d[3] = '=';
-  else
-    d[3] = '=';
+    if (len == bytes_length::_1)
+        d[2] = d[3] = '=';
+    else
+        d[3] = '=';
 
-  return d;
+    return d;
 }
 
-constexpr uint32_t _decode_single(frame_t frame) noexcept {
-  uint32_t b     = 0;
-  bool has_error = false;
+constexpr uint32_t _decode_single(frame_t frame) noexcept
+{
+    uint32_t b     = 0;
+    bool has_error = false;
 
-  for (int i = 0; i < 4; ++i) {
-    b += int(tb_decode[frame[i]]) << ((3 - i) * 6);
-    has_error |= tb_decode[frame[i]] >= uint8_t{128};
-  }
+    for (int i = 0; i < 4; ++i)
+    {
+        b += int(tb_decode[frame[i]]) << ((3 - i) * 6);
+        has_error |= tb_decode[frame[i]] >= uint8_t{128};
+    }
 
-  b = ((b & 0x0000ff) << 16) | (b & 0x00ff00) | ((b & 0xff0000) >> 16);
-  
-  return has_error ? ~uint32_t{} : b;
+    b = ((b & 0x0000ff) << 16) | (b & 0x00ff00) | ((b & 0xff0000) >> 16);
+
+    return has_error ? ~uint32_t{} : b;
 }
 
-constexpr bool decode_single_frame(frame_t frame, bytes_t* bytes) noexcept {
-  auto value  = _decode_single(frame);
-  (*bytes)[0] = ((value >> 0) & 0xff);
-  (*bytes)[1] = ((value >> 8) & 0xff);
-  (*bytes)[2] = ((value >> 16) & 0xff);
-  return value == ~uint32_t{};
+constexpr bool decode_single_frame(frame_t frame, bytes_t* bytes) noexcept
+{
+    auto value  = _decode_single(frame);
+    (*bytes)[0] = ((value >> 0) & 0xff);
+    (*bytes)[1] = ((value >> 8) & 0xff);
+    (*bytes)[2] = ((value >> 16) & 0xff);
+    return value == ~uint32_t{};
 }
 
-constexpr int decode_last_frame(frame_t frame, bytes_t* bytes) noexcept {
-  auto value = _decode_single(frame);
-  auto success = value != ~uint32_t{};
-  auto len     = (3 - (frame[3] == '=') - (frame[2] == '='));
+constexpr int decode_last_frame(frame_t frame, bytes_t* bytes) noexcept
+{
+    auto value   = _decode_single(frame);
+    auto success = value != ~uint32_t{};
+    auto len     = (3 - (frame[3] == '=') - (frame[2] == '='));
 
-  for (size_t i = 0; i < len; ++i) {
-    (*bytes)[i] = ((value >> (i * 8)) & 0xff);
-  }
+    for (size_t i = 0; i < len; ++i)
+    {
+        (*bytes)[i] = ((value >> (i * 8)) & 0xff);
+    }
 
-  return success * len;
+    return success * len;
 }
 }  // namespace detail
 
-constexpr size_t encoded_size(size_t data_length) noexcept {
-  return (data_length + 2) / 3 * 4;
+constexpr size_t encoded_size(size_t data_length) noexcept
+{
+    return (data_length + 2) / 3 * 4;
 }
 
 template <typename String_>
-constexpr size_t decoded_size(String_ const& data) noexcept {
-  static_assert(sizeof(std::declval<String_>()[0]) == 1);
-  return (std::size(data) + 3) / 4 * 3
-       - (std::end(data)[-1] == '=')
-       - (std::end(data)[-2] == '=');
+constexpr size_t decoded_size(String_ const& data) noexcept
+{
+    static_assert(sizeof(std::declval<String_>()[0]) == 1);
+    return (std::size(data) + 3) / 4 * 3
+         - (std::end(data)[-1] == '=')
+         - (std::end(data)[-2] == '=');
 }
 
 template <typename OutIt_>
-constexpr void encode_bytes(void const* data, size_t len, OutIt_ out) noexcept {
-  auto src = (detail::bytes_t const*)data;
+constexpr void encode_bytes(void const* data, size_t len, OutIt_ out) noexcept
+{
+    auto src = (detail::bytes_t const*)data;
 
-  for (; len >= 3; len -= 3, ++src) {
-    auto encoded = detail::encode_single_frame(src);
-    *(out++)     = encoded[0];
-    *(out++)     = encoded[1];
-    *(out++)     = encoded[2];
-    *(out++)     = encoded[3];
-  }
+    for (; len >= 3; len -= 3, ++src)
+    {
+        auto encoded = detail::encode_single_frame(src);
+        *(out++)     = encoded[0];
+        *(out++)     = encoded[1];
+        *(out++)     = encoded[2];
+        *(out++)     = encoded[3];
+    }
 
-  if (len > 0) {
-    auto encoded = detail::encode_single_frame_with_padding(
-            src->data(), (detail::bytes_length)len);
+    if (len > 0)
+    {
+        auto encoded = detail::encode_single_frame_with_padding(
+                src->data(), (detail::bytes_length)len);
 
-    *(out++) = encoded[0];
-    *(out++) = encoded[1];
-    *(out++) = encoded[2];
-    *(out++) = encoded[3];
-  }
+        *(out++) = encoded[0];
+        *(out++) = encoded[1];
+        *(out++) = encoded[2];
+        *(out++) = encoded[3];
+    }
 }
 
 template <typename Ty_, typename OutIt_>
-constexpr void encode_one(Ty_ const& data, OutIt_ out) noexcept {
-  encode_bytes(&data, sizeof data, out);
+constexpr void encode_one(Ty_ const& data, OutIt_ out) noexcept
+{
+    encode_bytes(&data, sizeof data, out);
 }
 
 template <typename Array_, typename OutIt_>
-constexpr void encode(Array_&& array, OutIt_ out) noexcept {
-  constexpr auto elem_size = sizeof(std::declval<Array_>()[0]);
-  encode_bytes(std::data(array), elem_size * std::size(array), out);
+constexpr void encode(Array_&& array, OutIt_ out) noexcept
+{
+    constexpr auto elem_size = sizeof(std::declval<Array_>()[0]);
+    encode_bytes(std::data(array), elem_size * std::size(array), out);
 }
 
 template <typename OutIt_>
-constexpr bool decode_bytes(char const* data, size_t size, OutIt_ out) {
-  static_assert(sizeof(*std::declval<OutIt_>()) == 1);
+constexpr bool decode_bytes(char const* data, size_t size, OutIt_ out)
+{
+    static_assert(sizeof(*std::declval<OutIt_>()) == 1);
 
-  if ((size & 0b11) != 0)
-    throw std::logic_error("data size must be multiplicand of 4!");
+    if ((size & 0b11) != 0)
+        throw std::logic_error("data size must be multiplicand of 4!");
 
-  detail::bytes_t decoded{};
-  auto it    = (detail::frame_t const*)data,
-       end_1 = (detail::frame_t const*)(data + size) - 1;
+    detail::bytes_t decoded{};
+    auto it    = (detail::frame_t const*)data,
+         end_1 = (detail::frame_t const*)(data + size) - 1;
 
-  bool has_error = false;
+    bool has_error = false;
 
-  for (; it < end_1; ++it) {
-    has_error |= detail::decode_single_frame(*it, &decoded);
-    *(out++) = decoded[0];
-    *(out++) = decoded[1];
-    *(out++) = decoded[2];
-  }
+    for (; it < end_1; ++it)
+    {
+        has_error |= detail::decode_single_frame(*it, &decoded);
+        *(out++) = decoded[0];
+        *(out++) = decoded[1];
+        *(out++) = decoded[2];
+    }
 
-  auto len = detail::decode_last_frame(*it, &decoded);
-  has_error |= len == 0;
+    auto len = detail::decode_last_frame(*it, &decoded);
+    has_error |= len == 0;
 
-  for (auto i = 0; i < len; ++i)
-    *(out++) = decoded[i];
+    for (auto i = 0; i < len; ++i)
+        *(out++) = decoded[i];
 
-  return not has_error;
+    return not has_error;
 }
 
 template <typename String_, typename OutIt_>
-constexpr bool decode(String_ const& array, OutIt_ out) {
-  constexpr auto elem_size = sizeof(std::declval<String_>()[0]);
-  return decode_bytes((char const*)std::data(array), std::size(array) * elem_size, out);
+constexpr bool decode(String_ const& array, OutIt_ out)
+{
+    constexpr auto elem_size = sizeof(std::declval<String_>()[0]);
+    return decode_bytes((char const*)std::data(array), std::size(array) * elem_size, out);
 }
 
 }  // namespace CPPHEADERS_NS_::base64
