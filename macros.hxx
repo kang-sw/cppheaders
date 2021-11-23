@@ -5,14 +5,13 @@
 #define INTERNAL_CPPH_CONCAT(A, B)  INTERNAL_CPPH_CONCAT2(A, B)
 
 /* generic      ***********************************************************************************/
-#define CPPH_BIND(Function)                                \
-  [this](auto&&... args) {                                 \
-    this->Function(std::forward<decltype(auto)>(args)...); \
-  }
-
-#define CPPH_RBIND(Function)                                      \
-  [this](auto&&... args) {                                        \
-    return this->Function(std::forward<decltype(auto)>(args)...); \
+#define CPPH_BIND(Function)                                                                        \
+  [this](auto&&... args) {                                                                         \
+    if constexpr (std::is_same_v<void,                                                             \
+                                 decltype(this->Function(std::forward<decltype(args)>(args)...))>) \
+      this->Function(std::forward<decltype(args)>(args)...);                                       \
+    else                                                                                           \
+      return this->Function(std::forward<decltype(args)>(args)...);                                \
   }
 
 /* "hasher.hxx" ***********************************************************************************/
