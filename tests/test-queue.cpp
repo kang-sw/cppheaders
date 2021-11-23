@@ -50,7 +50,7 @@ TEST_SUITE("queue_allocator")
         {
             CHECK(*(int*)buffer.front() == reader++);
 
-            buffer.pop();
+            buffer.deallcoate(buffer.front());
             CHECK(buffer.size() == first_size - i - 1);
         }
 
@@ -68,7 +68,7 @@ TEST_SUITE("queue_allocator")
         {
             CHECK(*(int*)buffer.front() == reader++);
 
-            buffer.pop();
+            buffer.deallcoate(buffer.front());
             REQUIRE(buffer.size() == first_size - i - 1);
         }
 

@@ -73,14 +73,15 @@ struct queue_buffer_block
 };
 
 // To avoid <memory> header dependency.
+template <typename Ty_>
 struct queue_buffer_default_allocator
 {
-    auto allocate(size_t n) -> queue_buffer_block*
+    auto allocate(size_t n) -> Ty_*
     {
-        return (queue_buffer_block*)malloc(n * sizeof(queue_buffer_block));
+        return (Ty_*)malloc(n * sizeof(Ty_));
     }
 
-    void deallocate(queue_buffer_block* p)
+    void deallocate(Ty_* p)
     {
         free(p);
     }
@@ -91,11 +92,11 @@ struct queue_out_of_memory : std::bad_alloc
 {
 };
 
-template <class Alloc_ = detail::queue_buffer_default_allocator>
-class basic_queue_buffer
+namespace detail
+{
+class queue_buffer_impl
 {
    public:
-    using allocator_type = Alloc_;
     enum
     {
         block_size = 8
@@ -106,32 +107,18 @@ class basic_queue_buffer
     static_assert(sizeof(memblk) == block_size);
 
    public:
-    basic_queue_buffer(size_t capacity, Alloc_ allocator)
-            : _allocator{std::move(allocator)},
-              _capacity{_size_in_blocks(capacity)},
-              _mem{_allocator.allocate(_capacity)}
+    queue_buffer_impl(size_t capacity, memblk* buffer)
+            : _capacity{to_block_size(capacity)},
+              _mem{buffer}
     {
-        // zero-fill
-        std::fill_n(_mem, _capacity, memblk{});
     }
 
-    explicit basic_queue_buffer(size_t capacity)
-            : basic_queue_buffer(capacity, Alloc_{}) {}
+    queue_buffer_impl() = default;
 
-    basic_queue_buffer() = default;
-
-    basic_queue_buffer(basic_queue_buffer&& other) noexcept
+    ~queue_buffer_impl() noexcept
     {
-        _assign_norelease(std::move(other));
-    }
-
-    ~basic_queue_buffer() { _mem && (_allocator.deallocate(_mem), _mem = nullptr); }
-
-    basic_queue_buffer& operator=(basic_queue_buffer&& other)
-    {
-        ~basic_queue_buffer();
-        _assign_norelease(std::move(other));
-        return *this;
+        assert(not _mem);
+        assert(empty());
     }
 
     void* allocate(size_t n)
@@ -142,11 +129,6 @@ class basic_queue_buffer
     void deallcoate(void* p) noexcept
     {
         _dealloc(p);
-    }
-
-    void pop() noexcept
-    {
-        _dealloc(front());
     }
 
     void* front() noexcept
@@ -169,15 +151,17 @@ class basic_queue_buffer
         return size() == 0;
     }
 
-   private:
-    void _assign_norelease(basic_queue_buffer&& other)
+   protected:
+    memblk* release() noexcept
     {
-        _allocator = std::move(other._allocator);
-        _capacity  = other._capacity;
-        _mem       = other._mem;
+        auto ref = _mem;
+        _mem     = nullptr;
+        return ref;
+    }
 
-        other._capacity = 0;
-        other._mem      = nullptr;
+    constexpr static size_t to_block_size(uint32_t n) noexcept
+    {
+        return ((n + block_size - 1) / block_size);
     }
 
    private:
@@ -186,7 +170,7 @@ class basic_queue_buffer
         if (n == 0)
             throw std::invalid_argument{"bad allocation size"};
 
-        auto num_block = _size_in_blocks(n);
+        auto num_block = to_block_size(n);
 
         if (not _head)
         {
@@ -264,11 +248,6 @@ class basic_queue_buffer
         return _mem + offset;
     }
 
-    constexpr static size_t _size_in_blocks(uint32_t n) noexcept
-    {
-        return ((n + block_size - 1) / block_size);
-    }
-
     memblk* _next(memblk* node) noexcept
     {
         if (node == _head)
@@ -288,14 +267,63 @@ class basic_queue_buffer
     }
 
    private:
-    Alloc_ _allocator = {};
     size_t _capacity  = 0;
     size_t _num_alloc = 0;
     memblk* _mem      = nullptr;
     memblk* _tail     = nullptr;  // defined as forward-list
     memblk* _head     = nullptr;
 };
+}  // namespace detail
 
-using queue_buffer = basic_queue_buffer<>;
+template <typename Alloc_>
+class basic_queue_buffer : public detail::queue_buffer_impl
+{
+   public:
+    using allocator_type = Alloc_;
+
+   public:
+    basic_queue_buffer(size_t capacity, Alloc_ allocator) noexcept
+            : detail::queue_buffer_impl(
+                    capacity,
+                    allocator.allocate(to_block_size(capacity))),
+              _alloc{std::move(allocator)}
+    {
+    }
+
+    explicit basic_queue_buffer(size_t capacity) noexcept
+            : basic_queue_buffer(capacity, Alloc_{}) {}
+
+    ~basic_queue_buffer() noexcept
+    {
+        if (auto membuf = release())
+            (_alloc.deallocate(membuf), 0);
+    }
+
+    basic_queue_buffer(basic_queue_buffer&& other) noexcept
+    {
+        _assign(other);
+    }
+
+    basic_queue_buffer& operator=(basic_queue_buffer&& other) noexcept
+    {
+        ~basic_queue_buffer();
+        _assign(std::move(other));
+        return *this;
+    }
+
+   private:
+    void _assign(basic_queue_buffer&& other) noexcept
+    {
+        std::swap<detail::queue_buffer_impl>(*this, other);
+        std::swap(_alloc, other._alloc);
+    }
+
+   private:
+    allocator_type _alloc = {};
+};
+
+using queue_buffer = basic_queue_buffer<
+        detail::queue_buffer_default_allocator<
+                detail::queue_buffer_block>>;
 
 }  // namespace CPPHEADERS_NS_
