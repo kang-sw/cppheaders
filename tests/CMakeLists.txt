@@ -6,6 +6,7 @@ add_executable(
         doctest.cpp
 
         test-algorithm.cpp
+        test-queue.cpp
 )
 
 target_compile_definitions(
@@ -29,7 +30,7 @@ target_include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
-if(TARGET nlohmann::json)
+if (TARGET nlohmann::json)
     message("[${PROJECT_NAME}]: nlhomann::json found. linking dependency ...")
 
     target_link_libraries(
@@ -38,4 +39,4 @@ if(TARGET nlohmann::json)
             PRIVATE
             nlohmann::json
     )
-endif()
+endif ()
