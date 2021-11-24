@@ -5,6 +5,7 @@
 
 #include "hasher.hxx"
 #include "spinlock.hxx"
+#include "threading.hxx"
 
 //
 #include "__namespace__.h"
@@ -256,13 +257,6 @@ class basic_event
 
     mutable Mutex_ _mtx;
     volatile bool _dirty = false;
-};
-
-struct null_mutex
-{
-    bool try_lock() noexcept { return true; }
-    void lock() noexcept {}
-    void unlock() noexcept {}
 };
 
 template <typename... Args_>
