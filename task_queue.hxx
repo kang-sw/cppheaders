@@ -12,38 +12,28 @@
  *   // node limit, memory limit.
  *   // (1 node + 1 node per parameter) per message
  *
+ *   // basic_context<MutexType_, AllocType_>
  *
- *   // produce messgae.
- *   // .message() to commit(), is critical section.
- *   // if proxy destroyed before commit(), it'll throw.
- *   auto msg_id = s.message()  // := context::message_build_proxy<>
- *      .arg<int[]>(1024, [&](array_view<int>&) {}) // := context::message_build_proxy<array<int,1024>>
- *      .arg<std::string>("hello, world!") // := context::message_build_proxy<array<int,1024>, std::string>
- *      .strand(strand_key_t{1211})
- *      .commit([](array_view<int>, std::string&&) {}) // register handler.
+ *   auto stride = s.create_stride(); // assign random stride
+ *   auto stride_2 = s.stride({16151}); // refer to other stride
  *
- *   s.message()
- *      ...
- *      .after(msg_id) // can control invocation flow
- *      ...
- *      .commit(...);
+ *   // option 1
+ *   s.message(stride) // declare new message. no operation yet submitted
+ *     .param<int[], double, std::string>() // declare parameters. not yet copied.
+ *     .handler([=](std::array_view<int>, double&, std::string&) {}) // will be move-copied
+ *     .allocate() // allocate memory for declared parameter/handlers
+ *     .emplace<0>(16141) // initializes first parameter(int[]) with size 16141
+ *     .construct<1>([&](double& s) { s = 3.111; }); // modify default-constructed data
+ *     .construct<2>("hell!", [&](std::string& s) { s = "world!"; }) // construct first, then modify
+ *     .commit(); // signal ready-to-execute
  *
- *   // otherwise, an allocate() call can be made to escape critical section
- *   //  as fast as possible. with allocate() call, proxy remains valid, thus you can
- *   //  call handle() method separately.
- *   // However, strand() call must be made before allocate(). (within critical section)
- *   // as .param<>() call
- *   s.message()
- *      .strand({1944})
- *      .arg(&s) // can deduce from parameter
- *      .arg<char[]>(564)
- *      .arg<std::string>("hello!")
- *      .arg<int>(564)
- *      .arg<std::future>(std::async(sqrt, 3.14)) // full_proxy<...>
- *      .allocate()                               // escaped_proxy<...>
- *      .modify<0>([](array_view<char>) {})
- *      .modify([](array_view<char>
- *      .commit(...)
+ *   // option 2
+ *   // do everything at once.
+ *   s.message(stride_2)
+ *     .commit(my_functor{this, capture1}, param1, param2, param3);
+ *
+ *   // note: using char[] instead of std::string is recommended, to take maximum
+ *   //  advantage of queue buffer
  *
  *   s.consume_one();
  *   s.consume(); // run until empty
