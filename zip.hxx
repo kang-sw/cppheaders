@@ -8,6 +8,19 @@ namespace CPPHEADERS_NS_
 {
 namespace _zip_impl
 {
+template <typename Arg_>
+auto& _deref_arg(Arg_&& s)
+{
+    if constexpr (std::is_reference_v<decltype(*std::declval<Arg_>())>)
+    {
+        return s;
+    }
+    else
+    {
+        return s;
+    }
+}
+
 template <typename... Args_>
 class _zip_iterator
 {
@@ -16,14 +29,14 @@ class _zip_iterator
     using iterator_category = std::random_access_iterator_tag;
     using value_type        = std::tuple<std::remove_reference_t<decltype(*Args_{})>...>;
     using difference_type   = ptrdiff_t;
-    using reference         = std::tuple<decltype(*Args_{})...>;
+    using reference         = std::tuple<decltype(*std::declval<Args_>())...>;
     using pointer           = value_type*;
 
    private:
     template <size_t... N_>
-    reference _deref(std::index_sequence<N_...>) const
+    auto _deref(std::index_sequence<N_...>) const
     {
-        return std::forward_as_tuple(*std::get<N_>(pack_)...);
+        return std::forward_as_tuple(_deref_arg(std::get<N_>(pack_))...);
     }
 
     template <size_t N_ = 0>
@@ -80,7 +93,7 @@ class _zip_iterator
         return --*this, copy;
     }
 
-    reference operator*() const
+    auto operator*() const
     {
         return _deref(std::make_index_sequence<sizeof...(Args_)>{});
     }
