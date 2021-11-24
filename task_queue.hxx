@@ -32,6 +32,10 @@
  *   s.message(stride_2)
  *     .commit(my_functor{this, capture1}, param1, param2, param3);
  *
+ *   // as asnyc task ...
+ *   event_queue::future<double> fut = s.message() // alias of std::future.
+ *     .commit([] { return some_long_calculation(); });
+ *
  *   // note: using char[] instead of std::string is recommended, to take maximum
  *   //  advantage of queue buffer
  *

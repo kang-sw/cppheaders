@@ -131,15 +131,9 @@ class basic_resource_pool
 };
 
 template <typename Ty_>
-using resource_pool_st = basic_resource_pool<Ty_, null_mutex>;
+using pool = basic_resource_pool<Ty_, perfkit::spinlock>;
 
 template <typename Ty_>
-using resource_handle_st = typename basic_resource_pool<Ty_, null_mutex>::handle_type;
-
-template <typename Ty_>
-using resource_pool = basic_resource_pool<Ty_, perfkit::spinlock>;
-
-template <typename Ty_>
-using resource_ptr = typename resource_pool<Ty_>::handle_type;
+using pool_ptr = typename pool<Ty_>::handle_type;
 
 }  // namespace CPPHEADERS_NS_

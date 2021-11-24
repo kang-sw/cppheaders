@@ -45,12 +45,11 @@ struct lock_guard
     Mutex_& _ref;
 };
 
-
-
 struct null_mutex
 {
     bool try_lock() noexcept { return true; }
     void lock() noexcept {}
     void unlock() noexcept {}
 };
+
 }  // namespace CPPHEADERS_NS_
