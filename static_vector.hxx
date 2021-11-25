@@ -248,7 +248,7 @@ class static_vector
     constexpr void assign(It_ begin, It_ end)  //
             noexcept(std::is_nothrow_constructible_v<Ty_, decltype(*std::declval<It_>())>)
     {
-        erase(begin(), end());
+        erase(this->begin(), this->end());
         insert(this->begin(), begin, end);
     }
 
