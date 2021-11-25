@@ -78,4 +78,13 @@ TEST_SUITE("queue_allocator")
     TEST_CASE("buffer deferred dealloc")
     {
     }
+
+    TEST_CASE("typed allocator")
+    {
+        {
+            cpph::queue_allocator alloc{1024};
+
+            alloc.construct<int>();
+        }
+    }
 }

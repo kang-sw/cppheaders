@@ -136,6 +136,11 @@ class queue_buffer_impl
         return (void*)(_tail + 1);
     }
 
+    void* next(void* p) noexcept
+    {
+        return _next((memblk*)p - 1) + 1;
+    }
+
     size_t capacity() const noexcept
     {
         return _capacity * block_size;
@@ -273,6 +278,142 @@ class queue_buffer_impl
     memblk* _tail     = nullptr;  // defined as forward-list
     memblk* _head     = nullptr;
 };
+
+class basic_queue_allocator_impl
+{
+   public:
+    explicit basic_queue_allocator_impl(detail::queue_buffer_impl* impl) noexcept
+            : _impl(impl) {}
+
+   private:
+    struct alignas(8) node_type
+    {
+        void (*node_dtor)(void*, size_t n);
+        size_t n = 0;
+    };
+
+    static_assert(sizeof(node_type) == 16);
+
+   private:
+    template <typename... Args_>
+    size_t _get_size(size_t n, Args_&&... args)
+    {
+        return n;
+    }
+
+   public:
+    basic_queue_allocator_impl(basic_queue_allocator_impl&&) noexcept = default;
+    basic_queue_allocator_impl& operator=(basic_queue_allocator_impl&&) noexcept = default;
+
+    template <typename Ty_,
+              typename... Args_>
+    Ty_* construct(Args_&&... args)
+    {
+        constexpr size_t alloc_size = sizeof(Ty_) + sizeof(node_type);
+        auto node                   = (node_type*)_impl->allocate(alloc_size);
+        auto memory                 = (Ty_*)(node + 1);
+
+        if constexpr (std::is_trivial_v<Ty_>)
+        {
+            node->n         = 0;
+            node->node_dtor = nullptr;
+        }
+        else
+        {
+            node->n         = 0;
+            node->node_dtor = [](void* p, size_t n)
+            {
+                (*(Ty_*)p).~Ty_();
+            };
+
+            new (memory) Ty_{std::forward<Args_>(args)...};
+        }
+
+        return memory;
+    }
+
+    template <typename Ty_>
+    Ty_* construct_array(size_t n)
+    {
+        constexpr size_t alloc_size = sizeof(Ty_) + sizeof(node_type) * n;
+        auto node                   = (node_type*)_impl->allocate(alloc_size);
+        Ty_* memory                 = (Ty_*)(node + 1);
+
+        if constexpr (std::is_trivial_v<Ty_>)
+        {
+            node->n         = n;
+            node->node_dtor = nullptr;
+        }
+        else
+        {
+            node->n         = n;
+            node->node_dtor = [](void* p, size_t n)
+            {
+                while (n--)
+                    ((Ty_*)p)[n].~Ty_();
+            };
+
+            for (size_t i = 0; i < n; ++i)
+            {
+                new (memory + i) Ty_{};
+            }
+        }
+
+        return memory;
+    }
+
+    void destruct(void* ptr) noexcept
+    {
+        auto node = _node_of(ptr);
+        node->node_dtor(ptr, node->n);
+        _impl->deallcoate(node);
+    }
+
+    size_t arraylen(void* ptr) const noexcept
+    {
+        auto node = _node_of(ptr);
+        return node->n;
+    }
+
+    void* next(void* ptr) const noexcept
+    {
+        return (node_type*)_impl->next(_node_of(ptr)) + 1;
+    }
+
+    void* front() const noexcept
+    {
+        return (node_type*)_impl->front() + 1;
+    }
+
+    size_t size() const noexcept
+    {
+        return _impl->size();
+    }
+
+    bool empty() const noexcept
+    {
+        return _impl->empty();
+    }
+
+    ~basic_queue_allocator_impl() noexcept
+    {
+        while (not _impl->empty())
+        {
+            destruct((node_type*)_impl->front() + 1);
+            _impl->deallcoate(_impl->front());
+        }
+    }
+
+   private:
+    static node_type* _node_of(void* ptr) noexcept
+    {
+        return (node_type*)ptr - 1;
+    }
+
+   private:
+    detail::queue_buffer_impl* _impl;
+};
+
 }  // namespace detail
 
 template <typename Alloc_>
@@ -322,7 +463,28 @@ class basic_queue_buffer : public detail::queue_buffer_impl
     allocator_type _alloc = {};
 };
 
+template <typename Alloc_>
+class basic_queue_allocator : public detail::basic_queue_allocator_impl
+{
+   public:
+    explicit basic_queue_allocator(size_t capacity, Alloc_ allocator = {}) noexcept
+            : basic_queue_allocator_impl(&_alloc),
+              _alloc(capacity, allocator)
+    {
+    }
+
+    basic_queue_allocator(basic_queue_allocator&&) noexcept = default;
+    basic_queue_allocator& operator=(basic_queue_allocator&&) noexcept = default;
+
+   private:
+    basic_queue_buffer<Alloc_> _alloc;
+};
+
 using queue_buffer = basic_queue_buffer<
+        detail::queue_buffer_default_allocator<
+                detail::queue_buffer_block>>;
+
+using queue_allocator = basic_queue_allocator<
         detail::queue_buffer_default_allocator<
                 detail::queue_buffer_block>>;
 
