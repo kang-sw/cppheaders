@@ -306,7 +306,7 @@ class static_vector
     };
 
     constexpr auto& at(size_t idx) { return _verify_idx(idx), _ptr[idx]; }
-    constexpr auto& at(size_t idx) const { return _verify_idx(idx), _ptr[idx]; }
+    constexpr auto& at(size_t idx) const { return _verify_idx(idx), std::as_const(_ptr[idx]); }
 
     ~static_vector() noexcept(_nt_dtor)
     {
