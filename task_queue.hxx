@@ -19,10 +19,12 @@
  *
  *   // option 1
  *   s.message(stride) // declare new message. no operation yet submitted
- *     .param<int[], double, std::string>() // declare parameters. not yet copied.
+ *     .param<int[]>(12314)
+ *     .param<double>()
+ *     .param<std::string>()
  *     .handler([=](std::array_view<int>, double&, std::string&) {}) // will be move-copied
  *     .allocate() // allocate memory for declared parameter/handlers
- *     .emplace<0>(16141) // initializes first parameter(int[]) with size 16141
+ *     .construct<0>([[&](array_view<int>) {});
  *     .construct<1>([&](double& s) { s = 3.111; }); // modify default-constructed data
  *     .construct<2>("hell!", [&](std::string& s) { s = "world!"; }) // construct first, then modify
  *     .commit(); // signal ready-to-execute
@@ -50,6 +52,8 @@
  */
 #pragma once
 
+#include <memory>
+
 #include "array_view.hxx"
 #include "hasher.hxx"
 #include "memory/queue_allocator.hxx"
@@ -69,8 +73,27 @@ struct parameter_size_mismatch_exception : std::exception
     size_t desired;
 };
 
+// forward declaration
+using strand_ptr = std::shared_ptr<class _strand_impl>;
+
 class context
 {
+   public:
+    template <typename Ret_, typename Fn_, typename... Args_>
+    class allocated_proxy
+    {
+        // ctor<>()
+        //
+    };
+
+    template <typename Ret_, typename Fn_, typename... Args_>
+    class preallocate_proxy
+    {
+        // param<>()
+        // handler<>()
+        // alloc<>()
+    };
+
     class proxy
     {
        public:
@@ -86,6 +109,12 @@ class context
     class consumer
     {
     };
+
+   public:
+    auto message(strand_ptr strand = nullptr)
+    {
+        return preallocate_proxy<void, void>{};
+    }
 };
 
 }  // namespace CPPHEADERS_NS_::event_queue
