@@ -45,7 +45,7 @@ class notify_queue
         _lc_t lc{_mtx};
         std::optional<Ty_> value;
 
-        if (_cvar.wait_for(lc, wait, CPPH_BIND(_empty)))
+        if (_cvar.wait_for(lc, wait, CPPH_BIND(_not_empty)))
         {
             value.emplace(std::move(_queue.front()));
             _queue.pop_front();
@@ -55,9 +55,9 @@ class notify_queue
     }
 
    private:
-    bool _empty() const noexcept
+    bool _not_empty() const noexcept
     {
-        return _queue.empty();
+        return not _queue.empty();
     }
 
    private:
