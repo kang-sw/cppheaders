@@ -1,7 +1,7 @@
 #pragma once
 #include <type_traits>
 
-#include "__namespace__.h"
+#include "../__namespace__.h"
 
 namespace CPPHEADERS_NS_
 {
