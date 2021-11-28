@@ -173,15 +173,15 @@ class basic_event
                              { return _fn(args...) ? event_control::ok
                                                    : event_control::expire; });
         }
-        else if constexpr (std::is_invocable_v<Callable_>)
-        {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args)
-                             { return _fn(), event_control::ok; });
-        }
-        else
+        else if constexpr (std::is_invocable_v<Callable_, Args_...>)
         {
             evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args)
                              { return _fn(args...), event_control::ok; });
+        }
+        else
+        {
+            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&...)
+                             { return _fn(), event_control::ok; });
         }
 
         return handle{this, evt->id};
