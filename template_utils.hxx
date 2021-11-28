@@ -159,4 +159,9 @@ struct function_traits<F&&> : public function_traits<F>
 {
 };
 
+template <typename Ptr1_, typename Ptr2_>
+bool ptr_equals(Ptr1_&& lhs, Ptr2_&& rhs)
+{
+    return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
+}
 }  // namespace CPPHEADERS_NS_
