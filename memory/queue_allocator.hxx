@@ -164,7 +164,7 @@ class queue_buffer_impl
         return ref;
     }
 
-    constexpr static size_t to_block_size(uint32_t n) noexcept
+    constexpr static size_t to_block_size(size_t n) noexcept
     {
         return ((n + block_size - 1) / block_size);
     }

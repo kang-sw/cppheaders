@@ -8,3 +8,7 @@
 // for legacy compatibility
 #    define CPPHEADERS_NS_ KANGSW_TEMPLATE_NAMESPACE
 #endif
+
+#if _WIN32
+#include <iso646.h>
+#endif

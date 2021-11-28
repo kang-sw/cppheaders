@@ -2,6 +2,8 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <algorithm>
+#include <stdexcept>
 
 #include "hasher.hxx"
 #include "spinlock.hxx"

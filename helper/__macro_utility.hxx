@@ -14,8 +14,12 @@ template <const auto& s>
 constexpr size_t _count_words() noexcept
 {
     size_t n = 1;
-    for (char c : s)
+    for (int i = 0; i < std::size(s); ++i)
+    {
+        auto c = s[i];
         n += c == ',';
+    }
+
     return n;
 }
 
@@ -32,8 +36,9 @@ constexpr std::pair<size_t, size_t>
 _words_boundary(size_t n) noexcept
 {
     size_t begin = 0;
-    for (auto c : s)
+    for (int i = 0; i < std::size(s); ++i)
     {
+        auto c = s[i];
         if (n == 0)
             break;
 
