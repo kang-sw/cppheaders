@@ -131,7 +131,7 @@ class basic_resource_pool
 };
 
 template <typename Ty_>
-using pool = basic_resource_pool<Ty_, perfkit::spinlock>;
+using pool = basic_resource_pool<Ty_, spinlock>;
 
 template <typename Ty_>
 using pool_ptr = typename pool<Ty_>::handle_type;
