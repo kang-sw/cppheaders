@@ -41,7 +41,6 @@ class basic_resource_pool
 
         void checkin()
         {
-            assert(valid());
             _owner->checkin(std::move(*this));
         }
 
@@ -91,6 +90,7 @@ class basic_resource_pool
     {
         lock_guard _{_mut};
         handle_type r;
+        r._owner = this;
 
         if (not _free.empty())
         {
@@ -99,8 +99,8 @@ class basic_resource_pool
             return r;
         }
 
-        _pool.emplace_back();
-        r._ref = --_pool.end();
+        _pool.emplace_front();
+        r._ref = _pool.begin();
         return r;
     }
 
@@ -114,6 +114,9 @@ class basic_resource_pool
 
         lock_guard _{_mut};
         _free.push_back(h._ref);
+
+        h._owner = {};
+        h._ref   = {};
     }
 
     void shrink()
