@@ -7,6 +7,7 @@ add_executable(
 
         test-algorithm.cpp
         test-queue.cpp
+        test-functional.cpp
 )
 
 target_compile_definitions(

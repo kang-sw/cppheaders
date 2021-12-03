@@ -1,10 +1,10 @@
 #pragma once
-#include <functional>
-#include <memory>
-#include <vector>
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
+#include <vector>
 
+#include "functional.hxx"
 #include "hasher.hxx"
 #include "spinlock.hxx"
 #include "threading.hxx"
@@ -48,7 +48,7 @@ template <typename Mutex_, typename... Args_>
 class basic_event
 {
    public:
-    using event_fn = std::function<event_control(Args_...)>;
+    using event_fn = function<event_control(Args_...)>;
 
     struct _entity_type
     {
