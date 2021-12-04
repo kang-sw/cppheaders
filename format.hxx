@@ -140,6 +140,25 @@ std::string to_string(format_context::_proxy<Args_...>&& prx)
 
 }  // namespace util
 
+class format_buffer : public std::string
+{
+   public:
+    using std::string::basic_string;
+
+    template <typename Fmt_, typename... Args_>
+    std::string& format(Fmt_&& fmt, Args_&&... args)
+    {
+        this->clear();
+
+        fmt::format_to(
+                std::back_inserter(*this),
+                std::forward<Fmt_>(fmt),
+                std::forward<Args_>(args)...);
+
+        return *this;
+    }
+};
+
 inline namespace literals
 {
 using namespace std::literals;
