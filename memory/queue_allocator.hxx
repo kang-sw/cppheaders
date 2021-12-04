@@ -403,7 +403,7 @@ class basic_queue_allocator_impl
         if constexpr (std::is_trivial_v<Ty_>)
         {
             node->n         = 0;
-            node->node_dtor = nullptr;
+            node->node_dtor = [](void* p, size_t n) {};
         }
         else
         {
@@ -429,7 +429,7 @@ class basic_queue_allocator_impl
         if constexpr (std::is_trivial_v<Ty_>)
         {
             node->n         = n;
-            node->node_dtor = nullptr;
+            node->node_dtor = [](void* p, size_t n) {};
         }
         else
         {
