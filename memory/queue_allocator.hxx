@@ -50,7 +50,10 @@
 #include <cstdint>
 #include <cstdlib>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
+
+#include "../array_view.hxx"
 
 //
 #include "../__namespace__.h"
@@ -294,6 +297,90 @@ class basic_queue_allocator_impl
 
     static_assert(sizeof(node_type) == 16);
 
+    template <typename Ty_>
+    class alloc_ptr
+    {
+       public:
+        Ty_* operator->() const noexcept { return _elem; }
+        Ty_& operator*() const noexcept { return *_elem; }
+
+        alloc_ptr() noexcept = default;
+
+        alloc_ptr(alloc_ptr&& r) noexcept : _elem(r._elem), _alloc(r._alloc)
+        {
+            r._elem = {}, r._alloc = {};
+        }
+
+        alloc_ptr& operator=(alloc_ptr&& r) noexcept
+        {
+            std::swap(_elem, r._elem);
+            std::swap(_alloc, r._alloc);
+            return *this;
+        }
+
+        ~alloc_ptr() noexcept
+        {
+            if (_alloc)
+            {
+                _alloc->destruct(_elem);
+                _elem  = nullptr;
+                _alloc = nullptr;
+            }
+        }
+
+       private:
+        friend class basic_queue_allocator_impl;
+        Ty_* _elem                         = nullptr;
+        basic_queue_allocator_impl* _alloc = nullptr;
+    };
+
+    template <typename Ty_>
+    class alloc_ptr<Ty_[]>
+    {
+       public:
+        array_view<Ty_> const* operator->() const noexcept { return &_elems; }
+        array_view<Ty_> const& operator*() const noexcept { return _elems; }
+
+        alloc_ptr() noexcept = default;
+
+        alloc_ptr(alloc_ptr&& r) noexcept : _elems(r._elems), _alloc(r._alloc)
+        {
+            r._elems = {}, r._alloc = {};
+        }
+
+        Ty_& operator[](size_t i) const noexcept
+        {
+            return _elems[i];
+        }
+
+        Ty_& at(size_t i) const
+        {
+            return _elems.at(i);
+        }
+
+        alloc_ptr& operator=(alloc_ptr&& r) noexcept
+        {
+            std::swap(_elems, r._elems);
+            std::swap(_alloc, r._alloc);
+            return *this;
+        }
+
+        ~alloc_ptr() noexcept
+        {
+            if (_alloc)
+            {
+                _alloc->destruct(_elems.data());
+                _elems = {};
+                _alloc = nullptr;
+            }
+        }
+
+       private:
+        friend class basic_queue_allocator_impl;
+        array_view<Ty_> _elems             = {};
+        basic_queue_allocator_impl* _alloc = nullptr;
+    };
+
    private:
     template <typename... Args_>
     size_t _get_size(size_t n, Args_&&... args)
@@ -333,11 +420,11 @@ class basic_queue_allocator_impl
     }
 
     template <typename Ty_>
-    Ty_* construct_array(size_t n)
+    array_view<Ty_> construct_array(size_t n)
     {
-        constexpr size_t alloc_size = sizeof(Ty_) + sizeof(node_type) * n;
-        auto node                   = (node_type*)_impl->allocate(alloc_size);
-        Ty_* memory                 = (Ty_*)(node + 1);
+        size_t const alloc_size = sizeof(Ty_) * n + sizeof(node_type);
+        auto node               = (node_type*)_impl->allocate(alloc_size);
+        Ty_* memory             = (Ty_*)(node + 1);
 
         if constexpr (std::is_trivial_v<Ty_>)
         {
@@ -359,7 +446,31 @@ class basic_queue_allocator_impl
             }
         }
 
-        return memory;
+        return array_view{memory, n};
+    }
+
+    template <typename Ty_, typename... Args_>
+    auto checkout(Args_&&... args)
+    {
+        if constexpr (std::is_array_v<Ty_>)
+        {
+            using value_type = std::remove_reference_t<decltype(std::declval<Ty_>()[0])>;
+            alloc_ptr<value_type[]> ptr;
+            ptr._alloc = this;
+            ptr._elems = construct_array<value_type>(
+                    std::get<0>(
+                            std::forward_as_tuple(std::forward<Args_>(args)...)));
+
+            return ptr;
+        }
+        else
+        {
+            alloc_ptr<Ty_> ptr;
+            ptr._alloc = this;
+            ptr._elem  = construct<Ty_>(std::forward<Args_>(args)...);
+
+            return ptr;
+        }
     }
 
     void destruct(void* ptr) noexcept

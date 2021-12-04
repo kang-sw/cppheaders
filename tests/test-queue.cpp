@@ -81,10 +81,15 @@ TEST_SUITE("queue_allocator")
 
     TEST_CASE("typed allocator")
     {
+        cpph::queue_allocator alloc{1024};
         {
-            cpph::queue_allocator alloc{1024};
-
             alloc.construct<int>();
+
+            auto ptr  = alloc.checkout<int>();
+            auto ptr1 = alloc.checkout<int[]>(131);
+
+            REQUIRE_NOTHROW(ptr1.at(130));
+            REQUIRE_THROWS(ptr1.at(131));
         }
     }
 }
