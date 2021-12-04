@@ -37,9 +37,16 @@ class locked
         visitor(_value);
     }
 
+    template <typename Visitor_>
+    void use(Visitor_&& visitor) const
+    {
+        std::lock_guard _{_mut};
+        visitor(_value);
+    }
+
    private:
     Ty_ _value;
-    Mutex_ _mut;
+    mutable Mutex_ _mut;
 };
 
 }  // namespace CPPHEADERS_NS_
