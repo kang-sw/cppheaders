@@ -11,7 +11,7 @@ namespace CPPHEADERS_NS_
 
 constexpr int _function_size = sizeof(std::function<void()>) + 16;
 
-template <typename S>
+template <typename Signature_>
 class function;
 
 template <typename Ret_, typename... Args_>
