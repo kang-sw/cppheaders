@@ -4,8 +4,7 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 template <typename Clock_ = std::chrono::steady_clock>
 class basic_poll_timer
 {

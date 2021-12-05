@@ -3,8 +3,7 @@
 
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 template <typename Ty_>
 class polymorphic_inserter
 {

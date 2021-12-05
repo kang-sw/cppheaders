@@ -10,8 +10,7 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 template <typename Ty_>
 constexpr bool _is_buffer_elem_v
         = (sizeof(Ty_) == 1) && std::is_trivial_v<Ty_>;
@@ -159,8 +158,7 @@ constexpr auto view_array(Range_&& array)
 #if __has_include(<range/v3/range/concepts.hpp>)
 #    include <range/v3/range/concepts.hpp>
 
-namespace ranges
-{
+namespace ranges {
 template <typename Ty_>
 RANGES_INLINE_VAR constexpr bool
         enable_borrowed_range<KANGSW_TEMPLATE_NAMESPACE::array_view<Ty_>> = true;

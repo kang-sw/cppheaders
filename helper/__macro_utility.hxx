@@ -8,8 +8,7 @@
 //
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_::archiving::detail
-{
+namespace CPPHEADERS_NS_::archiving::detail {
 template <const auto& s>
 constexpr size_t _count_words() noexcept
 {
@@ -114,10 +113,8 @@ constexpr void visit_with_key(
     (search(keys[at++], std::forward<Args_>(args)), ...);
 }
 
-constexpr auto from_json_visitor = [](auto&& r)
-{
-    return [&](auto&& key, auto&& var)
-    {
+constexpr auto from_json_visitor = [](auto&& r) {
+    return [&](auto&& key, auto&& var) {
         constexpr bool is_optional = is_optional_v<decltype(var)>;
         if constexpr (is_optional)
         {
@@ -132,10 +129,8 @@ constexpr auto from_json_visitor = [](auto&& r)
     };
 };
 
-constexpr auto to_json_visitor = [](auto&& r)
-{
-    return [&](auto&& key, auto&& var)
-    {
+constexpr auto to_json_visitor = [](auto&& r) {
+    return [&](auto&& key, auto&& var) {
         constexpr bool is_optional = is_optional_v<decltype(var)>;
 
         if constexpr (is_optional)

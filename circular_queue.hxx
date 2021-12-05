@@ -8,8 +8,7 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 /**
  * 스레드에 매우 안전하지 않은 클래스입니다.
  * 별도의 스레드와 사용 시 반드시 락 필요

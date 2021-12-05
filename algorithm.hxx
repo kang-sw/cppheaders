@@ -9,10 +9,8 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
-inline namespace algorithm
-{
+namespace CPPHEADERS_NS_ {
+inline namespace algorithm {
 #define INTERNAL_CPPH_DEFINE_WRAPPER(FUNC)                                          \
     template <typename Container_, typename... Args_>                               \
     auto FUNC(Container_&& a, Args_&&... args)                                      \
