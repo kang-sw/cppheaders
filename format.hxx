@@ -8,10 +8,8 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
-namespace util
-{
+namespace CPPHEADERS_NS_ {
+namespace util {
 class format_context
 {
    public:
@@ -44,8 +42,7 @@ class format_context
         auto& operator>>(std::string& arg) noexcept
         {
             std::apply(
-                    [&](auto&&... args)
-                    {
+                    [&](auto&&... args) {
                         fmt::format_to(std::back_inserter(arg), _base->_fmt,
                                        std::forward<decltype(args)>(args)...);
                     },
@@ -62,8 +59,7 @@ class format_context
         {
             arg.clear();
             std::apply(
-                    [&](auto&&... args)
-                    {
+                    [&](auto&&... args) {
                         fmt::format_to(std::back_inserter(arg), _base->_fmt,
                                        std::forward<decltype(args)>(args)...);
                     },
@@ -159,8 +155,7 @@ class format_buffer : public std::string
     }
 };
 
-inline namespace literals
-{
+inline namespace literals {
 using namespace std::literals;
 inline util::format_context operator""_fmt(char const* ch, size_t)
 {

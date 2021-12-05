@@ -12,8 +12,7 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 using event_key = basic_key<class LABEL_delegate_key>;
 
 enum class event_control
@@ -171,19 +170,16 @@ class basic_event
         }
         else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>)
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args)
-                             { return _fn(args...) ? event_control::ok
-                                                   : event_control::expire; });
+            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args) { return _fn(args...) ? event_control::ok
+                                                                                                       : event_control::expire; });
         }
         else if constexpr (std::is_invocable_v<Callable_, Args_...>)
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args)
-                             { return _fn(args...), event_control::ok; });
+            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args) { return _fn(args...), event_control::ok; });
         }
         else
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&...)
-                             { return _fn(), event_control::ok; });
+            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&...) { return _fn(), event_control::ok; });
         }
 
         return handle{this, evt->id};
@@ -246,8 +242,7 @@ class basic_event
 
         auto it = std::find_if(
                 _events.begin(), _events.end(),
-                [&](_entity_type const& s)
-                {
+                [&](_entity_type const& s) {
                     return h.key_ == s.id;
                 });
         return it == _events.end() ? nullptr : &*it;
@@ -258,7 +253,7 @@ class basic_event
     uint64_t _hash_gen = 0;
 
     mutable Mutex_ _mtx;
-    volatile bool _dirty = false;
+    bool volatile _dirty = false;
 };
 
 template <typename... Args_>

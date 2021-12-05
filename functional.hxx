@@ -6,8 +6,7 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 
 constexpr int _function_size = sizeof(std::function<void()>) + 16;
 

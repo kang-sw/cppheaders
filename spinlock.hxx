@@ -15,8 +15,7 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 
 //! @see https://rigtorp.se/spinlock/
 //! Applied slight modification to use atomic_flag

@@ -3,8 +3,7 @@
 
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 template <typename Ty_>
 class polymorphic_inserter
 {
@@ -49,7 +48,7 @@ auto back_inserter(Range_& range)
         {
             _range->insert(_range->end(), std::move(other));
         }
-        void assign(const value_type& other) override
+        void assign(value_type const& other) override
         {
             _range->insert(_range->end(), other);
         }
@@ -79,7 +78,7 @@ auto array_inserter(Range_& range, size_t offset = 0)
                 throw std::out_of_range{"array out of range"};
             *_where++ = std::move(other);
         }
-        void assign(const value_type& other) override
+        void assign(value_type const& other) override
         {
             if (_where >= _end)
                 throw std::out_of_range{"array out of range"};

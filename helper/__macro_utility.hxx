@@ -8,9 +8,8 @@
 //
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_::archiving::detail
-{
-template <const auto& s>
+namespace CPPHEADERS_NS_::archiving::detail {
+template <auto const& s>
 constexpr size_t _count_words() noexcept
 {
     size_t n = 1;
@@ -31,7 +30,7 @@ constexpr bool _is_word_char(char c) noexcept
         || c == '_';
 }
 
-template <const auto& s>
+template <auto const& s>
 constexpr std::pair<size_t, size_t>
 _words_boundary(size_t n) noexcept
 {
@@ -66,7 +65,7 @@ _words_boundary(size_t n) noexcept
     return {begin, end};
 }
 
-template <const auto& str>
+template <auto const& str>
 constexpr auto break_VA_ARGS() noexcept
 {
     constexpr auto n_words = _count_words<str>();
@@ -114,10 +113,8 @@ constexpr void visit_with_key(
     (search(keys[at++], std::forward<Args_>(args)), ...);
 }
 
-constexpr auto from_json_visitor = [](auto&& r)
-{
-    return [&](auto&& key, auto&& var)
-    {
+constexpr auto from_json_visitor = [](auto&& r) {
+    return [&](auto&& key, auto&& var) {
         constexpr bool is_optional = is_optional_v<decltype(var)>;
         if constexpr (is_optional)
         {
@@ -132,10 +129,8 @@ constexpr auto from_json_visitor = [](auto&& r)
     };
 };
 
-constexpr auto to_json_visitor = [](auto&& r)
-{
-    return [&](auto&& key, auto&& var)
-    {
+constexpr auto to_json_visitor = [](auto&& r) {
+    return [&](auto&& key, auto&& var) {
         constexpr bool is_optional = is_optional_v<decltype(var)>;
 
         if constexpr (is_optional)

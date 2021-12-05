@@ -7,8 +7,7 @@
 //
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_::thread
-{
+namespace CPPHEADERS_NS_::thread {
 class worker
 {
    public:
@@ -18,8 +17,7 @@ class worker
         shutdown();
         _active.store(true);
         _worker = std::thread{
-                [&](Fn_&& fn, Args_&&... inner_args)
-                {
+                [&](Fn_&& fn, Args_&&... inner_args) {
                     while (_active)
                     {
                         fn(std::forward<Args_>(inner_args)...);

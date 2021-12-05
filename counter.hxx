@@ -8,10 +8,8 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
-inline namespace counters
-{
+namespace CPPHEADERS_NS_ {
+inline namespace counters {
 template <typename Ty_, size_t Dim_ = 1>
 // requires std::is_arithmetic_v<Ty_>&& std::is_integral_v<Ty_>
 class _counter;
@@ -314,8 +312,7 @@ constexpr auto counter(SizeTy_ size, Ints_... args)
     bool has_zero  = false;
     tuple_for_each(
             std::forward_as_tuple(std::forward<Ints_>(args)...),
-            [&](auto&& r, size_t i)
-            {
+            [&](auto&& r, size_t i) {
                 counter.max[i + 1] = (r);
                 has_zero |= r == 0;
             });

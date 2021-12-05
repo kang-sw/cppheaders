@@ -3,8 +3,7 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_
-{
+namespace CPPHEADERS_NS_ {
 // lock guard utility
 template <typename Mutex_>
 struct lock_guard
