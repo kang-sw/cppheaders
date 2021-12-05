@@ -58,8 +58,10 @@
 //
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
-namespace detail {
+namespace CPPHEADERS_NS_
+{
+namespace detail
+{
 struct queue_buffer_block
 {
     uint32_t defferred : 1;
@@ -93,7 +95,8 @@ struct queue_out_of_memory : std::bad_alloc
 {
 };
 
-namespace detail {
+namespace detail
+{
 class queue_buffer_impl
 {
    public:
@@ -241,8 +244,7 @@ class queue_buffer_impl
                 _tail     = next;
 
                 --_num_alloc;
-            }
-            while (_tail && _tail->occupied() && _tail->defferred);
+            } while (_tail && _tail->occupied() && _tail->defferred);
 
             if (_tail == nullptr)
                 _head = nullptr;
@@ -406,7 +408,8 @@ class basic_queue_allocator_impl
         else
         {
             node->n         = 0;
-            node->node_dtor = [](void* p, size_t n) {
+            node->node_dtor = [](void* p, size_t n)
+            {
                 (*(Ty_*)p).~Ty_();
             };
 
@@ -431,7 +434,8 @@ class basic_queue_allocator_impl
         else
         {
             node->n         = n;
-            node->node_dtor = [](void* p, size_t n) {
+            node->node_dtor = [](void* p, size_t n)
+            {
                 while (n--)
                     ((Ty_*)p)[n].~Ty_();
             };

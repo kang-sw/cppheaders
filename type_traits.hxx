@@ -4,8 +4,10 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_::type_traits {
-namespace detail {
+namespace CPPHEADERS_NS_::type_traits
+{
+namespace detail
+{
 template <class Default, class AlwaysVoid,
           template <class...> class Op, class... Args>
 struct detector

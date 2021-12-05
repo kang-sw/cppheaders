@@ -8,8 +8,10 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
-namespace hasher {
+namespace CPPHEADERS_NS_
+{
+namespace hasher
+{
 constexpr static uint64_t FNV_PRIME       = 0x100000001b3ull;
 constexpr static uint64_t FNV_OFFSET_BASE = 0xcbf29ce484222325ull;
 
@@ -90,7 +92,8 @@ struct basic_key
 
 }  // namespace CPPHEADERS_NS_
 
-namespace std {
+namespace std
+{
 template <typename Label_>
 struct hash<CPPHEADERS_NS_::basic_key<Label_>>
 {

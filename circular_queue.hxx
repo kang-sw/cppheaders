@@ -8,7 +8,8 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
+namespace CPPHEADERS_NS_
+{
 /**
  * 스레드에 매우 안전하지 않은 클래스입니다.
  * 별도의 스레드와 사용 시 반드시 락 필요
@@ -41,8 +42,8 @@ class circular_queue
 
        public:
         iterator() noexcept                = default;
-        iterator(iterator const&) noexcept = default;
-        iterator& operator=(iterator const&) noexcept = default;
+        iterator(const iterator&) noexcept = default;
+        iterator& operator=(const iterator&) noexcept = default;
 
         reference operator*() const
         {
@@ -105,7 +106,7 @@ class circular_queue
     circular_queue(size_t capacity) noexcept
             : _capacity(capacity + 1), _data(capacity ? std::make_unique<chunk_t[]>(_capacity) : nullptr) {}
 
-    circular_queue(circular_queue const& op) noexcept(is_safe_ctor) { *this = op; }
+    circular_queue(const circular_queue& op) noexcept(is_safe_ctor) { *this = op; }
 
     circular_queue(circular_queue&& op) noexcept
     {
@@ -121,7 +122,7 @@ class circular_queue
         return *this;
     }
 
-    circular_queue& operator=(circular_queue const& op) noexcept(is_safe_ctor)
+    circular_queue& operator=(const circular_queue& op) noexcept(is_safe_ctor)
     {
         clear();
         _head     = 0;
@@ -270,7 +271,7 @@ class circular_queue
     template <class Fn_>
     void for_each(Fn_&& fn) const
     {
-        for (size_t it = _tail; it != _head; it = _next(it)) { fn(static_cast<Ty_ const&>(_at(it))); }
+        for (size_t it = _tail; it != _head; it = _next(it)) { fn(static_cast<const Ty_&>(_at(it))); }
     }
 
     void clear() noexcept(is_safe_dtor)

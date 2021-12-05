@@ -4,8 +4,10 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
-namespace _zip_impl {
+namespace CPPHEADERS_NS_
+{
+namespace _zip_impl
+{
 template <typename Arg_>
 auto& _deref_arg(Arg_&& s)
 {
@@ -65,7 +67,8 @@ class _zip_iterator
 
     _zip_iterator& operator++()
     {
-        return std::apply([](auto&&... arg) { (++arg, ...); },
+        return std::apply([](auto&&... arg)
+                          { (++arg, ...); },
                           pack_),
              *this;
     }
@@ -78,7 +81,8 @@ class _zip_iterator
 
     _zip_iterator& operator--()
     {
-        return std::apply([](auto&&... arg) { (--arg, ...); },
+        return std::apply([](auto&&... arg)
+                          { (--arg, ...); },
                           pack_),
              *this;
     }
@@ -96,13 +100,15 @@ class _zip_iterator
 
     _zip_iterator& operator+=(difference_type n)
     {
-        return std::apply([n](auto&&... arg) { ((arg += n), ...); },
+        return std::apply([n](auto&&... arg)
+                          { ((arg += n), ...); },
                           pack_),
              *this;
     }
     _zip_iterator& operator-=(difference_type n)
     {
-        return std::apply([n](auto&&... arg) { ((arg -= n), ...); },
+        return std::apply([n](auto&&... arg)
+                          { ((arg -= n), ...); },
                           pack_),
              *this;
     }
@@ -171,7 +177,8 @@ decltype(auto) zip(Containers_&&... containers)
 }  // namespace CPPHEADERS_NS_
 
 // tuple overload to receive swap ...
-namespace std {
+namespace std
+{
 template <typename... Args_,
           typename = std::enable_if_t<(is_reference_v<Args_> && ...)>>
 void swap(std::tuple<Args_...> const& a, std::tuple<Args_...> const& b)  //

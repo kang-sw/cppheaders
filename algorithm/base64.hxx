@@ -9,8 +9,10 @@
 // assert always
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_::base64 {
-namespace detail {
+namespace CPPHEADERS_NS_::base64
+{
+namespace detail
+{
 constexpr std::string_view tb_encode
         = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
           "abcdefghijklmnopqrstuvwxyz"

@@ -6,7 +6,8 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
+namespace CPPHEADERS_NS_
+{
 template <typename CharTy_, typename Traits_, typename Alloc_>
 class basic_shared_string
 {

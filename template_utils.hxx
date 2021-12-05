@@ -4,7 +4,8 @@
 //
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
+namespace CPPHEADERS_NS_
+{
 /**
  * @see https://stackoverflow.com/questions/1198260/how-can-you-iterate-over-the-elements-of-an-stdtuple
  * Iterate over tempalte

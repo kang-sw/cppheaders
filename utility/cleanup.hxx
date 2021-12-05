@@ -3,7 +3,8 @@
 
 #include "../__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
+namespace CPPHEADERS_NS_
+{
 template <typename Callable_>
 class cleanup
 {

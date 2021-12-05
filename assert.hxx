@@ -13,7 +13,8 @@
 #    include "third/backward.cpp.inl"
 #endif
 
-namespace cppheaders_internals {
+namespace cppheaders_internals
+{
 void _assert_fails(
         char const* file, char const* func, int line, char const* expr)  //
 #if defined(CPPHEADERS_IMPLEMENT_ASSERTIONS)
@@ -23,7 +24,7 @@ void _assert_fails(
             expr, file, line, func);
 
     fflush(stderr);
-    *((int volatile*)nullptr) = 0;  // generate segmentation fault
+    *((volatile int*)nullptr) = 0;  // generate segmentation fault
 }
 #else
         ;

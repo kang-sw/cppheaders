@@ -5,7 +5,8 @@
 
 #include "__namespace__.h"
 
-namespace CPPHEADERS_NS_ {
+namespace CPPHEADERS_NS_
+{
 /**
  * N-dimensional array
  * Basically, wrapper of an vector
