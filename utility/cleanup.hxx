@@ -5,13 +5,17 @@
 
 namespace CPPHEADERS_NS_ {
 template <typename Callable_>
-class cleanup
+class _cleanup_t
 {
    public:
-    cleanup(Callable_&& callable) : _callable(std::move(callable)) {}
-    ~cleanup() noexcept(std::is_nothrow_invocable_v<Callable_>) { _callable(); }
-
-   private:
+    ~_cleanup_t() noexcept(std::is_nothrow_invocable_v<Callable_>) { _callable(); }
     Callable_ _callable;
 };
+
+template <typename Callable_>
+auto cleanup(Callable_&& callable)
+{
+    return _cleanup_t<std::remove_reference_t<Callable_>>{
+            std::forward<Callable_>(callable)};
+}
 }  // namespace CPPHEADERS_NS_
