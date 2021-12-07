@@ -123,6 +123,11 @@ class function<Ret_(Args_...)>
         _assign_function(std::forward<Callable_>(fn));
     }
 
+    operator bool() const noexcept
+    {
+        return _callable;
+    }
+
     function(function&& fn) noexcept
     {
         _move_from(std::move(fn));
