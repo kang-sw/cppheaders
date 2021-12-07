@@ -84,7 +84,7 @@ class function<Ret_(Args_...)>
     function& operator=(function const& fn) noexcept = delete;
     function(function const& fn) noexcept            = delete;
 
-    Ret_ operator()(Args_... args)
+    Ret_ operator()(Args_... args) const
     {
         if (_callable == nullptr)
             throw std::bad_function_call{};
