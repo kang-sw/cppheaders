@@ -17,7 +17,8 @@ template <typename Ret_, typename... Args_>
 class function<Ret_(Args_...)>
 {
    public:
-    using return_type = Ret_;
+    using return_type   = Ret_;
+    using function_type = std::function<Ret_(Args_...)>;
 
    private:
     struct _callable_t
@@ -83,13 +84,12 @@ class function<Ret_(Args_...)>
     function& operator=(function const& fn) noexcept = delete;
     function(function const& fn) noexcept            = delete;
 
-    template <typename... Params_>
-    Ret_ operator()(Params_&&... args)
+    Ret_ operator()(Args_... args)
     {
         if (_callable == nullptr)
             throw std::bad_function_call{};
 
-        return std::invoke(*_callable, std::forward<Params_>(args)...);
+        return std::invoke(*_callable, std::forward<Args_>(args)...);
     }
 
     template <
