@@ -66,6 +66,11 @@ class basic_poll_timer
         _tp = clock_type::now() + _interval;
     }
 
+    void invalidate() noexcept
+    {
+        _tp = clock_type::now();
+    }
+
    private:
     timepoint _tp       = {};
     duration _interval  = {};
