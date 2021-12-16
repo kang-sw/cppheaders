@@ -145,7 +145,7 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
 template <typename Range_>
 constexpr auto make_view(Range_&& array)
 {
-    return array_view{array.data(), array.size()};
+    return array_view{std::data(array), std::size(array)};
 }
 
 template <typename Range_>
