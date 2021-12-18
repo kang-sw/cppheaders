@@ -145,7 +145,7 @@ class format_buffer : public std::string
     std::string& format(Fmt_&& fmt, Args_&&... args)
     {
         this->clear();
-        return format_add(std::forward<Fmt_>(fmt), std::forward<Args_>(args)...);
+        return format_append(std::forward<Fmt_>(fmt), std::forward<Args_>(args)...);
     }
 
     template <typename Fmt_, typename... Args_>
