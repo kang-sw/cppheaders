@@ -94,19 +94,6 @@ class ownership
         return *this;
     }
 
-    ownership& operator=(Ty_ const& other) noexcept(
-            std::is_nothrow_copy_constructible_v<Ty_>&& std::is_nothrow_copy_assignable_v<Ty_>)
-    {
-        if (has_value())
-        {
-            *_value = other;
-        }
-        else
-        {
-            _construct(other);
-        }
-    }
-
     ownership& operator=(Ty_&& other) noexcept(
             std::is_nothrow_move_constructible_v<Ty_>&& std::is_nothrow_move_assignable_v<Ty_>)
     {
@@ -135,11 +122,6 @@ class ownership
     ownership(Ty_&& other) noexcept(std::is_nothrow_move_constructible_v<Ty_>)
     {
         _construct(std::move(other));
-    }
-
-    ownership(Ty_ const& other) noexcept(std::is_nothrow_copy_constructible_v<Ty_>)
-    {
-        _construct(other);
     }
 
     ownership() noexcept = default;
