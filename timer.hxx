@@ -25,7 +25,12 @@ class basic_poll_timer
         this->reset();
     }
 
-    bool operator()() noexcept
+    [[deprecated]] bool operator()() noexcept
+    {
+        return check();
+    }
+
+    bool check() noexcept
     {
         auto now = clock_type::now();
         if (now > _tp)
