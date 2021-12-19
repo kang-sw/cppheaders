@@ -141,7 +141,7 @@ class basic_event
                 lock.lock();
 
                 if (invoke_result & (int)event_control::expire)
-                    _events.erase(it++);
+                    it = _events.erase(it);
                 else
                     ++it;
 
@@ -169,12 +169,18 @@ class basic_event
         }
         else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>)
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args) { return _fn(args...) ? event_control::ok
-                                                                                                       : event_control::expire; });
+            evt->function =
+                    [_fn = std::forward<Callable_>(fn)](auto&&... args) {
+                        return _fn(args...) ? event_control::ok
+                                            : event_control::expire;
+                    };
         }
         else if constexpr (std::is_invocable_v<Callable_, Args_...>)
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args) { return _fn(args...), event_control::ok; });
+            evt->function =
+                    [_fn = std::forward<Callable_>(fn)](auto&&... args) {
+                        return _fn(args...), event_control::ok;
+                    };
         }
         else
         {
