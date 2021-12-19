@@ -118,8 +118,7 @@ class basic_event
         _mtx.unlock(), rhs._mtx.unlock();
     }
 
-    template <typename... FnArgs_>
-    void invoke(FnArgs_&&... args)
+    void invoke(Args_... args)
     {
         lock_guard lock{_mtx};
 
@@ -138,7 +137,7 @@ class basic_event
             else
             {
                 lock.unlock();
-                auto invoke_result = (int)it->function(std::forward<FnArgs_>(args)...);
+                auto invoke_result = (int)it->function(std::forward<Args_>(args)...);
                 lock.lock();
 
                 if (invoke_result & (int)event_control::expire)
