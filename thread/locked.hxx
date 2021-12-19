@@ -14,6 +14,18 @@ class locked
     struct locked_reference
     {
         Ty_* _ptr = nullptr;
+        std::unique_lock<Mutex_> _lock;
+
+       public:
+        auto* operator->() { return _ptr; }
+        auto* operator->() const { return _ptr; }
+        auto& operator*() { return *_ptr; }
+        auto& operator*() const { return *_ptr; }
+    };
+
+    struct locked_const_reference
+    {
+        Ty_ const* _ptr = nullptr;
         std::unique_lock<Ty_> _lock;
 
        public:
@@ -25,6 +37,11 @@ class locked
 
    public:
     locked_reference lock()
+    {
+        return {&_value, std::unique_lock{_mut}};
+    }
+
+    locked_const_reference lock() const
     {
         return {&_value, std::unique_lock{_mut}};
     }
