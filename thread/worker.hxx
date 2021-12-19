@@ -30,7 +30,9 @@ class worker
     void shutdown() noexcept
     {
         _active.store(false);
-        _worker.joinable() && (_worker.join(), 0);
+
+        if (_worker.get_id() != std::this_thread::get_id())
+            _worker.joinable() && (_worker.join(), 0);
     }
 
     bool active() const noexcept
