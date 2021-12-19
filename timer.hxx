@@ -76,6 +76,16 @@ class basic_poll_timer
         _tp = clock_type::now();
     }
 
+    auto interval() const noexcept
+    {
+        return _interval;
+    }
+
+    auto interval_sec() const noexcept
+    {
+        return std::chrono::duration<double>(_interval);
+    }
+
    private:
     timepoint _tp       = {};
     duration _interval  = {};
