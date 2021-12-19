@@ -170,7 +170,7 @@ class basic_event
         else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>)
         {
             evt->function =
-                    [_fn = std::forward<Callable_>(fn)](auto&&... args) {
+                    [_fn = std::forward<Callable_>(fn)](auto&&... args) mutable {
                         return _fn(args...) ? event_control::ok
                                             : event_control::expire;
                     };
@@ -178,13 +178,16 @@ class basic_event
         else if constexpr (std::is_invocable_v<Callable_, Args_...>)
         {
             evt->function =
-                    [_fn = std::forward<Callable_>(fn)](auto&&... args) {
+                    [_fn = std::forward<Callable_>(fn)](auto&&... args) mutable {
                         return _fn(args...), event_control::ok;
                     };
         }
         else
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&...) { return _fn(), event_control::ok; });
+            evt->function =
+                    [_fn = std::forward<Callable_>(fn)](auto&&...) mutable {
+                        return _fn(), event_control::ok;
+                    };
         }
 
         return handle{this, evt->id};
