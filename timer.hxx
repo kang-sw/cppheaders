@@ -77,5 +77,20 @@ class basic_poll_timer
     duration _latest_dt = {};
 };
 
+class stopwatch
+{
+   public:
+    using clock_type = std::chrono::steady_clock;
+
+   public:
+    stopwatch() noexcept { reset(); }
+    void reset() noexcept { _tp = clock_type::now(); }
+    auto tick() const noexcept { return clock_type::now() - _tp; }
+    auto elapsed() const noexcept { return std::chrono::duration<double>(tick()); }
+
+   private:
+    clock_type::time_point _tp;
+};
+
 using poll_timer = basic_poll_timer<std::chrono::steady_clock>;
 }  // namespace CPPHEADERS_NS_
