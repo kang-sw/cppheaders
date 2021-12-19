@@ -18,6 +18,16 @@ inline namespace algorithm {
         return std::FUNC(std::begin(a), std::end(a), std::forward<Args_>(args)...); \
     }
 
+#define INTERNAL_CPPH_DEFINE_WRAPPER2(FUNC)                                  \
+    template <typename ContainerA_, typename ContainerB_, typename... Args_> \
+    auto FUNC##2(ContainerA_ && a, ContainerB_ && b, Args_ && ... args)      \
+    {                                                                        \
+        return std::FUNC(                                                    \
+                std::begin(a), std::end(a),                                  \
+                std::begin(b), std::end(b),                                  \
+                std::forward<Args_>(args)...);                               \
+    }
+
 INTERNAL_CPPH_DEFINE_WRAPPER(all_of)
 INTERNAL_CPPH_DEFINE_WRAPPER(any_of)
 INTERNAL_CPPH_DEFINE_WRAPPER(none_of)
@@ -99,10 +109,15 @@ INTERNAL_CPPH_DEFINE_WRAPPER(merge)
 INTERNAL_CPPH_DEFINE_WRAPPER(inplace_merge)
 
 INTERNAL_CPPH_DEFINE_WRAPPER(includes)
+INTERNAL_CPPH_DEFINE_WRAPPER2(includes)
 INTERNAL_CPPH_DEFINE_WRAPPER(set_difference)
+INTERNAL_CPPH_DEFINE_WRAPPER2(set_difference)
 INTERNAL_CPPH_DEFINE_WRAPPER(set_intersection)
+INTERNAL_CPPH_DEFINE_WRAPPER2(set_intersection)
 INTERNAL_CPPH_DEFINE_WRAPPER(set_symmetric_difference)
+INTERNAL_CPPH_DEFINE_WRAPPER2(set_symmetric_difference)
 INTERNAL_CPPH_DEFINE_WRAPPER(set_union)
+INTERNAL_CPPH_DEFINE_WRAPPER2(set_union)
 
 INTERNAL_CPPH_DEFINE_WRAPPER(is_heap)
 INTERNAL_CPPH_DEFINE_WRAPPER(is_heap_until)
@@ -120,9 +135,12 @@ INTERNAL_CPPH_DEFINE_WRAPPER(minmax)
 INTERNAL_CPPH_DEFINE_WRAPPER(minmax_element)
 
 INTERNAL_CPPH_DEFINE_WRAPPER(equal)
+INTERNAL_CPPH_DEFINE_WRAPPER2(equal)
 INTERNAL_CPPH_DEFINE_WRAPPER(lexicographical_compare)
+INTERNAL_CPPH_DEFINE_WRAPPER2(lexicographical_compare)
 
 INTERNAL_CPPH_DEFINE_WRAPPER(is_permutation)
+INTERNAL_CPPH_DEFINE_WRAPPER2(is_permutation)
 INTERNAL_CPPH_DEFINE_WRAPPER(next_permutation)
 INTERNAL_CPPH_DEFINE_WRAPPER(prev_permutation)
 
