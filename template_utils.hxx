@@ -163,4 +163,28 @@ bool ptr_equals(Ptr1_&& lhs, Ptr2_&& rhs)
 {
     return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
 }
+
+// check if has less
+template <class Opr_, class X_, class Y_ = X_>
+struct has_binary_op
+{
+    template <typename Op_, typename LTy_, typename RTy_>
+    static auto _test(int) -> decltype(
+            std::declval<Op_>()(std::declval<LTy_>(), std::declval<RTy_>()), std::true_type{})
+    {
+        return {};
+    }
+
+    template <typename Op_, typename LTy_, typename RTy_>
+    static auto _test(...) -> std::false_type
+    {
+        return {};
+    }
+
+    using type = decltype(_test<Opr_, X_, Y_>(0));
+};
+
+template <class Opr_, class X_, class Y_ = X_>
+constexpr bool has_binary_op_v = has_binary_op<Opr_, X_, Y_>::type::value;
+
 }  // namespace CPPHEADERS_NS_

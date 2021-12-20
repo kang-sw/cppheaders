@@ -118,8 +118,7 @@ class basic_event
         _mtx.unlock(), rhs._mtx.unlock();
     }
 
-    template <typename... FnArgs_>
-    void invoke(FnArgs_&&... args)
+    void invoke(Args_... args)
     {
         lock_guard lock{_mtx};
 
@@ -138,11 +137,11 @@ class basic_event
             else
             {
                 lock.unlock();
-                auto invoke_result = (int)it->function(std::forward<FnArgs_>(args)...);
+                auto invoke_result = (int)it->function(std::forward<Args_>(args)...);
                 lock.lock();
 
                 if (invoke_result & (int)event_control::expire)
-                    _events.erase(it++);
+                    it = _events.erase(it);
                 else
                     ++it;
 
@@ -170,16 +169,25 @@ class basic_event
         }
         else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>)
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args) { return _fn(args...) ? event_control::ok
-                                                                                                       : event_control::expire; });
+            evt->function =
+                    [_fn = std::forward<Callable_>(fn)](auto&&... args) mutable {
+                        return _fn(args...) ? event_control::ok
+                                            : event_control::expire;
+                    };
         }
         else if constexpr (std::is_invocable_v<Callable_, Args_...>)
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&... args) { return _fn(args...), event_control::ok; });
+            evt->function =
+                    [_fn = std::forward<Callable_>(fn)](auto&&... args) mutable {
+                        return _fn(args...), event_control::ok;
+                    };
         }
         else
         {
-            evt->function = ([_fn = std::forward<Callable_>(fn)](auto&&...) { return _fn(), event_control::ok; });
+            evt->function =
+                    [_fn = std::forward<Callable_>(fn)](auto&&...) mutable {
+                        return _fn(), event_control::ok;
+                    };
         }
 
         return handle{this, evt->id};

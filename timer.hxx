@@ -25,7 +25,12 @@ class basic_poll_timer
         this->reset();
     }
 
-    bool operator()() noexcept
+    [[deprecated]] bool operator()() noexcept
+    {
+        return check();
+    }
+
+    bool check() noexcept
     {
         auto now = clock_type::now();
         if (now > _tp)
@@ -71,10 +76,35 @@ class basic_poll_timer
         _tp = clock_type::now();
     }
 
+    auto interval() const noexcept
+    {
+        return _interval;
+    }
+
+    auto interval_sec() const noexcept
+    {
+        return std::chrono::duration<double>(_interval);
+    }
+
    private:
     timepoint _tp       = {};
     duration _interval  = {};
     duration _latest_dt = {};
+};
+
+class stopwatch
+{
+   public:
+    using clock_type = std::chrono::steady_clock;
+
+   public:
+    stopwatch() noexcept { reset(); }
+    void reset() noexcept { _tp = clock_type::now(); }
+    auto tick() const noexcept { return clock_type::now() - _tp; }
+    auto elapsed() const noexcept { return std::chrono::duration<double>(tick()); }
+
+   private:
+    clock_type::time_point _tp;
 };
 
 using poll_timer = basic_poll_timer<std::chrono::steady_clock>;
