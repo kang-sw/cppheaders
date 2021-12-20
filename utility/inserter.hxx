@@ -1,4 +1,5 @@
 #pragma once
+#include <stdexcept>
 #include <type_traits>
 
 #include "../__namespace__.h"
