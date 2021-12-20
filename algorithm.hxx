@@ -139,5 +139,14 @@ INTERNAL_CPPH_DEFINE_WRAPPER(transform_exclusive_scan)
 INTERNAL_CPPH_DEFINE_WRAPPER(transform_inclusive_scan)
 
 #undef INTERNAL_CPPH_DEFINE_WRAPPER
+
+// helper methods
+template <typename Range_, typename Pred_>
+auto erase_if(Range_&& range, Pred_&& pred)
+{
+    auto iter = std::remove_if(std::begin(range), std::end(range), std::forward<Pred_>(pred));
+    return range.erase(iter, std::end(range));
+}
+
 }  // namespace algorithm
 }  // namespace CPPHEADERS_NS_
