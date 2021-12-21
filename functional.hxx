@@ -97,9 +97,16 @@ class function<Ret_(Args_...)>
     function& operator=(function const& fn) noexcept = delete;
     function(function const& fn) noexcept            = delete;
 
-    explicit function(default_function_t) noexcept
+    function(default_function_t) noexcept
     {
         _assign_function(&_default_fn);
+    }
+
+    function& operator=(default_function_t) noexcept
+    {
+        _destroy();
+        _assign_function(&_default_fn);
+        return *this;
     }
 
     Ret_ operator()(Args_... args) const
