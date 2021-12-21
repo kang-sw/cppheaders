@@ -59,6 +59,11 @@ class basic_poll_timer
         return dt();
     }
 
+    duration remaining() const noexcept
+    {
+        return std::max(_tp - clock_type::now(), duration{});
+    }
+
     template <typename Duration_>
     void reset(Duration_&& interval) noexcept
     {
