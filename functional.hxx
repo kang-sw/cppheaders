@@ -10,6 +10,12 @@ namespace CPPHEADERS_NS_ {
 
 constexpr int _function_size = sizeof(std::function<void()>) + 16;
 
+class default_function_t
+{
+};
+
+constexpr default_function_t default_function;
+
 template <typename Signature_>
 class function;
 
@@ -80,9 +86,21 @@ class function<Ret_(Args_...)>
         }
     }
 
+   private:
+    static Ret_ _default_fn(Args_...)
+    {
+        if constexpr (not std::is_same_v<void, Ret_>)
+            return Ret_{};
+    }
+
    public:
     function& operator=(function const& fn) noexcept = delete;
     function(function const& fn) noexcept            = delete;
+
+    explicit function(default_function_t) noexcept
+    {
+        _assign_function(&_default_fn);
+    }
 
     Ret_ operator()(Args_... args) const
     {
