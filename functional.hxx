@@ -10,11 +10,14 @@ namespace CPPHEADERS_NS_ {
 
 constexpr int _function_size = sizeof(std::function<void()>) + 16;
 
-class default_function_t
+struct default_function_t
 {
+    // avoids ambiguous function call error
+    // function f; f = {};
+    constexpr explicit default_function_t(nullptr_t) {}
 };
 
-constexpr default_function_t default_function;
+constexpr default_function_t default_function{nullptr};
 
 template <typename Signature_>
 class function;
