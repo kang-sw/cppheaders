@@ -15,6 +15,26 @@
             return this->Function(std::forward<decltype(args)>(args)...);                              \
     }
 
+#define CPPH_BIND_WEAK(Function)                                                          \
+    [this, weak = this->weak_from_this()](auto&&... args) {                               \
+        auto self = weak.lock();                                                          \
+                                                                                          \
+        if constexpr (std::is_same_v<void,                                                \
+                                     decltype(this->Function(                             \
+                                             std::forward<decltype(args)>(args)...))>)    \
+        {                                                                                 \
+            if (not self)                                                                 \
+                return;                                                                   \
+            this->Function(std::forward<decltype(args)>(args)...);                        \
+        }                                                                                 \
+        else                                                                              \
+        {                                                                                 \
+            if (not self)                                                                 \
+                return decltype(this->Function(std::forward<decltype(args)>(args)...)){}; \
+            return this->Function(std::forward<decltype(args)>(args)...);                 \
+        }                                                                                 \
+    }
+
 /* "hasher.hxx" ***********************************************************************************/
 #define CPPH_UNIQUE_KEY_TYPE(TYPE)          \
     using TYPE = CPPHEADERS_NS_::basic_key< \
