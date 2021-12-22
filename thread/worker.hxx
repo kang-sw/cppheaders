@@ -27,12 +27,21 @@ class worker
                 std::forward<Args_>(args)...};
     }
 
-    void shutdown() noexcept
+    void stop()
     {
         _active.store(false);
+    }
 
+    void join()
+    {
         if (_worker.get_id() != std::this_thread::get_id())
             _worker.joinable() && (_worker.join(), 0);
+    }
+
+    void shutdown() noexcept
+    {
+        stop();
+        join();
     }
 
     bool active() const noexcept
