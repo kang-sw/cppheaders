@@ -38,6 +38,10 @@ struct file_not_exist : std::exception
     const char* what() const noexcept override { return usprintf("file not found: %s", path); }
 };
 
+struct file_read_error : std::exception
+{
+};
+
 using file_ptr = std::unique_ptr<FILE, detail::_freleae>;
 
 inline auto readin(char const* path)
@@ -56,7 +60,9 @@ inline auto readin(char const* path)
 
     auto buffer = std::make_unique<char[]>(size);
     auto n_read = fread(buffer.get(), size, 1, &*ptr);
-    assert(n_read == 1);
+
+    if (n_read != 1)
+        throw file_read_error{};
 
     return std::make_pair(std::move(buffer), size);
 }
