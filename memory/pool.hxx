@@ -2,6 +2,7 @@
 #include <list>
 #include <vector>
 
+#include "../functional.hxx"
 #include "../spinlock.hxx"
 
 //
@@ -98,7 +99,7 @@ class basic_resource_pool
             return r;
         }
 
-        _pool.emplace_front();
+        _constructor();
         r._ref = _pool.begin();
         return r;
     }
@@ -126,8 +127,31 @@ class basic_resource_pool
             _pool.erase(it);
     }
 
+    basic_resource_pool()
+    {
+        _constructor = [this] {
+            _pool.emplace_front();
+        };
+    }
+
+    template <typename... Args_>
+    explicit basic_resource_pool(Args_&&... args)
+    {
+        _constructor =
+                [this,
+                 tup_args = std::forward_as_tuple(args...)] {
+                    std::apply(
+                            [this](auto&&... args) {
+                                _pool.emplace_front(std::forward<decltype(args)>(args)...);
+                            },
+                            tup_args);
+                };
+    }
+
    private:
     Mutex_ _mut;
+
+    perfkit::function<void()> _constructor;
     std::list<Ty_> _pool;
     std::vector<buffer_iterator> _free;
 };
