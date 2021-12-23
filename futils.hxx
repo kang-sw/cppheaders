@@ -40,6 +40,13 @@ struct file_not_exist : std::exception
 
 struct file_read_error : std::exception
 {
+    explicit file_read_error(const char* filename) : filename(filename) {}
+    char const* filename;
+
+    const char* what() const noexcept override
+    {
+        return usprintf("failed to read file: %s", filename);
+    }
 };
 
 using file_ptr = std::unique_ptr<FILE, detail::_freleae>;
@@ -59,10 +66,10 @@ inline auto readin(char const* path)
     rewind(&*ptr);
 
     auto buffer = std::make_unique<char[]>(size);
-    auto n_read = fread(buffer.get(), size, 1, &*ptr);
+    auto n_read = fread(buffer.get(), 1, size, &*ptr);
 
-    if (n_read != 1)
-        throw file_read_error{};
+    if (n_read == 0)
+        throw file_read_error{path};
 
     return std::make_pair(std::move(buffer), size);
 }
