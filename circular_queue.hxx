@@ -135,17 +135,30 @@ class circular_queue
 
     void reserve_shrink(size_t new_cap) noexcept(is_safe_ctor)
     {
-        if (new_cap == capacity()) { return; }
-        if (new_cap == 0) { clear(), _data.reset(), _capacity = 1; }
+        if (new_cap == capacity())
+        {
+            return;
+        }
+
+        if (new_cap == 0)
+        {
+            clear(), _data.reset(), _capacity = 1;
+            return;
+        }
+
         auto n_copy = std::min(size(), new_cap);
 
         // move available objects
         circular_queue next{new_cap};
-        std::move(begin(), begin() + n_copy, std::back_inserter(next));
 
-        // destroies unmoved objects
-        _tail = _jmp(_tail, n_copy);
-        clear();
+        if (n_copy > 0)
+        {
+            std::move(begin(), begin() + n_copy, std::back_inserter(next));
+
+            // destroies unmoved objects
+            _tail = _jmp(_tail, n_copy);
+            clear();
+        }
 
         *this = std::move(next);
     }
