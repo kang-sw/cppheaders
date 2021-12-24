@@ -166,5 +166,20 @@ auto erase_if(Range_&& range, Pred_&& pred)
     return range.erase(iter, std::end(range));
 }
 
+template <typename Set_, typename Key_>
+auto find_ptr(Set_&& set, Key_ const& key)
+        -> decltype(&*set.find(key))
+{
+    auto it = set.find(key);
+    if (it == set.end())
+    {
+        return nullptr;
+    }
+    else
+    {
+        return &*it;
+    }
+}
+
 }  // namespace algorithm
 }  // namespace CPPHEADERS_NS_
