@@ -7,6 +7,9 @@
 //
 #include "__namespace__.h"
 
+#undef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+
 namespace CPPHEADERS_NS_::futils {
 namespace detail {
 struct _freleae
