@@ -20,10 +20,20 @@ class notify_queue
     using _lc_t = std::unique_lock<std::mutex>;
 
    public:
+    void set_capacity(size_t max)
+    {
+        _lc_t lc{_mtx};
+        _cap = max;
+    }
+
     template <typename... Args_>
     void emplace(Args_&&... args)
     {
         _lc_t lc{_mtx};
+
+        while (_queue.size() + 1 >= _cap)
+            _queue.pop_front();
+
         _queue.emplace_back(std::forward<Args_>(args)...);
         _cvar.notify_one();
     }
@@ -62,6 +72,7 @@ class notify_queue
    private:
     std::deque<Ty_> _queue;
     std::mutex _mtx;
+    volatile size_t _cap = ~size_t{};
     std::condition_variable _cvar;
 };
 }  // namespace CPPHEADERS_NS_
