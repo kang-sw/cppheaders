@@ -164,6 +164,7 @@ decltype(auto) il(std::initializer_list<Ty_> v)
     return v;
 }
 
+inline namespace zipper {
 /**
  * bind multiple iterable containers with single iterator
  */
@@ -178,7 +179,12 @@ decltype(auto) zip(Containers_&&... containers)
     zips.end_   = end;
     return zips;
 }
+}  // namespace zipper
 }  // namespace CPPHEADERS_NS_
+
+namespace CPPHEADERS_NS_::utilities {
+using namespace CPPHEADERS_NS_::zipper;
+}
 
 // tuple overload to receive swap ...
 namespace std {

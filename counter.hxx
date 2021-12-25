@@ -10,6 +10,7 @@
 
 namespace CPPHEADERS_NS_ {
 inline namespace counters {
+
 template <typename Ty_, size_t Dim_ = 1>
 // requires std::is_arithmetic_v<Ty_>&& std::is_integral_v<Ty_>
 class _counter;
@@ -27,6 +28,7 @@ class _counter<Ty_, 1>
     using value_type        = Ty_;
     using reference         = Ty_&;
     using pointer           = Ty_*;
+    using dimension         = Ty_;
 
    public:
     constexpr _counter() noexcept
@@ -158,10 +160,10 @@ class _counter<Ty_, ~size_t{}>
 };
 
 template <typename Ty_>
-class iota
+class iota_counter
 {
    public:
-    constexpr iota(Ty_ min, Ty_ max) noexcept
+    constexpr iota_counter(Ty_ min, Ty_ max) noexcept
             : min_(min),
               max_(max)
     {
@@ -171,7 +173,7 @@ class iota
         }
     }
 
-    constexpr iota(Ty_ max) noexcept
+    constexpr iota_counter(Ty_ max) noexcept
             : min_(Ty_{}),
               max_(max)
     {
@@ -285,13 +287,13 @@ struct _count_index<SizeTy_, 0>
 template <typename SizeTy_>
 constexpr auto counter(SizeTy_ size)
 {
-    return iota<SizeTy_>{size};
+    return iota_counter<SizeTy_>{size};
 }  // namespace kangsw
 
 template <typename SizeTy_>
 constexpr auto count(SizeTy_ from, SizeTy_ to)
 {
-    return iota<SizeTy_>{from, to};
+    return iota_counter<SizeTy_>{from, to};
 }  // namespace kangsw
 
 template <typename SizeTy_>
@@ -305,7 +307,7 @@ constexpr auto rcounter(SizeTy_ size)
         constexpr _counter<SizeTy_, ~size_t{}> end() const { return {end_}; }
     };
 
-    return min_counter_gen{.begin_ = SizeTy_(size - 1), .end_ = SizeTy_(-1)};
+    return min_counter_gen{SizeTy_(size - 1), SizeTy_(-1)};
 }  // namespace kangsw
 
 template <typename SizeTy_, typename... Ints_>
@@ -345,3 +347,7 @@ constexpr auto counter(std::array<SizeTy_, Dim_> const& idx)
 
 }  // namespace counters
 }  // namespace CPPHEADERS_NS_
+
+namespace CPPHEADERS_NS_::utilities {
+using namespace CPPHEADERS_NS_::counters;
+}

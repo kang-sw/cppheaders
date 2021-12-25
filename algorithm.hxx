@@ -183,3 +183,6 @@ auto find_ptr(Set_&& set, Key_ const& key)
 
 }  // namespace algorithm
 }  // namespace CPPHEADERS_NS_
+namespace CPPHEADERS_NS_::util_ns {
+using namespace std::literals;
+}

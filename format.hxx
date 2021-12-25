@@ -168,3 +168,7 @@ inline util::format_context operator""_fmt(char const* ch, size_t)
 }
 }  // namespace literals
 }  // namespace CPPHEADERS_NS_
+
+namespace CPPHEADERS_NS_::utilities {
+using namespace CPPHEADERS_NS_::literals;
+}  // namespace CPPHEADERS_NS_::utilities

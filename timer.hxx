@@ -113,4 +113,8 @@ class stopwatch
 };
 
 using poll_timer = basic_poll_timer<std::chrono::steady_clock>;
+
+namespace utilities {
+using namespace std::literals;
+}
 }  // namespace CPPHEADERS_NS_
