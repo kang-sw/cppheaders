@@ -14,7 +14,7 @@ target_compile_definitions(
         ${PROJECT_NAME}
 
         PRIVATE
-        -DKANGSW_TEMPLATE_NAMESPACE=cpph
+        -Dcpph=CPPHEADERS_NS_
 )
 
 target_compile_features(
