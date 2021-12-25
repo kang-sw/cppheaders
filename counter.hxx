@@ -288,13 +288,19 @@ template <typename SizeTy_>
 constexpr auto counter(SizeTy_ size)
 {
     return iota_counter<SizeTy_>{size};
-}  // namespace kangsw
+}
 
 template <typename SizeTy_>
 constexpr auto count(SizeTy_ from, SizeTy_ to)
 {
     return iota_counter<SizeTy_>{from, to};
-}  // namespace kangsw
+}
+
+template <typename SizeTy_>
+constexpr auto count(SizeTy_ to)
+{
+    return iota_counter<SizeTy_>{to};
+}
 
 template <typename SizeTy_>
 constexpr auto rcounter(SizeTy_ size)
@@ -308,7 +314,7 @@ constexpr auto rcounter(SizeTy_ size)
     };
 
     return min_counter_gen{SizeTy_(size - 1), SizeTy_(-1)};
-}  // namespace kangsw
+}
 
 template <typename SizeTy_, typename... Ints_>
 constexpr auto counter(SizeTy_ size, Ints_... args)
