@@ -3,7 +3,7 @@
 #include <dynamic_array.hxx>
 #include <helper/nlohmann_json_macros.hxx>
 
-#include "doctest.h"
+#include "../third/doctest.h"
 
 using namespace std::literals;
 

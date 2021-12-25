@@ -2,7 +2,7 @@
 
 #include <memory/queue_allocator.hxx>
 
-#include "doctest.h"
+#include "../third/doctest.h"
 
 TEST_SUITE("queue_allocator")
 {

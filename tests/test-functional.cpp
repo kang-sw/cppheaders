@@ -2,8 +2,7 @@
 #include <memory>
 
 #include <functional.hxx>
-
-#include "doctest.h"
+#include "../third/doctest.h"
 
 TEST_SUITE("functional")
 {
