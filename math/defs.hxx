@@ -24,28 +24,17 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
-#include "math/matrix.hxx"
-#include "third/doctest.h"
+#pragma once
 
-using namespace cpph::math;
+//
+#include "../__namespace__.h"
 
-TEST_SUITE("math.matrix")
+namespace CPPHEADERS_NS_::math {
+
+template <typename Ty_ = double>
+constexpr auto pi_v() noexcept
 {
-    TEST_CASE("constructions")
-    {
-        constexpr matx33i m = matx33i::eye(), n = matx33i::create(1, 2, 3, 4, 5, 6, 7, 8, 9);
-        auto c = m + (-n);
-
-        constexpr auto cc = matx33i{}.row(2);
-        static_assert(decltype(cc)::num_cols == 3);
-        static_assert(decltype(cc)::num_rows == 1);
-
-        constexpr int r = cc(0, 1);
-        auto gk         = cc(4, 1);
-
-        matx33i g = {};
-        g += c;
-
-        g* g;
-    }
+    return static_cast<Ty_>(3.141592653589793238462643383279502884);
 }
+
+}  // namespace CPPHEADERS_NS_::math

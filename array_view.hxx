@@ -88,7 +88,7 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
 
     template <typename Range_>
     constexpr array_view(Range_&& p) noexcept
-            : array_view(p.data(), p.size())
+            : array_view(std::data(p), std::size(p))
     {
     }
 
