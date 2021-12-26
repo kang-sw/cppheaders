@@ -162,10 +162,12 @@ class matrix
         }
     }
 
-    constexpr void set_diag(diagonal_type const& v) noexcept
+    constexpr auto& set_diag(diagonal_type const& v) noexcept
     {
         for (int i = 0; i < short_dim; ++i)
             (*this)(i, i) = v(i);
+
+        return *this;
     }
 
     auto& operator[](int index) const

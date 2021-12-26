@@ -62,6 +62,8 @@ TEST_SUITE("math.matrix")
         REQUIRE(s.col(1) == matx23i::column_type::create(2, 5));
         REQUIRE(s.col(2) == matx23i::column_type::create(3, 6));
 
+        REQUIRE((matrix{s}.set_diag(s.col(0))) == matx23i::create(1, 2, 3, 4, 4, 6));
+
         REQUIRE(s == matx23i::create(1, 2, 3, 4, 5, 6));
         REQUIRE(s * 2 == matx23i::create(2, 4, 6, 8, 10, 12));
         REQUIRE(2 * s == matx23i::create(2, 4, 6, 8, 10, 12));
