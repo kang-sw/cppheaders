@@ -316,6 +316,49 @@ class matrix
         return result;
     }
 
+    constexpr auto
+    diag() const noexcept
+    {
+        diagonal_type d = {};
+        for (int i = 0; i < short_dim; ++i)
+            d(i) = (*this)(i, i);
+
+        return d;
+    }
+
+    template <int R_, int C_, int NewR_, int NewC_>
+    constexpr auto submatx() const noexcept
+    {
+        static_assert(0 <= R_ && R_ + NewR_ < Row_);
+        static_assert(0 <= C_ && C_ + NewC_ < Col_);
+
+        matx_type<NewR_, NewC_> result = {};
+        for (int i = 0; i < R_; ++i)
+            for (int j = 0; j < C_; ++j)
+                result(i, j) = (*this)(R_ + i, C_ + j);
+
+        return result;
+    }
+
+    template <int SubR_, int SubC_>
+    matrix& update(int r, int c, matx_type<SubR_, SubC_> const& matx) noexcept
+    {
+        assert(0 <= r && r + SubR_ < Row_);
+        assert(0 <= c && c + SubC_ < Col_);
+
+        for (int i = 0; i < SubR_; ++i)
+            for (int j = 0; j < SubC_; ++j)
+                (*this)(r + i, c + j) = matx(i, j);
+
+        return *this;
+    }
+
+    template <int SubR_, int SubC_>
+    matrix updated(int r, int c, matx_type<SubR_, SubC_> const& matx) noexcept
+    {
+        return matrix{*this}.update(r, c, matx);
+    }
+
    public:
     // vector operations
     template <int NR_, int NC_>
@@ -507,6 +550,10 @@ class matrix
     value_type value[length];
 };
 
+//
+// Matrix utilities
+//
+
 template <typename Ty_, int R_, int C_>
 constexpr Ty_ norm_sqr(matrix<Ty_, R_, C_> const& mat) noexcept
 {
@@ -526,6 +573,27 @@ template <typename Ty_, int R_, int C_>
 constexpr auto normalize(matrix<Ty_, R_, C_> const& mat) noexcept
 {
     return mat / static_cast<Ty_>(norm(mat));
+}
+
+template <typename Ty_, int R_, int C_>
+constexpr auto sum(matrix<Ty_, R_, C_> const& mat) noexcept
+{
+    Ty_ sum = {};
+    for (auto& c : mat) { sum += c; }
+
+    return sum;
+}
+
+template <typename Ty_, int R_, int C_>
+constexpr auto mean(matrix<Ty_, R_, C_> const& mat) noexcept
+{
+    return sum(mat) / static_cast<Ty_>(R_ * C_);
+}
+
+template <typename Ty_, int R_, int C_>
+constexpr auto trace(matrix<Ty_, R_, C_> const& mat) noexcept
+{
+    return sum(mat.diag());
 }
 
 /**

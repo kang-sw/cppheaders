@@ -86,6 +86,13 @@ TEST_SUITE("math.matrix")
         REQUIRE(norm_sqr(s) == 91);
         REQUIRE(normalize(s) == matx23i::zeros());
     }
+
+    TEST_CASE("rodrigues")
+    {
+        auto s = vec3f::create(0, pi_v<>(), 0);
+        MESSAGE(rodrigues(s));
+        REQUIRE(rodrigues(rodrigues(s)) == s);
+    }
 }
 
 TEST_SUITE("math.rect")
