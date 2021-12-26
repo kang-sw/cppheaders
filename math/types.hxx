@@ -31,4 +31,16 @@
 
 namespace CPPHEADERS_NS_::math {
 
+/**
+ * Rectangle descriptor
+ * @tparam Ty_
+ */
+template <typename Ty_>
+class rectangle_
+{
+
+};
+
+using rect  = rectangle_<int>;
+using rectf = rectangle_<float>;
 }  // namespace CPPHEADERS_NS_::math

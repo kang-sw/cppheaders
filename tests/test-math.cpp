@@ -49,6 +49,11 @@ TEST_SUITE("math.matrix")
         matx33i g = {};
         g += c;
 
+        g.col(3).x();
+        g.col(3).y();
+        g.col(3).z();
+        g.col(3).w();
+
         g* g;
     }
 

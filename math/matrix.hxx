@@ -349,7 +349,7 @@ class matrix
         return const_cast<value_type&>(value[N_]);
     }
 
-   public:
+   public:  // aliases
     const_reference x() const noexcept { return _vec_at<0>(); }
     const_reference y() const noexcept { return _vec_at<1>(); }
     const_reference z() const noexcept { return _vec_at<2>(); }
@@ -358,6 +358,16 @@ class matrix
     reference y() noexcept { return _vec_at<1>(); }
     reference z() noexcept { return _vec_at<2>(); }
     reference w() noexcept { return _vec_at<3>(); }
+
+    const_reference width() const noexcept { return _vec_at<0>(); }
+    const_reference height() const noexcept { return _vec_at<1>(); }
+    reference width() noexcept { return _vec_at<0>(); }
+    reference height() noexcept { return _vec_at<1>(); }
+
+    const_reference u() const noexcept { return _vec_at<0>(); }
+    const_reference v() const noexcept { return _vec_at<1>(); }
+    reference u() noexcept { return _vec_at<0>(); }
+    reference v() noexcept { return _vec_at<1>(); }
 
    private:
     // arithmetic operations
