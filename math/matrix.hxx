@@ -688,6 +688,15 @@ using vector = matrix<Ty_, N_, 1>;
 /**
  * Defines typical vectors
  */
+using matx22d = matrix<double, 2, 2>;
+using matx23d = matrix<double, 2, 3>;
+using matx24d = matrix<double, 2, 4>;
+using matx32d = matrix<double, 3, 2>;
+using matx33d = matrix<double, 3, 3>;
+using matx34d = matrix<double, 3, 4>;
+using matx42d = matrix<double, 4, 2>;
+using matx43d = matrix<double, 4, 3>;
+using matx44d = matrix<double, 4, 4>;
 using matx22f = matrix<float, 2, 2>;
 using matx23f = matrix<float, 2, 3>;
 using matx24f = matrix<float, 2, 4>;
@@ -706,6 +715,9 @@ using matx34i = matrix<int, 3, 4>;
 using matx42i = matrix<int, 4, 2>;
 using matx43i = matrix<int, 4, 3>;
 using matx44i = matrix<int, 4, 4>;
+using vec2d   = vector<double, 2>;
+using vec3d   = vector<double, 3>;
+using vec4d   = vector<double, 4>;
 using vec2f   = vector<float, 2>;
 using vec3f   = vector<float, 3>;
 using vec4f   = vector<float, 4>;
