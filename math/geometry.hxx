@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * MIT License
  *
@@ -31,4 +32,4 @@
 
 namespace CPPHEADERS_NS_::math {
 
-}  // namespace CPPHEADERS_NS_::math
+}
