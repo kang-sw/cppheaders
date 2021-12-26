@@ -26,7 +26,7 @@
 
 #include "math/geometry.hxx"
 #include "math/matrix.hxx"
-#include "math/types.hxx"
+#include "math/rectangle.hxx"
 #include "third/doctest.h"
 
 using namespace cpph::math;
@@ -108,6 +108,7 @@ TEST_SUITE("math.rect")
 {
     TEST_CASE("arithmentic")
     {
+        using rect        = rectangle;
         constexpr rect s1 = {0, 0, 100, 100};
         constexpr rect s2 = rect::from_tl_br({50, 50}, {150, 150});
         static_assert((s1 & s2) == rect{50, 50, 50, 50});

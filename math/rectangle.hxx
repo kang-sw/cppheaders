@@ -133,6 +133,6 @@ class rectangle_
     value_type height;
 };
 
-using rect  = rectangle_<int>;
-using rectf = rectangle_<float>;
+using rectangle  = rectangle_<int>;
+using rectanglef = rectangle_<float>;
 }  // namespace CPPHEADERS_NS_::math
