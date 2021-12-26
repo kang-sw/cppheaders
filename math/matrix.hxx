@@ -90,7 +90,7 @@ class matrix
      * Construct matrix from row-majorly ordered values
      * @param values
      */
-    explicit constexpr matrix(array_view<const value_type> values) noexcept : value()
+    constexpr matrix(array_view<const value_type> values) noexcept : value()
     {
         for (int i = 0; i < length; ++i)
         {
@@ -98,9 +98,19 @@ class matrix
         }
     }
 
-    explicit constexpr matrix(value_type const& v) noexcept
+    constexpr matrix(value_type const& v) noexcept : value()
     {
         *this = v;
+    }
+
+    template <typename... Args_>
+    constexpr matrix(value_type const& v, Args_&&... args) noexcept : value()
+    {
+        static_assert(sizeof...(args) + 1 == length);
+        value[0] = v;
+
+        int n = 1;
+        ((value[n++] = std::forward<Args_>(args)), ...);
     }
 
     constexpr matrix(matrix const&) = default;
@@ -350,24 +360,26 @@ class matrix
     }
 
    public:  // aliases
-    const_reference x() const noexcept { return _vec_at<0>(); }
-    const_reference y() const noexcept { return _vec_at<1>(); }
-    const_reference z() const noexcept { return _vec_at<2>(); }
-    const_reference w() const noexcept { return _vec_at<3>(); }
-    reference x() noexcept { return _vec_at<0>(); }
-    reference y() noexcept { return _vec_at<1>(); }
-    reference z() noexcept { return _vec_at<2>(); }
-    reference w() noexcept { return _vec_at<3>(); }
+    constexpr const_reference x() const noexcept { return _vec_at<0>(); }
+    constexpr const_reference y() const noexcept { return _vec_at<1>(); }
+    constexpr const_reference z() const noexcept { return _vec_at<2>(); }
+    constexpr const_reference w() const noexcept { return _vec_at<3>(); }
+    constexpr reference x() noexcept { return _vec_at<0>(); }
+    constexpr reference y() noexcept { return _vec_at<1>(); }
+    constexpr reference z() noexcept { return _vec_at<2>(); }
+    constexpr reference w() noexcept { return _vec_at<3>(); }
 
-    const_reference width() const noexcept { return _vec_at<0>(); }
-    const_reference height() const noexcept { return _vec_at<1>(); }
-    reference width() noexcept { return _vec_at<0>(); }
-    reference height() noexcept { return _vec_at<1>(); }
+    constexpr const_reference width() const noexcept { return _vec_at<0>(); }
+    constexpr const_reference height() const noexcept { return _vec_at<1>(); }
+    constexpr reference width() noexcept { return _vec_at<0>(); }
+    constexpr reference height() noexcept { return _vec_at<1>(); }
 
-    const_reference u() const noexcept { return _vec_at<0>(); }
-    const_reference v() const noexcept { return _vec_at<1>(); }
-    reference u() noexcept { return _vec_at<0>(); }
-    reference v() noexcept { return _vec_at<1>(); }
+    constexpr const_reference u() const noexcept { return _vec_at<0>(); }
+    constexpr const_reference v() const noexcept { return _vec_at<1>(); }
+    constexpr reference u() noexcept { return _vec_at<0>(); }
+    constexpr reference v() noexcept { return _vec_at<1>(); }
+
+    constexpr value_type area() const noexcept { return width() * height(); }
 
    private:
     // arithmetic operations

@@ -87,3 +87,17 @@ TEST_SUITE("math.matrix")
         REQUIRE(normalize(s) == matx23i::zeros());
     }
 }
+
+TEST_SUITE("math.rect")
+{
+    TEST_CASE("arithmentic")
+    {
+        constexpr rect s1 = {0, 0, 100, 100};
+        constexpr rect s2 = rect::from_tl_br({50, 50}, {150, 150});
+        static_assert((s1 & s2) == rect{50, 50, 50, 50});
+        static_assert((s1 | s2) == rect{0, 0, 150, 150});
+        static_assert((s1 & s2).contains({75, 75}));
+        static_assert(not(s1 & s2).contains({25, 75}));
+        static_assert(not(s1 & s2).contains({55, 25}));
+    }
+}
