@@ -137,6 +137,7 @@ class queue_buffer_impl
             : _capacity{to_block_size(capacity)},
               _mem{buffer}
     {
+        memset(buffer, 0, capacity);
     }
 
     queue_buffer_impl() = default;
