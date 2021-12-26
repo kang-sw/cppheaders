@@ -42,3 +42,7 @@ if (TARGET nlohmann::json)
             nlohmann::json
     )
 endif ()
+
+if (MSVC)
+    add_compile_options(/utf-8)
+endif ()

@@ -90,7 +90,7 @@ TEST_SUITE("math.matrix")
     TEST_CASE("rodrigues")
     {
         auto s = vec3f::create(0, pi_v<>(), 0);
-        MESSAGE(rodrigues(s));
+        INFO(rodrigues(s));
         REQUIRE(rodrigues(rodrigues(s)) == s);
     }
 }
