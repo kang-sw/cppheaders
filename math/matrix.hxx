@@ -73,8 +73,8 @@ class matrix
     template <size_t Len_>
     using vector_type = matrix<value_type, Len_, 1>;
 
-    using row_type      = vector_type<num_cols>;
-    using column_type   = vector_type<num_rows>;
+    using row_type      = matx_type<1, num_cols>;
+    using column_type   = matx_type<num_rows, 1>;
     using diagonal_type = matx_type<short_dim, 1>;
 
    private:
@@ -341,11 +341,8 @@ class matrix
     }
 
     template <int SubR_, int SubC_>
-    matrix& update(int r, int c, matx_type<SubR_, SubC_> const& matx) noexcept
+    constexpr matrix& update(int r, int c, matx_type<SubR_, SubC_> const& matx) noexcept
     {
-        assert(0 <= r && r + SubR_ < Row_);
-        assert(0 <= c && c + SubC_ < Col_);
-
         for (int i = 0; i < SubR_; ++i)
             for (int j = 0; j < SubC_; ++j)
                 (*this)(r + i, c + j) = matx(i, j);
@@ -445,7 +442,11 @@ class matrix
     }
 
    public:
-    constexpr matrix operator-() const noexcept { return matrix{*this}._unary(std::negate<>{}); }
+    constexpr matrix operator-() const noexcept
+    {
+        return matrix{*this}._unary([](auto&& v) { return -v; });
+    }
+
     constexpr matrix operator+() const noexcept { return *this; }
     constexpr matrix operator+(matrix const& other) const noexcept { return matrix(*this) += other; }
     constexpr matrix operator-(matrix const& other) const noexcept { return matrix(*this) -= other; }
@@ -504,10 +505,16 @@ class matrix
         return matrix{*this} /= val;
     }
 
+    constexpr matrix&
+    operator*=(value_type const& val) noexcept
+    {
+        return _unary([&](auto&& v) { return v * val; });
+    }
+
     friend constexpr matrix
     operator*(value_type const& val, matrix const& mat) noexcept
     {
-        return matrix{mat}._unary([&](auto&& v) { return v * val; });
+        return matrix{mat} *= val;
     }
 
     friend constexpr matrix
@@ -543,7 +550,83 @@ class matrix
 
     constexpr matrix div(matrix const& other) const noexcept
     {
-        return matrix{*this}._binary(std::divides<>{}, other);
+        return matrix{*this}._binary([](auto&& a, auto&& b) { return a / b; }, other);
+    }
+
+   private:
+    constexpr void _swap_row(int r0, int r1) noexcept
+    {
+        auto _0 = row(r0);
+        auto _1 = row(r1);
+
+        update(r1, 0, _0);
+        update(r0, 0, _1);
+    }
+
+    constexpr void _scale_row(int r, value_type scale) noexcept
+    {
+        auto _0 = row(r);
+        _0 *= scale;
+        update(r, 0, _0);
+    }
+
+    constexpr void _scale_add(int r, row_type v, value_type scale) noexcept
+    {
+        auto _0 = row(r);
+        _0 += v * scale;
+        update(r, 0, _0);
+    }
+
+   public:
+    /**
+     * Invert matrix
+     *
+     * @param out
+     * @return false if there's no solution
+     */
+    constexpr matrix inv() const noexcept
+    {
+        auto R = eye();
+        auto s = *this;
+        auto c = 0;
+
+        for (; c < Col_;)
+        {
+            auto r = c;
+            for (; r < Row_ && s(r, c) == 0; ++r)
+                ;  // find non-zero leading coefficient
+
+            if (r == Row_)
+                continue;  // there's no non-zero leading coefficient
+
+            if (r != c)
+            {  // switch rows
+                s._swap_row(r, c);
+                R._swap_row(r, c);  // apply same on R
+                r = c;              // back to current cell
+            }
+
+            {
+                auto divider = Ty_(1) / s(r, c);
+                s._scale_row(r, divider);
+                R._scale_row(r, divider);
+            }
+
+            for (int r0 = 0; r0 < Row_; ++r0)
+            {
+                if (r0 == r) { continue; }
+
+                auto scale = -s(r0, c);
+                if (scale == 0) { continue; }
+
+                s._scale_add(r0, s.row(r), scale);
+                R._scale_add(r0, R.row(r), scale);
+            }
+
+            ++c;
+        }
+
+        return R;
     }
 
    public:

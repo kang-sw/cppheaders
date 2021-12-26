@@ -93,6 +93,15 @@ TEST_SUITE("math.matrix")
         INFO(rodrigues(s));
         REQUIRE(rodrigues(rodrigues(s)) == s);
     }
+
+    TEST_CASE("inv")
+    {
+        auto s           = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1);
+        constexpr auto k = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1).inv();
+        INFO(s.inv());
+        REQUIRE(s.inv().equals({0.2, 0.2, 0, -0.2, 0.3, 1, 0.2, -0.3, 0}, 1e-4));
+        REQUIRE((s.inv() * s).equals(matx33f::eye(), 1e-4));
+    }
 }
 
 TEST_SUITE("math.rect")
