@@ -56,6 +56,7 @@ class basic_poll_timer
         return check();
     }
 
+    // Check for intensive update call
     bool check() noexcept
     {
         auto now = clock_type::now();
@@ -66,6 +67,23 @@ class basic_poll_timer
 
             if (_tp < now)
                 _tp = now;  // prevent burst
+
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    // Check for sparse event call
+    bool check_sparse() noexcept
+    {
+        auto now = clock_type::now();
+        if (now > _tp)
+        {
+            _latest_dt = now - (_tp - _interval);
+            _tp        = now + _interval;
 
             return true;
         }
