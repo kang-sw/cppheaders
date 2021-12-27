@@ -96,7 +96,7 @@ struct _borrowed_range
     bool empty() const noexcept { return _begin == _end; }
 
     auto& front() const noexcept { return *_begin; }
-    auto& back() const noexcept { return *--_end; }
+    auto& back() const noexcept { return *(std::prev(_end, 1)); }
 };
 
 template <typename Begin_, typename End_>
