@@ -66,4 +66,8 @@
     using TYPE = CPPHEADERS_NS_::basic_key< \
             INTERNAL_CPPH_CONCAT(class LABEL0##CPPH_NAMESPACE0##TYPE##II, __LINE__)>
 
+/* "cleanup.hxx" **********************************************************************************/
+#define CPPH_FINALLY(Callable) \
+    auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = CPPHEADERS_NS_::cleanup(Callable)
+
 #endif
