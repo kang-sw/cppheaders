@@ -23,7 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <functional>
+#include <tuple>
 
 //
 #include "__namespace__.h"
@@ -210,5 +210,16 @@ struct has_binary_op
 
 template <class Opr_, class X_, class Y_ = X_>
 constexpr bool has_binary_op_v = has_binary_op<Opr_, X_, Y_>::type::value;
+
+//
+template <typename Ty_, typename Label_ = void>
+struct singleton
+{
+    Ty_& get() const noexcept
+    {
+        static Ty_ instance;
+        return instance;
+    }
+};
 
 }  // namespace CPPHEADERS_NS_
