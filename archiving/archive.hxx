@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2021-2022. Seungwoo Kang
+// Copyright (c) 2022. Seungwoo Kang
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,17 +22,4 @@
 //
 // project home: https://github.com/perfkitpp
 
-#undef CPPHEADERS_NS_
-
-#if __has_include("../__cppheaders_ns__.h")
-// Content of __cppheaders_ns__.h should be following:
-// #define CPPHEADERS_NS_ YOUR_NAMESPACE
-#    include "../__cppheaders_ns__.h"
-#else
-// for legacy compatibility
-#    define CPPHEADERS_NS_ KANGSW_TEMPLATE_NAMESPACE
-#endif
-
-#if _WIN32
-#    include <iso646.h>
-#endif
+#pragma once
