@@ -62,6 +62,7 @@
         {                                                           \
             namespace _ns = CPPHEADERS_NS_::archiving::detail;      \
                                                                     \
+            r = nlohmann::json::object();                           \
             CPPHEADERS_NS_::archiving::detail::visit_with_key(      \
                     INTERNAL_CPPHDRS_CONCAT(KEYARRAY_, __LINE__),   \
                     _ns::to_json_visitor(r),                        \
