@@ -218,7 +218,7 @@ class basic_event
     }
 
     template <typename Ptr_, typename Callable_>
-    handle add_auto_expire(Ptr_&& ptr, Callable_&& callable, event_priority priority = event_priority::last)
+    handle add_weak(Ptr_&& ptr, Callable_&& callable, event_priority priority = event_priority::last)
     {
         std::weak_ptr wptr{std::forward<Ptr_>(ptr)};
 

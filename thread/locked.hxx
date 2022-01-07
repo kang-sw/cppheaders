@@ -60,6 +60,10 @@ class locked
     };
 
    public:
+    using value_type = Ty_;
+    using lock_type  = Mutex_;
+
+   public:
     locked_reference lock()
     {
         return {&_value, std::unique_lock{_mut}};

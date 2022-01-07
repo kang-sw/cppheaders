@@ -258,4 +258,35 @@ auto bind_front(Callable_&& callable, Captures_&&... captures)
                     return std::apply(fn, tuple);
             };
 }
+
+/**
+ * Bind front callable with weak reference. Actual callable will be invoked
+ *  only when given weak reference is valid.
+ */
+template <class Callable_, typename Ptr_, typename... Captures_>
+auto bind_front_weak(Ptr_&& ref, Callable_&& callable, Captures_&&... captures)
+{
+    return
+            [wptr     = std::weak_ptr{std::forward<Ptr_>(ref)},
+             fn       = std::forward<Callable_>(callable),
+             captured = std::make_tuple(std::forward<Captures_>(captures)...)](
+                    auto&&... args) {
+                auto tuple = std::tuple_cat(
+                        std::move(captured),
+                        std::forward_as_tuple(std::forward<decltype(args)>(args)...));
+
+                if (auto anchor = wptr.lock(); anchor)
+                {
+                    if (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
+                        std::apply(fn, tuple);
+                    else
+                        return std::apply(fn, tuple);
+                }
+                else
+                {
+                    if (not std::is_same_v<void, decltype(std::apply(fn, tuple))>)
+                        return decltype(std::apply(fn, tuple)){};
+                }
+            };
+}
 }  // namespace CPPHEADERS_NS_
