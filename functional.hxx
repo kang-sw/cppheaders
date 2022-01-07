@@ -27,6 +27,7 @@
 #include <cstddef>
 #include <functional>
 
+#include "template_utils.hxx"
 //
 #include "__namespace__.h"
 
@@ -232,15 +233,6 @@ class function<Ret_(Args_...)>
 
 // Function utiltiies
 
-template <typename Tuple_>
-auto make_forwarded_tuple(Tuple_&& tup)
-{
-    return std::apply(
-            [](auto&&... args) {
-                return std::forward_as_tuple(std::forward<decltype(args)>()...);
-            });
-}
-
 /**
  * Bind callable with arguments in front of parameter list.
  * Function parameters will be delivered to backward
@@ -253,22 +245,17 @@ template <class Callable_, typename... Captures_>
 auto bind_front(Callable_&& callable, Captures_&&... captures)
 {
     return
-            [fn     = std::forward<Callable_>(callable),
-             tuples = std::make_tuple(std::forward<Captures_>(captures)...)](
+            [fn       = std::forward<Callable_>(callable),
+             captured = std::make_tuple(std::forward<Captures_>(captures)...)](
                     auto&&... args) {
-                auto apply_fn =
-                        [&, fn = std::move(fn)](auto&&... captured) {
-                            using invoke_result = std::invoke_result_t<Callable_, decltype(captured)..., decltype(args)...>;
-                            if constexpr (std::is_same_v<void, invoke_result>)
-                                std::invoke(fn, std::forward<decltype(captured)>(captured)..., std::forward<decltype(args)>(args)...);
-                            else
-                                return std::invoke(fn, std::forward<decltype(captured)>(captured)..., std::forward<decltype(args)>(args)...);
-                        };
+                auto tuple = std::tuple_cat(
+                        std::move(captured),
+                        std::forward_as_tuple(std::forward<decltype(args)>(args)...));
 
-                if constexpr (std::is_same_v<void, decltype(std::apply(apply_fn, std::move(tuples)))>)
-                    std::apply(apply_fn, std::move(tuples));
+                if (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
+                    std::apply(fn, tuple);
                 else
-                    return std::apply(apply_fn, std::move(tuples));
+                    return std::apply(fn, tuple);
             };
 }
 }  // namespace CPPHEADERS_NS_

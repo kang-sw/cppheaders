@@ -227,4 +227,15 @@ struct singleton
     }
 };
 
+// tuple utils
+template <typename Tuple_>
+auto make_forwarded_tuple(Tuple_&& tup)
+{
+    return std::apply(
+            [](auto&&... args) {
+                return std::forward_as_tuple(std::forward<decltype(args)>(args)...);
+            },
+            std::forward<Tuple_>(tup));
+}
+
 }  // namespace CPPHEADERS_NS_
