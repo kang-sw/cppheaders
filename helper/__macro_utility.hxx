@@ -146,7 +146,7 @@ constexpr auto from_json_visitor = [](auto&& r) {
         {
             auto it = r.find(key);
             if (it != r.end())
-                ((not var.has_value() && var.emplace(), 0), it->get_to(*var));
+                ((not var.has_value() && (var.emplace(), 0)), it->get_to(*var));
         }
         else
         {
