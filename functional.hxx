@@ -284,8 +284,10 @@ auto bind_front_weak(Ptr_&& ref, Callable_&& callable, Captures_&&... captures)
                 }
                 else
                 {
-                    if (not std::is_same_v<void, decltype(std::apply(fn, tuple))>)
-                        return decltype(std::apply(fn, tuple)){};
+                    if (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
+                        ;
+                    else
+                        return decltype(std::apply(fn, tuple))();
                 }
             };
 }
