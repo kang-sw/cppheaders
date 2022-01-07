@@ -217,6 +217,30 @@ class basic_event
         return handle{this, evt->id};
     }
 
+    template <typename Ptr_, typename Callable_>
+    handle add_auto_expire(Ptr_&& ptr, Callable_&& callable, event_priority priority = event_priority::last)
+    {
+        std::weak_ptr wptr{std::forward<Ptr_>(ptr)};
+
+        return add(
+                [wptr     = std::move(wptr),
+                 callable = std::forward<Callable_>(callable)](
+                        Args_... args)
+                        -> event_control {
+                    auto anchor = wptr.lock(); // Prevent anchor to be destroyed during function call
+                    if (not anchor) { return event_control::expire; }
+
+                    if constexpr (std::is_invocable_r_v<event_control, Callable_, Args_...>)
+                        return callable(args...);
+                    else if constexpr (std::is_invocable_v<Callable_, Args_...>)
+                        return callable(args...), event_control::ok;
+                    else if constexpr (std::is_invocable_r_v<event_control, Callable_>)
+                        return callable();
+                    else if constexpr (std::is_invocable_v<Callable_>)
+                        return callable(), event_control::ok;
+                });
+    }
+
     void priority(handle const& h, event_priority offset, uint64_t value = 0) noexcept
     {
         lock_guard _{_mtx};
