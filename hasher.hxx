@@ -103,7 +103,15 @@ struct basic_key
     operator bool() const noexcept { return value != 0; }
 
     template <typename Ty_>
-    constexpr static basic_key create(Ty_&& r) noexcept
+    [[deprecated("Use hash() instead")]]  //
+    constexpr static basic_key
+    create(Ty_&& r) noexcept
+    {
+        return {hasher::fnv1a_64(r)};
+    }
+
+    template <typename Ty_>
+    constexpr static basic_key hash(Ty_&& r) noexcept
     {
         return {hasher::fnv1a_64(r)};
     }
