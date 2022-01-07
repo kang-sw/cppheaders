@@ -34,11 +34,8 @@ struct lock_guard
 {
     enum
     {
-        nothrow_lockable = std::is_nothrow_invocable_v<decltype(&Mutex_::lock), Mutex_*>
-    };
-    enum
-    {
-        nothrow_unlockable = std::is_nothrow_invocable_v<decltype(&Mutex_::unlock), Mutex_*>
+        nothrow_lockable   = noexcept(std::declval<Mutex_>().lock()),
+        nothrow_unlockable = noexcept(std::declval<Mutex_>().unlock())
     };
 
     lock_guard(Mutex_& mtx) noexcept(nothrow_lockable) : _ref(mtx)
@@ -74,5 +71,9 @@ struct null_mutex
     void lock() noexcept {}
     void unlock() noexcept {}
 };
+
+static_assert(noexcept(std::declval<null_mutex>().lock()));
+static_assert(noexcept(std::declval<null_mutex>().try_lock()));
+static_assert(noexcept(std::declval<null_mutex>().unlock()));
 
 }  // namespace CPPHEADERS_NS_

@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include <memory>
 #include <tuple>
 
 //
@@ -103,6 +104,10 @@ make_iterable(Begin_&& begin, End_&& end) -> _borrowed_range<Begin_, End_>
 {
     return {std::forward<Begin_>(begin), std::forward<End_>(end)};
 }
+
+using shared_null = std::shared_ptr<nullptr_t>;
+using weak_null   = std::shared_ptr<nullptr_t>;
+inline shared_null make_null() { return std::make_shared<nullptr_t>(); }
 
 /**
  * Retrieve function signature's parameter list as tuple.
@@ -215,7 +220,7 @@ constexpr bool has_binary_op_v = has_binary_op<Opr_, X_, Y_>::type::value;
 template <typename Ty_, typename Label_ = void>
 struct singleton
 {
-    Ty_& get() const noexcept
+    static Ty_& get() noexcept
     {
         static Ty_ instance;
         return instance;
