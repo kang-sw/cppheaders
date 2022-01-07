@@ -135,6 +135,13 @@ class event_wait
         return _cvar.wait_until(lc, std::forward<TimePoint_>(time_point));
     }
 
+    template <typename CriticalOp_>
+    void critical_section(CriticalOp_&& op)
+    {
+        std::lock_guard _{_mtx};
+        op();
+    }
+
     auto lock() const { return ulock_type{_mtx}; }
 
    private:
