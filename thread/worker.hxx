@@ -59,6 +59,14 @@ class worker
         repeat_with_start([] {}, std::forward<Fn_>(loop_fn), std::forward<Args_>(args)...);
     }
 
+    template <typename Starter_, typename... Args_>
+    void start(Starter_&& fn, Args_&&... args)
+    {
+        shutdown();
+        _active.store(true);
+        _worker = std::thread{std::forward<Starter_>(fn), std::forward<Args_>(args)..., &_active};
+    }
+
     void stop()
     {
         _active.store(false);
