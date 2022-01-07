@@ -187,6 +187,18 @@ auto erase_if(Range_&& range, Pred_&& pred)
     return range.erase(iter, std::end(range));
 }
 
+template <typename Range_, typename Pred_>
+void erase_if_each(Range_&& map, Pred_&& pred)
+{
+    for (auto it = map.begin(); it != map.end();)
+    {
+        if (pred(*it))
+            it = map.erase(it);
+        else
+            ++it;
+    }
+}
+
 template <typename Set_, typename Key_>
 auto find_ptr(Set_&& set, Key_ const& key)
         -> decltype(&*set.find(key))
