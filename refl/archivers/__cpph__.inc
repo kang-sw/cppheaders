@@ -22,9 +22,4 @@
 //
 // project home: https://github.com/perfkitpp
 
-/**
- * Required sources for compilation
- *
- * DO NOT INCLUDE THIS FILE MORE THAN ONCE!
- */
-#include "refl/archivers/__cpph__.inc"
+#include "json.inc"

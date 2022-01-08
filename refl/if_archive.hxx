@@ -150,8 +150,11 @@ class if_writer
     virtual if_writer& object_push() = 0;
     virtual if_writer& object_pop()  = 0;
 
-    virtual if_writer& tuple_push() = 0;
-    virtual if_writer& tuple_pop()  = 0;
+    virtual if_writer& array_push() = 0;
+    virtual if_writer& array_pop()  = 0;
+
+    //! Check if next element will be archived as key.
+    virtual bool is_key_next() const = 0;
 };
 
 /**
@@ -162,6 +165,10 @@ struct read_error : archive_error
 };
 
 struct key_missing_error : read_error
+{
+};
+
+struct invalid_request : read_error
 {
 };
 
@@ -206,7 +213,15 @@ class if_reader
     virtual if_reader& operator>>(std::string& v) = 0;
     virtual if_reader& operator>>(binary_t& v)    = 0;
 
+    /**
+     * Move to key and join.
+     *
+     * @throw invalid_request if next sequence is not key
+     */
     virtual bool goto_key(std::string_view key) = 0;
+
+    //! Check if next element will be restored as key.
+    virtual bool is_key_next() const = 0;
 
     /**
      * to distinguish variable sized object's boundary.

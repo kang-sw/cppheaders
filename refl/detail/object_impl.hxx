@@ -138,6 +138,12 @@ struct property_info
     //! Set to default function
     std::function<void(void*)> set_to_default_fn;
 
+    //! unique id for this property.
+    int64_t unique_id = 0;
+
+    //! index of self
+    int index_self = 0;
+
    public:
     property_info() = default;
     property_info(
@@ -240,7 +246,7 @@ class object_descriptor
     // [optional]
     // list of keys. if this exists, this object indicate an object.
     // otherwise, array.
-    std::optional<std::map<std::string, size_t>> _keys;
+    std::optional<std::map<std::string, size_t, std::less<>>> _keys;
 
    private:
     /*  Transients  */
@@ -267,22 +273,47 @@ class object_descriptor
     /**
      * Retrieves data pointer from an object
      */
-    object_data_t* retrieve(object_data_t* data, property_info const& property) const;
+    object_data_t* retrieve(object_data_t* data, property_info const& property) const
+    {
+        assert(_props.at(property.index_self).unique_id == property.unique_id);
+        return (object_data_t*)((char*)data + property.offset);
+    }
+
+    /**
+     * Retrieves data pointer from an object
+     */
+    object_data_t const* retrieve(object_data_t const* data, property_info const& property) const
+    {
+        assert(_props.at(property.index_self).unique_id == property.unique_id);
+        return (object_data_t const*)((char const*)data + property.offset);
+    }
 
     /**
      * Retrieves property info from child of this object
      */
-    property_info const* property(object_data_t* parent, object_data_t* child);
+    size_t property(object_data_t* parent, object_data_t* child, hierarchy_append_fn const& append)
+    {
+        auto ofst = (char*)child - (char*)parent;
+        return _find_property(ofst, append);
+    }
 
     /**
      * Find property by string key
      */
-    property_info const* property(std::string_view key) const;
+    property_info const* property(std::string_view key) const
+    {
+        if (not _keys) { return nullptr; }  // this is not object.
+
+        auto ptr = perfkit::find_ptr(*_keys, key);
+        if (not ptr) { return nullptr; }
+
+        return &_props.at(ptr->second);
+    }
 
     /**
      * Get list of properties
      */
-    decltype(_props) const& properties() const;
+    decltype(_props) const& properties() const { return _props; }
 
     /**
      * Check if this is initialized object descriptor
@@ -300,16 +331,45 @@ class object_descriptor
     dynamic_object_ptr clone(object_data_t* parent);
 
    public:
-    void _archive_to(archive::if_writer*, object_data_t const*) const
+    void _archive_to(archive::if_writer* strm, object_data_t const* data) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _archive_to on them.
         // 3. if 'this' is object, first add key on archive before recurse.
 
-        // TODO
+        if (is_primitive())
+        {
+            _primitive()->archive(strm, data);
+        }
+        else if (is_object())
+        {
+            strm->object_push();
+            for (auto& [key, index] : *_keys)
+            {
+                assert(strm->is_key_next());
+                *strm << key;  // push key first
+
+                auto& prop = _props.at(index);
+                prop.descriptor()->_archive_to(strm, retrieve(data, prop));
+            }
+            strm->object_pop();
+        }
+        else if (is_tuple())
+        {
+            strm->array_push();
+            for (auto& prop : _props)
+            {
+                prop.descriptor()->_archive_to(strm, retrieve(data, prop));
+            }
+            strm->array_pop();
+        }
+        else
+        {
+            assert(("Invalid code path", false));
+        }
     }
 
-    void _restore_from(archive::if_reader*, object_data_t*) const
+    void _restore_from(archive::if_reader* strm, object_data_t*) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _restore_from on them.
@@ -351,6 +411,16 @@ class object_descriptor
         return descr->_find_property(offset - property.offset, append, ++depth);
     }
 
+    property_info const* _find_property(size_t offset) const
+    {
+        // find hierarchy shallowly
+        auto it = lower_bound(_offset_lookup, offset, [](auto& a, auto& b) { return a.first < b; });
+        if (it == _offset_lookup.end()) { return nullptr; }
+        if (it->first != offset) { return nullptr; }
+
+        return &_props.at(it->second);
+    }
+
    public:
     // Factory classes
 
@@ -381,6 +451,8 @@ class object_descriptor
          */
         object_descriptor create()
         {
+            static std::atomic_uint64_t unique_id_allocator;
+
             auto generated = *_current;
             auto lookup    = &generated._offset_lookup;
 
@@ -388,7 +460,11 @@ class object_descriptor
 
             size_t n = 0;
             for (auto& prop : generated._props)
-                lookup->emplace_back(std::make_pair(prop.offset, n++));
+            {
+                lookup->emplace_back(std::make_pair(prop.offset, n));
+                prop.unique_id  = ++unique_id_allocator;
+                prop.index_self = n++;
+            }
 
             // simply sort incrementally.
             std::sort(lookup->begin(), lookup->end());
