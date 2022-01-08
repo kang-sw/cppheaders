@@ -308,7 +308,7 @@ class object_descriptor
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _restore_from on them.
         // 3. if 'this' is object, first retrieve key from archive before recurse.
-        //    if
+        //    if target property is optional, ignore missing key
 
         // TODO
     }

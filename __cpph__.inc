@@ -1,4 +1,3 @@
-
 // MIT License
 //
 // Copyright (c) 2022. Seungwoo Kang
@@ -23,6 +22,9 @@
 //
 // project home: https://github.com/perfkitpp
 
-#pragma once
-#include "detail/object_impl.hxx"
-#include "detail/primitives.hxx"
+/**
+ * Required sources for compilation
+ *
+ * DO NOT INCLUDE THIS FILE MORE THAN ONCE!
+ */
+
