@@ -229,4 +229,8 @@ auto make_forwarded_tuple(Tuple_&& tup)
             std::forward<Tuple_>(tup));
 }
 
+// enable if
+template <bool Test_, typename Ty_ = void>
+constexpr auto enable_if_v() -> decltype(std::declval<std::enable_if_t<Test_, Ty_>>());
+
 }  // namespace CPPHEADERS_NS_
