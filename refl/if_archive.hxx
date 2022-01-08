@@ -27,6 +27,7 @@
 #include <stdexcept>
 #include <string_view>
 
+#include "../array_view.hxx"
 #include "../functional.hxx"
 #include "../template_utils.hxx"
 
@@ -38,12 +39,43 @@
  */
 namespace CPPHEADERS_NS_::archive {
 
+namespace error {
+
 /**
  * Common base class for archive errors
  */
-struct archive_error : std::exception
+struct archive_exception : std::exception
 {
+   private:
+    mutable std::string _message;
+
+   public:
+    archive_exception() = default;
+
+    explicit archive_exception(std::string message) noexcept
+            : _message(message) {}
+
+    archive_exception message(std::string_view content)
+    {
+        _setmsg(content);
+        return std::move(*this);
+    }
+
+    const char* what() const override
+    {
+        if (_message.empty()) { _setmsg(typeid(*this).name()); }
+        return _message.c_str();
+    }
+
+   private:
+    void _setmsg(std::string_view content) const
+    {
+        _message = "archive error: ";
+        _message += content;
+    }
 };
+
+}  // namespace error
 
 /**
  * Binary class
@@ -94,7 +126,7 @@ class binary_t : public std::vector<char>
  *  - returns number of bytes written successfully
  *  - throws write_error if stream status is erroneous
  */
-using stream_writer = perfkit::function<size_t(std::string_view ibuf)>;
+using stream_writer = function<size_t(array_view<char const> ibuf)>;
 
 /**
  * Read function requirements
@@ -102,14 +134,16 @@ using stream_writer = perfkit::function<size_t(std::string_view ibuf)>;
  *    - returns 0 if there's no more data available.
  *    - throws read_error if stream status is erroneous
  */
-using stream_reader = perfkit::function<int64_t(binary_t* obuf, size_t num_read)>;
+using stream_reader = function<int64_t(array_view<char> obuf)>;
 
+namespace error {
 /**
  *
  */
-struct write_error : archive_error
+struct writer_exception : archive_exception
 {
 };
+}  // namespace error
 
 /**
  * Stream writer
@@ -124,7 +158,7 @@ class if_writer
     virtual ~if_writer() = default;
 
    protected:
-    size_t write(std::string_view data) { return _wr(data); }
+    size_t write(array_view<char const> data) { return _wr(data); }
 
    public:
     virtual if_writer& operator<<(nullptr_t) = 0;
@@ -157,20 +191,35 @@ class if_writer
     virtual bool is_key_next() const = 0;
 };
 
+namespace error {
 /**
  * Generic exceptions
  */
-struct read_error : archive_error
+struct reader_exception : archive_exception
 {
 };
 
-struct key_missing_error : read_error
+struct finished_sequence : reader_exception
 {
 };
 
-struct invalid_request : read_error
+struct invalid_context : reader_exception
 {
 };
+
+struct parse_failed : reader_exception
+{
+};
+
+struct key_missing : parse_failed
+{
+    std::string key;
+};
+
+struct read_stream_error : reader_exception
+{
+};
+}  // namespace error
 
 /**
  * Stream reader
@@ -185,7 +234,10 @@ class if_reader
     virtual ~if_reader() = default;
 
    protected:
-    virtual size_t read(binary_t* obuf, size_t num_read);
+    size_t read(array_view<char> obuf)
+    {
+        return _rd(obuf);
+    }
 
    private:
     template <typename Target_, typename Ty_>
@@ -213,15 +265,31 @@ class if_reader
     virtual if_reader& operator>>(std::string& v) = 0;
     virtual if_reader& operator>>(binary_t& v)    = 0;
 
+    //! @throw parse_error next token is not valid target
+    virtual void object_enter() = 0;
+    virtual void array_enter()  = 0;
+
+    //! @throw invalid_request if current context is not given sequence
+    virtual void object_exit() = 0;
+    virtual void array_exit()  = 0;
+
+    //! check if next statement is null
+    virtual bool is_null_next() const = 0;
+
+    //!
+    virtual bool eof() = 0;
+
     /**
      * Move to key and join.
      *
-     * @throw invalid_request if next sequence is not key
+     * @throw invalid_request if current context is not key sequence
      */
-    virtual bool goto_key(std::string_view key) = 0;
+    virtual bool try_goto_key(std::string_view key) = 0;
 
     //! Check if next element will be restored as key.
     virtual bool is_key_next() const = 0;
+
+    //!
 
     /**
      * to distinguish variable sized object's boundary.
@@ -234,10 +302,13 @@ class if_reader
     virtual void next_hierarchy(int* level, int* id) = 0;
 
    public:
-    void require_key(std::string_view key)
+    /**
+     * Goto Key. must be in object key context, and key has to exist
+     */
+    void goto_key(std::string_view key)
     {
-        if (not goto_key(key))
-            throw key_missing_error{};
+        if (not try_goto_key(key))
+            throw error::key_missing{}.message(key);
     }
 };
 
