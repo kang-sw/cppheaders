@@ -190,7 +190,7 @@ class if_writer
     virtual if_writer& operator<<(float v) { return *this << (double)v; }
     virtual if_writer& operator<<(double v) = 0;
 
-    virtual if_writer& operator<<(std::string const& v) = 0;
+    virtual if_writer& operator<<(std::string_view v) = 0;
     virtual if_writer& operator<<(binary_t const& v)    = 0;
 
     virtual if_writer& object_push() = 0;

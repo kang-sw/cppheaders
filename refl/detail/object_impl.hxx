@@ -160,11 +160,13 @@ struct property_info
 /**
  *
  */
-enum class primitive_status
+enum class requirement_status_tag
 {
-    required,
-    optional_has_value,
-    optional_empty,
+    required = 0,
+    optional = 1,
+
+    optional_empty     = 1,  // assume default optional == empty
+    optional_has_value = 2,
 };
 
 /**
@@ -181,7 +183,10 @@ class if_primitive_manipulator
     /**
      * Archive to writer
      */
-    virtual void archive(archive::if_writer*, void const* pvdata) const = 0;
+    virtual void archive(archive::if_writer* strm, void const* pvdata) const
+    {
+        *strm << nullptr;
+    }
 
     /**
      * Restore from reader
@@ -195,9 +200,12 @@ class if_primitive_manipulator
      *
      * On tuple, empty optional object will be serialized as null.
      */
-    virtual primitive_status status(void const* pvdata) const noexcept
+    virtual requirement_status_tag status(void const* pvdata = nullptr) const noexcept
     {
-        return primitive_status::required;
+        // NOTE: IMPLEMENTATION REQUIREMENT:
+        //       - if 'pvdata' is empty, return 'required' or 'optional' as absolute type.
+        //       - if 'pvdata' is non-null, return 'required' or 'optional_*' as current status
+        return requirement_status_tag::required;
     }
 
     // TODO: logics for runtime reflection/dynamic object manipulation ...
@@ -265,10 +273,21 @@ class object_descriptor
     bool is_object() const noexcept { return _keys.has_value(); }
     bool is_tuple() const noexcept { return not is_primitive() && not is_object(); }
 
+    requirement_status_tag requirement_status(object_data_t const* data = nullptr) const noexcept
+    {
+        if (not is_primitive())
+            return requirement_status_tag::required;
+
+        return _primitive()->status(data);
+    }
+
     /**
      * Extent of this object
      */
-    size_t extent() const noexcept { return _extent; }
+    size_t extent() const noexcept
+    {
+        return _extent;
+    }
 
     /**
      * Retrieves data pointer from an object
@@ -341,42 +360,98 @@ class object_descriptor
         {
             _primitive()->archive(strm, data);
         }
-        else if (is_object())
-        {
-            strm->object_push();
-            for (auto& [key, index] : *_keys)
-            {
-                assert(strm->is_key_next());
-                *strm << key;  // push key first
-
-                auto& prop = _props.at(index);
-                prop.descriptor()->_archive_to(strm, retrieve(data, prop));
-            }
-            strm->object_pop();
-        }
-        else if (is_tuple())
-        {
-            strm->array_push();
-            for (auto& prop : _props)
-            {
-                prop.descriptor()->_archive_to(strm, retrieve(data, prop));
-            }
-            strm->array_pop();
-        }
         else
         {
-            assert(("Invalid code path", false));
+            if (is_object())
+            {
+                strm->object_push();
+                for (auto& [key, index] : *_keys)
+                {
+                    assert(strm->is_key_next());
+                    auto& prop = _props.at(index);
+
+                    auto child      = prop.descriptor();
+                    auto child_data = retrieve(data, prop);
+                    assert(child_data);
+
+                    if (auto status = child->requirement_status(child_data);
+                        status == requirement_status_tag::optional_empty)
+                    {
+                        continue;  // skip empty optional property
+                    }
+                    else
+                    {
+                        *strm << key;
+                        child->_archive_to(strm, child_data);
+                    }
+                }
+                strm->object_pop();
+            }
+            else if (is_tuple())
+            {
+                strm->array_push();
+                for (auto& prop : _props)
+                {
+                    auto child      = prop.descriptor();
+                    auto child_data = retrieve(data, prop);
+                    assert(child_data);
+
+                    if (auto status = child->requirement_status(child_data);
+                        status == requirement_status_tag::optional_empty)
+                    {
+                        // archive empty argument as null.
+                        *strm << nullptr;
+                    }
+                    else
+                    {
+                        child->_archive_to(strm, child_data);
+                    }
+                }
+                strm->array_pop();
+            }
+            else
+            {
+                assert(("Invalid code path", false));
+            }
         }
     }
 
-    void _restore_from(archive::if_reader* strm, object_data_t*) const
+    void _restore_from(archive::if_reader* strm, object_data_t* data) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _restore_from on them.
         // 3. if 'this' is object, first retrieve key from archive before recurse.
         //    if target property is optional, ignore missing key
 
-        // TODO
+        if (is_primitive())
+        {
+            _primitive()->restore(strm, data);
+        }
+        else if (is_object())
+        {
+            strm->object_enter();
+            for (auto& [key, index] : *_keys)
+            {
+                auto& prop      = _props.at(index);
+                auto descriptor = prop.descriptor();
+
+                prop.descriptor()->_restore_from(strm, retrieve(data, prop));
+            }
+            strm->object_exit();
+        }
+        else if (is_tuple())
+        {
+            strm->array_enter();
+            for (auto& prop : _props)
+            {
+                prop.descriptor()->_restore_from(strm, retrieve(data, prop));
+            }
+            strm->array_exit();
+        }
+        else
+        {
+            assert(("Invalid code path", false));
+        }
     }
 
    private:
@@ -575,15 +650,15 @@ inline std::string to_string(CPPHEADERS_NS_::refl::primitive_t t)
 {
     switch (t)
     {
-        case perfkit::refl::primitive_t::invalid: return "invalid";
-        case perfkit::refl::primitive_t::null: return "null";
-        case perfkit::refl::primitive_t::boolean: return "boolean";
-        case perfkit::refl::primitive_t::string: return "string";
-        case perfkit::refl::primitive_t::binary: return "binary";
-        case perfkit::refl::primitive_t::map: return "map";
-        case perfkit::refl::primitive_t::array: return "array";
-        case perfkit::refl::primitive_t::integer: return "integer";
-        case perfkit::refl::primitive_t::floating_point: return "floating_point";
+        case CPPHEADERS_NS_::refl::primitive_t::invalid: return "invalid";
+        case CPPHEADERS_NS_::refl::primitive_t::null: return "null";
+        case CPPHEADERS_NS_::refl::primitive_t::boolean: return "boolean";
+        case CPPHEADERS_NS_::refl::primitive_t::string: return "string";
+        case CPPHEADERS_NS_::refl::primitive_t::binary: return "binary";
+        case CPPHEADERS_NS_::refl::primitive_t::map: return "map";
+        case CPPHEADERS_NS_::refl::primitive_t::array: return "array";
+        case CPPHEADERS_NS_::refl::primitive_t::integer: return "integer";
+        case CPPHEADERS_NS_::refl::primitive_t::floating_point: return "floating_point";
         default: return "__NONE__";
     }
 }
