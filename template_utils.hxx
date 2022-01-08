@@ -233,4 +233,8 @@ auto make_forwarded_tuple(Tuple_&& tup)
 template <bool Test_, typename Ty_ = void>
 constexpr auto enable_if_v() -> decltype(std::declval<std::enable_if_t<Test_, Ty_>>());
 
+// constexpr declval
+template <typename Ty_>
+constexpr Ty_ declval();
+
 }  // namespace CPPHEADERS_NS_

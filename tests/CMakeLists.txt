@@ -11,6 +11,7 @@ add_executable(
         test-math.cpp
         test-archive.cpp
         test-thread.cpp
+        test-templates.cpp
 )
 
 target_compile_definitions(
