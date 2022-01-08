@@ -29,8 +29,7 @@
 // #define CPPHEADERS_NS_ YOUR_NAMESPACE
 #    include "../__cppheaders_ns__.h"
 #else
-// for legacy compatibility
-#    define CPPHEADERS_NS_ KANGSW_TEMPLATE_NAMESPACE
+#    define CPPHEADERS_NS_ cpph  // default namespace
 #endif
 
 #if _WIN32

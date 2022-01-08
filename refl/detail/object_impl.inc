@@ -23,6 +23,7 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include <algorithm>
 #include <functional>
 #include <map>
 #include <optional>
@@ -218,7 +219,6 @@ auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
 class object_descriptor
 {
    private:
-    friend class object_descriptor_factory;
     /*   Properties   */
 
     // extent of this object
@@ -226,7 +226,7 @@ class object_descriptor
 
     // property manipulator
     // if it's user defined object, it'll be nullptr.
-    std::function<if_primitive_manipulator*()> _manip = nullptr;
+    std::function<if_primitive_manipulator*()> _primitive = nullptr;
 
     // list of properties
     // properties are not incremental in memory address, as they are
@@ -236,7 +236,7 @@ class object_descriptor
     // [optional]
     // list of keys. if this exists, this object indicate an object.
     // otherwise, array.
-    std::map<std::string, size_t> _keys;
+    std::optional<std::map<std::string, size_t>> _keys;
 
    private:
     /*  Transients  */
@@ -251,7 +251,7 @@ class object_descriptor
     /**
      * Archive/Serialization will
      */
-    bool is_user_object() const noexcept { return _manip == nullptr; }
+    bool is_user_object() const noexcept { return _primitive == nullptr; }
 
     /**
      * Extent of this object
@@ -298,65 +298,99 @@ class object_descriptor
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _archive_to on them.
+        // 3. if 'this' is object, first add key on archive before recurse.
+
+        // TODO
     }
 
     void _restore_from(archive::if_reader*, object_data_t*) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _restore_from on them.
-        // 3. if it's
+        // 3. if 'this' is object, first retrieve key from archive before recurse.
+        //    if
+
+        // TODO
     }
 
    private:
-    property_info const* _find_property(size_t offset, size_t extent) const;
-};
-
-namespace descriptor {
-class basic_factory
-{
-   public:
-    virtual ~basic_factory() = default;
-
-   protected:
-    object_descriptor _current;
-
-   protected:
-    size_t add_property_impl(property_info info);
-
-   public:
-    /**
-     * Generate object descriptor instance.
-     * Sorts keys, build incremental offset lookup table, etc.
-     */
-    object_descriptor generate()
+    property_info const* _find_property(size_t offset, size_t extent) const
     {
-        // TODO: - set _intialized 'true'
-        //       - build offset lookup table
+        // TODO
+        // 1. find lower bound of given offet
+        // 2. if it does not match
     }
-};
 
-class primitive_factory : public basic_factory
-{
    public:
-    void setup(size_t extent, std::function<if_primitive_manipulator*()> func)
+    // Factory classes
+
+    class basic_factory
     {
-    }
-};
+       public:
+        virtual ~basic_factory() = default;
 
-class map_factory : public basic_factory
-{
-   public:
-    void start(size_t extent);
-    void add_property(std::string key, property_info info);
-};
+       protected:
+        std::unique_ptr<object_descriptor> _current
+                = std::make_unique<object_descriptor>();
 
-class tuple_factory : public basic_factory
-{
-   public:
-    void start(size_t extent);
-    void add_property(property_info info);
+       protected:
+        size_t add_property_impl(property_info info);
+
+       public:
+        /**
+         * Generate object descriptor instance.
+         * Sorts keys, build incremental offset lookup table, etc.
+         */
+        object_descriptor generate()
+        {
+            // TODO: - set _intialized 'true'
+            //       - build offset lookup table
+            auto generated = *_current;
+            auto lookup    = &generated._offset_lookup;
+
+            lookup->reserve(generated._props.size());
+
+            size_t n = 0;
+            for (auto& prop : generated._props)
+                lookup->emplace_back(std::make_pair(prop.offset, n++));
+
+            // simply sort incrementally.
+            std::sort(lookup->begin(), lookup->end());
+
+            // check for offset duplication
+            auto it_dup = std::adjacent_find(
+                    lookup->begin(), lookup->end(),
+                    [](auto& a, auto& b) { return a.first == b.first; });
+            if (it_dup != lookup->end()) { throw std::logic_error{"offset duplication!"}; }
+
+            return generated;
+        }
+    };
+
+    class primitive_factory : public basic_factory
+    {
+       public:
+        void setup(size_t extent, std::function<if_primitive_manipulator*()> func)
+        {
+            _current->_extent    = extent;
+            _current->_primitive = func;
+        }
+    };
+
+    class map_factory : public basic_factory
+    {
+       public:
+        void start(size_t extent);
+        void add_property(std::string key, property_info info);
+    };
+
+    class tuple_factory : public basic_factory
+    {
+       public:
+        void start(size_t extent);
+        void add_property(property_info info);
+    };
 };
-}  // namespace descriptor
 
 /**
  * Dump object to archive

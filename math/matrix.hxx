@@ -28,7 +28,6 @@
 #include <ostream>
 
 #include "../array_view.hxx"
-#include "../assert.hxx"
 #include "defs.hxx"
 
 //
@@ -180,13 +179,13 @@ class matrix
 
     auto& operator[](int index) const
     {
-        assertd_(0 <= index && index < num_rows);
+        assert(0 <= index && index < num_rows);
         return *(row_type const*)_get(index, 0);
     }
 
     auto& operator[](int index) noexcept
     {
-        assertd_(0 <= index && index < num_rows);
+        assert(0 <= index && index < num_rows);
         return *(row_type*)_get(index, 0);
     }
 
