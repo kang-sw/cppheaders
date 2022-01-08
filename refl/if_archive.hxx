@@ -207,7 +207,16 @@ class if_reader
     virtual if_reader& operator>>(binary_t& v)    = 0;
 
     virtual bool goto_key(std::string_view key) = 0;
-    virtual bool tuple_has_next()               = 0;
+
+    /**
+     * to distinguish variable sized object's boundary.
+     *
+     * level  < next_level                  := children opened.       KEEP
+     * level == next_level && id == next_id := hierarchy not changed. KEEP
+     * level == next_level && id != next_id := switched to unrelated. BREAK
+     * level >  next_level                  := switched to parent.    BREAK
+     */
+    virtual void next_hierarchy(int* level, int* id) = 0;
 
    public:
     void require_key(std::string_view key)

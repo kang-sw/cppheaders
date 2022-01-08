@@ -23,7 +23,6 @@
 //
 // project home: https://github.com/perfkitpp
 
-#include <algorithm>
 #include <functional>
 #include <map>
 #include <optional>
@@ -32,6 +31,7 @@
 #include <vector>
 
 #include "../../utility/singleton.hxx"
+#include "../algorithm.hxx"
 #include "../if_archive.hxx"
 
 //
@@ -122,7 +122,7 @@ struct dynamic_object_ptr
 };
 
 // alias
-using object_descriptor_fn = std::function<object_descriptor*()>;
+using object_descriptor_fn = std::function<object_descriptor const*()>;
 
 /**
  * Object's sub property info
@@ -219,6 +219,10 @@ auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
 class object_descriptor
 {
    private:
+    using hierarchy_append_fn = std::function<void(object_descriptor const*,
+                                                   property_info const*)>;
+
+   private:
     /*   Properties   */
 
     // extent of this object
@@ -226,7 +230,7 @@ class object_descriptor
 
     // property manipulator
     // if it's user defined object, it'll be nullptr.
-    std::function<if_primitive_manipulator*()> _primitive = nullptr;
+    std::function<if_primitive_manipulator*()> _primitive;
 
     // list of properties
     // properties are not incremental in memory address, as they are
@@ -251,7 +255,9 @@ class object_descriptor
     /**
      * Archive/Serialization will
      */
-    bool is_user_object() const noexcept { return _primitive == nullptr; }
+    bool is_primitive() const noexcept { return !!_primitive; }
+    bool is_object() const noexcept { return _keys.has_value(); }
+    bool is_tuple() const noexcept { return not is_primitive() && not is_object(); }
 
     /**
      * Extent of this object
@@ -314,11 +320,35 @@ class object_descriptor
     }
 
    private:
-    property_info const* _find_property(size_t offset, size_t extent) const
+    size_t _find_property(size_t offset, hierarchy_append_fn const& append, size_t depth = 0) const
     {
-        // TODO
         // 1. find lower bound of given offet
-        // 2. if it does not match
+        // 2. if offset value does not match exatly, check lower bound elem's type.
+        // 3. if type is object or tuple, dig in.
+        //    otherwise, it is incorrect access.
+        auto at = [this](auto&& pair) { return &_props.at(pair.second); };
+
+        auto it = lower_bound(_offset_lookup, std::make_pair(offset, ~size_t{}));
+        if (it == _offset_lookup.end()) { return ~size_t{}; }
+
+        // since second argument was given as ~size_t{}, it never hits exact value at once
+        if (it != _offset_lookup.begin()) { it--; }
+
+        // selected node's offset exceeds query -> invalid query
+        if (it->first > offset) { return ~size_t{}; };
+
+        // check for exact match
+        if (it->first == offset) { return append(this, at(*it)), depth; }
+
+        // otherwise, check for object/tuple
+        auto& property = *at(*it);
+        auto descr     = property.descriptor();
+
+        // primitive cannot have children
+        if (descr->is_primitive()) { return ~size_t{}; }
+
+        // do recurse
+        return descr->_find_property(offset - property.offset, append, ++depth);
     }
 
    public:
@@ -334,17 +364,23 @@ class object_descriptor
                 = std::make_unique<object_descriptor>();
 
        protected:
-        size_t add_property_impl(property_info info);
+        size_t add_property_impl(property_info info)
+        {
+            assert(not _current->_primitive);
+
+            auto index = _current->_props.size();
+            _current->_props.emplace_back(std::move(info));
+
+            return index;
+        }
 
        public:
         /**
          * Generate object descriptor instance.
          * Sorts keys, build incremental offset lookup table, etc.
          */
-        object_descriptor generate()
+        object_descriptor create()
         {
-            // TODO: - set _intialized 'true'
-            //       - build offset lookup table
             auto generated = *_current;
             auto lookup    = &generated._offset_lookup;
 
@@ -357,12 +393,14 @@ class object_descriptor
             // simply sort incrementally.
             std::sort(lookup->begin(), lookup->end());
 
-            // check for offset duplication
-            auto it_dup = std::adjacent_find(
-                    lookup->begin(), lookup->end(),
-                    [](auto& a, auto& b) { return a.first == b.first; });
-            if (it_dup != lookup->end()) { throw std::logic_error{"offset duplication!"}; }
+            assert("Offset duplication"
+                   && adjacent_find(
+                              *lookup, [](auto& a, auto& b) {
+                                  return a.first == b.first;
+                              })
+                              != lookup->end());
 
+            generated._initialized = true;  // set initialized
             return generated;
         }
     };
@@ -372,23 +410,45 @@ class object_descriptor
        public:
         void setup(size_t extent, std::function<if_primitive_manipulator*()> func)
         {
+            *_current = {};
+
             _current->_extent    = extent;
-            _current->_primitive = func;
+            _current->_primitive = std::move(func);
         }
     };
 
     class map_factory : public basic_factory
     {
        public:
-        void start(size_t extent);
-        void add_property(std::string key, property_info info);
+        void start(size_t extent)
+        {
+            *_current         = {};
+            _current->_extent = extent;
+            _current->_keys.emplace();
+        }
+
+        void add_property(std::string key, property_info info)
+        {
+            auto index  = add_property_impl(std::move(info));
+            auto is_new = _current->_keys->try_emplace(std::move(key), index).second;
+
+            assert("Key must be unique" && is_new);
+        }
     };
 
     class tuple_factory : public basic_factory
     {
        public:
-        void start(size_t extent);
-        void add_property(property_info info);
+        void start(size_t extent)
+        {
+            *_current         = {};
+            _current->_extent = extent;
+        }
+
+        void add_property(property_info info)
+        {
+            add_property_impl(std::move(info));
+        }
     };
 };
 

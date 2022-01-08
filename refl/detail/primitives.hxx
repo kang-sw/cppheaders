@@ -67,7 +67,7 @@ auto get_object_descriptor() -> object_sfinae_t<
     static object_descriptor desc = [] {
         object_descriptor::primitive_factory factory;
         factory.setup(sizeof(ValTy_), [] { return &manip; });
-        return factory.generate();
+        return factory.create();
     }();
 
     return &desc;
