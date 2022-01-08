@@ -80,7 +80,6 @@ class if_deserializer
     std::function<void(char const*, size_t)> read;
 
    public:
-
 };
 
 template <typename Type_>

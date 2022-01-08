@@ -26,6 +26,7 @@
 #include <memory>
 
 #include <functional.hxx>
+
 #include "../third/doctest.h"
 
 TEST_SUITE("functional")
@@ -33,8 +34,7 @@ TEST_SUITE("functional")
     TEST_CASE("compilation")
     {
         cpph::function<int(void)> s;
-        s = []
-        {
+        s = [] {
             return 1;
         };
 
@@ -42,8 +42,7 @@ TEST_SUITE("functional")
         CHECK(s.is_sbo());
 
         std::unique_ptr<int> ptr{new int{3}};
-        s = [ptr = std::move(ptr)]
-        {
+        s = [ptr = std::move(ptr)] {
             return *ptr;
         };
 
@@ -57,8 +56,7 @@ TEST_SUITE("functional")
         CHECK(d.is_sbo());
 
         s = std::function<int(void)>{
-                []
-                {
+                [] {
                     return 444;
                 }};
 
@@ -117,8 +115,7 @@ TEST_SUITE("functional")
         std::weak_ptr<int> w = s;
 
         cpph::function<int()> f{
-                [s = std::move(s)]
-                {
+                [s = std::move(s)] {
                     return s.use_count();
                 }};
 

@@ -227,7 +227,7 @@ class basic_event
                  callable = std::forward<Callable_>(callable)](
                         Args_... args)
                         -> event_control {
-                    auto anchor = wptr.lock(); // Prevent anchor to be destroyed during function call
+                    auto anchor = wptr.lock();  // Prevent anchor to be destroyed during function call
                     if (not anchor) { return event_control::expire; }
 
                     if constexpr (std::is_invocable_r_v<event_control, Callable_, Args_...>)

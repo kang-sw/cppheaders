@@ -103,7 +103,6 @@ class object_factory
 
 class array_factory
 {
-
 };
 
 template <typename Ty_>

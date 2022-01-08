@@ -10,6 +10,7 @@ add_executable(
         test-functional.cpp
         test-math.cpp
         test-archive.cpp
+        test-thread.cpp
 )
 
 target_compile_definitions(
