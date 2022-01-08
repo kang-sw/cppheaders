@@ -61,6 +61,18 @@ struct archive_exception : std::exception
         return std::move(*this);
     }
 
+    template <typename Str_, typename Arg0_, typename... Args_>
+    archive_exception message(Str_&& str, Arg0_&& arg0, Args_&&... args)
+    {
+        auto buflen = snprintf(nullptr, 0, str, arg0, args...);
+        _message.resize(buflen + 1);
+
+        snprintf(_message.data(), _message.size(), str, arg0, args...);
+        _message.pop_back();  // remove null character
+
+        return std::move(*this);
+    }
+
     const char* what() const override
     {
         if (_message.empty()) { _setmsg(typeid(*this).name()); }
