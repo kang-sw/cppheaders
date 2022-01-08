@@ -142,11 +142,11 @@ class if_writer
     virtual if_writer& operator<<(std::string const& v) = 0;
     virtual if_writer& operator<<(binary_t const& v)    = 0;
 
-    virtual if_writer& open_object()  = 0;
-    virtual if_writer& close_object() = 0;
+    virtual if_writer& object_push() = 0;
+    virtual if_writer& object_pop()  = 0;
 
-    virtual if_writer& open_array()  = 0;
-    virtual if_writer& close_array() = 0;
+    virtual if_writer& tuple_push() = 0;
+    virtual if_writer& tuple_pop()  = 0;
 };
 
 /**
@@ -202,7 +202,7 @@ class if_reader
     virtual if_reader& operator>>(binary_t& v)    = 0;
 
     virtual bool goto_key(std::string_view key) = 0;
-    virtual bool has_next()                     = 0;
+    virtual bool tuple_has_next()               = 0;
 
    public:
     void require_key(std::string_view key)

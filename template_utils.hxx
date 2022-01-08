@@ -217,15 +217,6 @@ template <class Opr_, class X_, class Y_ = X_>
 constexpr bool has_binary_op_v = has_binary_op<Opr_, X_, Y_>::type::value;
 
 //
-template <typename Ty_, typename Label_ = void>
-struct singleton
-{
-    static Ty_& get() noexcept
-    {
-        static Ty_ instance;
-        return instance;
-    }
-};
 
 // tuple utils
 template <typename Tuple_>
