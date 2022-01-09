@@ -40,6 +40,9 @@
  */
 namespace CPPHEADERS_NS_::archive {
 
+class if_writer;
+class if_reader;
+
 namespace error {
 
 /**
@@ -47,17 +50,33 @@ namespace error {
  */
 CPPH_DECLARE_EXCEPTION(archive_exception, basic_exception<archive_exception>);
 
-CPPH_DECLARE_EXCEPTION(writer_exception, archive_exception);
-
-CPPH_DECLARE_EXCEPTION(reader_exception, archive_exception);
-CPPH_DECLARE_EXCEPTION(finished_sequence, reader_exception);
-CPPH_DECLARE_EXCEPTION(invalid_context, reader_exception);
-CPPH_DECLARE_EXCEPTION(parse_failed, reader_exception);
-CPPH_DECLARE_EXCEPTION(read_stream_error, reader_exception);
-
-struct key_missing : reader_exception
+struct writer_exception : archive_exception
 {
-    explicit key_missing(const std::string& missing_key) : missing_key(missing_key) {}
+    if_writer* writer;
+    explicit writer_exception(if_writer* wr) : writer(wr) {}
+};
+
+CPPH_DECLARE_EXCEPTION(writer_invalid_context, writer_exception);
+
+struct reader_exception : archive_exception
+{
+    if_reader* reader;
+    explicit reader_exception(if_reader* rd) : reader(rd) {}
+};
+
+CPPH_DECLARE_EXCEPTION(reader_finished_sequence, reader_exception);
+CPPH_DECLARE_EXCEPTION(reader_invalid_context, reader_exception);
+CPPH_DECLARE_EXCEPTION(reader_parse_failed, reader_exception);
+CPPH_DECLARE_EXCEPTION(reader_read_stream_error, reader_exception);
+
+struct reader_key_missing : reader_exception
+{
+    explicit reader_key_missing(
+            if_reader* rd,
+            const std::string& missing_key)
+            : reader_exception(rd),
+              missing_key(missing_key) {}
+
     std::string missing_key;
 };
 
@@ -191,7 +210,7 @@ class if_writer : public if_archive_base
     stream_writer _wr;
 
    public:
-    explicit if_writer(stream_writer writer) noexcept : _wr{std::move(writer)} {}
+    explicit if_writer(stream_writer ostrm) noexcept : _wr{std::move(ostrm)} {}
     ~if_writer() override = default;
 
    protected:
@@ -207,6 +226,10 @@ class if_writer : public if_archive_base
      * Clear internal buffer state
      */
     void clear() { _err = {}; }
+
+   public:
+    template <typename ValTy_>
+    if_writer& dump(ValTy_ const&);
 
    public:
     virtual if_writer& operator<<(nullptr_t) = 0;
@@ -248,7 +271,7 @@ class if_reader : public if_archive_base
     stream_reader _rd;
 
    public:
-    explicit if_reader(stream_reader rd) noexcept : _rd(std::move(rd)) {}
+    explicit if_reader(stream_reader istrm) noexcept : _rd(std::move(istrm)) {}
     ~if_reader() override = default;
 
    protected:
@@ -268,6 +291,10 @@ class if_reader : public if_archive_base
         out = value;
         return *this;
     }
+
+   public:
+    template <typename ValTy_>
+    if_reader& restore(ValTy_& out);
 
    public:
     virtual if_reader& operator>>(nullptr_t) = 0;
@@ -330,7 +357,7 @@ class if_reader : public if_archive_base
     void goto_key(std::string_view key)
     {
         if (not try_goto_key(key))
-            throw error::key_missing{std::string{key}};
+            throw error::reader_key_missing{this, std::string{key}};
     }
 
     //! Check should break out of this object/array context

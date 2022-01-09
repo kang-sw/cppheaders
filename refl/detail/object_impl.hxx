@@ -99,7 +99,7 @@ struct object_view_t
     object_view_t(const object_descriptor* meta, object_data_t* data) : meta(meta), data(data) {}
 
     template <typename Ty_>
-    explicit object_view_t(Ty_* p) noexcept;
+    object_view_t(Ty_* p) noexcept;
 
    public:
     auto pair() const noexcept { return std::make_pair(meta, data); }
@@ -115,7 +115,7 @@ struct object_const_view_t
     object_const_view_t(const object_descriptor* meta, const object_data_t* data) : meta(meta), data(data) {}
 
     template <typename Ty_>
-    explicit object_const_view_t(Ty_ const* p) noexcept;
+    explicit object_const_view_t(Ty_ const& p) noexcept;
 
    public:
     auto pair() const noexcept { return std::make_pair(meta, data); }
@@ -890,7 +890,7 @@ object_view_t::object_view_t(Ty_* p) noexcept : data((object_data_t*)p)
 }
 
 template <typename Ty_>
-object_const_view_t::object_const_view_t(const Ty_* p) noexcept : data((object_data_t*)p)
+object_const_view_t::object_const_view_t(const Ty_& p) noexcept : data((object_data_t const*)&p)
 {
     meta = get_object_descriptor<Ty_>();
 }
@@ -898,7 +898,6 @@ object_const_view_t::object_const_view_t(const Ty_* p) noexcept : data((object_d
 }  // namespace CPPHEADERS_NS_::refl
 
 namespace std {
-
 inline std::string to_string(CPPHEADERS_NS_::refl::primitive_t t)
 {
     switch (t)
@@ -915,5 +914,22 @@ inline std::string to_string(CPPHEADERS_NS_::refl::primitive_t t)
         default: return "__NONE__";
     }
 }
-
 }  // namespace std
+
+namespace CPPHEADERS_NS_::archive {
+
+template <typename ValTy_>
+if_writer& if_writer::dump(ValTy_ const& in)
+{
+    refl::object_const_view_t view{in};
+    return *this << view;
+}
+
+template <typename ValTy_>
+if_reader& if_reader::restore(ValTy_& out)
+{
+    refl::object_view_t view{&out};
+    return *this >> view;
+}
+
+}  // namespace CPPHEADERS_NS_::archive

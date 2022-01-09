@@ -1,6 +1,7 @@
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/if_archive.hxx"
 #include "refl/object_core.hxx"
+#include "refl/buffer.hxx"
 #include "third/doctest.h"
 
 struct test_object
@@ -90,7 +91,12 @@ TEST_SUITE("Reflection")
 
     TEST_CASE("Archiving")
     {
-        
+        cpph::archive::obuffer(std::cout);
+        cpph::archive::if_writer* writer = nullptr;
+
+        test_object s;
+        perfkit::refl::get_object_descriptor<test_object>();
+        writer->dump(s);
     }
 }
 

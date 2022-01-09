@@ -24,9 +24,9 @@
 
 #pragma once
 #include <cassert>
-#include <cstdarg>
 #include <cstdio>
 #include <memory>
+#include <string>
 
 //
 #include "__namespace__.h"
@@ -46,16 +46,24 @@ struct _freleae
 /**
  * unsafe printf which returns thread-local storage
  */
-inline char const* usprintf(char const* fmt, ...)
+template <typename... Args_>
+inline char const* usprintf(char const* fmt, Args_&&... args)
 {
     thread_local static char buf[512] = {};
-
-    va_list va;
-    va_start(va, fmt);
-    vsnprintf(buf, sizeof buf - 1, fmt, va);
-    va_end(va);
+    snprintf(buf, sizeof buf - 1, fmt, args...);
 
     return buf;
+}
+
+template <typename... Args_>
+std::string ssprintf(char const* fmt, Args_&&... args)
+{
+    std::string str;
+    str.resize((size_t)snprintf(nullptr, 0, fmt, args...) + 1);
+    snprintf(str.data(), str.size(), fmt, args...);
+    str.pop_back();
+
+    return str;
 }
 
 struct file_not_exist : std::exception

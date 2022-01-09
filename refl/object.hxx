@@ -26,4 +26,4 @@
 #include "archive/binstream.hxx"
 #include "detail/primitives.hxx"
 #include "object_core.hxx"
-#include "stream_adapters.hxx"
+#include "buffer.hxx"

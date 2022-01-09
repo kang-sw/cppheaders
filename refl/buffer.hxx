@@ -33,9 +33,22 @@
 /**
  * Defines SAX-like interface for parsing / archiving
  */
-namespace CPPHEADERS_NS_::archive::stream {
+namespace CPPHEADERS_NS_::archive {
 
-stream_writer ostring(std::string* arg)
+template <typename StringLike_,
+          typename std::enable_if_t<
+                  not std::is_pointer_v<remove_cvr_t<StringLike_>>  //
+                  && sizeof(typename StringLike_::value_type) == 1  //
+                  >* = nullptr>
+stream_writer obuffer(StringLike_& out)
+{
+    return [&out](array_view<const char> obuf) {
+        out.insert(out.end(), obuf.begin(), obuf.end());
+        return obuf.size();
+    };
+}
+
+stream_writer obuffer(std::string* arg)
 {
     return [arg](array_view<const char> obuf) {
         arg->append(obuf.begin(), obuf.end());
@@ -43,19 +56,27 @@ stream_writer ostring(std::string* arg)
     };
 }
 
-stream_reader istring(std::string_view arg)
+template <typename ViewType_>
+stream_reader ibuffer(ViewType_&& view)
 {
+    auto arg = make_view(view);
+
     return [arg](array_view<char> ibuf) mutable {
         if (arg.empty()) { return eof; }
 
         size_t to_read = std::min(arg.size(), ibuf.size());
-        copy(arg.substr(0, to_read), ibuf.begin());
-        arg = arg.substr(to_read);
+        copy(arg.subspan(0, to_read), ibuf.begin());
+        arg = arg.subspan(to_read);
         return to_read;
     };
 }
 
-stream_writer ostream(std::ostream& arg)
+stream_reader ibuffer(void const* data, size_t len)
+{
+    return ibuffer(std::string_view{(char const*)data, len});
+}
+
+stream_writer obuffer(std::ostream& arg)
 {
     return [&arg](array_view<const char> obuf) {
         if (not arg || arg.eof()) { return eof; }
@@ -65,7 +86,7 @@ stream_writer ostream(std::ostream& arg)
     };
 }
 
-stream_reader istream(std::istream& arg)
+stream_reader ibuffer(std::istream& arg)
 {
     return [&arg](array_view<char> ibuf) {
         if (not arg || arg.eof()) { return int64_t(eof); }
