@@ -70,13 +70,13 @@ auto get_object_descriptor() -> object_sfinae_t<
         }
     } manip;
 
-    static object_descriptor desc = [] {
+    static auto desc = [] {
         object_descriptor::primitive_factory factory;
         factory.setup(sizeof(ValTy_), [] { return &manip; });
         return factory.create();
     }();
 
-    return &desc;
+    return &*desc;
 }
 
 }  // namespace CPPHEADERS_NS_::refl

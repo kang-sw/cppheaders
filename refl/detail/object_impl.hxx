@@ -157,14 +157,14 @@ struct property_info
     //! Object descriptor for this property
     object_descriptor_fn descriptor;
 
-    //! unique id for this property.
-    int64_t unique_id = 0;
-
     //! index of self
     int index_self = 0;
 
     //! name if this is used as key
     std::string_view name;
+
+   public:
+    object_descriptor const* _owner;
 
    public:
     property_info() = default;
@@ -337,18 +337,18 @@ class object_descriptor
     /**
      * Retrieves data pointer from an object
      */
-    object_data_t* retrieve(object_data_t* data, property_info const& property) const
+    object_data_t* retrieve_self(object_data_t* data, property_info const& property) const
     {
-        assert(_props.at(property.index_self).unique_id == property.unique_id);
+        assert(_props.at(property.index_self)._owner == property._owner);
         return (object_data_t*)((char*)data + property.offset);
     }
 
     /**
      * Retrieves data pointer from an object
      */
-    object_data_t const* retrieve(object_data_t const* data, property_info const& property) const
+    object_data_t const* retrieve_self(object_data_t const* data, property_info const& property) const
     {
-        assert(_props.at(property.index_self).unique_id == property.unique_id);
+        assert(_props.at(property.index_self)._owner == property._owner);
         return (object_data_t const*)((char const*)data + property.offset);
     }
 
@@ -429,7 +429,7 @@ class object_descriptor
                     auto& prop = _props.at(index);
 
                     auto child      = prop.descriptor();
-                    auto child_data = retrieve(data, prop);
+                    auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
                     if (auto status = child->requirement_status(child_data);
@@ -451,7 +451,7 @@ class object_descriptor
                 for (auto& prop : _props)
                 {
                     auto child      = prop.descriptor();
-                    auto child_data = retrieve(data, prop);
+                    auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
                     if (auto status = child->requirement_status(child_data);
@@ -528,7 +528,7 @@ class object_descriptor
 
                 auto& prop      = _props.at(index);
                 auto child      = prop.descriptor();
-                auto child_data = child->retrieve(data, prop);
+                auto child_data = child->retrieve_self(data, prop);
                 assert(child_data);
 
                 child->_restore_from(strm, child_data, context);
@@ -575,7 +575,7 @@ class object_descriptor
                     continue;
                 }
 
-                auto child_data = child->retrieve(data, prop);
+                auto child_data = child->retrieve_self(data, prop);
                 child->_restore_from(strm, child_data, context);
             }
         }
@@ -660,12 +660,13 @@ class object_descriptor
          * Generate object descriptor instance.
          * Sorts keys, build incremental offset lookup table, etc.
          */
-        object_descriptor create()
+        std::unique_ptr<object_descriptor> create()
         {
             static std::atomic_uint64_t unique_id_allocator;
 
-            auto generated = *_current;
-            auto lookup    = &generated._offset_lookup;
+            auto result     = std::make_unique<object_descriptor>(*_current);
+            auto& generated = *result;
+            auto lookup     = &generated._offset_lookup;
 
             lookup->reserve(generated._props.size());
 
@@ -676,8 +677,8 @@ class object_descriptor
             for (auto& prop : generated._props)
             {
                 lookup->emplace_back(std::make_pair(prop.offset, n));
-                prop.unique_id  = ++unique_id_allocator;
                 prop.index_self = n++;
+                prop._owner     = result.get();
 
 #ifndef NDEBUG
                 object_end = std::max(object_end, prop.offset + prop.descriptor()->extent());
@@ -698,7 +699,7 @@ class object_descriptor
                    && object_end <= generated.extent());
 
             generated._initialized = true;  // set initialized
-            return generated;
+            return result;
         }
     };
 

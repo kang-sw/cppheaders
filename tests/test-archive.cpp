@@ -35,7 +35,7 @@ auto get_object_descriptor()
                 .create();
     }();
 
-    return &instance;
+    return &*instance;
 }
 
 template <class T>
@@ -51,7 +51,7 @@ auto get_object_descriptor()
                 .create();
     }();
 
-    return &instance;
+    return &*instance;
 }
 
 template <class T>
@@ -66,7 +66,7 @@ auto get_object_descriptor()
                 .create();
     }();
 
-    return &instance;
+    return &*instance;
 }
 
 }  // namespace cpph::refl
@@ -76,13 +76,15 @@ TEST_SUITE("Reflection")
     TEST_CASE("Creation")
     {
         {
-            auto desc = perfkit::refl::get_object_descriptor<test_object>();
+            auto desc = cpph::refl::get_object_descriptor<test_object>();
             REQUIRE(desc->properties().size() == 3);
             REQUIRE(desc->is_object());
             REQUIRE(desc->extent() == sizeof(test_object));
+
+            auto prop = desc->property("b");
         }
         {
-            auto desc = perfkit::refl::get_object_descriptor<test_object_of_object>();
+            auto desc = cpph::refl::get_object_descriptor<test_object_of_object>();
             REQUIRE(desc->properties().size() == 3);
             REQUIRE(desc->is_object());
             REQUIRE(desc->extent() == sizeof(test_object_of_object));
