@@ -32,9 +32,18 @@
 #ifndef CPPHEADERS_REFL_OBJECT_MACROS
 #    define CPPHEADERS_REFL_OBJECT_MACROS
 
-#define CPPH_REFL_DECLARE_CLASS(ClassName)
+#    define CPPH_REFL_DECLARE(ClassName)                                  \
+        namespace CPPHEADERS_NS_::refl {                                  \
+        template <class TypeName_>                                        \
+        auto get_object_descriptor()                                      \
+                -> object_sfinae_t<std::is_same_v<TypeName_, ClassName>>; \
+        }
 
-#define CPPH_REFL_(ClassName)
+#    define CPPH_REFL_DEFINE_OBJECT(ClassName)
+
+#    define CPPH_REFL_DEFINE_TUPLE(ClassName)
+
+#    define CPPH_REFL_PROPERTY()
 
 #endif
 

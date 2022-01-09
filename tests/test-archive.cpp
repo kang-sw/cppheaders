@@ -1,6 +1,6 @@
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/if_archive.hxx"
-#include "refl/object.hxx"
+#include "refl/object_core.hxx"
 #include "third/doctest.h"
 
 struct test_object
@@ -22,6 +22,38 @@ struct test_tuple
     test_object_of_object a, b, c;
 };
 
+CPPH_REFL_DECLARE(test_object);
+CPPH_REFL_DECLARE(test_object_of_object);
+CPPH_REFL_DECLARE(test_tuple);
+
+TEST_SUITE("Reflection")
+{
+    TEST_CASE("Creation")
+    {
+        {
+            auto desc = cpph::refl::get_object_descriptor<test_object>();
+            REQUIRE(desc->properties().size() == 3);
+            REQUIRE(desc->is_object());
+            REQUIRE(desc->extent() == sizeof(test_object));
+
+            auto prop = desc->property("b");
+        }
+        {
+            auto desc = cpph::refl::get_object_descriptor<test_object_of_object>();
+            REQUIRE(desc->properties().size() == 3);
+            REQUIRE(desc->is_object());
+            REQUIRE(desc->extent() == sizeof(test_object_of_object));
+        }
+        {
+            auto desc = perfkit::refl::get_object_descriptor<test_tuple>();
+            REQUIRE(desc->properties().size() == 3);
+            REQUIRE(desc->is_tuple());
+            REQUIRE(desc->extent() == sizeof(test_tuple));
+        }
+    }
+}
+
+#include "refl/object.hxx"
 namespace cpph::refl {
 template <class T>
 auto get_object_descriptor()
@@ -70,30 +102,3 @@ auto get_object_descriptor()
 }
 
 }  // namespace cpph::refl
-
-TEST_SUITE("Reflection")
-{
-    TEST_CASE("Creation")
-    {
-        {
-            auto desc = cpph::refl::get_object_descriptor<test_object>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_object));
-
-            auto prop = desc->property("b");
-        }
-        {
-            auto desc = cpph::refl::get_object_descriptor<test_object_of_object>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_object_of_object));
-        }
-        {
-            auto desc = perfkit::refl::get_object_descriptor<test_tuple>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_tuple());
-            REQUIRE(desc->extent() == sizeof(test_tuple));
-        }
-    }
-}

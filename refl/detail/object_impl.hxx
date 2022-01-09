@@ -335,6 +335,11 @@ class object_descriptor
     }
 
     /**
+     * Retrieves data from property recursively.
+     */
+    object_data_t* retrieve(object_data_t* data, property_info const& property) const;
+
+    /**
      * Retrieves data pointer from an object
      */
     object_data_t* retrieve_self(object_data_t* data, property_info const& property) const
