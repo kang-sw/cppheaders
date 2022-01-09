@@ -25,6 +25,8 @@
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/buffer.hxx"
 #include "refl/object.hxx"
+
+#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #include "third/doctest.h"
 
 using namespace cpph;
@@ -41,12 +43,15 @@ struct inner_arg_1
 
 struct inner_arg_2
 {
-    inner_arg_1 rtt   = {};
-    nullptr_t nothing = nullptr;
+    inner_arg_1 rtt    = {};
+    nullptr_t nothing  = nullptr;
+    nullptr_t nothing2 = nullptr;
 };
 
 struct outer
 {
+    inner_arg_1 arg1;
+    inner_arg_2 arg2;
 };
 }  // namespace ns
 
@@ -64,7 +69,8 @@ TEST_SUITE("Archive")
     }
 }
 
-#define property_ CPPH_PROP_TUPLE
+#define property_  CPPH_PROP_TUPLE
+#define property2_ CPPH_PROP_OBJECT_AUTOKEY
 CPPH_REFL_DEFINE_TUPLE(ns::inner_arg_1)
 {
     return factory
@@ -79,11 +85,16 @@ CPPH_REFL_DEFINE_TUPLE(ns::inner_arg_1)
 CPPH_REFL_DEFINE_OBJECT(ns::inner_arg_2)
 {
     return factory
+            .property2_(nothing)
+            .property2_(rtt)
+            .property2_(nothing2)
             .create();
 };
 
 CPPH_REFL_DEFINE_OBJECT(ns::outer)
 {
     return factory
+            .property2_(arg1)
+            .property2_(arg2)
             .create();
 };

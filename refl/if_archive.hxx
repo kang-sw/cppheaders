@@ -57,6 +57,7 @@ struct writer_exception : archive_exception
 };
 
 CPPH_DECLARE_EXCEPTION(writer_invalid_context, writer_exception);
+CPPH_DECLARE_EXCEPTION(writer_invalid_state, writer_exception);
 
 struct reader_exception : archive_exception
 {
@@ -214,6 +215,11 @@ class if_writer : public if_archive_base
     ~if_writer() override = default;
 
    protected:
+    size_t write_str(std::string_view data)
+    {
+        return write(data);
+    }
+
     size_t write(array_view<char const> data)
     {
         size_t n_written = _wr(data);

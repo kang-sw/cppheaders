@@ -65,7 +65,7 @@ using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_d
                  ##__VA_ARGS__)
 
 #    define CPPH_PROP_OBJECT_AUTOKEY(VarName, ...) \
-        CPPH_PROP_OBJECT(                               \
+        CPPH_PROP_OBJECT(                          \
                 #VarName,                          \
                 VarName,                           \
                 ##__VA_ARGS__)
