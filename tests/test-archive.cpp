@@ -87,6 +87,11 @@ TEST_SUITE("Reflection")
             REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
         }
     }
+
+    TEST_CASE("Archiving")
+    {
+        
+    }
 }
 
 #include "refl/object.hxx"

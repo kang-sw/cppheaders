@@ -107,6 +107,8 @@ class binary_t : public std::vector<char>
     }
 };
 
+constexpr size_t eof = ~size_t{};
+
 /**
  * Write function requirements
  *  - returns number of bytes written successfully
