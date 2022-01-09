@@ -22,7 +22,7 @@
 //
 // project home: https://github.com/perfkitpp
 
-#include <catch2/catch_all.hpp>
+#include "catch.hpp"
 
 #include "refl/buffer.hxx"
 #include "refl/if_archive.hxx"

@@ -22,8 +22,4 @@
 //
 // project home: https://github.com/perfkitpp
 
-#define CPPHEADERS_IMPLEMENT_ASSERTIONS
-#include "assert.hxx"
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
+#include "third/catch.hpp"

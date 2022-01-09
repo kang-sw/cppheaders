@@ -24,7 +24,7 @@
 
 #include <vector>
 
-#include <catch2/catch_all.hpp>
+#include "catch.hpp"
 #include <memory/queue_allocator.hxx>
 
 TEST_CASE("overall", "[queue_allocator]")

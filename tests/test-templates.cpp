@@ -25,7 +25,7 @@
 
 #include <array>
 
-#include <catch2/catch_all.hpp>
+#include "catch.hpp"
 
 #include "macros.hxx"
 #include "template_utils.hxx"

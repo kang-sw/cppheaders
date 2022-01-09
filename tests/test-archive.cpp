@@ -22,7 +22,7 @@
 //
 // project home: https://github.com/perfkitpp
 
-#include "catch2/catch_all.hpp"
+#include "catch.hpp"
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/buffer.hxx"
 #include "refl/object.hxx"
@@ -62,7 +62,10 @@ CPPH_REFL_DECLARE(ns::outer);
 TEMPLATE_TEST_CASE("archive", "[.]", ns::inner_arg_1, ns::inner_arg_2, ns::outer)
 {
     archive::debug_string_writer writer{archive::obuffer(std::cout)};
+
+    std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
     writer.serialize(TestType{});
+
     std::cout.flush();
 }
 

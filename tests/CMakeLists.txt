@@ -36,13 +36,6 @@ target_include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
-target_link_libraries(
-        ${PROJECT_NAME}
-
-        PRIVATE
-        Catch2::Catch2WithMain
-)
-
 if (TARGET nlohmann::json)
     message("[${PROJECT_NAME}]: nlhomann::json found. linking dependency ...")
 

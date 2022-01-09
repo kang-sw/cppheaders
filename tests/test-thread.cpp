@@ -25,7 +25,7 @@
 #pragma once
 #include <future>
 
-#include <catch2/catch_all.hpp>
+#include "catch.hpp"
 
 #include "thread/local_async.hxx"
 

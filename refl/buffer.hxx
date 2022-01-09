@@ -25,7 +25,7 @@
 #pragma once
 #include <iostream>
 
-#include "../algorithm.hxx"
+#include "../algorithm/std.hxx"
 #include "if_archive.hxx"
 
 //

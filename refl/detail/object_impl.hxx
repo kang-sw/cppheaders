@@ -32,7 +32,7 @@
 #include <vector>
 
 #include "../../utility/singleton.hxx"
-#include "../algorithm.hxx"
+#include "../algorithm/std.hxx"
 #include "../counter.hxx"
 #include "../if_archive.hxx"
 
@@ -681,7 +681,7 @@ class object_descriptor
             for (auto& prop : generated._props)
             {
                 lookup->emplace_back(std::make_pair(prop.offset, n));
-                prop.index_self = n++;
+                prop.index_self = static_cast<int>(n++);
                 prop._owner     = result.get();
 
 #ifndef NDEBUG

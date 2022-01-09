@@ -123,7 +123,7 @@ class debug_string_writer : public if_writer
     {
         std::string buf;
         if (_nlevel() > 0)
-            buf.resize(_nlevel() * 2 - 1, ' ');
+            buf.resize(_nlevel() * 2, ' ');
 
         write_str(buf);
     }

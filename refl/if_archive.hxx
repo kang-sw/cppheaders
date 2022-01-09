@@ -289,12 +289,12 @@ class if_reader : public if_archive_base
     }
 
    private:
-    template <typename Target_, typename Ty_>
-    if_reader& _upcast(Ty_& out)
+    template <typename Target_, typename ValTy_>
+    if_reader& _upcast(ValTy_& out)
     {
         Target_ value;
         *this >> value;
-        out = value;
+        out = static_cast<ValTy_>(value);
         return *this;
     }
 

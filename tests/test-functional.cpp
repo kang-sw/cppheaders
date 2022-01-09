@@ -25,7 +25,7 @@
 #include <chrono>
 #include <memory>
 
-#include <catch2/catch_all.hpp>
+#include "catch.hpp"
 #include <functional.hxx>
 
 TEST_CASE("overall operation", "[functional]")

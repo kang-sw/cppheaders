@@ -22,8 +22,9 @@
 //
 // project home: https://github.com/perfkitpp
 
-#define CPPHEADERS_IMPLEMENT_ASSERTIONS
-#include "assert.hxx"
+#pragma once
+#include "primitives.hxx"
 
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
+namespace CPPHEADERS_NS_::refl {
+
+}

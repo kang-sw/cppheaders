@@ -27,7 +27,7 @@
 #include <dynamic_array.hxx>
 #include <helper/nlohmann_json_macros.hxx>
 
-#include "catch2/catch_all.hpp"
+#include "catch.hpp"
 
 using namespace std::literals;
 
