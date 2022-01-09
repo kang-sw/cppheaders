@@ -157,24 +157,22 @@ struct property_info
     //! Object descriptor for this property
     object_descriptor_fn descriptor;
 
-    //! Set to default function
-    std::function<void(void*)> set_to_default_fn;
-
     //! unique id for this property.
     int64_t unique_id = 0;
 
     //! index of self
     int index_self = 0;
 
+    //! name if this is used as key
+    std::string_view name;
+
    public:
     property_info() = default;
     property_info(
             size_t offset,
-            object_descriptor_fn descriptor,
-            std::function<void(void*)> set_to_default_fn)
+            object_descriptor_fn descriptor)
             : offset(offset),
-              descriptor(std::move(descriptor)),
-              set_to_default_fn(std::move(set_to_default_fn))
+              descriptor(std::move(descriptor))
     {
     }
 };
@@ -256,6 +254,15 @@ using object_sfinae_overload_t = object_sfinae_t<std::is_same_v<A_, B_>>;
 
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
+
+/**
+ * Get object descriptor getter
+ */
+template <typename Ty_>
+object_descriptor_fn default_object_descriptor_fn()
+{
+    return [] { return get_object_descriptor<Ty_>(); };
+}
 
 /**
  * Object descriptor, which can manipulate random object.
@@ -625,7 +632,10 @@ class object_descriptor
     class basic_factory
     {
        public:
-        virtual ~basic_factory() = default;
+        virtual ~basic_factory() noexcept       = default;
+        basic_factory() noexcept                = default;
+        basic_factory(basic_factory&&) noexcept = default;
+        basic_factory& operator=(basic_factory&&) noexcept = default;
 
        protected:
         std::unique_ptr<object_descriptor> _current
@@ -706,55 +716,112 @@ class object_descriptor
         }
     };
 
-    class object_factory : public basic_factory
+    template <typename Ty_>
+    class object_factory_base : public basic_factory
     {
+       private:
+        Ty_& _self()
+        {
+            return static_cast<Ty_&>(*this);
+        }
+
        public:
-        object_factory& start(size_t extent)
+        template <typename Class_>
+        static Ty_ define()
+        {
+            Ty_ factory;
+            factory.start(sizeof(Class_));
+
+            // TODO: add construct/move/copy/invoke manipulators ...
+            //       DESIGN HOW TO DO IT!
+
+            return factory;
+        }
+
+       public:
+        virtual Ty_& start(size_t extent)
         {
             *_current         = {};
             _current->_extent = extent;
-            _current->_keys.emplace();
 
+            return _self();
+        }
+
+       protected:
+        template <typename Class_, typename MemVar_>
+        static property_info create_property_info(MemVar_ Class_::*mem_ptr)
+        {
+            property_info info;
+            info.descriptor = default_object_descriptor_fn<MemVar_>();
+            info.offset     = reinterpret_cast<size_t>(
+                    &(reinterpret_cast<Class_ const volatile*>(NULL)->*mem_ptr));
+
+            return info;
+        }
+    };
+
+    class object_factory : public object_factory_base<object_factory>
+    {
+        using super = object_factory_base<object_factory>;
+
+       public:
+        object_factory& start(size_t extent) override
+        {
+            object_factory_base::start(extent);
+            _current->_keys.emplace();
             return *this;
         }
 
         object_factory& add_property(std::string key, property_info info)
         {
-            auto index  = add_property_impl(std::move(info));
-            auto is_new = _current->_keys->try_emplace(std::move(key), index).second;
-
+            auto index          = add_property_impl(std::move(info));
+            auto [pair, is_new] = _current->_keys->try_emplace(std::move(key), index);
             assert("Key must be unique" && is_new);
+
+            // register property name
+            _current->_props[index].name = pair->first;
+
             return *this;
+        }
+
+        template <typename Class_, typename MemVar_>
+        auto& property(std::string key, MemVar_ Class_::*mem_ptr)
+        {
+            auto info = create_property_info(mem_ptr);
+            return add_property(std::move(key), std::move(info));
         }
     };
 
-    class tuple_factory : public basic_factory
+    class tuple_factory : public object_factory_base<tuple_factory>
     {
+        using super = object_factory_base<object_factory>;
+
        public:
-        tuple_factory& start(size_t extent)
-        {
-            *_current         = {};
-            _current->_extent = extent;
-
-            return *this;
-        }
-
         tuple_factory& add_property(property_info info)
         {
             add_property_impl(std::move(info));
 
             return *this;
         }
+
+        template <typename Class_, typename MemVar_>
+        auto& property(std::string key, MemVar_ Class_::*mem_ptr)
+        {
+            return add_property(create_property_info(mem_ptr));
+        }
     };
 };
 
-/**
- * Get object descriptor getter
- */
-template <typename Ty_>
-object_descriptor_fn default_object_descriptor_fn()
+template <typename Class_>
+auto define_object()
 {
-    return [] { return get_object_descriptor<Ty_>(); };
+    return object_descriptor::object_factory::define<Class_>();
+}
+
+template <typename Class_>
+auto define_tuple()
+{
+    return object_descriptor::object_factory::define<Class_>();
 }
 
 /**

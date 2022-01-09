@@ -23,7 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "object.hxx"
+#include "object_core.hxx"
 
 /**
  * Set of helper methods to manipulate object

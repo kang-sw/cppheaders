@@ -1,3 +1,4 @@
+
 // MIT License
 //
 // Copyright (c) 2022. Seungwoo Kang
@@ -23,7 +24,35 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "archive/binstream.hxx"
-#include "detail/primitives.hxx"
-#include "object_core.hxx"
-#include "stream_adapters.hxx"
+#include "detail/object_impl.hxx"
+
+/**
+ * All macros must be placed in global namespace!
+ */
+#ifndef CPPHEADERS_REFL_OBJECT_MACROS
+#    define CPPHEADERS_REFL_OBJECT_MACROS
+
+#define CPPH_REFL_DECLARE_CLASS(ClassName)
+
+#define CPPH_REFL_(ClassName)
+
+#endif
+
+/*
+namespace cpph::refl {
+template <class T>
+auto get_object_descriptor()
+        -> cpph::refl::object_sfinae_t<std::is_same_v<T, test_object>>
+{
+    static auto instance = [] {
+        return object_descriptor::object_factory{}
+                .start(sizeof(test_object))
+                .add_property("a", {offsetof(test_object, a), default_object_descriptor_fn<int>(), [](void*) {}})
+                .add_property("b", {offsetof(test_object, b), default_object_descriptor_fn<int>(), [](void*) {}})
+                .add_property("c", {offsetof(test_object, c), default_object_descriptor_fn<int>(), [](void*) {}})
+                .create();
+    }();
+
+return &instance;
+}
+ */

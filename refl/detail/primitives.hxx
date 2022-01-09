@@ -24,6 +24,11 @@
 
 //
 #pragma once
+#include <map>
+#include <optional>
+#include <set>
+#include <variant>
+
 #include "object_impl.hxx"
 
 //
@@ -72,14 +77,6 @@ auto get_object_descriptor() -> object_sfinae_t<
     }();
 
     return &desc;
-}
-
-inline void compile_test()
-{
-    get_object_descriptor<bool>();
-    get_object_descriptor<int>();
-    get_object_descriptor<double>();
-    get_object_descriptor<std::string>();
 }
 
 }  // namespace CPPHEADERS_NS_::refl
