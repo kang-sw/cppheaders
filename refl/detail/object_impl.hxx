@@ -40,6 +40,11 @@
 namespace CPPHEADERS_NS_::refl {
 using binary_t = archive::binary_t;
 
+namespace error {
+CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
+
+}  // namespace error
+
 /**
  * List of available property formats
  */
@@ -367,8 +372,11 @@ class object_descriptor
                 strm->object_push();
                 for (auto& [key, index] : *_keys)
                 {
-                    assert(strm->is_key_next());
-                    auto& prop = _props.at(index);
+                    if (not strm->is_key_next())
+                        throw archive::error::
+
+                                auto& prop
+                                = _props.at(index);
 
                     auto child      = prop.descriptor();
                     auto child_data = retrieve(data, prop);
@@ -433,9 +441,19 @@ class object_descriptor
             for (auto& [key, index] : *_keys)
             {
                 auto& prop      = _props.at(index);
-                auto descriptor = prop.descriptor();
+                auto child      = prop.descriptor();
+                auto child_data = retrieve(data, prop);
+                assert(child_data);
 
-                prop.descriptor()->_restore_from(strm, retrieve(data, prop));
+                if (child->requirement_status() == requirement_status_tag::required)
+                {
+                    strm->goto_key(key);
+                }
+                else
+                {
+                }
+
+                prop.descriptor()->_restore_from(strm, child_data);
             }
             strm->object_exit();
         }
