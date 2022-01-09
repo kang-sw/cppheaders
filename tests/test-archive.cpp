@@ -22,12 +22,10 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include "catch2/catch_all.hpp"
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/buffer.hxx"
 #include "refl/object.hxx"
-
-#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
-#include "third/doctest.h"
 
 using namespace cpph;
 
@@ -46,6 +44,8 @@ struct inner_arg_2
     inner_arg_1 rtt    = {};
     nullptr_t nothing  = nullptr;
     nullptr_t nothing2 = nullptr;
+
+    int ints[3] = {1, 23, 4};
 };
 
 struct outer
@@ -59,14 +59,11 @@ CPPH_REFL_DECLARE(ns::inner_arg_1);
 CPPH_REFL_DECLARE(ns::inner_arg_2);
 CPPH_REFL_DECLARE(ns::outer);
 
-TEST_SUITE("Archive")
+TEMPLATE_TEST_CASE("archive", "[.]", ns::inner_arg_1, ns::inner_arg_2, ns::outer)
 {
-    TEST_CASE("Default Writer")
-    {
-        archive::debug_string_writer writer{archive::obuffer(std::cout)};
-        writer.serialize(ns::outer{});
-        std::cout.flush();
-    }
+    archive::debug_string_writer writer{archive::obuffer(std::cout)};
+    writer.serialize(TestType{});
+    std::cout.flush();
 }
 
 #define property_  CPPH_PROP_TUPLE
@@ -88,6 +85,7 @@ CPPH_REFL_DEFINE_OBJECT(ns::inner_arg_2)
             .property2_(nothing)
             .property2_(rtt)
             .property2_(nothing2)
+            .property2_(ints)
             .create();
 };
 

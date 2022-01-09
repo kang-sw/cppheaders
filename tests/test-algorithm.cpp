@@ -27,7 +27,7 @@
 #include <dynamic_array.hxx>
 #include <helper/nlohmann_json_macros.hxx>
 
-#include "../third/doctest.h"
+#include "catch2/catch_all.hpp"
 
 using namespace std::literals;
 
@@ -53,86 +53,80 @@ static void identical(char const (&S)[N_], std::string_view enc)
     CHECK(std::equal(std::begin(str), std::end(str), decoded.begin(), decoded.end()));
 }
 
-TEST_SUITE("base64")
+TEST_CASE("base64 correctly converted", "base64")
 {
-    TEST_CASE("verify")
-    {
-        identical("E1L",
-                  "RTFM");
+    identical("E1L",
+              "RTFM");
 
-        identical("fsadvcxlwerlwajkrlsjbl;afaewrqweqsa12321ewq",
-                  "ZnNhZHZjeGx3ZXJsd2Fqa3Jsc2pibDthZmFld3Jxd2Vxc2ExMjMyMWV3cQ==");
+    identical("fsadvcxlwerlwajkrlsjbl;afaewrqweqsa12321ewq",
+              "ZnNhZHZjeGx3ZXJsd2Fqa3Jsc2pibDthZmFld3Jxd2Vxc2ExMjMyMWV3cQ==");
 
-        identical("cvxzvsdafwea",
-                  "Y3Z4enZzZGFmd2Vh");
+    identical("cvxzvsdafwea",
+              "Y3Z4enZzZGFmd2Vh");
 
-        // disable due to encoding
-        //        identical("lkqwlem1284v.,zㅊㄴㅁ213s1",
-        //                  "bGtxd2xlbTEyODR2Lix644WK44S044WBMjEzczE=");
-    }
+    // disable due to encoding
+    //        identical("lkqwlem1284v.,zㅊㄴㅁ213s1",
+    //                  "bGtxd2xlbTEyODR2Lix644WK44S044WBMjEzczE=");
 }
 
 #if __has_include("nlohmann/json.hpp")
 
-TEST_SUITE("json-macro-helper")
+struct my_serialized
 {
-    struct my_serialized
-    {
-        std::string s;
-        std::optional<int> k;
+    std::string s;
+    std::optional<int> k;
 
-        CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
-                my_serialized,
-                s,
-                k);
-    };
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            my_serialized,
+            s,
+            k);
+};
 
+TEST_CASE("json macro helper operation", "[helper]")
+{
     struct k
     {
         int dd;
     };
 
-    TEST_CASE("verify")
-    {
-        using namespace cpph::archiving;
-        static constexpr char cands[] = "a, dd,  vc, fewa , rq_w1141";
-        static_assert(detail::_count_words<cands>() == 5);
+    using namespace cpph::archiving;
+    static constexpr char cands[] = "a, dd,  vc, fewa , rq_w1141";
+    static_assert(detail::_count_words<cands>() == 5);
 
-        static_assert(detail::break_VA_ARGS<cands>()[0] == "a"sv);
-        static_assert(detail::break_VA_ARGS<cands>()[1] == "dd"sv);
-        static_assert(detail::break_VA_ARGS<cands>()[2] == "vc"sv);
-        static_assert(detail::break_VA_ARGS<cands>()[3] == "fewa"sv);
-        static_assert(detail::break_VA_ARGS<cands>()[4] == "rq_w1141"sv);
+    static_assert(detail::break_VA_ARGS<cands>()[0] == "a"sv);
+    static_assert(detail::break_VA_ARGS<cands>()[1] == "dd"sv);
+    static_assert(detail::break_VA_ARGS<cands>()[2] == "vc"sv);
+    static_assert(detail::break_VA_ARGS<cands>()[3] == "fewa"sv);
+    static_assert(detail::break_VA_ARGS<cands>()[4] == "rq_w1141"sv);
 
-        my_serialized a;
-        a.s = "hello!";
+    my_serialized a;
+    a.s = "hello!";
 
-        nlohmann::json v;
-        REQUIRE_NOTHROW(v = a);
-        REQUIRE(v.contains("s"));
-        CHECK(v.at("s") == "hello!");
+    nlohmann::json v;
+    REQUIRE_NOTHROW(v = a);
+    REQUIRE(v.contains("s"));
+    CHECK(v.at("s") == "hello!");
 
-        CHECK(not v.contains("k"));
+    CHECK(not v.contains("k"));
 
-        a.k = 14;
-        REQUIRE_NOTHROW(v = a);
+    a.k = 14;
+    REQUIRE_NOTHROW(v = a);
 
-        REQUIRE(v.contains("k"));
-        CHECK(v.at("k") == 14);
+    REQUIRE(v.contains("k"));
+    CHECK(v.at("k") == 14);
 
-        my_serialized b;
+    my_serialized b;
 
-        v = {};
-        REQUIRE_THROWS(v.get_to(b));
+    v = {};
+    REQUIRE_THROWS(v.get_to(b));
 
-        v["s"] = "vvarr";
-        REQUIRE_NOTHROW(v.get_to(b));
-        CHECK(b.s == "vvarr");
+    v["s"] = "vvarr";
+    REQUIRE_NOTHROW(v.get_to(b));
+    CHECK(b.s == "vvarr");
 
-        v["k"] = 1;
-        REQUIRE_NOTHROW(v.get_to(b));
-        CHECK(b.s == "vvarr");
-        CHECK(b.k == 1);
-    }
+    v["k"] = 1;
+    REQUIRE_NOTHROW(v.get_to(b));
+    CHECK(b.s == "vvarr");
+    CHECK(b.k == 1);
 }
 #endif

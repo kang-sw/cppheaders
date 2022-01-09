@@ -24,6 +24,7 @@
 
 #pragma once
 #include "archive/binstream.hxx"
+#include "buffer.hxx"
+#include "detail/containers.hxx"
 #include "detail/primitives.hxx"
 #include "object_core.hxx"
-#include "buffer.hxx"

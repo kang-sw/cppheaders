@@ -22,10 +22,11 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include <catch2/catch_all.hpp>
+
 #include "refl/buffer.hxx"
 #include "refl/if_archive.hxx"
 #include "refl/object_core.hxx"
-#include "third/doctest.h"
 
 struct test_object
 {
@@ -74,42 +75,39 @@ CPPH_REFL_DECLARE(test_object_2);
 CPPH_REFL_DECLARE(test_macro_expr_1);
 CPPH_REFL_DECLARE(test_macro_expr_2);
 
-TEST_SUITE("Reflection")
+TEST_CASE("creation", "[reflection]")
 {
-    TEST_CASE("Creation")
     {
-        {
-            auto desc = cpph::refl::get_object_descriptor<test_object>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_object));
+        auto desc = cpph::refl::get_object_descriptor<test_object>();
+        REQUIRE(desc->properties().size() == 3);
+        REQUIRE(desc->is_object());
+        REQUIRE(desc->extent() == sizeof(test_object));
 
-            auto prop = desc->property("b");
-        }
-        {
-            auto desc = cpph::refl::get_object_descriptor<test_object_of_object>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_object_of_object));
-        }
-        {
-            auto desc = perfkit::refl::get_object_descriptor<test_tuple>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_tuple());
-            REQUIRE(desc->extent() == sizeof(test_tuple));
-        }
-        {
-            auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_1>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
-        }
-        {
-            auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_2>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
-        }
+        auto prop = desc->property("b");
+    }
+    {
+        auto desc = cpph::refl::get_object_descriptor<test_object_of_object>();
+        REQUIRE(desc->properties().size() == 3);
+        REQUIRE(desc->is_object());
+        REQUIRE(desc->extent() == sizeof(test_object_of_object));
+    }
+    {
+        auto desc = perfkit::refl::get_object_descriptor<test_tuple>();
+        REQUIRE(desc->properties().size() == 3);
+        REQUIRE(desc->is_tuple());
+        REQUIRE(desc->extent() == sizeof(test_tuple));
+    }
+    {
+        auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_1>();
+        REQUIRE(desc->properties().size() == 3);
+        REQUIRE(desc->is_object());
+        REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
+    }
+    {
+        auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_2>();
+        REQUIRE(desc->properties().size() == 3);
+        REQUIRE(desc->is_object());
+        REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
     }
 }
 

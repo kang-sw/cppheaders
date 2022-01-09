@@ -24,29 +24,29 @@
 
 //
 #pragma once
+#include <array>
 #include <map>
 #include <optional>
-#include <set>
-#include <variant>
+#include <tuple>
+#include <vector>
 
 #include "object_impl.hxx"
 
-//
-#include "../../__namespace__.h"
 namespace CPPHEADERS_NS_::refl {
-
+namespace detail {
 template <typename ValTy_>
 struct primitive_manipulator : if_primitive_manipulator
 {
-    void archive(archive::if_writer* writer, const void* p_void) const override
+    void archive(archive::if_writer* writer, const void* p_void, object_descriptor const*) const override
     {
         *writer << *(ValTy_*)p_void;
     }
-    void restore(archive::if_reader* reader, void* p_void) const override
+    void restore(archive::if_reader* reader, void* p_void, object_descriptor const*) const override
     {
         *reader >> *(ValTy_*)p_void;
     }
 };
+}  // namespace detail
 
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<
@@ -55,7 +55,7 @@ auto get_object_descriptor() -> object_sfinae_t<
         || (std::is_floating_point_v<ValTy_>)  //
         >
 {
-    static struct manip_t : primitive_manipulator<ValTy_>
+    static struct manip_t : detail::primitive_manipulator<ValTy_>
     {
         primitive_t type() const noexcept override
         {
@@ -70,13 +70,69 @@ auto get_object_descriptor() -> object_sfinae_t<
         }
     } manip;
 
-    static auto desc = [] {
-        object_descriptor::primitive_factory factory;
-        factory.setup(sizeof(ValTy_), [] { return &manip; });
-        return factory.create();
-    }();
+    static auto desc
+            = object_descriptor::primitive_factory{}
+                      .setup(sizeof(ValTy_), [] { return &manip; })
+                      .create();
 
     return &*desc;
+}
+
+namespace detail {
+template <typename ElemTy_>
+object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
+{
+    static struct manip_t : if_primitive_manipulator
+    {
+        primitive_t type() const noexcept override
+        {
+            return primitive_t::array;
+        }
+        const object_descriptor* element_type() const noexcept override
+        {
+            return get_object_descriptor<ElemTy_>();
+        }
+        void archive(archive::if_writer* strm, const void* pvdata, object_descriptor const* desc) const override
+        {
+            assert(desc->extent() % sizeof(ElemTy_) == 0);
+            auto n_elem = desc->extent() / sizeof(ElemTy_);
+            auto begin  = (ElemTy_ const*)pvdata;
+            auto end    = begin + n_elem;
+
+            strm->array_push();
+            std::for_each(begin, end, [&](auto&& elem) { *strm << elem; });
+            strm->array_pop();
+        }
+        void restore(archive::if_reader* strm, void* pvdata, object_descriptor const* desc) const override
+        {
+            assert(desc->extent() % sizeof(ElemTy_) == 0);
+            auto n_elem = desc->extent() / sizeof(ElemTy_);
+            auto begin  = (ElemTy_*)pvdata;
+            auto end    = begin + n_elem;
+
+            std::for_each(begin, end, [&](auto&& elem) { *strm >> elem; });
+        }
+    } manip;
+
+    static auto desc
+            = object_descriptor::primitive_factory{}
+                      .setup(extent, [] { return &manip; })
+                      .create();
+
+    return &*desc;
+}
+}  // namespace detail
+
+template <typename ValTy_>
+auto get_object_descriptor() -> object_sfinae_t<std::is_array_v<ValTy_>>
+{
+    return detail::fixed_size_descriptor<std::remove_extent_t<ValTy_>>(
+            sizeof(ValTy_),
+            std::size(*(ValTy_*)0));
+}
+
+inline void compile_test()
+{
 }
 
 }  // namespace CPPHEADERS_NS_::refl

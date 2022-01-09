@@ -212,7 +212,7 @@ class if_primitive_manipulator
     /**
      * Archive to writer
      */
-    virtual void archive(archive::if_writer* strm, void const* pvdata) const
+    virtual void archive(archive::if_writer* strm, void const* pvdata, object_descriptor const* desc) const
     {
         *strm << nullptr;
     }
@@ -220,7 +220,7 @@ class if_primitive_manipulator
     /**
      * Restore from reader
      */
-    virtual void restore(archive::if_reader*, void* pvdata) const = 0;
+    virtual void restore(archive::if_reader* strm, void* pvdata, object_descriptor const* desc) const = 0;
 
     /**
      * Check status of given parameter. Default is 'required', which cannot be ignored.
@@ -417,7 +417,7 @@ class object_descriptor
 
         if (is_primitive())
         {
-            _primitive()->archive(strm, data);
+            _primitive()->archive(strm, data, this);
         }
         else
         {
@@ -497,7 +497,7 @@ class object_descriptor
 
         if (is_primitive())
         {
-            _primitive()->restore(strm, data);
+            _primitive()->restore(strm, data, this);
         }
         else if (is_object())
         {
