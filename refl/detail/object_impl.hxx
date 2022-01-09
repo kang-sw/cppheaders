@@ -43,6 +43,10 @@ using binary_t = archive::binary_t;
 namespace error {
 CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
 
+CPPH_DECLARE_EXCEPTION(object_archive_exception, object_exception);
+CPPH_DECLARE_EXCEPTION(invalid_read_state, object_archive_exception);
+CPPH_DECLARE_EXCEPTION(invalid_write_state, object_archive_exception);
+
 }  // namespace error
 
 /**
@@ -186,6 +190,15 @@ class if_primitive_manipulator
     virtual primitive_t type() const noexcept = 0;
 
     /**
+     * Underlying element type if this primitive is sort of container
+     * This descriptor may not be used for actual data manipulation, but only for
+     *  descriptive operations like validation/documentation/schema-generation.
+     *
+     * (optional, map, set, pointer, etc ...)
+     */
+    virtual object_descriptor const* element_type() const noexcept { return nullptr; };
+
+    /**
      * Archive to writer
      */
     virtual void archive(archive::if_writer* strm, void const* pvdata) const
@@ -278,6 +291,9 @@ class object_descriptor
     bool is_object() const noexcept { return _keys.has_value(); }
     bool is_tuple() const noexcept { return not is_primitive() && not is_object(); }
 
+    /**
+     * Current requirement status of given property
+     */
     requirement_status_tag requirement_status(object_data_t const* data = nullptr) const noexcept
     {
         if (not is_primitive())
@@ -373,10 +389,10 @@ class object_descriptor
                 for (auto& [key, index] : *_keys)
                 {
                     if (not strm->is_key_next())
-                        throw archive::error::
+                        throw error::invalid_write_state{}
+                                .message("'key' expected. at (%s)", strm->dump_error().str().c_str());
 
-                                auto& prop
-                                = _props.at(index);
+                    auto& prop = _props.at(index);
 
                     auto child      = prop.descriptor();
                     auto child_data = retrieve(data, prop);
@@ -424,7 +440,7 @@ class object_descriptor
         }
     }
 
-    void _restore_from(archive::if_reader* strm, object_data_t* data) const
+    void _restore_from(archive::if_reader* strm, object_data_t* data, std::string& keybuf) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _restore_from on them.
@@ -437,34 +453,34 @@ class object_descriptor
         }
         else if (is_object())
         {
-            strm->object_enter();
-            for (auto& [key, index] : *_keys)
+            if (not strm->is_object_next())
+                throw error::invalid_read_state{}
+                        .message("'object' expected. at (%s)", strm->dump_error().str().c_str());
+
+            int hlevel = 0, hid = 0;
+            strm->hierarchy(&hlevel, &hid);
+
+            std::vector<bool> requirement_satisfied;
+            requirement_satisfied.resize(_props.size(), false);
+
+            while (not strm->should_break(hlevel, hid))
             {
-                auto& prop      = _props.at(index);
-                auto child      = prop.descriptor();
-                auto child_data = retrieve(data, prop);
-                assert(child_data);
+                if (not strm->is_key_next())
+                    throw error::invalid_read_state{}.message("'key' expected");
 
-                if (child->requirement_status() == requirement_status_tag::required)
-                {
-                    strm->goto_key(key);
-                }
-                else
-                {
-                }
+                *strm >> keybuf;
+                auto elem = find_ptr(*_keys, keybuf);
 
-                prop.descriptor()->_restore_from(strm, child_data);
+                // simply ignore unexpected keys
+                if (not elem) { continue; }
+
+                // todo
             }
-            strm->object_exit();
         }
         else if (is_tuple())
         {
-            strm->array_enter();
-            for (auto& prop : _props)
-            {
-                prop.descriptor()->_restore_from(strm, retrieve(data, prop));
-            }
-            strm->array_exit();
+            if (not strm->is_array_next())
+                throw error::invalid_read_state{}.message("'array' expected");
         }
         else
         {
@@ -637,7 +653,8 @@ operator<<(archive::if_writer& strm, object_const_view_t obj)
 inline archive::if_reader&
 operator>>(archive::if_reader& strm, object_view_t obj)
 {
-    obj.meta->_restore_from(&strm, obj.data);
+    std::string keybuf;
+    obj.meta->_restore_from(&strm, obj.data, keybuf);
     return strm;
 }
 

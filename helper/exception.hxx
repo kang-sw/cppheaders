@@ -43,7 +43,7 @@ struct basic_exception : std::exception
     Ty_&& message(std::string_view content)
     {
         _setmsg(content);
-        return std::move(*this);
+        return std::move(*static_cast<Ty_*>(this));
     }
 
     template <typename Str_, typename Arg0_, typename... Args_>
@@ -55,7 +55,7 @@ struct basic_exception : std::exception
         snprintf(_message.data(), _message.size(), str, arg0, args...);
         _message.pop_back();  // remove null character
 
-        return std::move(*this);
+        return std::move(*static_cast<Ty_*>(this));
     }
 
     /**
@@ -77,7 +77,12 @@ struct basic_exception : std::exception
    private:
     void _setmsg(std::string_view content) const
     {
-        _message = "archive error: ";
+        if (_message.empty())
+        {
+            _message = "error (";
+            _message += typeid(*this).name();
+            _message += "): ";
+        }
         _message += content;
     }
 };
