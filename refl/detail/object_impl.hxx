@@ -766,6 +766,19 @@ class object_descriptor
 
             return info;
         }
+
+        template <typename Class_, typename MemVar_>
+        static property_info create_property_info(Class_ const* class_type, MemVar_ const* mem_ptr)
+        {
+            property_info info;
+            info.descriptor = default_object_descriptor_fn<MemVar_>();
+            info.offset     = static_cast<size_t>(
+                    reinterpret_cast<char const*>(mem_ptr)
+                    - reinterpret_cast<char const*>(class_type));
+
+            assert(info.offset >= 0);
+            return info;
+        }
     };
 
     class object_factory : public object_factory_base<object_factory>
@@ -824,6 +837,14 @@ class object_descriptor
             add_property(std::move(key), std::move(info));
             return *this;
         }
+
+        template <typename ClassType_, typename Var_>
+        auto& property(std::string_view key, ClassType_ const* self, Var_ const* mem_ptr) const
+        {
+            auto info = create_property_info(self, mem_ptr);
+            add_property(std::string(key), std::move(info));
+            return *this;
+        }
     };
 
     template <class Class_>
@@ -841,6 +862,13 @@ class object_descriptor
         auto& property(MemVar_ Class_::*mem_ptr) const
         {
             add_property(create_property_info(mem_ptr));
+            return *this;
+        }
+
+        template <typename ClassType_, typename Var_>
+        auto& property(ClassType_ const* self, Var_ const* mem_ptr) const
+        {
+            add_property(create_property_info(self, mem_ptr));
             return *this;
         }
     };
@@ -888,7 +916,7 @@ constexpr bool is_cpph_refl_object_v = false;
 
 template <typename Ty_>
 constexpr bool is_cpph_refl_object_v<Ty_, std::void_t<
-        decltype(std::declval<Ty_>().cpph_refl_get_object_descriptor())>> = true;
+                                                  decltype(std::declval<Ty_>().CPPH_REFL_create_object_descriptor_once())>> = true;
 }  // namespace detail
 
 template <typename ValTy_>

@@ -54,13 +54,40 @@ struct outer
     inner_arg_1 arg1;
     inner_arg_2 arg2;
 };
+
+struct some_other
+{
+    int a, b, c;
+    float f, t, r;
+
+    outer e;
+    inner_arg_2 ff;
+
+    CPPH_REFL_DECLARE_c;
+};
+
+struct some_other_2
+{
+    int a, b, c;
+    float f, t, r;
+
+    outer e;
+    inner_arg_2 ff;
+
+    CPPH_REFL_DECLARE_c;
+};
+
 }  // namespace ns
+
+namespace cpph::refl {
+
+}
 
 CPPH_REFL_DECLARE(ns::inner_arg_1);
 CPPH_REFL_DECLARE(ns::inner_arg_2);
 CPPH_REFL_DECLARE(ns::outer);
 
-TEMPLATE_TEST_CASE("archive", "[.]", ns::inner_arg_1, ns::inner_arg_2, ns::outer)
+TEMPLATE_TEST_CASE("archive", "[.]", ns::some_other_2)
 {
     archive::debug_string_writer writer{archive::obuffer(std::cout)};
 
@@ -101,3 +128,21 @@ CPPH_REFL_DEFINE_OBJECT(ns::outer)
             .property2_(arg2)
             .create();
 };
+
+// cpph::refl::object_descriptor_ptr
+// ns::some_other::CPPH_REFL_create_object_descriptor_once() noexcept
+//{
+//     INTERNAL_CPPH_ARCHIVING_BRK_TOKENS_0("a,b,c,f,t,r")
+//     auto factory = cpph::refl::define_object<std::remove_pointer_t<decltype(this)>>();
+//
+//     cpph::macro_utils::visit_with_key(
+//             INTERNAL_CPPH_BRK_TOKENS_ACCESS_VIEW(),
+//             [&](std::string_view key, auto& value) {
+//                 factory.property(key, this, &value);
+//             },
+//             a, b, c, f, t, r);
+//
+//     return factory.create();
+// }
+CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, a, b, c, f, t, r, e, ff);
+CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, a, b, c, f, t, r, e, ff);

@@ -175,7 +175,6 @@ class debug_string_writer : public if_writer
 
     if_writer& write_binary(array_view<const char> v) override
     {
-
         return *this;
     }
 
@@ -187,7 +186,7 @@ class debug_string_writer : public if_writer
         if (_state() == context_state::object_value)
             _state(context_state::object_key);
 
-        if (_comma_required)
+        if (_comma_required && _state() == context_state::array)
             write_str(",\n"), _indent();
 
         write_str("{");
@@ -228,7 +227,7 @@ class debug_string_writer : public if_writer
         if (_state() == context_state::object_value)
             _state(context_state::object_key);
 
-        if (_comma_required)
+        if (_comma_required && _state() == context_state::array)
             write_str(",\n"), _indent();
 
         write_str("[");

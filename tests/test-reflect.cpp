@@ -41,7 +41,7 @@ struct test_macro_expr_3
     int c = 5;
 
     cpph::refl::object_descriptor_ptr
-    cpph_refl_get_object_descriptor() const noexcept;
+    CPPH_REFL_create_object_descriptor_once() const noexcept;
 };
 
 struct test_object_of_object
@@ -214,7 +214,7 @@ CPPH_REFL_DEFINE_OBJECT(test_macro_expr_2)
             .create();
 };
 
-cpph::refl::object_descriptor_ptr test_macro_expr_3::cpph_refl_get_object_descriptor() const noexcept
+cpph::refl::object_descriptor_ptr test_macro_expr_3::CPPH_REFL_create_object_descriptor_once() const noexcept
 {
     using self_t = std::remove_pointer_t<decltype(this)>;
     size_t pos   = size_t((char const*)&a - (char const*)this);

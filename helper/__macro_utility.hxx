@@ -30,7 +30,7 @@
 #include "../macros.hxx"
 #include "../template_utils.hxx"
 
-namespace CPPHEADERS_NS_::archiving::detail {
+namespace CPPHEADERS_NS_::macro_utils {
 template <const auto& s>
 constexpr size_t _count_words() noexcept
 {
@@ -125,14 +125,14 @@ struct _is_optional<std::optional<Ty_>> : std::true_type
 template <typename Ty_>
 constexpr bool is_optional_v = _is_optional<std::remove_const_t<std::remove_reference_t<Ty_>>>::value;
 
-template <size_t N_, typename Fn_, typename... Args_>
+template <size_t N_, typename KeyTy_, typename Fn_, typename... Args_>
 constexpr void visit_with_key(
-        std::array<std::string, N_> const& keys,
-        Fn_&& search,
-        Args_&... args)
+        std::array<KeyTy_, N_> const& keys,
+        Fn_&& visitor,
+        Args_&&... args)
 {
     size_t at = 0;
-    (search(keys[at++], std::forward<Args_>(args)), ...);
+    (visitor(keys.at(at++), std::forward<Args_>(args)), ...);
 }
 
 constexpr auto from_json_visitor = [](auto&& r) {
@@ -162,11 +162,20 @@ constexpr auto to_json_visitor = [](auto&& r) {
     };
 };
 
-}  // namespace CPPHEADERS_NS_::archiving::detail
+}  // namespace CPPHEADERS_NS_::macro_utils
 
-#define INTERNAL_CPPH_ARCHIVING_BRK_TOKENS(STR)                                                            \
-    static constexpr char INTERNAL_CPPH_CONCAT(KEYSTR_, __LINE__)[] = STR;                                 \
-    static constexpr auto INTERNAL_CPPH_CONCAT(KEYSTR_VIEW_, __LINE__)                                     \
-            = CPPHEADERS_NS_::archiving::detail::break_VA_ARGS<INTERNAL_CPPH_CONCAT(KEYSTR_, __LINE__)>(); \
-    static const inline auto INTERNAL_CPPH_CONCAT(KEYARRAY_, __LINE__)                                     \
-            = CPPHEADERS_NS_::archiving::detail::views_to_strings(INTERNAL_CPPH_CONCAT(KEYSTR_VIEW_, __LINE__));
+#define INTERNAL_CPPH_ARCHIVING_BRK_TOKENS_0(STR)                                        \
+    static constexpr char INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_KEYSTR_, __LINE__)[] = STR; \
+    static constexpr auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_KEYSTR_VIEW_, __LINE__)     \
+            = CPPHEADERS_NS_::macro_utils::break_VA_ARGS<INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_KEYSTR_, __LINE__)>();
+
+#define INTERNAL_CPPH_ARCHIVING_BRK_TOKENS(STR)                                      \
+    INTERNAL_CPPH_ARCHIVING_BRK_TOKENS_0(STR)                                        \
+    static const inline auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_KEYARRAY_, __LINE__) \
+            = CPPHEADERS_NS_::macro_utils::views_to_strings(INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_KEYSTR_VIEW_, __LINE__));
+
+#define INTERNAL_CPPH_BRK_TOKENS_ACCESS_ARRAY() \
+    INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_KEYARRAY_, __LINE__)
+
+#define INTERNAL_CPPH_BRK_TOKENS_ACCESS_VIEW() \
+    INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_KEYSTR_VIEW_, __LINE__)

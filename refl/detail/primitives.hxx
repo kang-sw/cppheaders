@@ -40,7 +40,7 @@ namespace CPPHEADERS_NS_::refl {
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>
 {
-    static object_descriptor_ptr inst = ((ValTy_*)nullptr)->cpph_refl_get_object_descriptor();
+    static object_descriptor_ptr inst = ((ValTy_*)nullptr)->CPPH_REFL_create_object_descriptor_once();
 
     return &*inst;
 }

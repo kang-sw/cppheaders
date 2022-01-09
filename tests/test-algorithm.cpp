@@ -89,15 +89,15 @@ TEST_CASE("json macro helper operation", "[helper]")
         int dd;
     };
 
-    using namespace cpph::archiving;
+    using namespace cpph::macro_utils;
     static constexpr char cands[] = "a, dd,  vc, fewa , rq_w1141";
-    static_assert(detail::_count_words<cands>() == 5);
+    static_assert(_count_words<cands>() == 5);
 
-    static_assert(detail::break_VA_ARGS<cands>()[0] == "a"sv);
-    static_assert(detail::break_VA_ARGS<cands>()[1] == "dd"sv);
-    static_assert(detail::break_VA_ARGS<cands>()[2] == "vc"sv);
-    static_assert(detail::break_VA_ARGS<cands>()[3] == "fewa"sv);
-    static_assert(detail::break_VA_ARGS<cands>()[4] == "rq_w1141"sv);
+    static_assert(break_VA_ARGS<cands>()[0] == "a"sv);
+    static_assert(break_VA_ARGS<cands>()[1] == "dd"sv);
+    static_assert(break_VA_ARGS<cands>()[2] == "vc"sv);
+    static_assert(break_VA_ARGS<cands>()[3] == "fewa"sv);
+    static_assert(break_VA_ARGS<cands>()[4] == "rq_w1141"sv);
 
     my_serialized a;
     a.s = "hello!";
