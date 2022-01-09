@@ -1,3 +1,4 @@
+#include "refl/archivers/debug_string_writer.hxx"
 #include "refl/if_archive.hxx"
 #include "refl/object.hxx"
 #include "third/doctest.h"
