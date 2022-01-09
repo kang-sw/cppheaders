@@ -730,7 +730,7 @@ class object_descriptor
         static Ty_ define()
         {
             Ty_ factory;
-            factory.start(sizeof(Class_));
+            factory.define_basic(sizeof(Class_));
 
             // TODO: add construct/move/copy/invoke manipulators ...
             //       DESIGN HOW TO DO IT!
@@ -739,7 +739,7 @@ class object_descriptor
         }
 
        public:
-        virtual Ty_& start(size_t extent)
+        virtual Ty_& define_basic(size_t extent)
         {
             *_current         = {};
             _current->_extent = extent;
@@ -765,9 +765,9 @@ class object_descriptor
         using super = object_factory_base<object_factory>;
 
        public:
-        object_factory& start(size_t extent) override
+        object_factory& define_basic(size_t extent) override
         {
-            object_factory_base::start(extent);
+            object_factory_base::define_basic(extent);
             _current->_keys.emplace();
             return *this;
         }
@@ -805,7 +805,7 @@ class object_descriptor
         }
 
         template <typename Class_, typename MemVar_>
-        auto& property(std::string key, MemVar_ Class_::*mem_ptr)
+        auto& property(MemVar_ Class_::*mem_ptr)
         {
             return add_property(create_property_info(mem_ptr));
         }
@@ -821,7 +821,7 @@ auto define_object()
 template <typename Class_>
 auto define_tuple()
 {
-    return object_descriptor::object_factory::define<Class_>();
+    return object_descriptor::tuple_factory::define<Class_>();
 }
 
 /**

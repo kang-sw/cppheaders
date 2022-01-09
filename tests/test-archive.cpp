@@ -10,11 +10,16 @@ struct test_object
     int c = 3;
 };
 
-struct test_tuple
+struct test_object_of_object
 {
     test_object a;
     test_object b;
     test_object c;
+};
+
+struct test_tuple
+{
+    test_object_of_object a, b, c;
 };
 
 namespace cpph::refl {
@@ -35,19 +40,35 @@ auto get_object_descriptor()
 
 template <class T>
 auto get_object_descriptor()
-        -> cpph::refl::object_sfinae_t<std::is_same_v<T, test_tuple>>
+        -> cpph::refl::object_sfinae_t<std::is_same_v<T, test_object_of_object>>
 {
     static auto instance = [] {
-        return object_descriptor::object_factory::define<test_tuple>()
-                .start(sizeof(test_tuple))
-                .add_property("a", {offsetof(test_tuple, a), default_object_descriptor_fn<test_object>()})
-                .add_property("b", {offsetof(test_tuple, b), default_object_descriptor_fn<test_object>()})
-                .add_property("c", {offsetof(test_tuple, c), default_object_descriptor_fn<test_object>()})
+        return object_descriptor::object_factory::define<test_object_of_object>()
+                .define_basic(sizeof(test_object_of_object))
+                .add_property("a", {offsetof(test_object_of_object, a), default_object_descriptor_fn<test_object>()})
+                .add_property("b", {offsetof(test_object_of_object, b), default_object_descriptor_fn<test_object>()})
+                .add_property("c", {offsetof(test_object_of_object, c), default_object_descriptor_fn<test_object>()})
                 .create();
     }();
 
     return &instance;
 }
+
+template <class T>
+auto get_object_descriptor()
+        -> cpph::refl::object_sfinae_t<std::is_same_v<T, test_tuple>>
+{
+    static auto instance = [] {
+        return define_tuple<test_tuple>()
+                .property(&test_tuple::a)
+                .property(&test_tuple::b)
+                .property(&test_tuple::c)
+                .create();
+    }();
+
+    return &instance;
+}
+
 }  // namespace cpph::refl
 
 TEST_SUITE("Reflection")
@@ -61,9 +82,15 @@ TEST_SUITE("Reflection")
             REQUIRE(desc->extent() == sizeof(test_object));
         }
         {
-            auto desc = perfkit::refl::get_object_descriptor<test_tuple>();
+            auto desc = perfkit::refl::get_object_descriptor<test_object_of_object>();
             REQUIRE(desc->properties().size() == 3);
             REQUIRE(desc->is_object());
+            REQUIRE(desc->extent() == sizeof(test_object_of_object));
+        }
+        {
+            auto desc = perfkit::refl::get_object_descriptor<test_tuple>();
+            REQUIRE(desc->properties().size() == 3);
+            REQUIRE(desc->is_tuple());
             REQUIRE(desc->extent() == sizeof(test_tuple));
         }
     }
