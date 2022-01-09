@@ -482,7 +482,6 @@ class object_descriptor
     struct restore_context
     {
         std::string keybuf;
-        std::vector<bool> found_elems;
     };
 
     void _restore_from(
@@ -510,7 +509,7 @@ class object_descriptor
             int hlevel = 0, hid = 0;
             strm->hierarchy(&hlevel, &hid);
 
-            auto& found = context->found_elems;
+            std::vector<bool> found;
             found.resize(_props.size(), false);
 
             while (not strm->should_break(hlevel, hid))
