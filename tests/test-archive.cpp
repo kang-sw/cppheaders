@@ -22,9 +22,32 @@ struct test_tuple
     test_object_of_object a, b, c;
 };
 
+struct test_macro_expr_1
+{
+    test_tuple a, b, c;
+};
+
+struct test_macro_expr_2
+{
+    test_tuple a, b, c;
+};
+
+struct test_tuple_2
+{
+    test_tuple a, b, c;
+};
+
+struct test_object_2
+{
+    test_tuple a, b, c;
+};
+
 CPPH_REFL_DECLARE(test_object);
 CPPH_REFL_DECLARE(test_object_of_object);
 CPPH_REFL_DECLARE(test_tuple);
+CPPH_REFL_DECLARE(test_tuple_2);
+CPPH_REFL_DECLARE(test_object_2);
+CPPH_REFL_DECLARE(test_macro_expr_1);
 
 TEST_SUITE("Reflection")
 {
@@ -50,6 +73,12 @@ TEST_SUITE("Reflection")
             REQUIRE(desc->is_tuple());
             REQUIRE(desc->extent() == sizeof(test_tuple));
         }
+        {
+            auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_1>();
+            REQUIRE(desc->properties().size() == 3);
+            REQUIRE(desc->is_object());
+            REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
+        }
     }
 }
 
@@ -64,7 +93,7 @@ auto get_object_descriptor()
                 .property("a", &test_object::a)
                 .property("b", &test_object::b)
                 .property("c", &test_object::c)
-                .create();
+                .confirm();
     }();
 
     return &*instance;
@@ -75,7 +104,7 @@ auto get_object_descriptor()
         -> cpph::refl::object_sfinae_t<std::is_same_v<T, test_object_of_object>>
 {
     static auto instance = [] {
-        return object_descriptor::object_factory::define<test_object_of_object>()
+        return object_descriptor::object_factory()
                 .define_basic(sizeof(test_object_of_object))
                 .add_property("a", {offsetof(test_object_of_object, a), default_object_descriptor_fn<test_object>()})
                 .add_property("b", {offsetof(test_object_of_object, b), default_object_descriptor_fn<test_object>()})
@@ -95,10 +124,35 @@ auto get_object_descriptor()
                 .property(&test_tuple::a)
                 .property(&test_tuple::b)
                 .property(&test_tuple::c)
-                .create();
+                .confirm();
     }();
 
     return &*instance;
 }
 
 }  // namespace cpph::refl
+
+using ClassName = test_macro_expr_1;
+
+namespace CPPHEADERS_NS_::refl {
+using INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__) = ClassName;
+extern CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LINE__);
+
+template <class TypeName_>
+auto get_object_descriptor()
+        -> object_sfinae_t<std::is_same_v<TypeName_, INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__)>>
+{
+    static auto instance = INTERNAL_CPPH_CONCAT(ClassName, LINE__)();
+    return &*instance;
+}
+
+CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LINE__)
+        = [ptr          = (INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__) *)nullptr,
+           Registration = CPPHEADERS_NS_::refl::define_object<INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__)>()] {
+              return Registration
+                      .property("hello", &std::remove_pointer_t<decltype(ptr)>::a)
+                      .property("hello-2", &std::remove_pointer_t<decltype(ptr)>::b)
+                      .property("hello-3", &std::remove_pointer_t<decltype(ptr)>::c)
+                      .confirm();
+          };
+}  // namespace CPPHEADERS_NS_::refl

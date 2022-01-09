@@ -24,7 +24,13 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include "../functional.hxx"
+#include "../macros.hxx"
 #include "detail/object_impl.hxx"
+
+namespace CPPHEADERS_NS_::refl {
+using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_descriptor>()>;
+}
 
 /**
  * All macros must be placed in global namespace!
@@ -43,7 +49,13 @@
 
 #    define CPPH_REFL_DEFINE_TUPLE(ClassName)
 
-#    define CPPH_REFL_PROPERTY()
+#    define CPPH_REFL_PROPERTY(PropNameStr, VarName)
+
+#    define CPPH_REFL_PROPERTY_A(VarName)
+
+#    define INTERNAL_CPPHEADERS_DEFINE_begin(ClassName)
+
+#    define INTERNAL_CPPHEADERS_DEFINE_end(ClassName)
 
 #endif
 

@@ -29,6 +29,9 @@
 #define INTERNAL_CPPH_CONCAT2(A, B) A##B
 #define INTERNAL_CPPH_CONCAT(A, B)  INTERNAL_CPPH_CONCAT2(A, B)
 
+#define INTERNAL_CPPH_STRINGIFY2(A) #A
+#define INTERNAL_CPPH_STRINGIFY(A)  INTERNAL_CPPH_STRINGIFY2(A)
+
 /* generic      ***********************************************************************************/
 #define CPPH_BIND(Function)                                                                            \
     [this](auto&&... args) {                                                                           \

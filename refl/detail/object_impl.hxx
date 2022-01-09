@@ -647,7 +647,7 @@ class object_descriptor
                 = std::make_unique<object_descriptor>();
 
        protected:
-        size_t add_property_impl(property_info info)
+        size_t add_property_impl(property_info info) const
         {
             assert(not _current->is_primitive());
 
@@ -665,7 +665,7 @@ class object_descriptor
          * Generate object descriptor instance.
          * Sorts keys, build incremental offset lookup table, etc.
          */
-        std::unique_ptr<object_descriptor> create()
+        std::unique_ptr<object_descriptor> create() const
         {
             static std::atomic_uint64_t unique_id_allocator;
 
@@ -711,7 +711,7 @@ class object_descriptor
     class primitive_factory : public basic_factory
     {
        public:
-        primitive_factory& setup(size_t extent, std::function<if_primitive_manipulator*()> func)
+        auto& setup(size_t extent, std::function<if_primitive_manipulator*()> func) const
         {
             *_current = {};
 
@@ -726,26 +726,25 @@ class object_descriptor
     class object_factory_base : public basic_factory
     {
        private:
-        Ty_& _self()
+        Ty_ const& _self() const
         {
-            return static_cast<Ty_&>(*this);
+            return static_cast<Ty_ const&>(*this);
         }
 
        public:
         template <typename Class_>
-        static Ty_ define()
+        Ty_ const& define_class() const
         {
-            Ty_ factory;
-            factory.define_basic(sizeof(Class_));
+            define_basic(sizeof(Class_));
 
             // TODO: add construct/move/copy/invoke manipulators ...
             //       DESIGN HOW TO DO IT!
 
-            return factory;
+            return _self();
         }
 
        public:
-        virtual Ty_& define_basic(size_t extent)
+        virtual Ty_ const& define_basic(size_t extent) const
         {
             *_current         = {};
             _current->_extent = extent;
@@ -771,14 +770,14 @@ class object_descriptor
         using super = object_factory_base<object_factory>;
 
        public:
-        object_factory& define_basic(size_t extent) override
+        object_factory const& define_basic(size_t extent) const override
         {
             object_factory_base::define_basic(extent);
             _current->_keys.emplace();
             return *this;
         }
 
-        object_factory& add_property(std::string key, property_info info)
+        auto& add_property(std::string key, property_info info) const
         {
             auto index          = add_property_impl(std::move(info));
             auto [pair, is_new] = _current->_keys->try_emplace(std::move(key), index);
@@ -789,13 +788,6 @@ class object_descriptor
 
             return *this;
         }
-
-        template <typename Class_, typename MemVar_>
-        auto& property(std::string key, MemVar_ Class_::*mem_ptr)
-        {
-            auto info = create_property_info(mem_ptr);
-            return add_property(std::move(key), std::move(info));
-        }
     };
 
     class tuple_factory : public object_factory_base<tuple_factory>
@@ -803,31 +795,68 @@ class object_descriptor
         using super = object_factory_base<object_factory>;
 
        public:
-        tuple_factory& add_property(property_info info)
+        auto& add_property(property_info info) const
         {
             add_property_impl(std::move(info));
 
             return *this;
         }
+    };
 
-        template <typename Class_, typename MemVar_>
-        auto& property(MemVar_ Class_::*mem_ptr)
+    template <class Class_>
+    class templated_object_factory : protected object_factory
+    {
+       public:
+        static templated_object_factory define()
         {
-            return add_property(create_property_info(mem_ptr));
+            templated_object_factory factory;
+            factory.define_class<Class_>();
+            return factory;
         }
+
+        template <typename MemVar_>
+        auto& property(std::string key, MemVar_ Class_::*mem_ptr) const
+        {
+            auto info = create_property_info(mem_ptr);
+            add_property(std::move(key), std::move(info));
+            return *this;
+        }
+
+        auto confirm() const { return object_factory::create(); }
+    };
+
+    template <class Class_>
+    class template_tuple_factory : protected tuple_factory
+    {
+       public:
+        static template_tuple_factory define()
+        {
+            template_tuple_factory factory;
+            factory.define_class<Class_>();
+            return factory;
+        }
+
+        template <typename MemVar_>
+        auto& property(MemVar_ Class_::*mem_ptr) const
+        {
+            add_property(create_property_info(mem_ptr));
+            return *this;
+        }
+
+        auto confirm() const { return tuple_factory::create(); }
     };
 };
 
 template <typename Class_>
 auto define_object()
 {
-    return object_descriptor::object_factory::define<Class_>();
+    return object_descriptor::templated_object_factory<Class_>::define();
 }
 
 template <typename Class_>
 auto define_tuple()
 {
-    return object_descriptor::tuple_factory::define<Class_>();
+    return object_descriptor::template_tuple_factory<Class_>::define();
 }
 
 /**
