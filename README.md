@@ -20,8 +20,7 @@ create `__cppheaders_ns__` file on parent directory of cppheaders include direct
 #define CPPHEADERS_NS_ your_own_namespace
 ```
 
-> As long as you the namespace identifiers differ, multiple different version of cppheaders can be included on single
-executable.
+> As long as you the namespace identifiers differ, multiple different version of cppheaders can be included on single executable.
 
 Some library features may require explicit compilation or external library dependencies. To make them work, you should
 include [`__cpph__.inc`](`__cpph__.inc`) source file somewhere which is compilation unit for single time. Unused
