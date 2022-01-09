@@ -45,9 +45,11 @@ using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_d
                 -> object_sfinae_t<std::is_same_v<TypeName_, ClassName>>; \
         }
 
-#    define CPPH_REFL_DEFINE_OBJECT(ClassName, FactoryName)
+#    define CPPH_REFL_DEFINE_OBJECT(ClassName) \
+        INTERNAL_CPPH_DEFINE_IMPL(ClassName, factory, CPPHEADERS_NS_::refl::define_object)
 
-#    define CPPH_REFL_DEFINE_TUPLE(ClassName, FactoryName)
+#    define CPPH_REFL_DEFINE_TUPLE(ClassName) \
+        INTERNAL_CPPH_DEFINE_IMPL(ClassName, factory, CPPHEADERS_NS_::refl::define_tuple)
 
 #    define CPPH_prop(VarName) \
         &std::remove_pointer_t<decltype(INTERNAL_CPPH_CLASSPTR)>::VarName
@@ -61,10 +63,10 @@ using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_d
 #    define CPPH_prop_2(VarName) CPPH_prop_1(#    VarName, VarName)
 
 #    define INTERNAL_CPPH_REFL_GENERATOR_NAME(ClassName) \
-        INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_CONCAT(INTERNAL_cpph_refl_generator, ClassName), __LINE__)
+        INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_CONCAT(INTERNAL_cpph_refl_generator_, ClassName), __LINE__)
 
 #    define INTERNAL_CPPH_REFL_CLASS_NAME(ClassName) \
-        INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_CONCAT(INTERNAL_cpph_refl_class, ClassName), __LINE__)
+        INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_CONCAT(INTERNAL_cpph_refl_class_, ClassName), __LINE__)
 
 #    define INTERNAL_CPPH_DEFINE_IMPL(ClassName, FactoryName, Registration)                               \
         using INTERNAL_CPPH_REFL_CLASS_NAME(ClassName) = ClassName;                                       \
@@ -83,7 +85,7 @@ using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_d
                                                                                                           \
         CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_REFL_GENERATOR_NAME(ClassName)         \
                 = [ INTERNAL_CPPH_CLASSPTR = (INTERNAL_CPPH_REFL_CLASS_NAME(ClassName)*)nullptr,          \
-                    FactoryName            = Registration<INTERNAL_CPPH_REFL_CLASS_NAME(ClassName)>() ]
+                    FactoryName            = (Registration<INTERNAL_CPPH_REFL_CLASS_NAME(ClassName)>()) ]
 
 #endif
 

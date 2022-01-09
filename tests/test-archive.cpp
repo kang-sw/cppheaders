@@ -166,7 +166,7 @@ CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LIN
                       .create();
           };
 
-INTERNAL_CPPH_DEFINE_IMPL(test_macro_expr_2, factory, CPPHEADERS_NS_::refl::define_object)
+CPPH_REFL_DEFINE_OBJECT(test_macro_expr_2)
 {
 #define property_ CPPH_prop_2
     return factory
