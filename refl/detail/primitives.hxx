@@ -23,8 +23,11 @@
 // project home: https://github.com/perfkitpp
 
 //
-#include "../../__namespace__.h"
+#pragma once
+#include "object_impl.hxx"
 
+//
+#include "../../__namespace__.h"
 namespace CPPHEADERS_NS_::refl {
 
 template <typename ValTy_>
@@ -42,12 +45,10 @@ struct primitive_manipulator : if_primitive_manipulator
 
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<
-        (std::is_integral_v<ValTy_>)
-        || (std::is_floating_point_v<ValTy_>)
-        || (std::is_same_v<ValTy_, nullptr_t>)
-        || (std::is_same_v<ValTy_, bool>)
-        || (std::is_same_v<ValTy_, std::string>)
-        || (std::is_same_v<ValTy_, binary_t>)>
+        (is_any_of_v<ValTy_, bool, nullptr_t, std::string, binary_t>)
+        || (std::is_integral_v<ValTy_>)
+        || (std::is_floating_point_v<ValTy_>)  //
+        >
 {
     static struct manip_t : primitive_manipulator<ValTy_>
     {
@@ -73,8 +74,9 @@ auto get_object_descriptor() -> object_sfinae_t<
     return &desc;
 }
 
-inline void fc()
+inline void compile_test()
 {
+    get_object_descriptor<bool>();
     get_object_descriptor<int>();
     get_object_descriptor<double>();
     get_object_descriptor<std::string>();

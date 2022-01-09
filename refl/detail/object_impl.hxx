@@ -22,6 +22,7 @@
 // SOFTWARE.
 //
 // project home: https://github.com/perfkitpp
+#pragma once
 
 #include <functional>
 #include <map>
@@ -249,6 +250,9 @@ class if_primitive_manipulator
  */
 template <bool Test_>
 using object_sfinae_t = std::enable_if_t<Test_, object_descriptor const*>;
+
+template <typename A_, typename B_>
+using object_sfinae_overload_t = object_sfinae_t<std::is_same_v<A_, B_>>;
 
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
@@ -618,7 +622,6 @@ class object_descriptor
 
    public:
     // Factory classes
-
     class basic_factory
     {
        public:
@@ -631,7 +634,10 @@ class object_descriptor
        protected:
         size_t add_property_impl(property_info info)
         {
-            assert(not _current->_primitive);
+            assert(not _current->is_primitive());
+
+            // force property load
+            info.descriptor();
 
             auto index = _current->_props.size();
             _current->_props.emplace_back(std::move(info));
@@ -654,22 +660,32 @@ class object_descriptor
             lookup->reserve(generated._props.size());
 
             size_t n = 0;
+#ifndef NDEBUG
+            size_t object_end = 0;
+#endif
             for (auto& prop : generated._props)
             {
                 lookup->emplace_back(std::make_pair(prop.offset, n));
                 prop.unique_id  = ++unique_id_allocator;
                 prop.index_self = n++;
+
+#ifndef NDEBUG
+                object_end = std::max(object_end, prop.offset + prop.descriptor()->extent());
+#endif
             }
 
             // simply sort incrementally.
             std::sort(lookup->begin(), lookup->end());
 
-            assert("Offset duplication"
+            assert("Offset must not duplicate"
                    && adjacent_find(
                               *lookup, [](auto& a, auto& b) {
                                   return a.first == b.first;
                               })
-                              != lookup->end());
+                              == lookup->end());
+
+            assert("End of address must be less or equal with actual object extent"
+                   && object_end <= generated.extent());
 
             generated._initialized = true;  // set initialized
             return generated;
@@ -679,49 +695,67 @@ class object_descriptor
     class primitive_factory : public basic_factory
     {
        public:
-        void setup(size_t extent, std::function<if_primitive_manipulator*()> func)
+        primitive_factory& setup(size_t extent, std::function<if_primitive_manipulator*()> func)
         {
             *_current = {};
 
             _current->_extent    = extent;
             _current->_primitive = std::move(func);
+
+            return *this;
         }
     };
 
-    class map_factory : public basic_factory
+    class object_factory : public basic_factory
     {
        public:
-        void start(size_t extent)
+        object_factory& start(size_t extent)
         {
             *_current         = {};
             _current->_extent = extent;
             _current->_keys.emplace();
+
+            return *this;
         }
 
-        void add_property(std::string key, property_info info)
+        object_factory& add_property(std::string key, property_info info)
         {
             auto index  = add_property_impl(std::move(info));
             auto is_new = _current->_keys->try_emplace(std::move(key), index).second;
 
             assert("Key must be unique" && is_new);
+            return *this;
         }
     };
 
     class tuple_factory : public basic_factory
     {
        public:
-        void start(size_t extent)
+        tuple_factory& start(size_t extent)
         {
             *_current         = {};
             _current->_extent = extent;
+
+            return *this;
         }
 
-        void add_property(property_info info)
+        tuple_factory& add_property(property_info info)
         {
             add_property_impl(std::move(info));
+
+            return *this;
         }
     };
 };
+
+/**
+ * Get object descriptor getter
+ */
+template <typename Ty_>
+object_descriptor_fn default_object_descriptor_fn()
+{
+    return [] { return get_object_descriptor<Ty_>(); };
+}
 
 /**
  * Dump object to archive
