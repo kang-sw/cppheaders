@@ -32,11 +32,12 @@ using namespace cpph;
 namespace ns {
 struct inner_arg_1
 {
-    std::string str1 = "str1";
-    std::string str2 = "str2";
-    int var          = 133;
-    bool k           = true;
-    double g         = 3.14;
+    std::string str1          = "str1";
+    std::string str2          = "str2";
+    int var                   = 133;
+    bool k                    = true;
+    std::array<bool, 4> bools = {false, false, true, false};
+    double g                  = 3.14;
 };
 
 struct inner_arg_2
@@ -79,6 +80,7 @@ CPPH_REFL_DEFINE_TUPLE(ns::inner_arg_1)
             .property_(var)
             .property_(k)
             .property_(g)
+            .property_(bools)
             .create();
 };
 

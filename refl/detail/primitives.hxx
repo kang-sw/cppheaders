@@ -121,12 +121,27 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
 
     return &*desc;
 }
+
+template <typename>
+constexpr bool is_stl_array_v = false;
+
+template <typename Ty_, size_t N_>
+constexpr bool is_stl_array_v<std::array<Ty_, N_>> = true;
+
 }  // namespace detail
 
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<std::is_array_v<ValTy_>>
 {
     return detail::fixed_size_descriptor<std::remove_extent_t<ValTy_>>(
+            sizeof(ValTy_),
+            std::size(*(ValTy_*)0));
+}
+
+template <typename ValTy_>
+auto get_object_descriptor() -> object_sfinae_t<detail::is_stl_array_v<ValTy_>>
+{
+    return detail::fixed_size_descriptor<typename ValTy_::value_type>(
             sizeof(ValTy_),
             std::size(*(ValTy_*)0));
 }

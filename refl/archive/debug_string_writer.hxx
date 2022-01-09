@@ -143,6 +143,11 @@ class debug_string_writer : public if_writer
     {
     }
 
+    if_writer& operator<<(bool v) override
+    {
+        return _write_value(v ? "true" : "false");
+    }
+
     if_writer& operator<<(nullptr_t a_nullptr) override
     {
         return _write_value("null");
@@ -175,6 +180,9 @@ class debug_string_writer : public if_writer
 
         if (_state() == context_state::object_value)
             _state(context_state::object_key);
+
+        if (_comma_required)
+            write_str(",\n"), _indent();
 
         write_str("{");
 
@@ -213,6 +221,9 @@ class debug_string_writer : public if_writer
 
         if (_state() == context_state::object_value)
             _state(context_state::object_key);
+
+        if (_comma_required)
+            write_str(",\n"), _indent();
 
         write_str("[");
 
