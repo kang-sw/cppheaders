@@ -48,6 +48,7 @@ CPPH_REFL_DECLARE(test_tuple);
 CPPH_REFL_DECLARE(test_tuple_2);
 CPPH_REFL_DECLARE(test_object_2);
 CPPH_REFL_DECLARE(test_macro_expr_1);
+CPPH_REFL_DECLARE(test_macro_expr_2);
 
 TEST_SUITE("Reflection")
 {
@@ -75,6 +76,12 @@ TEST_SUITE("Reflection")
         }
         {
             auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_1>();
+            REQUIRE(desc->properties().size() == 3);
+            REQUIRE(desc->is_object());
+            REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
+        }
+        {
+            auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_2>();
             REQUIRE(desc->properties().size() == 3);
             REQUIRE(desc->is_object());
             REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
@@ -134,9 +141,10 @@ auto get_object_descriptor()
 
 using ClassName = test_macro_expr_1;
 
-namespace CPPHEADERS_NS_::refl {
 using INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__) = ClassName;
 extern CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LINE__);
+
+namespace CPPHEADERS_NS_::refl {
 
 template <class TypeName_>
 auto get_object_descriptor()
@@ -145,6 +153,8 @@ auto get_object_descriptor()
     static auto instance = INTERNAL_CPPH_CONCAT(ClassName, LINE__)();
     return &*instance;
 }
+
+}  // namespace CPPHEADERS_NS_::refl
 
 CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LINE__)
         = [ptr          = (INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__) *)nullptr,
@@ -155,4 +165,14 @@ CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LIN
                       .property("hello-3", &std::remove_pointer_t<decltype(ptr)>::c)
                       .create();
           };
-}  // namespace CPPHEADERS_NS_::refl
+
+INTERNAL_CPPH_DEFINE_IMPL(test_macro_expr_2, factory, CPPHEADERS_NS_::refl::define_object)
+{
+#define property_ CPPH_prop_2
+    return factory
+            .property_(a)
+            .property_(b)
+            .property_(c)
+            .create();
+#undef property_
+};
