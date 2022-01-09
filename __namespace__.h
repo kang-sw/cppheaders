@@ -24,10 +24,10 @@
 
 #undef CPPHEADERS_NS_
 
-#if __has_include("../__cppheaders_ns__.h")
+#if __has_include("../__cppheaders_ns__")
 // Content of __cppheaders_ns__.h should be following:
 // #define CPPHEADERS_NS_ YOUR_NAMESPACE
-#    include "../__cppheaders_ns__.h"
+#    include "../__cppheaders_ns__"
 #else
 #    define CPPHEADERS_NS_ cpph  // default namespace
 #endif

@@ -23,8 +23,26 @@
 // project home: https://github.com/perfkitpp
 
 /**
+ * Configurations
+ */
+
+//! Stacktrace library ... default disabled
+//! Since enabling this library creates a dedicated watcher thread and installs
+//!  custom abort signal handler, enabling backward library for multiple
+//!  instance is redundant and may affect performance badly.
+//! Thus, enable this library only once over compilation units in executable is recommended.
+#ifndef CPPHEADERS_ENABLE_BACKWARD
+#    define CPPHEADERS_ENABLE_BACKWARD 0
+#endif
+
+/**
  * Required sources for compilation
  *
  * DO NOT INCLUDE THIS FILE MORE THAN ONCE!
  */
 #include "refl/archivers/__cpph__.inc"
+
+// DO NOT CHANGE THE ORDER!
+// ASSERTION MUST BE PLACED LAST
+#define CPPHEADERS_IMPLEMENT_ASSERTIONS
+#include "assert.hxx"

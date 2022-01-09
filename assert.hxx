@@ -22,21 +22,25 @@
 //
 // project home: https://github.com/perfkitpp
 
-#ifndef KANGSW_CPPHEADERS_ASSERT_HXX  // uses legacy include guard, to protect macros.
-#define KANGSW_CPPHEADERS_ASSERT_HXX
+#pragma once
 
 #include <cassert>
+
+#include "__namespace__.h"
 
 #if defined(CPPHEADERS_IMPLEMENT_ASSERTIONS)
 #    include <cstdio>
 #    include <stdexcept>
 
-#    include "third/backward.hpp"
-//
-#    include "third/backward.cpp.inl"
+#    if CPPHEADERS_ENABLE_BACKWARD
+#        include "third/backward.hpp"
+namespace CPPHEADERS_NS_::_backward {
+backward::SignalHandling sh;
+}
+#    endif
 #endif
 
-namespace cppheaders_internals {
+namespace CPPHEADERS_NS_ {
 void _assert_fails(
         char const* file, char const* func, int line, char const* expr)  //
 #if defined(CPPHEADERS_IMPLEMENT_ASSERTIONS)
@@ -51,7 +55,7 @@ void _assert_fails(
 #else
         ;
 #endif
-}  // namespace cppheaders_internals
+}  // namespace CPPHEADERS_NS_
 
 /**
  * Assert always
@@ -59,7 +63,7 @@ void _assert_fails(
  */
 #define assert_(expr) \
     ((expr) ? (void)0 \
-            : cppheaders_internals::_assert_fails(__FILE__, __func__, __LINE__, #expr))
+            : CPPHEADERS_NS_::_assert_fails(__FILE__, __func__, __LINE__, #expr))
 
 #if not defined(NDEBUG)
 #    define assertd_(expr) assert_(expr)
@@ -68,5 +72,3 @@ void _assert_fails(
 #endif
 
 #define UNIMPLEMENTED() assert_(("NOT IMPLEMENTED", 0)), throw;
-
-#endif
