@@ -33,15 +33,30 @@
 #include "object_impl.hxx"
 
 namespace CPPHEADERS_NS_::refl {
+
+/**
+ * Object descriptor
+ */
+template <typename ValTy_>
+auto get_object_descriptor() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>
+{
+    static object_descriptor_ptr inst = ((ValTy_*)nullptr)->cpph_refl_get_object_descriptor();
+
+    return &*inst;
+}
+
+/*
+ * Primitives
+ */
 namespace detail {
 template <typename ValTy_>
 struct primitive_manipulator : if_primitive_manipulator
 {
-    void archive(archive::if_writer* writer, const void* p_void, object_descriptor const*) const override
+    void archive(archive::if_writer* writer, const void* p_void, object_descriptor_t) const override
     {
         *writer << *(ValTy_*)p_void;
     }
-    void restore(archive::if_reader* reader, void* p_void, object_descriptor const*) const override
+    void restore(archive::if_reader* reader, void* p_void, object_descriptor_t) const override
     {
         *reader >> *(ValTy_*)p_void;
     }
@@ -78,6 +93,9 @@ auto get_object_descriptor() -> object_sfinae_t<
     return &*desc;
 }
 
+/*
+ * Fixed size arrays
+ */
 namespace detail {
 template <typename ElemTy_>
 object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
@@ -92,7 +110,7 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
         {
             return get_object_descriptor<ElemTy_>();
         }
-        void archive(archive::if_writer* strm, const void* pvdata, object_descriptor const* desc) const override
+        void archive(archive::if_writer* strm, const void* pvdata, object_descriptor_t desc) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
@@ -103,7 +121,7 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
             std::for_each(begin, end, [&](auto&& elem) { *strm << elem; });
             strm->array_pop();
         }
-        void restore(archive::if_reader* strm, void* pvdata, object_descriptor const* desc) const override
+        void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
@@ -146,8 +164,60 @@ auto get_object_descriptor() -> object_sfinae_t<detail::is_stl_array_v<ValTy_>>
             std::size(*(ValTy_*)0));
 }
 
+/*
+ * Dynamic sized list-like containers
+ *
+ * (set, map, vector ...)
+ */
+namespace detail {
+template <typename Container_>
+auto get_list_like_descriptor() -> object_descriptor_t
+{
+    using value_type = typename Container_::value_type;
+
+    static struct manip_t : if_primitive_manipulator
+    {
+        primitive_t type() const noexcept override
+        {
+            return primitive_t::array;
+        }
+        object_descriptor_t element_type() const noexcept override
+        {
+            return get_object_descriptor<value_type>();
+        }
+        void archive(archive::if_writer* strm, const void* pvdata, object_descriptor_t desc) const override
+        {
+            if_primitive_manipulator::archive(strm, pvdata, desc);
+        }
+        void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const override
+        {
+        }
+        requirement_status_tag status(const void* pvdata) const noexcept override
+        {
+            return if_primitive_manipulator::status(pvdata);
+        }
+    } manip;
+
+    constexpr auto extent = sizeof(Container_);
+    static auto desc
+            = object_descriptor::primitive_factory{}
+                      .setup(extent, [] { return &manip; })
+                      .create();
+
+    return &*desc;
+}
+}  // namespace detail
+
+template <typename ValTy_>
+auto get_object_descriptor()
+        -> object_sfinae_t<is_template_instance_of<ValTy_, std::vector>::value>
+{
+    return detail::get_list_like_descriptor<ValTy_>();
+}
+
 inline void compile_test()
 {
+    get_object_descriptor<std::vector<int>>();
 }
 
 }  // namespace CPPHEADERS_NS_::refl

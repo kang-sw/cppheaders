@@ -71,17 +71,17 @@
 #define CPPH_FINALLY(Callable) \
     auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = CPPHEADERS_NS_::cleanup(Callable)
 
-#define CPPH_SFINAE_EXPR(Name, TParam, Expr)                          \
-    template <typename TParam, class = void>                          \
-    struct Name : std::false_type                                     \
-    {                                                                 \
-    };                                                                \
-    template <typename TParam>                                        \
-    struct Name<TParam, std::void_t<decltype(Expr)>> : std::true_type \
-    {                                                                 \
-    };                                                                \
-                                                                      \
-    template <typename TParam>                                        \
+#define CPPH_SFINAE_EXPR(Name, TParam, ...)                                  \
+    template <typename TParam, class = void>                                 \
+    struct Name : std::false_type                                            \
+    {                                                                        \
+    };                                                                       \
+    template <typename TParam>                                               \
+    struct Name<TParam, std::void_t<decltype(__VA_ARGS__)>> : std::true_type \
+    {                                                                        \
+    };                                                                       \
+                                                                             \
+    template <typename TParam>                                               \
     constexpr bool INTERNAL_CPPH_CONCAT(Name, _v) = Name<TParam>::value;
 
 #endif

@@ -40,7 +40,11 @@
 #include "../../__namespace__.h"
 
 namespace CPPHEADERS_NS_::refl {
-using binary_t = archive::binary_t;
+class object_descriptor;
+
+using binary_t              = archive::binary_t;
+using object_descriptor_t   = object_descriptor const*;
+using object_descriptor_ptr = std::unique_ptr<object_descriptor const>;
 
 namespace error {
 CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
@@ -91,8 +95,8 @@ class object_descriptor;  // forwarding
  */
 struct object_view_t
 {
-    object_descriptor const* meta = {};
-    object_data_t* data           = {};
+    object_descriptor_t meta = {};
+    object_data_t* data      = {};
 
    public:
     object_view_t() = default;
@@ -107,8 +111,8 @@ struct object_view_t
 
 struct object_const_view_t
 {
-    object_descriptor const* meta = {};
-    object_data_t const* data     = {};
+    object_descriptor_t meta  = {};
+    object_data_t const* data = {};
 
    public:
     object_const_view_t() = default;
@@ -131,8 +135,8 @@ struct object_const_view_t
 struct dynamic_object_ptr
 {
    private:
-    object_descriptor const* _meta = {};
-    object_data_t* _data           = {};
+    object_descriptor_t _meta = {};
+    object_data_t* _data      = {};
 
    public:
     /*  Lifetime Management  */
@@ -144,7 +148,7 @@ struct dynamic_object_ptr
 };
 
 // alias
-using object_descriptor_fn = std::function<object_descriptor const*()>;
+using object_descriptor_fn = std::function<object_descriptor_t()>;
 
 /**
  * Object's sub property info
@@ -164,7 +168,7 @@ struct property_info
     std::string_view name;
 
    public:
-    object_descriptor const* _owner;
+    object_descriptor_t _owner;
 
    public:
     property_info() = default;
@@ -207,12 +211,12 @@ class if_primitive_manipulator
      *
      * (optional, map, set, pointer, etc ...)
      */
-    virtual object_descriptor const* element_type() const noexcept { return nullptr; };
+    virtual object_descriptor_t element_type() const noexcept { return nullptr; };
 
     /**
      * Archive to writer
      */
-    virtual void archive(archive::if_writer* strm, void const* pvdata, object_descriptor const* desc) const
+    virtual void archive(archive::if_writer* strm, void const* pvdata, object_descriptor_t desc) const
     {
         *strm << nullptr;
     }
@@ -220,7 +224,7 @@ class if_primitive_manipulator
     /**
      * Restore from reader
      */
-    virtual void restore(archive::if_reader* strm, void* pvdata, object_descriptor const* desc) const = 0;
+    virtual void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const = 0;
 
     /**
      * Check status of given parameter. Default is 'required', which cannot be ignored.
@@ -247,7 +251,7 @@ class if_primitive_manipulator
  * SFINAE helper for overloading get_object_descriptor
  */
 template <bool Test_>
-using object_sfinae_t = std::enable_if_t<Test_, object_descriptor const*>;
+using object_sfinae_t = std::enable_if_t<Test_, object_descriptor_t>;
 
 template <typename A_, typename B_>
 using object_sfinae_overload_t = object_sfinae_t<std::is_same_v<A_, B_>>;
@@ -274,7 +278,7 @@ object_descriptor_fn default_object_descriptor_fn()
 class object_descriptor
 {
    private:
-    using hierarchy_append_fn = std::function<void(object_descriptor const*,
+    using hierarchy_append_fn = std::function<void(object_descriptor_t,
                                                    property_info const*)>;
 
    private:
@@ -874,6 +878,21 @@ operator>>(archive::if_reader& strm, object_view_t obj)
     obj.meta->_restore_from(&strm, obj.data, &ctx);
     return strm;
 }
+
+/*
+ * User type definition
+ */
+namespace detail {
+template <typename Ty_, class = void>
+constexpr bool is_cpph_refl_object_v = false;
+
+template <typename Ty_>
+constexpr bool is_cpph_refl_object_v<Ty_, std::void_t<
+        decltype(std::declval<Ty_>().cpph_refl_get_object_descriptor())>> = true;
+}  // namespace detail
+
+template <typename ValTy_>
+auto get_object_descriptor() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>;
 
 }  // namespace CPPHEADERS_NS_::refl
 

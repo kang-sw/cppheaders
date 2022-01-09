@@ -27,10 +27,8 @@
 #include <optional>
 #include <string_view>
 
+#include "../macros.hxx"
 #include "../template_utils.hxx"
-
-//
-#include "../__namespace__.h"
 
 namespace CPPHEADERS_NS_::archiving::detail {
 template <const auto& s>
@@ -165,3 +163,10 @@ constexpr auto to_json_visitor = [](auto&& r) {
 };
 
 }  // namespace CPPHEADERS_NS_::archiving::detail
+
+#define INTERNAL_CPPH_ARCHIVING_BRK_TOKENS(STR)                                                            \
+    static constexpr char INTERNAL_CPPH_CONCAT(KEYSTR_, __LINE__)[] = STR;                                 \
+    static constexpr auto INTERNAL_CPPH_CONCAT(KEYSTR_VIEW_, __LINE__)                                     \
+            = CPPHEADERS_NS_::archiving::detail::break_VA_ARGS<INTERNAL_CPPH_CONCAT(KEYSTR_, __LINE__)>(); \
+    static const inline auto INTERNAL_CPPH_CONCAT(KEYARRAY_, __LINE__)                                     \
+            = CPPHEADERS_NS_::archiving::detail::views_to_strings(INTERNAL_CPPH_CONCAT(KEYSTR_VIEW_, __LINE__));

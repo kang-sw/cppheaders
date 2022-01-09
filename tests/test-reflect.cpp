@@ -23,7 +23,6 @@
 // project home: https://github.com/perfkitpp
 
 #include "catch.hpp"
-
 #include "refl/buffer.hxx"
 #include "refl/if_archive.hxx"
 #include "refl/object_core.hxx"
@@ -33,6 +32,16 @@ struct test_object
     int a = 1;
     int b = 2;
     int c = 3;
+};
+
+struct test_macro_expr_3
+{
+    int a = 01;
+    int b = 4;
+    int c = 5;
+
+    cpph::refl::object_descriptor_ptr
+    cpph_refl_get_object_descriptor() const noexcept;
 };
 
 struct test_object_of_object
@@ -77,6 +86,7 @@ CPPH_REFL_DECLARE(test_macro_expr_2);
 
 TEST_CASE("creation", "[reflection]")
 {
+    cpph::refl::get_object_descriptor<test_macro_expr_3>();
     {
         auto desc = cpph::refl::get_object_descriptor<test_object>();
         REQUIRE(desc->properties().size() == 3);
@@ -108,6 +118,12 @@ TEST_CASE("creation", "[reflection]")
         REQUIRE(desc->properties().size() == 3);
         REQUIRE(desc->is_object());
         REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
+    }
+    {
+        auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_3>();
+        REQUIRE(desc->properties().size() == 1);
+        REQUIRE(desc->is_object());
+        REQUIRE(desc->extent() == sizeof(test_macro_expr_3));
     }
 }
 
@@ -197,3 +213,13 @@ CPPH_REFL_DEFINE_OBJECT(test_macro_expr_2)
             .property_(c)
             .create();
 };
+
+cpph::refl::object_descriptor_ptr test_macro_expr_3::cpph_refl_get_object_descriptor() const noexcept
+{
+    using self_t = std::remove_pointer_t<decltype(this)>;
+    size_t pos   = size_t((char const*)&a - (char const*)this);
+
+    return perfkit::refl::define_object<test_macro_expr_3>()
+            .property("hello", &self_t::a)
+            .create();
+}

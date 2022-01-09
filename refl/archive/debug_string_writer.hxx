@@ -173,6 +173,12 @@ class debug_string_writer : public if_writer
         return _write_value("binary [%lld] bytes", v.size());
     }
 
+    if_writer& write_binary(array_view<const char> v) override
+    {
+
+        return *this;
+    }
+
     if_writer& object_push() override
     {
         if (_state() == context_state::object_key)

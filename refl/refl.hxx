@@ -1,4 +1,3 @@
-
 // MIT License
 //
 // Copyright (c) 2022. Seungwoo Kang
@@ -24,23 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "../functional.hxx"
-#include "../macros.hxx"
-#include "detail/object_impl.hxx"
-
-namespace CPPHEADERS_NS_::refl {
-using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_descriptor>()>;
-}
-
-/**
- * All macros must be placed in global namespace!
- */
-
-#ifndef CPPH_REFL_DECLARE
-#    define CPPH_REFL_DECLARE(ClassName)                                  \
-        namespace CPPHEADERS_NS_::refl {                                  \
-        template <class TypeName_>                                        \
-        auto get_object_descriptor()                                      \
-                -> object_sfinae_t<std::is_same_v<TypeName_, ClassName>>; \
-        }
-#endif
+#include "archive/binstream.hxx"
+#include "buffer.hxx"
+#include "detail/containers.hxx"
+#include "object.hxx"
