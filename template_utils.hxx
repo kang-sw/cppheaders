@@ -237,4 +237,20 @@ constexpr auto enable_if_v() -> decltype(std::declval<std::enable_if_t<Test_, Ty
 template <typename Ty_>
 constexpr Ty_ declval();
 
+// is_any_of template
+template <typename Ty_, typename... Args_>
+constexpr bool is_any_of_v = ((std::is_same_v<Ty_, Args_>) || ...);
+
+// is_specialization
+// @see https://stackoverflow.com/questions/16337610/how-to-know-if-a-type-is-a-specialization-of-stdvector
+template <typename Test, template <typename...> class Ref>
+struct is_template_instance_of : std::false_type
+{
+};
+
+template <template <typename...> class Ref, typename... Args>
+struct is_template_instance_of<Ref<Args...>, Ref> : std::true_type
+{
+};
+
 }  // namespace CPPHEADERS_NS_
