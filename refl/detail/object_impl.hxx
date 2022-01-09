@@ -733,7 +733,7 @@ class object_descriptor
 
        public:
         template <typename Class_>
-        Ty_ const& define_class() const
+        Ty_ const& define_class()
         {
             define_basic(sizeof(Class_));
 
@@ -744,7 +744,7 @@ class object_descriptor
         }
 
        public:
-        virtual Ty_ const& define_basic(size_t extent) const
+        virtual Ty_ const& define_basic(size_t extent)
         {
             *_current         = {};
             _current->_extent = extent;
@@ -770,7 +770,7 @@ class object_descriptor
         using super = object_factory_base<object_factory>;
 
        public:
-        object_factory const& define_basic(size_t extent) const override
+        object_factory const& define_basic(size_t extent) override
         {
             object_factory_base::define_basic(extent);
             _current->_keys.emplace();
@@ -804,7 +804,7 @@ class object_descriptor
     };
 
     template <class Class_>
-    class templated_object_factory : protected object_factory
+    class templated_object_factory : public object_factory
     {
        public:
         static templated_object_factory define()
@@ -821,12 +821,10 @@ class object_descriptor
             add_property(std::move(key), std::move(info));
             return *this;
         }
-
-        auto confirm() const { return object_factory::create(); }
     };
 
     template <class Class_>
-    class template_tuple_factory : protected tuple_factory
+    class template_tuple_factory : public tuple_factory
     {
        public:
         static template_tuple_factory define()
@@ -842,8 +840,6 @@ class object_descriptor
             add_property(create_property_info(mem_ptr));
             return *this;
         }
-
-        auto confirm() const { return tuple_factory::create(); }
     };
 };
 

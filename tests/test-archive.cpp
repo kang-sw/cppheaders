@@ -93,7 +93,7 @@ auto get_object_descriptor()
                 .property("a", &test_object::a)
                 .property("b", &test_object::b)
                 .property("c", &test_object::c)
-                .confirm();
+                .create();
     }();
 
     return &*instance;
@@ -124,7 +124,7 @@ auto get_object_descriptor()
                 .property(&test_tuple::a)
                 .property(&test_tuple::b)
                 .property(&test_tuple::c)
-                .confirm();
+                .create();
     }();
 
     return &*instance;
@@ -153,6 +153,6 @@ CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LIN
                       .property("hello", &std::remove_pointer_t<decltype(ptr)>::a)
                       .property("hello-2", &std::remove_pointer_t<decltype(ptr)>::b)
                       .property("hello-3", &std::remove_pointer_t<decltype(ptr)>::c)
-                      .confirm();
+                      .create();
           };
 }  // namespace CPPHEADERS_NS_::refl
