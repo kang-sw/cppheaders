@@ -35,3 +35,13 @@
 #if _WIN32
 #    include <iso646.h>
 #endif
+
+#undef CPPHEADERS_DEPRECATED_HEADER
+#define CPPHEADERS_DEPRECATED_HEADER(Alias)                                                 \
+    namespace {                                                                             \
+    [[deprecated("This header is deprecated. Use " Alias " Instead")]] constexpr static int \
+            badheader_hpp_is_deprecated                                                     \
+            = 0;                                                                            \
+    constexpr static int please_dont_use_badheader_hpp                                      \
+            = badheader_hpp_is_deprecated;                                                  \
+    }

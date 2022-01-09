@@ -32,6 +32,7 @@
 
 #include "../../utility/singleton.hxx"
 #include "../algorithm.hxx"
+#include "../counter.hxx"
 #include "../if_archive.hxx"
 
 //
@@ -43,9 +44,20 @@ using binary_t = archive::binary_t;
 namespace error {
 CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
 
-CPPH_DECLARE_EXCEPTION(object_archive_exception, object_exception);
+struct object_archive_exception : object_exception
+{
+    archive::error_info error;
+
+    object_archive_exception&& set(archive::if_archive_base* archive)
+    {
+        error = archive->dump_error();
+        return std::move(*this);
+    }
+};
+
 CPPH_DECLARE_EXCEPTION(invalid_read_state, object_archive_exception);
 CPPH_DECLARE_EXCEPTION(invalid_write_state, object_archive_exception);
+CPPH_DECLARE_EXCEPTION(missing_entity, object_archive_exception);
 
 }  // namespace error
 
@@ -290,6 +302,7 @@ class object_descriptor
     bool is_primitive() const noexcept { return !!_primitive; }
     bool is_object() const noexcept { return _keys.has_value(); }
     bool is_tuple() const noexcept { return not is_primitive() && not is_object(); }
+    bool is_optional() const noexcept { return is_primitive() && _primitive()->status() != requirement_status_tag::required; }
 
     /**
      * Current requirement status of given property
@@ -330,9 +343,18 @@ class object_descriptor
 
     /**
      * Retrieves property info from child of this object
+     *
+     * @param parent parent data pointer
+     * @param child child data pointer
+     * @param append
+     * @return Number of properties. ~size_t{} if error.
      */
-    size_t property(object_data_t* parent, object_data_t* child, hierarchy_append_fn const& append)
+    size_t property(
+            object_data_t* parent,
+            object_data_t* child,
+            hierarchy_append_fn const& append) const
     {
+        assert(parent <= child);
         auto ofst = (char*)child - (char*)parent;
         return _find_property(ofst, append);
     }
@@ -353,7 +375,7 @@ class object_descriptor
     /**
      * Get list of properties
      */
-    decltype(_props) const& properties() const { return _props; }
+    decltype(_props) const& properties() const noexcept { return _props; }
 
     /**
      * Check if this is initialized object descriptor
@@ -363,12 +385,12 @@ class object_descriptor
     /**
      * Create default initialized dynamic object
      */
-    dynamic_object_ptr create();
+    dynamic_object_ptr create() const;
 
     /**
      * Clone dynamic object from template
      */
-    dynamic_object_ptr clone(object_data_t* parent);
+    dynamic_object_ptr clone(object_data_t* parent) const;
 
    public:
     void _archive_to(archive::if_writer* strm, object_data_t const* data) const
@@ -390,7 +412,8 @@ class object_descriptor
                 {
                     if (not strm->is_key_next())
                         throw error::invalid_write_state{}
-                                .message("'key' expected. at (%s)", strm->dump_error().str().c_str());
+                                .set(strm)
+                                .message("'key' expected.");
 
                     auto& prop = _props.at(index);
 
@@ -440,7 +463,17 @@ class object_descriptor
         }
     }
 
-    void _restore_from(archive::if_reader* strm, object_data_t* data, std::string& keybuf) const
+    struct restore_context
+    {
+        std::string keybuf;
+        std::vector<bool> found_elems;
+    };
+
+    void _restore_from(
+            archive::if_reader* strm,
+            object_data_t* data,
+            restore_context* context  // for reusing key buffer during recursive
+    ) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _restore_from on them.
@@ -455,32 +488,85 @@ class object_descriptor
         {
             if (not strm->is_object_next())
                 throw error::invalid_read_state{}
-                        .message("'object' expected. at (%s)", strm->dump_error().str().c_str());
+                        .set(strm)
+                        .message("'object' expected");
 
             int hlevel = 0, hid = 0;
             strm->hierarchy(&hlevel, &hid);
 
-            std::vector<bool> requirement_satisfied;
-            requirement_satisfied.resize(_props.size(), false);
+            auto& found = context->found_elems;
+            found.resize(_props.size(), false);
 
             while (not strm->should_break(hlevel, hid))
             {
                 if (not strm->is_key_next())
-                    throw error::invalid_read_state{}.message("'key' expected");
+                    throw error::invalid_read_state{}
+                            .set(strm)
+                            .message("'key' expected");
 
+                // retrive key, and find it from my properties list
+                auto& keybuf = context->keybuf;
                 *strm >> keybuf;
                 auto elem = find_ptr(*_keys, keybuf);
 
                 // simply ignore unexpected keys
                 if (not elem) { continue; }
 
-                // todo
+                auto index   = elem->second;
+                found[index] = true;
+
+                auto& prop      = _props.at(index);
+                auto child      = prop.descriptor();
+                auto child_data = child->retrieve(data, prop);
+                assert(child_data);
+
+                child->_restore_from(strm, child_data, context);
+            }
+
+            for (auto index : perfkit::count(found.size()))
+            {
+                if (found[index]) { continue; }
+
+                auto& prop = _props[index];
+                auto child = prop.descriptor();
+
+                if (not child->is_optional())
+                    throw error::missing_entity{}
+                            .message("property [%d: in offset %d] missing",
+                                     (int)index, (int)prop.offset);
             }
         }
         else if (is_tuple())
         {
             if (not strm->is_array_next())
-                throw error::invalid_read_state{}.message("'array' expected");
+                throw error::invalid_read_state{}
+                        .set(strm)
+                        .message("'array' expected");
+
+            int hlevel = 0, hid = 0;
+            strm->hierarchy(&hlevel, &hid);
+
+            // tuple is always in fixed-order
+            for (auto& prop : _props)
+            {
+                if (strm->should_break(hlevel, hid))
+                    throw error::missing_entity{}
+                            .set(strm)
+                            .message("Only %d out of %d properties found.",
+                                     (int)(&prop - _props.data()), (int)_props.size());
+
+                auto child = prop.descriptor();
+                if (child->is_optional() && strm->is_null_next())
+                {
+                    // do nothing
+                    nullptr_t nul;
+                    *strm >> nul;
+                    continue;
+                }
+
+                auto child_data = child->retrieve(data, prop);
+                child->_restore_from(strm, child_data, context);
+            }
         }
         else
         {
@@ -653,8 +739,8 @@ operator<<(archive::if_writer& strm, object_const_view_t obj)
 inline archive::if_reader&
 operator>>(archive::if_reader& strm, object_view_t obj)
 {
-    std::string keybuf;
-    obj.meta->_restore_from(&strm, obj.data, keybuf);
+    object_descriptor::restore_context ctx;
+    obj.meta->_restore_from(&strm, obj.data, &ctx);
     return strm;
 }
 
