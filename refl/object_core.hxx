@@ -51,41 +51,50 @@ using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_d
 #    define CPPH_REFL_DEFINE_TUPLE(ClassName) \
         INTERNAL_CPPH_DEFINE_IMPL(ClassName, factory, CPPHEADERS_NS_::refl::define_tuple)
 
-#    define CPPH_prop(VarName) \
+#    define INTERNAL_CPPH_REFL_RETRIEVE_MEMPTR(VarName) \
         &std::remove_pointer_t<decltype(INTERNAL_CPPH_CLASSPTR)>::VarName
 
-#    define CPPH_prop_0(VarName) \
-        property(CPPH_prop(VarName))
+#    define CPPH_PROP_TUPLE(VarName, ...)                    \
+        property(                                            \
+                INTERNAL_CPPH_REFL_RETRIEVE_MEMPTR(VarName), \
+                ##__VA_ARGS__)
 
-#    define CPPH_prop_1(PropNameStr, VarName) \
-        property(PropNameStr, CPPH_prop(VarName))
+#    define CPPH_PROP_OBJECT(PropNameStr, VarName, ...)       \
+        property(PropNameStr,                                 \
+                 INTERNAL_CPPH_REFL_RETRIEVE_MEMPTR(VarName), \
+                 ##__VA_ARGS__)
 
-#    define CPPH_prop_2(VarName) CPPH_prop_1(#    VarName, VarName)
+#    define CPPH_PROP_OBJECT_AUTOKEY(VarName, ...) \
+        CPPH_PROP_OBJECT(                               \
+                #VarName,                          \
+                VarName,                           \
+                ##__VA_ARGS__)
 
-#    define INTERNAL_CPPH_REFL_GENERATOR_NAME(ClassName) \
-        INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_CONCAT(INTERNAL_cpph_refl_generator_, ClassName), __LINE__)
+#    define INTERNAL_CPPH_REFL_GENERATOR_NAME() \
+        INTERNAL_CPPH_CONCAT(INTERNAL_cpph_refl_generator_, __LINE__)
 
-#    define INTERNAL_CPPH_REFL_CLASS_NAME(ClassName) \
-        INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_CONCAT(INTERNAL_cpph_refl_class_, ClassName), __LINE__)
+#    define INTERNAL_CPPH_REFL_CLASS_NAME() \
+        INTERNAL_CPPH_CONCAT(INTERNAL_cpph_refl_class_, __LINE__)
 
-#    define INTERNAL_CPPH_DEFINE_IMPL(ClassName, FactoryName, Registration)                               \
-        using INTERNAL_CPPH_REFL_CLASS_NAME(ClassName) = ClassName;                                       \
-        extern CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_REFL_GENERATOR_NAME(ClassName); \
-                                                                                                          \
-        namespace CPPHEADERS_NS_::refl {                                                                  \
-                                                                                                          \
-        template <class TypeName_>                                                                        \
-        auto get_object_descriptor()                                                                      \
-                -> object_sfinae_t<std::is_same_v<TypeName_, INTERNAL_CPPH_REFL_CLASS_NAME(ClassName)>>   \
-        {                                                                                                 \
-            static auto instance = INTERNAL_CPPH_REFL_GENERATOR_NAME(ClassName)();                        \
-            return &*instance;                                                                            \
-        }                                                                                                 \
-        }                                                                                                 \
-                                                                                                          \
-        CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_REFL_GENERATOR_NAME(ClassName)         \
-                = [ INTERNAL_CPPH_CLASSPTR = (INTERNAL_CPPH_REFL_CLASS_NAME(ClassName)*)nullptr,          \
-                    FactoryName            = (Registration<INTERNAL_CPPH_REFL_CLASS_NAME(ClassName)>()) ]
+#    define INTERNAL_CPPH_DEFINE_IMPL(ClassName, FactoryName, Registration)                      \
+                                                                                                 \
+        using INTERNAL_CPPH_REFL_CLASS_NAME() = ClassName;                                       \
+        extern CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_REFL_GENERATOR_NAME(); \
+                                                                                                 \
+        namespace CPPHEADERS_NS_::refl {                                                         \
+                                                                                                 \
+        template <class TypeName_>                                                               \
+        auto get_object_descriptor()                                                             \
+                -> object_sfinae_t<std::is_same_v<TypeName_, INTERNAL_CPPH_REFL_CLASS_NAME()>>   \
+        {                                                                                        \
+            static auto instance = INTERNAL_CPPH_REFL_GENERATOR_NAME()();                        \
+            return &*instance;                                                                   \
+        }                                                                                        \
+        }                                                                                        \
+                                                                                                 \
+        CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_REFL_GENERATOR_NAME()         \
+                = [ INTERNAL_CPPH_CLASSPTR = (INTERNAL_CPPH_REFL_CLASS_NAME()*)nullptr,          \
+                    FactoryName            = (Registration<INTERNAL_CPPH_REFL_CLASS_NAME()>()) ]
 
 #endif
 

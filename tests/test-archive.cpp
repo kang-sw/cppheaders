@@ -1,189 +1,89 @@
+// MIT License
+//
+// Copyright (c) 2022. Seungwoo Kang
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+// project home: https://github.com/perfkitpp
+
 #include "refl/archive/debug_string_writer.hxx"
-#include "refl/if_archive.hxx"
-#include "refl/object_core.hxx"
 #include "refl/buffer.hxx"
+#include "refl/object.hxx"
 #include "third/doctest.h"
 
-struct test_object
+using namespace cpph;
+
+namespace ns {
+struct inner_arg_1
 {
-    int a = 1;
-    int b = 2;
-    int c = 3;
+    std::string str1 = "str1";
+    std::string str2 = "str2";
+    int var          = 133;
+    bool k           = true;
+    double g         = 3.14;
 };
 
-struct test_object_of_object
+struct inner_arg_2
 {
-    test_object a;
-    test_object b;
-    test_object c;
+    inner_arg_1 rtt   = {};
+    nullptr_t nothing = nullptr;
 };
 
-struct test_tuple
+struct outer
 {
-    test_object_of_object a, b, c;
 };
+}  // namespace ns
 
-struct test_macro_expr_1
+CPPH_REFL_DECLARE(ns::inner_arg_1);
+CPPH_REFL_DECLARE(ns::inner_arg_2);
+CPPH_REFL_DECLARE(ns::outer);
+
+TEST_SUITE("Archive")
 {
-    test_tuple a, b, c;
-};
-
-struct test_macro_expr_2
-{
-    test_tuple a, b, c;
-};
-
-struct test_tuple_2
-{
-    test_tuple a, b, c;
-};
-
-struct test_object_2
-{
-    test_tuple a, b, c;
-};
-
-CPPH_REFL_DECLARE(test_object);
-CPPH_REFL_DECLARE(test_object_of_object);
-CPPH_REFL_DECLARE(test_tuple);
-CPPH_REFL_DECLARE(test_tuple_2);
-CPPH_REFL_DECLARE(test_object_2);
-CPPH_REFL_DECLARE(test_macro_expr_1);
-CPPH_REFL_DECLARE(test_macro_expr_2);
-
-TEST_SUITE("Reflection")
-{
-    TEST_CASE("Creation")
+    TEST_CASE("Default Writer")
     {
-        {
-            auto desc = cpph::refl::get_object_descriptor<test_object>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_object));
-
-            auto prop = desc->property("b");
-        }
-        {
-            auto desc = cpph::refl::get_object_descriptor<test_object_of_object>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_object_of_object));
-        }
-        {
-            auto desc = perfkit::refl::get_object_descriptor<test_tuple>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_tuple());
-            REQUIRE(desc->extent() == sizeof(test_tuple));
-        }
-        {
-            auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_1>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
-        }
-        {
-            auto desc = perfkit::refl::get_object_descriptor<test_macro_expr_2>();
-            REQUIRE(desc->properties().size() == 3);
-            REQUIRE(desc->is_object());
-            REQUIRE(desc->extent() == sizeof(test_macro_expr_1));
-        }
-    }
-
-    TEST_CASE("Archiving")
-    {
-        cpph::archive::obuffer(std::cout);
-        cpph::archive::if_writer* writer = nullptr;
-
-        test_object s;
-        perfkit::refl::get_object_descriptor<test_object>();
-        writer->dump(s);
+        archive::debug_string_writer writer{archive::obuffer(std::cout)};
+        writer.serialize(ns::outer{});
+        std::cout.flush();
     }
 }
 
-#include "refl/object.hxx"
-namespace cpph::refl {
-template <class T>
-auto get_object_descriptor()
-        -> cpph::refl::object_sfinae_t<std::is_same_v<T, test_object>>
+#define property_ CPPH_PROP_TUPLE
+CPPH_REFL_DEFINE_TUPLE(ns::inner_arg_1)
 {
-    static auto instance = [] {
-        return define_object<test_object>()
-                .property("a", &test_object::a)
-                .property("b", &test_object::b)
-                .property("c", &test_object::c)
-                .create();
-    }();
-
-    return &*instance;
-}
-
-template <class T>
-auto get_object_descriptor()
-        -> cpph::refl::object_sfinae_t<std::is_same_v<T, test_object_of_object>>
-{
-    static auto instance = [] {
-        return object_descriptor::object_factory()
-                .define_basic(sizeof(test_object_of_object))
-                .add_property("a", {offsetof(test_object_of_object, a), default_object_descriptor_fn<test_object>()})
-                .add_property("b", {offsetof(test_object_of_object, b), default_object_descriptor_fn<test_object>()})
-                .add_property("c", {offsetof(test_object_of_object, c), default_object_descriptor_fn<test_object>()})
-                .create();
-    }();
-
-    return &*instance;
-}
-
-template <class T>
-auto get_object_descriptor()
-        -> cpph::refl::object_sfinae_t<std::is_same_v<T, test_tuple>>
-{
-    static auto instance = [] {
-        return define_tuple<test_tuple>()
-                .property(&test_tuple::a)
-                .property(&test_tuple::b)
-                .property(&test_tuple::c)
-                .create();
-    }();
-
-    return &*instance;
-}
-
-}  // namespace cpph::refl
-
-using ClassName = test_macro_expr_1;
-
-using INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__) = ClassName;
-extern CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LINE__);
-
-namespace CPPHEADERS_NS_::refl {
-
-template <class TypeName_>
-auto get_object_descriptor()
-        -> object_sfinae_t<std::is_same_v<TypeName_, INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__)>>
-{
-    static auto instance = INTERNAL_CPPH_CONCAT(ClassName, LINE__)();
-    return &*instance;
-}
-
-}  // namespace CPPHEADERS_NS_::refl
-
-CPPHEADERS_NS_::refl::descriptor_generate_fn INTERNAL_CPPH_CONCAT(ClassName, LINE__)
-        = [ptr          = (INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__) *)nullptr,
-           Registration = CPPHEADERS_NS_::refl::define_object<INTERNAL_CPPH_CONCAT(ClassName__Type, LINE__)>()] {
-              return Registration
-                      .property("hello", &std::remove_pointer_t<decltype(ptr)>::a)
-                      .property("hello-2", &std::remove_pointer_t<decltype(ptr)>::b)
-                      .property("hello-3", &std::remove_pointer_t<decltype(ptr)>::c)
-                      .create();
-          };
-
-CPPH_REFL_DEFINE_OBJECT(test_macro_expr_2)
-{
-#define property_ CPPH_prop_2
     return factory
-            .property_(a)
-            .property_(b)
-            .property_(c)
+            .property_(str1)
+            .property_(str2)
+            .property_(var)
+            .property_(k)
+            .property_(g)
             .create();
-#undef property_
+};
+
+CPPH_REFL_DEFINE_OBJECT(ns::inner_arg_2)
+{
+    return factory
+            .create();
+};
+
+CPPH_REFL_DEFINE_OBJECT(ns::outer)
+{
+    return factory
+            .create();
 };

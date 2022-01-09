@@ -229,7 +229,7 @@ class if_writer : public if_archive_base
 
    public:
     template <typename ValTy_>
-    if_writer& dump(ValTy_ const&);
+    if_writer& serialize(ValTy_ const&);
 
    public:
     virtual if_writer& operator<<(nullptr_t) = 0;
@@ -294,7 +294,7 @@ class if_reader : public if_archive_base
 
    public:
     template <typename ValTy_>
-    if_reader& restore(ValTy_& out);
+    if_reader& deserialize(ValTy_& out);
 
    public:
     virtual if_reader& operator>>(nullptr_t) = 0;

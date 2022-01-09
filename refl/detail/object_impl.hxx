@@ -918,14 +918,14 @@ inline std::string to_string(CPPHEADERS_NS_::refl::primitive_t t)
 namespace CPPHEADERS_NS_::archive {
 
 template <typename ValTy_>
-if_writer& if_writer::dump(ValTy_ const& in)
+if_writer& if_writer::serialize(const ValTy_& in)
 {
     refl::object_const_view_t view{in};
     return *this << view;
 }
 
 template <typename ValTy_>
-if_reader& if_reader::restore(ValTy_& out)
+if_reader& if_reader::deserialize(ValTy_& out)
 {
     refl::object_view_t view{&out};
     return *this >> view;

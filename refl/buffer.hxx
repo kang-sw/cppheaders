@@ -25,6 +25,7 @@
 #pragma once
 #include <iostream>
 
+#include "../algorithm.hxx"
 #include "if_archive.hxx"
 
 //
@@ -48,7 +49,7 @@ stream_writer obuffer(StringLike_& out)
     };
 }
 
-stream_writer obuffer(std::string* arg)
+inline stream_writer obuffer(std::string* arg)
 {
     return [arg](array_view<const char> obuf) {
         arg->append(obuf.begin(), obuf.end());
@@ -71,12 +72,12 @@ stream_reader ibuffer(ViewType_&& view)
     };
 }
 
-stream_reader ibuffer(void const* data, size_t len)
+inline stream_reader ibuffer(void const* data, size_t len)
 {
     return ibuffer(std::string_view{(char const*)data, len});
 }
 
-stream_writer obuffer(std::ostream& arg)
+inline stream_writer obuffer(std::ostream& arg)
 {
     return [&arg](array_view<const char> obuf) {
         if (not arg || arg.eof()) { return eof; }
@@ -86,7 +87,7 @@ stream_writer obuffer(std::ostream& arg)
     };
 }
 
-stream_reader ibuffer(std::istream& arg)
+inline stream_reader ibuffer(std::istream& arg)
 {
     return [&arg](array_view<char> ibuf) {
         if (not arg || arg.eof()) { return int64_t(eof); }
@@ -94,4 +95,4 @@ stream_reader ibuffer(std::istream& arg)
     };
 }
 
-}  // namespace CPPHEADERS_NS_::archive::stream
+}  // namespace CPPHEADERS_NS_::archive

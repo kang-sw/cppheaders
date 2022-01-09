@@ -9,9 +9,10 @@ add_executable(
         test-queue.cpp
         test-functional.cpp
         test-math.cpp
-        test-archive.cpp
+        test-reflect.cpp
         test-thread.cpp
         test-templates.cpp
+        test-archive.cpp
 )
 
 target_compile_definitions(
