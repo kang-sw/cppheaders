@@ -9,7 +9,7 @@ Compiled with
 
 ## INDEX
 
-- [`Reflection`](refl/README.md)
+- [`Reflection`](./refl)
 
 ## HOW TO INSTALL
 
