@@ -32,6 +32,16 @@
 
 #include "object_impl.hxx"
 
+namespace CPPHEADERS_NS {
+template <typename Container_>
+class chunk
+{
+};
+
+
+
+}  // namespace CPPHEADERS_NS
+
 namespace CPPHEADERS_NS_::refl {
 
 /**
@@ -65,7 +75,7 @@ struct primitive_manipulator : if_primitive_manipulator
 
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<
-        (is_any_of_v<ValTy_, bool, nullptr_t, std::string, binary_t>)
+        (is_any_of_v<ValTy_, bool, nullptr_t, std::string>)
         || (std::is_integral_v<ValTy_>)
         || (std::is_floating_point_v<ValTy_>)  //
         >
@@ -79,7 +89,6 @@ auto get_object_descriptor() -> object_sfinae_t<
             if constexpr (std::is_same_v<ValTy_, nullptr_t>) { return primitive_t::null; }
             if constexpr (std::is_same_v<ValTy_, bool>) { return primitive_t::boolean; }
             if constexpr (std::is_same_v<ValTy_, std::string>) { return primitive_t::string; }
-            if constexpr (std::is_same_v<ValTy_, binary_t>) { return primitive_t::binary; }
 
             return primitive_t::invalid;
         }

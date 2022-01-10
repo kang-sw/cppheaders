@@ -40,7 +40,6 @@
 namespace CPPHEADERS_NS_::refl {
 class object_descriptor;
 
-using binary_t              = archive::binary_t;
 using object_descriptor_t   = object_descriptor const*;
 using object_descriptor_ptr = std::unique_ptr<object_descriptor const>;
 

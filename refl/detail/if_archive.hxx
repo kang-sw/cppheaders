@@ -81,50 +81,6 @@ struct reader_key_missing : reader_exception
 
 }  // namespace error
 
-/**
- * Binary class
- */
-class binary_t : public std::vector<char>
-{
-   public:
-    using std::vector<char>::vector;
-
-   public:
-    template <typename Ty_, std::enable_if_t<std::is_trivial_v<Ty_>>* = nullptr>
-    binary_t& append(Ty_ const& value) noexcept
-    {
-        auto begin = std::reinterpret_pointer_cast<char const*>(&value);
-        auto end   = begin + sizeof(Ty_);
-
-        insert(begin, end);
-        return *this;
-    }
-
-    template <typename Ty_, std::enable_if_t<std::is_trivial_v<Ty_>>* = nullptr>
-    Ty_& refer(size_t offset_bytes = 0)
-    {
-        if (offset_bytes + sizeof(Ty_) > size())
-            throw std::out_of_range{""};
-
-        return *(Ty_*)data();
-    }
-
-    std::string_view view() const noexcept
-    {
-        return std::string_view{data(), size()};
-    }
-
-    std::string_view view(size_t offset, size_t size = ~size_t{})
-    {
-        size = std::min(size, this->size() - offset);
-
-        if (offset > this->size() || offset + size > this->size())  // prevent error from underflow
-            throw std::out_of_range{""};
-
-        return std::string_view{data() + offset, size};
-    }
-};
-
 constexpr size_t eof = ~size_t{};
 
 /**
@@ -254,7 +210,6 @@ class if_writer : public if_archive_base
     virtual if_writer& operator<<(double v) = 0;
 
     virtual if_writer& operator<<(std::string_view v) = 0;
-    virtual if_writer& operator<<(binary_t const& v)  = 0;
 
     //! writes binary_t as view form
     virtual if_writer& write_binary(array_view<char const> v) = 0;
@@ -321,8 +276,8 @@ class if_reader : public if_archive_base
     virtual if_reader& operator>>(float& v) { return _upcast<double>(v); }
     virtual if_reader& operator>>(double& v) = 0;
 
-    virtual if_reader& operator>>(std::string& v) = 0;
-    virtual if_reader& operator>>(binary_t& v)    = 0;
+    virtual if_reader& operator>>(std::string& v)         = 0;
+    virtual if_reader& read_binary(array_view<char> obuf) = 0;
 
     //! @throw parse_error next token is not valid target
     virtual bool is_object_next() = 0;
