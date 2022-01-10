@@ -166,6 +166,57 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
     size_t _size;
 };
 
+template <>
+class array_view<void> : public array_view<char>
+{
+   public:
+    array_view() noexcept = default;
+
+    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<typename Ty_::value_type>>>
+    array_view(Ty_&& other) noexcept
+            : array_view<char>(reinterpret_cast<char*>(std::data(other)),
+                               std::size(other) * sizeof(*std::data(other)))
+    {
+    }
+
+    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
+                                    typename std::remove_reference_t<Ty_>::value_type>>>
+    array_view& operator=(Ty_&& other) noexcept
+    {
+        array_view<char>::operator=(
+                array_view<char>(
+                        reinterpret_cast<char*>(std::data(other)),
+                        std::size(other) * sizeof(*std::data(other))));
+        return *this;
+    }
+};
+
+template <>
+class array_view<void const> : public array_view<char const>
+{
+   public:
+    array_view() noexcept = default;
+
+    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
+                                    typename std::remove_reference_t<Ty_>::value_type>>>
+    array_view(Ty_&& other) noexcept
+            : array_view<char const>(reinterpret_cast<char const*>(std::data(other)),
+                                     std::size(other) * sizeof(*std::data(other)))
+    {
+    }
+
+    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<typename Ty_::value_type>>>
+    array_view& operator=(Ty_&& other) noexcept
+
+    {
+        array_view<char const>::operator=(
+                array_view<char const>(
+                        reinterpret_cast<char const*>(std::data(other)),
+                        std::size(other) * sizeof(*std::data(other))));
+        return *this;
+    }
+};
+
 template <typename Range_>
 constexpr auto make_view(Range_&& array)
 {

@@ -212,7 +212,7 @@ class if_writer : public if_archive_base
     virtual if_writer& operator<<(std::string_view v) = 0;
 
     //! writes binary_t as view form
-    virtual if_writer& write_binary(array_view<char const> v) = 0;
+    virtual if_writer& write_binary(array_view<void const> v) = 0;
 
     virtual if_writer& object_push() = 0;
     virtual if_writer& object_pop()  = 0;
@@ -277,7 +277,7 @@ class if_reader : public if_archive_base
     virtual if_reader& operator>>(double& v) = 0;
 
     virtual if_reader& operator>>(std::string& v)         = 0;
-    virtual if_reader& read_binary(array_view<char> obuf) = 0;
+    virtual if_reader& read_binary(array_view<void> obuf) = 0;
 
     //! @throw parse_error next token is not valid target
     virtual bool is_object_next() = 0;
