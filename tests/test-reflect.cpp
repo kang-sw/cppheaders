@@ -41,8 +41,8 @@ struct test_object_declref
     int c = 3;
 };
 
-cpph::refl::object_descriptor_t
-find_object_descriptor(test_object_declref const& arg)
+cpph::refl::object_descriptor_ptr
+initialize_object_descriptor(test_object_declref const& arg)
 {
     return nullptr;
 }
