@@ -281,21 +281,56 @@ inline void compile_test()
 }  // namespace CPPHEADERS_NS_::refl
 
 namespace CPPHEADERS_NS_ {
-template <typename Container_, bool BigEndian_ = true, class = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
+/**
+ * Basic chunk adapter ... simple bypasses buffer
+ *
+ * Adapters are basically mutable and stateful, as they are instantiated for every
+ *  serialization/deserialization process
+ */
+struct chunk_bypass_adapter
+{
+    chunk_bypass_adapter(refl::object_descriptor_t) noexcept {}
+
+    const_buffer_view
+    operator()(const_buffer_view v)
+    {
+        return v;
+    }
+
+    mutable_buffer_view
+    operator()(mutable_buffer_view v)
+    {
+        return v;
+    }
+};
+
+// TODO: big_endian_adapter
+// NOTE: for example, compress adapter, AES256 adapter, etc ...
+//       As parameters can't be delievered to adapters directly,
+
+/**
+ *
+ * @tparam Container_
+ * @tparam Adapter_
+ */
+template <typename Container_,
+          typename Adapter_ = chunk_bypass_adapter,
+          class             = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
 class chunk : public Container_
 {
    public:
     using Container_::Container_;
+    using adapter = Adapter_;
+
     enum
     {
-        big_endian    = BigEndian_,
         is_contiguous = false
     };
 };
 
-template <typename Container_, bool BigEndian_>
+template <typename Container_, typename Adapter_>
 class chunk<Container_,
-            BigEndian_,
+            Adapter_,
             std::enable_if_t<
                     std::is_trivial_v<
                             remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
@@ -303,10 +338,10 @@ class chunk<Container_,
 {
    public:
     using Container_::Container_;
+    using adapter = Adapter_;
 
     enum
     {
-        big_endian    = BigEndian_,
         is_contiguous = true
     };
 };
@@ -314,9 +349,9 @@ class chunk<Container_,
 static_assert(chunk<std::vector<int>>::is_contiguous);
 static_assert(not chunk<std::list<int>>::is_contiguous);
 
-template <typename Container_>
+template <typename Container_, typename Adapter_>
 refl::object_descriptor_ptr
-initialize_object_descriptor(refl::type_tag<chunk<Container_>>)
+initialize_object_descriptor(refl::type_tag<chunk<Container_, Adapter_>>)
 {
     using chunk_t    = chunk<Container_>;
     using value_type = typename Container_::value_type;
@@ -329,6 +364,7 @@ initialize_object_descriptor(refl::type_tag<chunk<Container_>>)
         }
         void archive(archive::if_writer* strm, const void* pvdata, refl::object_descriptor_t desc) const override
         {
+            Adapter_ adapter{desc};
             auto container = (Container_ const*)pvdata;
 
             if constexpr (not chunk_t::is_contiguous)  // list, set, etc ...
@@ -338,7 +374,7 @@ initialize_object_descriptor(refl::type_tag<chunk<Container_>>)
                 strm->binary_push(total_size);
                 for (auto& elem : *container)
                 {
-                    strm->binary_write_some(elem);
+                    strm->binary_write_some(adapter(elem));
                 }
                 strm->binary_pop();
             }
