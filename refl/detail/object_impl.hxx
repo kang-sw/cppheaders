@@ -510,13 +510,13 @@ class object_descriptor
                         .set(strm)
                         .message("'object' expected");
 
-            int hlevel = 0, hid = 0;
-            strm->hierarchy(&hlevel, &hid);
+            archive::context_key context_key;
+            strm->context(&context_key);
 
             std::vector<bool> found;
             found.resize(_props.size(), false);
 
-            while (not strm->should_break(hlevel, hid))
+            while (not strm->should_break(context_key))
             {
                 if (not strm->is_key_next())
                     throw error::invalid_read_state{}
@@ -562,13 +562,13 @@ class object_descriptor
                         .set(strm)
                         .message("'array' expected");
 
-            int hlevel = 0, hid = 0;
-            strm->hierarchy(&hlevel, &hid);
+            archive::context_key context_key;
+            strm->context(&context_key);
 
             // tuple is always in fixed-order
             for (auto& prop : _props)
             {
-                if (strm->should_break(hlevel, hid))
+                if (strm->should_break(context_key))
                     throw error::missing_entity{}
                             .set(strm)
                             .message("Only %d out of %d properties found.",

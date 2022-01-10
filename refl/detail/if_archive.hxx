@@ -215,6 +215,15 @@ class if_writer : public if_archive_base
 };
 
 /**
+ * A context key to represent current parsing context
+ */
+struct context_key
+{
+    int depth = 0;
+    int id    = 0;
+};
+
+/**
  * Stream reader
  */
 class if_reader : public if_archive_base
@@ -276,22 +285,22 @@ class if_reader : public if_archive_base
     /**
      * to distinguish variable sized object's boundary.
      *
-     * level  < next_level                  := children opened.       KEEP
-     * level == next_level && id == next_id := hierarchy not changed. KEEP
-     * level == next_level && id != next_id := switched to unrelated. BREAK
-     * level >  next_level                  := switched to parent.    BREAK
+     * depth  < next_depth                  := children opened.       KEEP
+     * depth == next_depth && id == next_id := hierarchy not changed. KEEP
+     * depth == next_depth && id != next_id := switched to unrelated. BREAK
+     * depth >  next_depth                  := switched to parent.    BREAK
      */
-    virtual void hierarchy(int* level, int* id) = 0;
+    virtual void context(context_key*) = 0;
 
    public:
     //! Check should break out of this object/array context
-    bool should_break(int level, int id)
+    bool should_break(context_key const& key)
     {
-        int l0 = 0, l1 = 0;
-        hierarchy(&l0, &l1);
+        context_key next = {};
+        context(&next);
 
-        return (level == l0 && id != l1)
-            || (level > l0);
+        return next.depth == key.depth && key.id != next.id
+            || next.depth < key.depth;
     }
 };
 

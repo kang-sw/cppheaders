@@ -219,10 +219,14 @@ auto get_list_like_descriptor() -> object_descriptor_t
         }
         void archive(archive::if_writer* strm, const void* pvdata, object_descriptor_t desc) const override
         {
-            if_primitive_manipulator::archive(strm, pvdata, desc);
+            auto container = reinterpret_cast<Container_ const*>(pvdata);
+
+            for (auto& elem : *container)
+                *strm << elem;
         }
         void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const override
         {
+
         }
         requirement_status_tag status(const void* pvdata) const noexcept override
         {
