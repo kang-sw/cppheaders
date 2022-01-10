@@ -217,6 +217,9 @@ class array_view<void const> : public array_view<char const>
     }
 };
 
+using buffer_view         = array_view<void const>;
+using mutable_buffer_view = array_view<void>;
+
 template <typename Range_>
 constexpr auto make_view(Range_&& array)
 {
