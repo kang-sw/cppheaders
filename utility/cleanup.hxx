@@ -26,7 +26,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "../__namespace__.h"
+#include "../__namespace__"
 
 namespace CPPHEADERS_NS_ {
 template <typename Callable_>

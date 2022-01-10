@@ -23,7 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "__namespace__.h"
+#include "__namespace__"
 
 CPPHEADERS_DEPRECATED_HEADER("algorithm/std.hxx")
 #include "algorithm/std.hxx"

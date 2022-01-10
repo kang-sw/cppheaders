@@ -26,7 +26,7 @@
 #include <chrono>
 
 //
-#include "__namespace__.h"
+#include "__namespace__"
 
 namespace CPPHEADERS_NS_ {
 template <typename Clock_ = std::chrono::steady_clock>

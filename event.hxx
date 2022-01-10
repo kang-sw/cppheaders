@@ -34,7 +34,7 @@
 #include "threading.hxx"
 
 //
-#include "__namespace__.h"
+#include "__namespace__"
 
 namespace CPPHEADERS_NS_ {
 using event_key = basic_key<class LABEL_delegate_key>;

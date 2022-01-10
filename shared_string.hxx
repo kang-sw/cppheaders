@@ -28,7 +28,7 @@
 #include <string_view>
 
 //
-#include "__namespace__.h"
+#include "__namespace__"
 
 namespace CPPHEADERS_NS_ {
 template <typename CharTy_, typename Traits_, typename Alloc_>

@@ -31,7 +31,7 @@
 #include "defs.hxx"
 
 //
-#include "../__namespace__.h"
+#include "../__namespace__"
 
 namespace CPPHEADERS_NS_::math {
 using std::array;

@@ -28,7 +28,7 @@
 #include "../spinlock.hxx"
 
 //
-#include "../__namespace__.h"
+#include "../__namespace__"
 
 namespace CPPHEADERS_NS_ {
 template <typename Ty_, typename Mutex_ = perfkit::spinlock>

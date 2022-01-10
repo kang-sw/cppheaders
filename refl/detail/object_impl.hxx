@@ -37,7 +37,7 @@
 #include "../if_archive.hxx"
 
 //
-#include "../../__namespace__.h"
+#include "../../__namespace__"
 
 namespace CPPHEADERS_NS_::refl {
 class object_descriptor;

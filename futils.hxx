@@ -29,7 +29,7 @@
 #include <string>
 
 //
-#include "__namespace__.h"
+#include "__namespace__"
 
 #undef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS

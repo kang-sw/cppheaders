@@ -26,7 +26,7 @@
 
 #include <cassert>
 
-#include "__namespace__.h"
+#include "__namespace__"
 
 #if defined(CPPHEADERS_IMPLEMENT_ASSERTIONS)
 #    include <cstdio>

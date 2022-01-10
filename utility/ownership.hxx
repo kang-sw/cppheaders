@@ -27,7 +27,7 @@
 #include <exception>
 #include <type_traits>
 
-#include "../__namespace__.h"
+#include "../__namespace__"
 
 namespace CPPHEADERS_NS_ {
 struct bad_ownership_access : std::exception

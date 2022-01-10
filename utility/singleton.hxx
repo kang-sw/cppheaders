@@ -29,7 +29,7 @@
 #include <exception>
 #include <type_traits>
 
-#include "../__namespace__.h"
+#include "../__namespace__"
 
 namespace CPPHEADERS_NS_ {
 template <typename Ty_, typename Label_ = void>
