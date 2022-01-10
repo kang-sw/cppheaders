@@ -160,7 +160,7 @@ struct property_metadata
     size_t offset = 0;
 
     //! Object descriptor for this property
-    object_metadata_t type;
+    object_metadata_fn get_type;
 
     //! index of self
     int index_self = 0;
@@ -177,7 +177,7 @@ struct property_metadata
             size_t offset,
             object_metadata_fn descriptor)
             : offset(offset),
-              type(descriptor()),
+              get_type(std::move(descriptor)),
               _owner_type(nullptr)
     {
     }
@@ -462,7 +462,7 @@ class object_metadata
 
                     auto& prop = _props.at(index);
 
-                    auto child      = prop.type;
+                    auto child      = prop.get_type();
                     auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
@@ -484,7 +484,7 @@ class object_metadata
                 strm->array_push(_props.size());
                 for (auto& prop : _props)
                 {
-                    auto child      = prop.type;
+                    auto child      = prop.get_type();
                     auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
@@ -559,7 +559,7 @@ class object_metadata
                 found[index] = true;
 
                 auto& prop      = _props.at(index);
-                auto child      = prop.type;
+                auto child      = prop.get_type();
                 auto child_data = child->retrieve_self(data, prop);
                 assert(child_data);
 
@@ -571,7 +571,7 @@ class object_metadata
                 if (found[index]) { continue; }
 
                 auto& prop = _props[index];
-                auto child = prop.type;
+                auto child = prop.get_type();
 
                 if (not child->is_optional())
                     throw error::missing_entity{}
@@ -598,7 +598,7 @@ class object_metadata
                             .message("Only %d out of %d properties found.",
                                      (int)(&prop - _props.data()), (int)_props.size());
 
-                auto child = prop.type;
+                auto child = prop.get_type();
                 if (child->is_optional() && strm->is_null_next())
                 {
                     // do nothing
@@ -640,7 +640,7 @@ class object_metadata
 
         // otherwise, check for object/tuple
         auto& property = *at(*it);
-        auto descr     = property.type;
+        auto descr     = property.get_type();
 
         // primitive cannot have children
         if (descr->is_primitive()) { return ~size_t{}; }
@@ -679,7 +679,7 @@ class object_metadata
             assert(not _current->is_primitive());
 
             // force property load
-            info.type;
+            info.get_type();
 
             auto index = _current->_props.size();
             _current->_props.emplace_back(std::move(info));
@@ -709,11 +709,11 @@ class object_metadata
             for (auto& prop : generated._props)
             {
                 lookup->emplace_back(std::make_pair(prop.offset, n));
-                prop.index_self  = static_cast<int>(n++);
+                prop.index_self = static_cast<int>(n++);
                 prop._owner_type = result.get();
 
 #ifndef NDEBUG
-                object_end = std::max(object_end, prop.offset + prop.type->extent());
+                object_end = std::max(object_end, prop.offset + prop.get_type()->extent());
 #endif
             }
 
@@ -784,10 +784,23 @@ class object_metadata
         static property_metadata create_property_metadata(MemVar_ Class_::*mem_ptr)
         {
             property_metadata info;
-            info.type   = default_object_metadata_fn<MemVar_>()();
-            info.offset = reinterpret_cast<size_t>(
+            info.get_type = default_object_metadata_fn<MemVar_>();
+            info.offset   = reinterpret_cast<size_t>(
                     &(reinterpret_cast<Class_ const volatile*>(NULL)->*mem_ptr));
 
+            return info;
+        }
+
+        template <typename Class_, typename MemVar_>
+        static property_metadata create_property_metadata(Class_ const* class_type, MemVar_ const* mem_ptr)
+        {
+            property_metadata info;
+            info.get_type = default_object_metadata_fn<MemVar_>();
+            info.offset   = static_cast<size_t>(
+                    reinterpret_cast<char const*>(mem_ptr)
+                    - reinterpret_cast<char const*>(class_type));
+
+            assert(info.offset >= 0);
             return info;
         }
     };
