@@ -75,11 +75,17 @@ namespace detail {
 template <typename ValTy_>
 struct primitive_manipulator : if_primitive_control
 {
-    void archive(archive::if_writer* writer, const void* p_void, object_descriptor_t) const override
+    void archive(archive::if_writer* writer,
+                 const void* p_void,
+                 object_descriptor_t,
+                 property_info_t) const override
     {
         *writer << *(ValTy_*)p_void;
     }
-    void restore(archive::if_reader* reader, void* p_void, object_descriptor_t) const override
+    void restore(archive::if_reader* reader,
+                 void* p_void,
+                 object_descriptor_t,
+                 property_info_t) const override
     {
         *reader >> *(ValTy_*)p_void;
     }
@@ -132,7 +138,10 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
         {
             return get_object_descriptor<ElemTy_>();
         }
-        void archive(archive::if_writer* strm, const void* pvdata, object_descriptor_t desc) const override
+        void archive(archive::if_writer* strm,
+                     const void* pvdata,
+                     object_descriptor_t desc,
+                     property_info_t) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
@@ -143,7 +152,10 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
             std::for_each(begin, end, [&](auto&& elem) { *strm << elem; });
             strm->array_pop();
         }
-        void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const override
+        void restore(archive::if_reader* strm,
+                     void* pvdata,
+                     object_descriptor_t desc,
+                     property_info_t) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
@@ -208,7 +220,10 @@ auto get_list_like_descriptor() -> object_descriptor_t
         {
             return get_object_descriptor<value_type>();
         }
-        void archive(archive::if_writer* strm, const void* pvdata, object_descriptor_t desc) const override
+        void archive(archive::if_writer* strm,
+                     const void* pvdata,
+                     object_descriptor_t desc,
+                     property_info_t) const override
         {
             auto container = reinterpret_cast<Container_ const*>(pvdata);
 
@@ -219,7 +234,10 @@ auto get_list_like_descriptor() -> object_descriptor_t
             }
             strm->array_pop();
         }
-        void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const override
+        void restore(archive::if_reader* strm,
+                     void* pvdata,
+                     object_descriptor_t desc,
+                     property_info_t) const override
         {
             auto container = reinterpret_cast<Container_*>(pvdata);
             container->clear();
@@ -362,7 +380,10 @@ initialize_object_descriptor(refl::type_tag<chunk<Container_, Adapter_>>)
         {
             return refl::primitive_t::binary;
         }
-        void archive(archive::if_writer* strm, const void* pvdata, refl::object_descriptor_t desc) const override
+        void archive(archive::if_writer* strm,
+                     const void* pvdata,
+                     refl::object_descriptor_t desc,
+                     refl::property_info_t) const override
         {
             Adapter_ adapter{desc};
             auto container = (Container_ const*)pvdata;
@@ -386,7 +407,10 @@ initialize_object_descriptor(refl::type_tag<chunk<Container_, Adapter_>>)
 
             // TODO: handle endianness
         }
-        void restore(archive::if_reader* strm, void* pvdata, refl::object_descriptor_t desc) const override
+        void restore(archive::if_reader* strm,
+                     void* pvdata,
+                     refl::object_descriptor_t desc,
+                     refl::property_info_t) const override
         {
             // TODO ...
         }

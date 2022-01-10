@@ -42,6 +42,7 @@ class object_descriptor;
 
 using object_descriptor_t   = object_descriptor const*;
 using object_descriptor_ptr = std::unique_ptr<object_descriptor const>;
+using property_info_t       = struct property_info const*;
 
 namespace error {
 CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
@@ -215,16 +216,24 @@ class if_primitive_control
 
     /**
      * Archive to writer
+     * Property may not exist if this primitive is being archived as root.
      */
-    virtual void archive(archive::if_writer* strm, void const* pvdata, object_descriptor_t desc) const
+    virtual void archive(archive::if_writer* strm,
+                         void const* pvdata,
+                         object_descriptor_t desc,
+                         property_info_t opt_property) const
     {
         *strm << nullptr;
     }
 
     /**
      * Restore from reader
+     * Property may not exist if this primitive is being archived as root.
      */
-    virtual void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const = 0;
+    virtual void restore(archive::if_reader* strm,
+                         void* pvdata,
+                         object_descriptor_t desc,
+                         property_info_t opt_property) const = 0;
 
     /**
      * Check status of given parameter. Default is 'required', which cannot be ignored.
@@ -426,7 +435,9 @@ class object_descriptor
     dynamic_object_ptr clone(object_data_t* parent) const;
 
    public:
-    void _archive_to(archive::if_writer* strm, object_data_t const* data) const
+    void _archive_to(archive::if_writer* strm,
+                     object_data_t const* data,
+                     property_info_t opt_property) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _archive_to on them.
@@ -434,7 +445,7 @@ class object_descriptor
 
         if (is_primitive())
         {
-            _primitive()->archive(strm, data, this);
+            _primitive()->archive(strm, data, this, opt_property);
         }
         else
         {
@@ -462,7 +473,7 @@ class object_descriptor
                     else
                     {
                         *strm << key;
-                        child->_archive_to(strm, child_data);
+                        child->_archive_to(strm, child_data, &prop);
                     }
                 }
                 strm->object_pop();
@@ -484,7 +495,7 @@ class object_descriptor
                     }
                     else
                     {
-                        child->_archive_to(strm, child_data);
+                        child->_archive_to(strm, child_data, &prop);
                     }
                 }
                 strm->array_pop();
@@ -501,11 +512,10 @@ class object_descriptor
         std::string keybuf;
     };
 
-    void _restore_from(
-            archive::if_reader* strm,
-            object_data_t* data,
-            restore_context* context  // for reusing key buffer during recursive
-    ) const
+    void _restore_from(archive::if_reader* strm,
+                       object_data_t* data,
+                       restore_context* context,  // for reusing key buffer during recursive
+                       property_info_t opt_property) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _restore_from on them.
@@ -514,7 +524,7 @@ class object_descriptor
 
         if (is_primitive())
         {
-            _primitive()->restore(strm, data, this);
+            _primitive()->restore(strm, data, this, opt_property);
         }
         else if (is_object())
         {
@@ -552,7 +562,7 @@ class object_descriptor
                 auto child_data = child->retrieve_self(data, prop);
                 assert(child_data);
 
-                child->_restore_from(strm, child_data, context);
+                child->_restore_from(strm, child_data, context, opt_property);
             }
 
             for (auto index : perfkit::count(found.size()))
@@ -597,7 +607,7 @@ class object_descriptor
                 }
 
                 auto child_data = child->retrieve_self(data, prop);
-                child->_restore_from(strm, child_data, context);
+                child->_restore_from(strm, child_data, context, &prop);
             }
         }
         else
@@ -890,7 +900,7 @@ auto define_tuple()
 inline archive::if_writer&
 operator<<(archive::if_writer& strm, object_const_view_t obj)
 {
-    obj.meta->_archive_to(&strm, obj.data);
+    obj.meta->_archive_to(&strm, obj.data, nullptr);
     return strm;
 }
 
@@ -901,7 +911,7 @@ inline archive::if_reader&
 operator>>(archive::if_reader& strm, object_view_t obj)
 {
     object_descriptor::restore_context ctx;
-    obj.meta->_restore_from(&strm, obj.data, &ctx);
+    obj.meta->_restore_from(&strm, obj.data, &ctx, nullptr);
     return strm;
 }
 
