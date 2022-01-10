@@ -24,6 +24,7 @@
 
 #ifndef CPPHEADERS_HELPER_UTILITY_MACROS_HXX
 #define CPPHEADERS_HELPER_UTILITY_MACROS_HXX
+#include "helper/macro_for_each.hxx"
 #include "helper/spdlog_macros.hxx"
 
 #define INTERNAL_CPPH_CONCAT2(A, B) A##B

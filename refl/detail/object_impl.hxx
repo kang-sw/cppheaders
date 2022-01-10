@@ -837,14 +837,6 @@ class object_descriptor
             add_property(std::move(key), std::move(info));
             return *this;
         }
-
-        template <typename ClassType_, typename Var_>
-        auto& property(std::string_view key, ClassType_ const* self, Var_ const* mem_ptr) const
-        {
-            auto info = create_property_info(self, mem_ptr);
-            add_property(std::string(key), std::move(info));
-            return *this;
-        }
     };
 
     template <class Class_>
@@ -862,13 +854,6 @@ class object_descriptor
         auto& property(MemVar_ Class_::*mem_ptr) const
         {
             add_property(create_property_info(mem_ptr));
-            return *this;
-        }
-
-        template <typename ClassType_, typename Var_>
-        auto& property(ClassType_ const* self, Var_ const* mem_ptr) const
-        {
-            add_property(create_property_info(self, mem_ptr));
             return *this;
         }
     };
@@ -929,18 +914,29 @@ auto get_object_descriptor() -> object_sfinae_t<detail::is_cpph_refl_object_v<Va
  */
 namespace CPPHEADERS_NS_::refl {
 
+/**
+ * A dummy template to identify type safely
+ */
+template <typename ValTy_>
+struct type_tag
+{
+};
+
+template <typename ValTy_>
+constexpr type_tag<ValTy_> type_tag_v = {};
+
 namespace detail {
 template <typename ValTy_>
-auto initialize_object_descriptor(ValTy_ const&)
+auto initialize_object_descriptor(type_tag<ValTy_>)
         -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
 
 struct initialize_object_descriptor_fn
 {
     template <typename ValTy_>
-    auto operator()(ValTy_ const&) const
-            -> decltype(initialize_object_descriptor(declref<ValTy_>()))
+    auto operator()(type_tag<ValTy_>) const
+            -> decltype(initialize_object_descriptor(type_tag_v<ValTy_>))
     {
-        return initialize_object_descriptor(declref<ValTy_>());
+        return initialize_object_descriptor(type_tag_v<ValTy_>);
     }
 };
 }  // namespace detail
@@ -951,9 +947,9 @@ static constexpr auto initialize_object_descriptor = static_const<detail::initia
 
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<
-        object_descriptor_ptr, decltype(initialize_object_descriptor(declref<ValTy_>()))>>
+        object_descriptor_ptr, decltype(initialize_object_descriptor(type_tag_v<ValTy_>))>>
 {
-    static auto instance = initialize_object_descriptor(declref<ValTy_>());
+    static auto instance = initialize_object_descriptor(type_tag_v<ValTy_>);
     return &*instance;
 }
 

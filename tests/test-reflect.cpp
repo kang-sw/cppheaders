@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #include "catch.hpp"
+#include "helper/macro_for_each.hxx"
 #include "refl/archive.hxx"
 #include "refl/buffer.hxx"
 #include "refl/object_core.hxx"
@@ -33,6 +34,22 @@ struct test_object_1
     int a, b, c, d;
 };
 
+struct test_object_2
+{
+    int a, b, c, d;
+};
+
 CPPH_REFL_DECLARE(test_object_1);
+static auto const ptr = cpph::refl::get_object_descriptor<test_object_1>();
 
 }  // namespace my_ns
+
+TEST_CASE("macro test", "[.]")
+{
+    CPPH_FOR_EACH(puts, "ha", "he");
+}
+
+#include "refl/refl.hxx"
+namespace my_ns {
+CPPH_REFL_DEFINE_OBJECT(test_object_1, a, b, c, d);
+}

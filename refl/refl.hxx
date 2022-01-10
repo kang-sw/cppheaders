@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include "archive.hxx"
 #include "archive/binstream.hxx"
 #include "buffer.hxx"
 #include "detail/containers.hxx"
