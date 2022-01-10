@@ -32,15 +32,38 @@
 
 #include "object_impl.hxx"
 
-namespace CPPHEADERS_NS {
-template <typename Container_>
-class chunk
+namespace CPPHEADERS_NS_ {
+template <typename Container_, class = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
+class chunk : public Container_
 {
+   public:
+    using Container_::Container_;
+    enum
+    {
+        is_contiguous = false
+    };
 };
 
+template <typename Container_>
+class chunk<Container_,
+            std::enable_if_t<
+                    std::is_trivial_v<
+                            remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
+        : public Container_
+{
+   public:
+    using Container_::Container_;
 
+    enum
+    {
+        is_contiguous = true
+    };
+};
 
-}  // namespace CPPHEADERS_NS
+static_assert(chunk<std::vector<int>>::is_contiguous);
+static_assert(not chunk<std::list<int>>::is_contiguous);
+
+}  // namespace CPPHEADERS_NS_
 
 namespace CPPHEADERS_NS_::refl {
 
@@ -219,7 +242,9 @@ auto get_list_like_descriptor() -> object_descriptor_t
 
 template <typename ValTy_>
 auto get_object_descriptor()
-        -> object_sfinae_t<is_template_instance_of<ValTy_, std::vector>::value>
+        -> object_sfinae_t<
+                is_template_instance_of<ValTy_, std::vector>::value
+                || is_template_instance_of<ValTy_, std::list>::value>
 {
     return detail::get_list_like_descriptor<ValTy_>();
 }
