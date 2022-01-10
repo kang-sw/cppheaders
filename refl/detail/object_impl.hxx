@@ -31,13 +31,11 @@
 #include <utility>
 #include <vector>
 
+#include "../../__namespace__"
 #include "../../utility/singleton.hxx"
 #include "../algorithm/std.hxx"
 #include "../counter.hxx"
-#include "../if_archive.hxx"
-
-//
-#include "../../__namespace__"
+#include "if_archive.hxx"
 
 namespace CPPHEADERS_NS_::refl {
 class object_descriptor;

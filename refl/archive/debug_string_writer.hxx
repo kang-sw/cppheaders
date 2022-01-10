@@ -24,7 +24,7 @@
 
 #pragma once
 #include "../../futils.hxx"
-#include "../if_archive.hxx"
+#include "../detail/if_archive.hxx"
 
 namespace CPPHEADERS_NS_::archive {
 

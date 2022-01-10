@@ -26,10 +26,7 @@
 #include <iostream>
 
 #include "../algorithm/std.hxx"
-#include "if_archive.hxx"
-
-//
-#include "../__namespace__"
+#include "detail/if_archive.hxx"
 
 /**
  * Defines SAX-like interface for parsing / archiving

@@ -27,13 +27,11 @@
 #include <stdexcept>
 #include <string_view>
 
-#include "../array_view.hxx"
-#include "../functional.hxx"
-#include "../helper/exception.hxx"
-#include "../template_utils.hxx"
-
-//
-#include "../__namespace__"
+#include "../../__namespace__"
+#include "../../array_view.hxx"
+#include "../../functional.hxx"
+#include "../../helper/exception.hxx"
+#include "../../template_utils.hxx"
 
 /**
  * Defines SAX-like interface for parsing / archiving

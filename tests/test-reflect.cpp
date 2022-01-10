@@ -24,7 +24,7 @@
 
 #include "catch.hpp"
 #include "refl/buffer.hxx"
-#include "refl/if_archive.hxx"
+#include "refl/archive.hxx"
 #include "refl/object_core.hxx"
 
 struct test_object
