@@ -196,7 +196,7 @@ enum class requirement_status_tag
 /**
  * Required basic manipulator
  */
-class if_primitive_manipulator
+class if_primitive_control
 {
    public:
     /**
@@ -253,11 +253,24 @@ class if_primitive_manipulator
 template <bool Test_>
 using object_sfinae_t = std::enable_if_t<Test_, object_descriptor_t>;
 
+template <bool Test_>
+using object_sfinae_ptr = std::enable_if_t<Test_, object_descriptor_ptr>;
+
 template <typename A_, typename B_>
 using object_sfinae_overload_t = object_sfinae_t<std::is_same_v<A_, B_>>;
 
 template <typename ValTy_>
 auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
+
+template <typename ValTy_, class = void>
+constexpr bool has_object_descriptor_v = false;
+
+template <typename ValTy_>
+constexpr bool has_object_descriptor_v<
+        ValTy_, std::void_t<decltype(get_object_descriptor<ValTy_>())>> = true;
+
+template <typename ValTy_>
+using has_object_descriptor_t = std::enable_if_t<has_object_descriptor_v<ValTy_>>;
 
 /**
  * Get object descriptor getter
@@ -289,7 +302,7 @@ class object_descriptor
 
     // property manipulator
     // if it's user defined object, it'll be nullptr.
-    std::function<if_primitive_manipulator*()> _primitive;
+    std::function<if_primitive_control*()> _primitive;
 
     // list of properties
     // properties are not incremental in memory address, as they are
@@ -427,7 +440,7 @@ class object_descriptor
         {
             if (is_object())
             {
-                strm->object_push();
+                strm->object_push(_keys->size());
                 for (auto& [key, index] : *_keys)
                 {
                     if (not strm->is_key_next())
@@ -456,7 +469,7 @@ class object_descriptor
             }
             else if (is_tuple())
             {
-                strm->array_push();
+                strm->array_push(_props.size());
                 for (auto& prop : _props)
                 {
                     auto child      = prop.descriptor();
@@ -714,7 +727,7 @@ class object_descriptor
     class primitive_factory : public basic_factory
     {
        public:
-        auto& setup(size_t extent, std::function<if_primitive_manipulator*()> func) const
+        auto& setup(size_t extent, std::function<if_primitive_control*()> func) const
         {
             *_current = {};
 
@@ -900,8 +913,8 @@ template <typename Ty_, class = void>
 constexpr bool is_cpph_refl_object_v = false;
 
 template <typename Ty_>
-constexpr bool is_cpph_refl_object_v<Ty_, std::void_t<
-                                                  decltype(std::declval<Ty_>().initialize_object_descriptor())>> = true;
+constexpr bool is_cpph_refl_object_v<
+        Ty_, std::void_t<decltype(std::declval<Ty_>().initialize_object_descriptor())>> = true;
 }  // namespace detail
 
 template <typename ValTy_>
@@ -942,7 +955,8 @@ struct initialize_object_descriptor_fn
 }  // namespace detail
 
 namespace {
-static constexpr auto initialize_object_descriptor = static_const<detail::initialize_object_descriptor_fn>::value;
+static constexpr auto initialize_object_descriptor
+        = static_const<detail::initialize_object_descriptor_fn>::value;
 }
 
 template <typename ValTy_>
@@ -977,10 +991,12 @@ inline std::string to_string(CPPHEADERS_NS_::refl::primitive_t t)
         case CPPHEADERS_NS_::refl::primitive_t::boolean: return "boolean";
         case CPPHEADERS_NS_::refl::primitive_t::string: return "string";
         case CPPHEADERS_NS_::refl::primitive_t::binary: return "binary";
-        case CPPHEADERS_NS_::refl::primitive_t::dictionary: return "map";
+        case CPPHEADERS_NS_::refl::primitive_t::dictionary: return "dictionary";
         case CPPHEADERS_NS_::refl::primitive_t::array: return "array";
         case CPPHEADERS_NS_::refl::primitive_t::integer: return "integer";
         case CPPHEADERS_NS_::refl::primitive_t::floating_point: return "floating_point";
+        case CPPHEADERS_NS_::refl::primitive_t::object: return "object";
+        case CPPHEADERS_NS_::refl::primitive_t::tuple: return "tuple";
         default: return "__NONE__";
     }
 }
@@ -995,11 +1011,23 @@ if_writer& if_writer::serialize(const ValTy_& in)
     return *this << view;
 }
 
+template <typename Ty_>
+if_writer& if_writer::operator<<(const Ty_& other)
+{
+    return serialize(other);
+}
+
 template <typename ValTy_>
 if_reader& if_reader::deserialize(ValTy_& out)
 {
     refl::object_view_t view{&out};
     return *this >> view;
+}
+
+template <typename Ty_>
+if_reader& if_reader::operator>>(Ty_& other)
+{
+    return deserialize(other);
 }
 
 }  // namespace CPPHEADERS_NS_::archive

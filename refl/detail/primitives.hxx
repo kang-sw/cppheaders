@@ -32,38 +32,28 @@
 
 #include "object_impl.hxx"
 
-namespace CPPHEADERS_NS_ {
-template <typename Container_, class = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
-class chunk : public Container_
-{
-   public:
-    using Container_::Container_;
-    enum
-    {
-        is_contiguous = false
-    };
-};
+namespace CPPHEADERS_NS_::refl {
+/**
+ * Defines some useful expression validators
+ */
 
-template <typename Container_>
-class chunk<Container_,
-            std::enable_if_t<
-                    std::is_trivial_v<
-                            remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
-        : public Container_
-{
-   public:
-    using Container_::Container_;
+#define INTERNAL_CPPH_pewpew(Name, T, Expr) \
+    template <typename, class = void>       \
+    constexpr bool Name = false;            \
+    template <typename T>                   \
+    constexpr bool Name<T, std::void_t<decltype(Expr)>> = true;
 
-    enum
-    {
-        is_contiguous = true
-    };
-};
+INTERNAL_CPPH_pewpew(has_reserve_v, T, std::declval<T>().reserve(0));
+INTERNAL_CPPH_pewpew(has_emplace_back, T, std::declval<T>().emplace_back());
+INTERNAL_CPPH_pewpew(has_emplace_front, T, std::declval<T>().emplace_front());
+INTERNAL_CPPH_pewpew(has_emplace, T, std::declval<T>().emplace());
 
-static_assert(chunk<std::vector<int>>::is_contiguous);
-static_assert(not chunk<std::list<int>>::is_contiguous);
+static_assert(has_reserve_v<std::vector<int>>);
+static_assert(has_emplace_back<std::list<int>>);
 
-}  // namespace CPPHEADERS_NS_
+#undef INTERNAL_CPPH_pewpew
+
+}  // namespace CPPHEADERS_NS_::refl
 
 namespace CPPHEADERS_NS_::refl {
 
@@ -83,7 +73,7 @@ auto get_object_descriptor() -> object_sfinae_t<detail::is_cpph_refl_object_v<Va
  */
 namespace detail {
 template <typename ValTy_>
-struct primitive_manipulator : if_primitive_manipulator
+struct primitive_manipulator : if_primitive_control
 {
     void archive(archive::if_writer* writer, const void* p_void, object_descriptor_t) const override
     {
@@ -132,7 +122,7 @@ namespace detail {
 template <typename ElemTy_>
 object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
 {
-    static struct manip_t : if_primitive_manipulator
+    static struct manip_t : if_primitive_control
     {
         primitive_t type() const noexcept override
         {
@@ -149,7 +139,7 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
             auto begin  = (ElemTy_ const*)pvdata;
             auto end    = begin + n_elem;
 
-            strm->array_push();
+            strm->array_push(n_elem);
             std::for_each(begin, end, [&](auto&& elem) { *strm << elem; });
             strm->array_pop();
         }
@@ -202,12 +192,13 @@ auto get_object_descriptor() -> object_sfinae_t<detail::is_stl_array_v<ValTy_>>
  * (set, map, vector ...)
  */
 namespace detail {
+
 template <typename Container_>
 auto get_list_like_descriptor() -> object_descriptor_t
 {
     using value_type = typename Container_::value_type;
 
-    static struct manip_t : if_primitive_manipulator
+    static struct manip_t : if_primitive_control
     {
         primitive_t type() const noexcept override
         {
@@ -221,16 +212,42 @@ auto get_list_like_descriptor() -> object_descriptor_t
         {
             auto container = reinterpret_cast<Container_ const*>(pvdata);
 
+            strm->array_push(container->size());
             for (auto& elem : *container)
                 *strm << elem;
+            strm->array_pop();
         }
         void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const override
         {
+            auto container = reinterpret_cast<Container_*>(pvdata);
+            container->clear();
 
+            if (not strm->is_array_next())
+                throw error::invalid_read_state{}.set(strm);
+
+            // reserve if possible
+            if constexpr (has_reserve_v<Container_>)
+                if (auto n = strm->num_elem_next(); n != ~size_t{})
+                    container->reserve(n);
+
+            archive::context_key key;
+            strm->context(&key);
+
+            while (not strm->should_break(key))
+            {
+                if constexpr (has_emplace_back<Container_>)  // maybe vector, list, deque ...
+                    *strm >> container->emplace_back();
+                else if constexpr (has_emplace_front<Container_>)  // maybe forward_list
+                    *strm >> container->emplace_front();
+                else if constexpr (has_emplace<Container_>)  // maybe set
+                    *strm >> *container->emplace().first;
+                else
+                    Container_::ERROR_INVALID_CONTAINER;
+            }
         }
         requirement_status_tag status(const void* pvdata) const noexcept override
         {
-            return if_primitive_manipulator::status(pvdata);
+            return if_primitive_control::status(pvdata);
         }
     } manip;
 
@@ -256,6 +273,69 @@ auto get_object_descriptor()
 inline void compile_test()
 {
     get_object_descriptor<std::vector<int>>();
+    get_object_descriptor<std::list<std::vector<int>>>();
 }
 
 }  // namespace CPPHEADERS_NS_::refl
+
+namespace CPPHEADERS_NS_ {
+template <typename Container_, class = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
+class chunk : public Container_
+{
+   public:
+    using Container_::Container_;
+    enum
+    {
+        is_contiguous = false
+    };
+};
+
+template <typename Container_>
+class chunk<Container_,
+            std::enable_if_t<
+                    std::is_trivial_v<
+                            remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
+        : public Container_
+{
+   public:
+    using Container_::Container_;
+
+    enum
+    {
+        is_contiguous = true
+    };
+};
+
+static_assert(chunk<std::vector<int>>::is_contiguous);
+static_assert(not chunk<std::list<int>>::is_contiguous);
+
+template <typename ValTy_>
+refl::object_descriptor_ptr
+initialize_object_descriptor(refl::type_tag<chunk<ValTy_>>)
+{
+    struct manip_t : refl::if_primitive_control
+    {
+        refl::primitive_t type() const noexcept override
+        {
+            return refl::primitive_t::binary;
+        }
+        void archive(archive::if_writer* strm, const void* pvdata, refl::object_descriptor_t desc) const override
+        {
+            auto pdata = (chunk<ValTy_> const*)pvdata;
+            *strm << const_buffer_view(*pdata);
+        }
+        void restore(archive::if_reader* strm, void* pvdata, refl::object_descriptor_t desc) const override
+        {
+        }
+        refl::requirement_status_tag status(const void* pvdata) const noexcept override
+        {
+            return if_primitive_control::status(pvdata);
+        }
+    };
+}
+
+}  // namespace CPPHEADERS_NS_
+
+namespace CPPHEADERS_NS_::refl {
+
+}

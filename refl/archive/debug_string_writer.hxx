@@ -179,7 +179,7 @@ class debug_string_writer : public if_writer
         return *this;
     }
 
-    if_writer& object_push() override
+    if_writer& object_push(size_t n) override
     {
         if (_state() == context_state::object_key)
             throw error::writer_invalid_context{this}.message("invalid state: object_key");
@@ -220,7 +220,7 @@ class debug_string_writer : public if_writer
         return *this;
     }
 
-    if_writer& array_push() override
+    if_writer& array_push(size_t n) override
     {
         if (_state() == context_state::object_key)
             throw error::writer_invalid_context{this}.message("invalid state: object_key");

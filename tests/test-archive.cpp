@@ -43,9 +43,7 @@ struct inner_arg_1
     double g                  = 3.14;
 
     CPPH_REFL_DEFINE_OBJECT_inline(
-            inner_arg_1,
-            str1,
-            str2,
+            str1, str2,
             var, k, bools, g);
 };
 
@@ -57,9 +55,7 @@ struct inner_arg_2
 
     int ints[3] = {1, 23, 4};
 
-    CPPH_REFL_DEFINE_TUPLE_inline(
-            inner_arg_2,
-            rtt, nothing, nothing2, ints);
+    CPPH_REFL_DEFINE_TUPLE_inline(rtt, nothing, nothing2, ints);
 };
 
 struct outer
@@ -67,8 +63,7 @@ struct outer
     inner_arg_1 arg1;
     inner_arg_2 arg2;
 
-    CPPH_REFL_DEFINE_TUPLE_inline(
-            outer, arg1, arg2);
+    CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2);
 };
 
 struct some_other
@@ -80,6 +75,17 @@ struct some_other
     inner_arg_2 ff;
 
     CPPH_REFL_DECLARE_c;
+};
+
+struct vectors
+{
+    std::vector<std::vector<double>> f
+            = {{1., 2., 3.}, {4., 5, 6}};
+
+    std::vector<std::list<double>> f2
+            = {{1., 2., 3.}, {4., 5, 6}};
+
+    CPPH_REFL_DEFINE_OBJECT_inline(f, f2);
 };
 
 struct some_other_2
@@ -99,7 +105,7 @@ namespace cpph::refl {
 
 }
 
-TEMPLATE_TEST_CASE("archive", "[.]", ns::some_other_2)
+TEMPLATE_TEST_CASE("archive", "[.]", ns::vectors)
 {
     archive::debug_string_writer writer{*std::cout.rdbuf()};
 

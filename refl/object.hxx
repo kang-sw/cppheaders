@@ -31,16 +31,16 @@
 #    define CPPHEADERS_REFL_OBJECT_MACROS
 
 #    define CPPH_REFL_DEFINE_OBJECT_c(ClassName, ...) \
-        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, ClassName, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
 
-#    define CPPH_REFL_DEFINE_OBJECT_inline(ClassName, ...) \
-        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, ClassName, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_OBJECT_inline(...) \
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
 
 #    define CPPH_REFL_DEFINE_TUPLE_c(ClassName, ...) \
-        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, ClassName, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
-#    define CPPH_REFL_DEFINE_TUPLE_inline(ClassName, ...) \
-        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, ClassName, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_TUPLE_inline(...) \
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
 #    define CPPH_REFL_DEFINE_OBJECT(ClassName, ...) \
         INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
@@ -48,17 +48,18 @@
 #    define CPPH_REFL_DEFINE_TUPLE(ClassName, ...) \
         INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
-#    define INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(Qualify, ClassName, FactoryType, Iterator, ...) \
-        CPPHEADERS_NS_::refl::object_descriptor_ptr                                              \
-                Qualify                                                                          \
-                initialize_object_descriptor()                                                   \
-        {                                                                                        \
-            using self_t                = ClassName;                                             \
-            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>();        \
-                                                                                                 \
-            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                                \
-                                                                                                 \
-            return _cpph_internal_factory.create();                                              \
+#    define INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(Qualify, FactoryType, Iterator, ...)     \
+        CPPHEADERS_NS_::refl::object_descriptor_ptr                                       \
+                Qualify                                                                   \
+                initialize_object_descriptor()                                            \
+        {                                                                                 \
+            using ClassName             = std::remove_pointer_t<decltype(this)>;          \
+            using self_t                = ClassName;                                      \
+            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>(); \
+                                                                                          \
+            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                         \
+                                                                                          \
+            return _cpph_internal_factory.create();                                       \
         }
 
 #    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR(VarName) \

@@ -200,15 +200,23 @@ class if_writer : public if_archive_base
     virtual if_writer& operator<<(double v) = 0;
 
     virtual if_writer& operator<<(std::string_view v) = 0;
+    virtual if_writer& operator<<(std::string const& v) { return *this << std::string_view{v}; }
+
+    //! Serialize arbitrary type
+    template <typename Ty_>
+    if_writer& operator<<(Ty_ const& other);
 
     //! writes binary_t as view form
     virtual if_writer& write_binary(const_buffer_view v) = 0;
 
-    virtual if_writer& object_push() = 0;
-    virtual if_writer& object_pop()  = 0;
+    //! push objects which has 'num_elems' elements
+    //! set -1 when unkown. (maybe rare case)
+    virtual if_writer& object_push(size_t num_elems) = 0;
+    virtual if_writer& object_pop()                  = 0;
 
-    virtual if_writer& array_push() = 0;
-    virtual if_writer& array_pop()  = 0;
+    //! push array which has 'num_elems' elements
+    virtual if_writer& array_push(size_t num_elems) = 0;
+    virtual if_writer& array_pop()                  = 0;
 
     //! Check if next element will be archived as key.
     virtual bool is_key_next() const = 0;
@@ -267,9 +275,19 @@ class if_reader : public if_archive_base
     virtual if_reader& operator>>(std::string& v)            = 0;
     virtual if_reader& read_binary(mutable_buffer_view obuf) = 0;
 
+    //! Deserialize arbitrary type
+    template <typename Ty_>
+    if_reader& operator>>(Ty_& other);
+
     //! @throw parse_error next token is not valid target
     virtual bool is_object_next() = 0;
     virtual bool is_array_next()  = 0;
+
+    //! returns number of child elements available next
+    //!
+    //! @throw parse_error if next element is not object or array.
+    //! @return eof if element count couldn't be retreived
+    virtual size_t num_elem_next() { return eof; };
 
     //! force break of current context
     //! @throw invalid_context
