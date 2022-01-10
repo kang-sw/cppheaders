@@ -46,10 +46,16 @@ class debug_string_writer : public if_writer
     std::vector<context_state> _state_stack;
 
    private:
+    void write_str(std::string_view str)
+    {
+        _buf->sputn(str.data(), str.size());
+    }
+
     template <typename... Args_>
     void _write_f(char const* fmt, Args_... args)
     {
-        write(futils::ssprintf(fmt, args...));
+        auto str = futils::usprintf(fmt, args...);
+        _buf->sputn(str, strlen(str));
     }
 
     template <typename... Args_>
@@ -139,7 +145,7 @@ class debug_string_writer : public if_writer
     }
 
    public:
-    explicit debug_string_writer(stream_writer ostrm) : if_writer(std::move(ostrm))
+    explicit debug_string_writer(std::streambuf& buf) : if_writer(buf)
     {
     }
 

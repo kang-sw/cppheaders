@@ -25,6 +25,7 @@
 #pragma once
 #include <functional>
 #include <stdexcept>
+#include <streambuf>
 #include <string_view>
 
 #include "../../__namespace__"
@@ -138,10 +139,15 @@ class error_info
 class if_archive_base
 {
    protected:
-    error_info _err = {};
+    error_info _err            = {};
+    std::streambuf* const _buf = {};
 
    public:
+    explicit if_archive_base(std::streambuf& buf) noexcept : _buf(&buf) {}
     virtual ~if_archive_base() = default;
+
+    //! Gets internal buffer
+    std::streambuf* rdbuf() const noexcept { return _buf; }
 
     //! Dumps additional debug information related current context
     //! (e.g. cursor pos, current token, ...)
@@ -161,25 +167,9 @@ class if_archive_base
  */
 class if_writer : public if_archive_base
 {
-   private:
-    stream_writer _wr;
-
    public:
-    explicit if_writer(stream_writer ostrm) noexcept : _wr{std::move(ostrm)} {}
+    explicit if_writer(std::streambuf& buf) noexcept : if_archive_base(buf) {}
     ~if_writer() override = default;
-
-   protected:
-    size_t write_str(std::string_view data)
-    {
-        return write(data);
-    }
-
-    size_t write(array_view<char const> data)
-    {
-        size_t n_written = _wr(data);
-        _err._byte_pos += n_written;
-        return n_written;
-    }
 
    public:
     /**
@@ -229,20 +219,9 @@ class if_writer : public if_archive_base
  */
 class if_reader : public if_archive_base
 {
-   private:
-    stream_reader _rd;
-
    public:
-    explicit if_reader(stream_reader istrm) noexcept : _rd(std::move(istrm)) {}
+    explicit if_reader(std::streambuf& buf) noexcept : if_archive_base(buf) {}
     ~if_reader() override = default;
-
-   protected:
-    size_t read(array_view<char> obuf)
-    {
-        auto n_read = _rd(obuf);
-        _err._byte_pos += n_read;
-        return n_read;
-    }
 
    private:
     template <typename Target_, typename ValTy_>

@@ -22,6 +22,9 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include <iostream>
+#include <sstream>
+
 #include "catch.hpp"
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/buffer.hxx"
@@ -98,7 +101,7 @@ namespace cpph::refl {
 
 TEMPLATE_TEST_CASE("archive", "[.]", ns::some_other_2)
 {
-    archive::debug_string_writer writer{archive::obuffer(std::cout)};
+    archive::debug_string_writer writer{*std::cout.rdbuf()};
 
     std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
     writer.serialize(TestType{});

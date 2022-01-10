@@ -23,73 +23,11 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <iostream>
-
-#include "../algorithm/std.hxx"
 #include "detail/if_archive.hxx"
 
 /**
- * Defines SAX-like interface for parsing / archiving
+ * Defines several performant/unsafe overrides of streambuf
  */
 namespace CPPHEADERS_NS_::archive {
-
-template <typename StringLike_,
-          typename std::enable_if_t<
-                  not std::is_pointer_v<remove_cvr_t<StringLike_>>  //
-                  && sizeof(typename StringLike_::value_type) == 1  //
-                  >* = nullptr>
-stream_writer obuffer(StringLike_& out)
-{
-    return [&out](array_view<const char> obuf) {
-        out.insert(out.end(), obuf.begin(), obuf.end());
-        return obuf.size();
-    };
-}
-
-inline stream_writer obuffer(std::string* arg)
-{
-    return [arg](array_view<const char> obuf) {
-        arg->append(obuf.begin(), obuf.end());
-        return obuf.size();
-    };
-}
-
-template <typename ViewType_>
-stream_reader ibuffer(ViewType_&& view)
-{
-    auto arg = make_view(view);
-
-    return [arg](array_view<char> ibuf) mutable {
-        if (arg.empty()) { return eof; }
-
-        size_t to_read = std::min(arg.size(), ibuf.size());
-        copy(arg.subspan(0, to_read), ibuf.begin());
-        arg = arg.subspan(to_read);
-        return to_read;
-    };
-}
-
-inline stream_reader ibuffer(void const* data, size_t len)
-{
-    return ibuffer(std::string_view{(char const*)data, len});
-}
-
-inline stream_writer obuffer(std::ostream& arg)
-{
-    return [&arg](array_view<const char> obuf) {
-        if (not arg || arg.eof()) { return eof; }
-
-        arg.write(obuf.data(), obuf.size());
-        return obuf.size();
-    };
-}
-
-inline stream_reader ibuffer(std::istream& arg)
-{
-    return [&arg](array_view<char> ibuf) {
-        if (not arg || arg.eof()) { return int64_t(eof); }
-        return arg.readsome(ibuf.data(), ibuf.size());
-    };
-}
 
 }  // namespace CPPHEADERS_NS_::archive
