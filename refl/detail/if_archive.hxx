@@ -202,12 +202,22 @@ class if_writer : public if_archive_base
     virtual if_writer& operator<<(std::string_view v) = 0;
     virtual if_writer& operator<<(std::string const& v) { return *this << std::string_view{v}; }
 
+    virtual if_writer& operator<<(const_buffer_view v)
+    {
+        binary_push(v.size());
+        binary_write_some(v);
+        binary_pop();
+        return *this;
+    }
+
     //! Serialize arbitrary type
     template <typename Ty_>
     if_writer& operator<<(Ty_ const& other);
 
-    //! writes binary_t as view form
-    virtual if_writer& write_binary(const_buffer_view v) = 0;
+    //! push/pop write binary context
+    virtual if_writer& binary_push(size_t total)            = 0;
+    virtual if_writer& binary_write_some(const_buffer_view) = 0;
+    virtual if_writer& binary_pop()                         = 0;
 
     //! push objects which has 'num_elems' elements
     //! set -1 when unkown. (maybe rare case)
@@ -272,8 +282,20 @@ class if_reader : public if_archive_base
     virtual if_reader& operator>>(float& v) { return _upcast<double>(v); }
     virtual if_reader& operator>>(double& v) = 0;
 
-    virtual if_reader& operator>>(std::string& v)            = 0;
-    virtual if_reader& read_binary(mutable_buffer_view obuf) = 0;
+    virtual if_reader& operator>>(std::string& v) = 0;
+
+    virtual if_reader& operator>>(mutable_buffer_view v)
+    {
+        auto n_next = next_binary_size();
+        if (n_next < v.size())
+            throw error::reader_read_stream_error{this}
+                    .message("buffer size %lld expected (now %lld)", v.size(), n_next);
+
+        binary_read_some(v);
+
+        if (n_next != v.size())
+            binary_break();  // discard rest of bytes
+    }
 
     //! Deserialize arbitrary type
     template <typename Ty_>
@@ -289,10 +311,17 @@ class if_reader : public if_archive_base
     //! @return eof if element count couldn't be retreived
     virtual size_t num_elem_next() { return eof; };
 
+    //! returns next binary size
+    //! @throw parse_error if current context is not binary (binary can read multiple times)
+    //! @return number of bytes. -1 if cannot be retrieved.
+    virtual size_t next_binary_size() { return eof; }
+    virtual if_reader& binary_read_some(mutable_buffer_view v) = 0;
+
     //! force break of current context
     //! @throw invalid_context
     virtual void object_break() = 0;
     virtual void array_break()  = 0;
+    virtual void binary_break() = 0;  // discard rest of bytes
 
     //! Check if next element will be restored as key.
     virtual bool is_key_next() const = 0;

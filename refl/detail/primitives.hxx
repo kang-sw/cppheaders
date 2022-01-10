@@ -213,8 +213,10 @@ auto get_list_like_descriptor() -> object_descriptor_t
             auto container = reinterpret_cast<Container_ const*>(pvdata);
 
             strm->array_push(container->size());
-            for (auto& elem : *container)
-                *strm << elem;
+            {
+                for (auto& elem : *container)
+                    *strm << elem;
+            }
             strm->array_pop();
         }
         void restore(archive::if_reader* strm, void* pvdata, object_descriptor_t desc) const override
@@ -279,19 +281,21 @@ inline void compile_test()
 }  // namespace CPPHEADERS_NS_::refl
 
 namespace CPPHEADERS_NS_ {
-template <typename Container_, class = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
+template <typename Container_, bool BigEndian_ = true, class = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
 class chunk : public Container_
 {
    public:
     using Container_::Container_;
     enum
     {
+        big_endian    = BigEndian_,
         is_contiguous = false
     };
 };
 
-template <typename Container_>
+template <typename Container_, bool BigEndian_>
 class chunk<Container_,
+            BigEndian_,
             std::enable_if_t<
                     std::is_trivial_v<
                             remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
@@ -302,6 +306,7 @@ class chunk<Container_,
 
     enum
     {
+        big_endian    = BigEndian_,
         is_contiguous = true
     };
 };
@@ -309,11 +314,14 @@ class chunk<Container_,
 static_assert(chunk<std::vector<int>>::is_contiguous);
 static_assert(not chunk<std::list<int>>::is_contiguous);
 
-template <typename ValTy_>
+template <typename Container_>
 refl::object_descriptor_ptr
-initialize_object_descriptor(refl::type_tag<chunk<ValTy_>>)
+initialize_object_descriptor(refl::type_tag<chunk<Container_>>)
 {
-    struct manip_t : refl::if_primitive_control
+    using chunk_t    = chunk<Container_>;
+    using value_type = typename Container_::value_type;
+
+    static struct manip_t : refl::if_primitive_control
     {
         refl::primitive_t type() const noexcept override
         {
@@ -321,17 +329,45 @@ initialize_object_descriptor(refl::type_tag<chunk<ValTy_>>)
         }
         void archive(archive::if_writer* strm, const void* pvdata, refl::object_descriptor_t desc) const override
         {
-            auto pdata = (chunk<ValTy_> const*)pvdata;
-            *strm << const_buffer_view(*pdata);
+            auto container = (Container_ const*)pvdata;
+
+            if constexpr (not chunk_t::is_contiguous)  // list, set, etc ...
+            {
+                auto total_size = sizeof(value_type) * container->size();
+
+                strm->binary_push(total_size);
+                for (auto& elem : *container)
+                {
+                    strm->binary_write_some(elem);
+                }
+                strm->binary_pop();
+            }
+            else
+            {
+                auto pdata = (chunk_t const*)pvdata;
+                *strm << const_buffer_view{*pdata};
+            }
+
+            // TODO: handle endianness
         }
         void restore(archive::if_reader* strm, void* pvdata, refl::object_descriptor_t desc) const override
         {
+            // TODO ...
         }
         refl::requirement_status_tag status(const void* pvdata) const noexcept override
         {
             return if_primitive_control::status(pvdata);
         }
-    };
+    } manip;
+
+    return refl::object_descriptor::primitive_factory{}
+            .setup(sizeof(Container_), [] { return &manip; })
+            .create();
+}
+
+inline void compile_test()
+{
+    refl::get_object_descriptor<chunk<std::vector<int>>>();
 }
 
 }  // namespace CPPHEADERS_NS_

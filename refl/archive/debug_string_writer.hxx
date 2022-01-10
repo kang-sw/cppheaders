@@ -174,8 +174,28 @@ class debug_string_writer : public if_writer
         return _write_value("%s", std::string(v).c_str());
     }
 
-    if_writer& write_binary(const_buffer_view v) override
+    if_writer& binary_write_some(const_buffer_view v) override
     {
+        char charset[] = "0123456789ABCDEF";
+
+        for (auto ch : v)
+        {
+            _buf->sputc('x');
+            _buf->sputc(charset[(ch & 0xf0) >> 4]);
+            _buf->sputc(charset[(ch & 0x0f) >> 0]);
+            _buf->sputc(' ');
+        }
+
+        return *this;
+    }
+
+    if_writer& binary_push(size_t total) override
+    {
+        return *this;
+    }
+    if_writer& binary_pop() override
+    {
+        _write_value("");
         return *this;
     }
 

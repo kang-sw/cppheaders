@@ -591,7 +591,7 @@ class object_descriptor
                 if (child->is_optional() && strm->is_null_next())
                 {
                     // do nothing
-                    nullptr_t nul;
+                    nullptr_t nul{};
                     *strm >> nul;
                     continue;
                 }

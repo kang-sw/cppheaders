@@ -172,10 +172,18 @@ class array_view<void> : public array_view<char>
    public:
     array_view() noexcept = default;
 
-    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<typename Ty_::value_type>>>
-    array_view(Ty_&& other) noexcept
+    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
+                                    typename std::remove_reference_t<Ty_>::value_type>>>
+    explicit array_view(Ty_&& other) noexcept
             : array_view<char>(reinterpret_cast<char*>(std::data(other)),
                                std::size(other) * sizeof(*std::data(other)))
+    {
+    }
+
+    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<Ty_>>>
+    array_view(Ty_* data, size_t size) noexcept
+            : array_view<char>(reinterpret_cast<char*>(data),
+                               sizeof(Ty_) * size)
     {
     }
 
@@ -199,13 +207,21 @@ class array_view<void const> : public array_view<char const>
 
     template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
                                     typename std::remove_reference_t<Ty_>::value_type>>>
-    array_view(Ty_&& other) noexcept
+    explicit array_view(Ty_&& other) noexcept
             : array_view<char const>(reinterpret_cast<char const*>(std::data(other)),
                                      std::size(other) * sizeof(*std::data(other)))
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<typename Ty_::value_type>>>
+    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<Ty_>>>
+    array_view(Ty_ const* data, size_t size) noexcept
+            : array_view<char const>(reinterpret_cast<char const*>(data),
+                                     sizeof(Ty_) * size)
+    {
+    }
+
+    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
+                                    typename std::remove_reference_t<Ty_>::value_type>>>
     array_view& operator=(Ty_&& other) noexcept
 
     {
@@ -213,6 +229,17 @@ class array_view<void const> : public array_view<char const>
                 array_view<char const>(
                         reinterpret_cast<char const*>(std::data(other)),
                         std::size(other) * sizeof(*std::data(other))));
+        return *this;
+    }
+
+    array_view(array_view<void> v)
+            : array_view<char const>(v.data(), v.size())
+    {
+    }
+
+    array_view& operator=(array_view<void> v)
+    {
+        array_view<char const>::operator=({v.data(), v.size()});
         return *this;
     }
 };

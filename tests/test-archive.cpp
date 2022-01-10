@@ -85,7 +85,9 @@ struct vectors
     std::vector<std::list<double>> f2
             = {{1., 2., 3.}, {4., 5, 6}};
 
-    CPPH_REFL_DEFINE_OBJECT_inline(f, f2);
+    cpph::chunk<std::vector<int>> f3{1, 2, 3, 4};
+
+    CPPH_REFL_DEFINE_OBJECT_inline(f, f2, f3);
 };
 
 struct some_other_2
