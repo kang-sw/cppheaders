@@ -212,7 +212,7 @@ class if_writer : public if_archive_base
     virtual if_writer& operator<<(std::string_view v) = 0;
 
     //! writes binary_t as view form
-    virtual if_writer& write_binary(array_view<void const> v) = 0;
+    virtual if_writer& write_binary(const_buffer_view v) = 0;
 
     virtual if_writer& object_push() = 0;
     virtual if_writer& object_pop()  = 0;
@@ -276,8 +276,8 @@ class if_reader : public if_archive_base
     virtual if_reader& operator>>(float& v) { return _upcast<double>(v); }
     virtual if_reader& operator>>(double& v) = 0;
 
-    virtual if_reader& operator>>(std::string& v)         = 0;
-    virtual if_reader& read_binary(array_view<void> obuf) = 0;
+    virtual if_reader& operator>>(std::string& v)            = 0;
+    virtual if_reader& read_binary(mutable_buffer_view obuf) = 0;
 
     //! @throw parse_error next token is not valid target
     virtual bool is_object_next() = 0;
@@ -294,16 +294,6 @@ class if_reader : public if_archive_base
     //! check if next statement is null
     virtual bool is_null_next() const = 0;
 
-    //!
-    virtual bool eof() = 0;
-
-    /**
-     * Move to key and join.
-     *
-     * @throw invalid_request if current context is not key sequence
-     */
-    virtual bool try_goto_key(std::string_view key) = 0;
-
     /**
      * to distinguish variable sized object's boundary.
      *
@@ -315,13 +305,6 @@ class if_reader : public if_archive_base
     virtual void hierarchy(int* level, int* id) = 0;
 
    public:
-    //! Goto Key. must be in object key context, and key has to exist
-    void goto_key(std::string_view key)
-    {
-        if (not try_goto_key(key))
-            throw error::reader_key_missing{this, std::string{key}};
-    }
-
     //! Check should break out of this object/array context
     bool should_break(int level, int id)
     {

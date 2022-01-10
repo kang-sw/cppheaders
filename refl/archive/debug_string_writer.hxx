@@ -168,7 +168,7 @@ class debug_string_writer : public if_writer
         return _write_value("%s", std::string(v).c_str());
     }
 
-    if_writer& write_binary(array_view<void const> v) override
+    if_writer& write_binary(const_buffer_view v) override
     {
         return *this;
     }
