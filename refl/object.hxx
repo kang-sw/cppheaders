@@ -49,9 +49,9 @@
         INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
 #    define INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(Qualify, FactoryType, Iterator, ...)     \
-        CPPHEADERS_NS_::refl::object_descriptor_ptr                                       \
+        CPPHEADERS_NS_::refl::object_metadata_ptr                                       \
                 Qualify                                                                   \
-                initialize_object_descriptor()                                            \
+                initialize_object_metadata()                                            \
         {                                                                                 \
             using ClassName             = std::remove_pointer_t<decltype(this)>;          \
             using self_t                = ClassName;                                      \
@@ -69,8 +69,8 @@
         _cpph_internal_factory.property(&self_t::VarName)
 
 #    define INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, FactoryType, Iterator, ...)         \
-        CPPHEADERS_NS_::refl::object_descriptor_ptr                                       \
-        initialize_object_descriptor(                                                     \
+        CPPHEADERS_NS_::refl::object_metadata_ptr                                       \
+        initialize_object_metadata(                                                     \
                 CPPHEADERS_NS_::refl::type_tag<ClassName>)                                \
         {                                                                                 \
             using self_t                = ClassName;                                      \

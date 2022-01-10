@@ -40,7 +40,7 @@ struct test_object_2
 };
 
 CPPH_REFL_DECLARE(test_object_1);
-static auto const ptr = cpph::refl::get_object_descriptor<test_object_1>();
+static auto const ptr = cpph::refl::get_object_metadata<test_object_1>();
 
 }  // namespace my_ns
 

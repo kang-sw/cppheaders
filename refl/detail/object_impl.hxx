@@ -38,11 +38,11 @@
 #include "if_archive.hxx"
 
 namespace CPPHEADERS_NS_::refl {
-class object_descriptor;
+class object_metadata;
 
-using object_descriptor_t   = object_descriptor const*;
-using object_descriptor_ptr = std::unique_ptr<object_descriptor const>;
-using property_info_t       = struct property_info const*;
+using object_metadata_t          = object_metadata const*;
+using object_metadata_ptr        = std::unique_ptr<object_metadata const>;
+using optional_property_metadata = struct property_metadata const*;
 
 namespace error {
 CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
@@ -89,19 +89,19 @@ enum class primitive_t : uint16_t
  * dummy incomplete class type to give objects type resolution
  */
 class object_data_t;
-class object_descriptor;  // forwarding
+class object_metadata;  // forwarding
 
 /**
  * Object/metadata wrapper for various use
  */
 struct object_view_t
 {
-    object_descriptor_t meta = {};
-    object_data_t* data      = {};
+    object_metadata_t meta = {};
+    object_data_t* data    = {};
 
    public:
     object_view_t() = default;
-    object_view_t(const object_descriptor* meta, object_data_t* data) : meta(meta), data(data) {}
+    object_view_t(const object_metadata* meta, object_data_t* data) : meta(meta), data(data) {}
 
     template <typename Ty_>
     object_view_t(Ty_* p) noexcept;
@@ -112,12 +112,12 @@ struct object_view_t
 
 struct object_const_view_t
 {
-    object_descriptor_t meta  = {};
+    object_metadata_t meta    = {};
     object_data_t const* data = {};
 
    public:
     object_const_view_t() = default;
-    object_const_view_t(const object_descriptor* meta, const object_data_t* data) : meta(meta), data(data) {}
+    object_const_view_t(const object_metadata* meta, const object_data_t* data) : meta(meta), data(data) {}
 
     template <typename Ty_>
     explicit object_const_view_t(Ty_ const& p) noexcept;
@@ -136,8 +136,8 @@ struct object_const_view_t
 struct dynamic_object_ptr
 {
    private:
-    object_descriptor_t _meta = {};
-    object_data_t* _data      = {};
+    object_metadata_t _meta = {};
+    object_data_t* _data    = {};
 
    public:
     /*  Lifetime Management  */
@@ -149,18 +149,18 @@ struct dynamic_object_ptr
 };
 
 // alias
-using object_descriptor_fn = std::function<object_descriptor_t()>;
+using object_metadata_fn = std::function<object_metadata_t()>;
 
 /**
  * Object's sub property info
  */
-struct property_info
+struct property_metadata
 {
     //! Offset from object root
     size_t offset = 0;
 
     //! Object descriptor for this property
-    object_descriptor_fn descriptor;
+    object_metadata_t type;
 
     //! index of self
     int index_self = 0;
@@ -169,15 +169,16 @@ struct property_info
     std::string_view name;
 
    public:
-    object_descriptor_t _owner;
+    object_metadata_t _owner_type;
 
    public:
-    property_info() = default;
-    property_info(
+    property_metadata() = default;
+    property_metadata(
             size_t offset,
-            object_descriptor_fn descriptor)
+            object_metadata_fn descriptor)
             : offset(offset),
-              descriptor(std::move(descriptor))
+              type(descriptor()),
+              _owner_type(nullptr)
     {
     }
 };
@@ -212,7 +213,7 @@ class if_primitive_control
      *
      * (optional, map, set, pointer, etc ...)
      */
-    virtual object_descriptor_t element_type() const noexcept { return nullptr; };
+    virtual object_metadata_t element_type() const noexcept { return nullptr; };
 
     /**
      * Archive to writer
@@ -220,8 +221,8 @@ class if_primitive_control
      */
     virtual void archive(archive::if_writer* strm,
                          void const* pvdata,
-                         object_descriptor_t desc,
-                         property_info_t opt_property) const
+                         object_metadata_t desc,
+                         optional_property_metadata opt_property) const
     {
         *strm << nullptr;
     }
@@ -232,8 +233,8 @@ class if_primitive_control
      */
     virtual void restore(archive::if_reader* strm,
                          void* pvdata,
-                         object_descriptor_t desc,
-                         property_info_t opt_property) const = 0;
+                         object_metadata_t desc,
+                         optional_property_metadata opt_property) const = 0;
 
     /**
      * Check status of given parameter. Default is 'required', which cannot be ignored.
@@ -257,37 +258,37 @@ class if_primitive_control
 };
 
 /**
- * SFINAE helper for overloading get_object_descriptor
+ * SFINAE helper for overloading get_object_metadata
  */
 template <bool Test_>
-using object_sfinae_t = std::enable_if_t<Test_, object_descriptor_t>;
+using object_sfinae_t = std::enable_if_t<Test_, object_metadata_t>;
 
 template <bool Test_>
-using object_sfinae_ptr = std::enable_if_t<Test_, object_descriptor_ptr>;
+using object_sfinae_ptr = std::enable_if_t<Test_, object_metadata_ptr>;
 
 template <typename A_, typename B_>
 using object_sfinae_overload_t = object_sfinae_t<std::is_same_v<A_, B_>>;
 
 template <typename ValTy_>
-auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
+auto get_object_metadata() -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
 
 template <typename ValTy_, class = void>
-constexpr bool has_object_descriptor_v = false;
+constexpr bool has_object_metadata_v = false;
 
 template <typename ValTy_>
-constexpr bool has_object_descriptor_v<
-        ValTy_, std::void_t<decltype(get_object_descriptor<ValTy_>())>> = true;
+constexpr bool has_object_metadata_v<
+        ValTy_, std::void_t<decltype(get_object_metadata<ValTy_>())>> = true;
 
 template <typename ValTy_>
-using has_object_descriptor_t = std::enable_if_t<has_object_descriptor_v<ValTy_>>;
+using has_object_metadata_t = std::enable_if_t<has_object_metadata_v<ValTy_>>;
 
 /**
  * Get object descriptor getter
  */
 template <typename Ty_>
-object_descriptor_fn default_object_descriptor_fn()
+object_metadata_fn default_object_metadata_fn()
 {
-    return [] { return get_object_descriptor<Ty_>(); };
+    return [] { return get_object_metadata<Ty_>(); };
 }
 
 /**
@@ -297,11 +298,11 @@ object_descriptor_fn default_object_descriptor_fn()
  *          If you have any plan to manipulate objects without static type information,
  *           manipulate them with wrapped_object or object_pointer!
  */
-class object_descriptor
+class object_metadata
 {
    private:
-    using hierarchy_append_fn = std::function<void(object_descriptor_t,
-                                                   property_info const*)>;
+    using hierarchy_append_fn = std::function<void(object_metadata_t,
+                                                   property_metadata const*)>;
 
    private:
     /*   Properties   */
@@ -316,7 +317,7 @@ class object_descriptor
     // list of properties
     // properties are not incremental in memory address, as they are
     //  simply stored in creation order.
-    std::vector<property_info> _props;
+    std::vector<property_metadata> _props;
 
     // [optional]
     // list of keys. if this exists, this object indicate an object.
@@ -363,23 +364,23 @@ class object_descriptor
     /**
      * Retrieves data from property recursively.
      */
-    object_data_t* retrieve(object_data_t* data, property_info const& property) const;
+    object_data_t* retrieve(object_data_t* data, property_metadata const& property) const;
 
     /**
      * Retrieves data pointer from an object
      */
-    object_data_t* retrieve_self(object_data_t* data, property_info const& property) const
+    object_data_t* retrieve_self(object_data_t* data, property_metadata const& property) const
     {
-        assert(_props.at(property.index_self)._owner == property._owner);
+        assert(_props.at(property.index_self)._owner_type == property._owner_type);
         return (object_data_t*)((char*)data + property.offset);
     }
 
     /**
      * Retrieves data pointer from an object
      */
-    object_data_t const* retrieve_self(object_data_t const* data, property_info const& property) const
+    object_data_t const* retrieve_self(object_data_t const* data, property_metadata const& property) const
     {
-        assert(_props.at(property.index_self)._owner == property._owner);
+        assert(_props.at(property.index_self)._owner_type == property._owner_type);
         return (object_data_t const*)((char const*)data + property.offset);
     }
 
@@ -404,7 +405,7 @@ class object_descriptor
     /**
      * Find property by string key
      */
-    property_info const* property(std::string_view key) const
+    property_metadata const* property(std::string_view key) const
     {
         if (not _keys) { return nullptr; }  // this is not object.
 
@@ -437,7 +438,7 @@ class object_descriptor
    public:
     void _archive_to(archive::if_writer* strm,
                      object_data_t const* data,
-                     property_info_t opt_property) const
+                     optional_property_metadata opt_property) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _archive_to on them.
@@ -461,7 +462,7 @@ class object_descriptor
 
                     auto& prop = _props.at(index);
 
-                    auto child      = prop.descriptor();
+                    auto child      = prop.type;
                     auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
@@ -483,7 +484,7 @@ class object_descriptor
                 strm->array_push(_props.size());
                 for (auto& prop : _props)
                 {
-                    auto child      = prop.descriptor();
+                    auto child      = prop.type;
                     auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
@@ -515,7 +516,7 @@ class object_descriptor
     void _restore_from(archive::if_reader* strm,
                        object_data_t* data,
                        restore_context* context,  // for reusing key buffer during recursive
-                       property_info_t opt_property) const
+                       optional_property_metadata opt_property) const
     {
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _restore_from on them.
@@ -558,7 +559,7 @@ class object_descriptor
                 found[index] = true;
 
                 auto& prop      = _props.at(index);
-                auto child      = prop.descriptor();
+                auto child      = prop.type;
                 auto child_data = child->retrieve_self(data, prop);
                 assert(child_data);
 
@@ -570,7 +571,7 @@ class object_descriptor
                 if (found[index]) { continue; }
 
                 auto& prop = _props[index];
-                auto child = prop.descriptor();
+                auto child = prop.type;
 
                 if (not child->is_optional())
                     throw error::missing_entity{}
@@ -597,7 +598,7 @@ class object_descriptor
                             .message("Only %d out of %d properties found.",
                                      (int)(&prop - _props.data()), (int)_props.size());
 
-                auto child = prop.descriptor();
+                auto child = prop.type;
                 if (child->is_optional() && strm->is_null_next())
                 {
                     // do nothing
@@ -639,7 +640,7 @@ class object_descriptor
 
         // otherwise, check for object/tuple
         auto& property = *at(*it);
-        auto descr     = property.descriptor();
+        auto descr     = property.type;
 
         // primitive cannot have children
         if (descr->is_primitive()) { return ~size_t{}; }
@@ -648,7 +649,7 @@ class object_descriptor
         return descr->_find_property(offset - property.offset, append, ++depth);
     }
 
-    property_info const* _find_property(size_t offset) const
+    property_metadata const* _find_property(size_t offset) const
     {
         // find hierarchy shallowly
         auto it = lower_bound(_offset_lookup, offset, [](auto& a, auto& b) { return a.first < b; });
@@ -669,16 +670,16 @@ class object_descriptor
         basic_factory& operator=(basic_factory&&) noexcept = default;
 
        protected:
-        std::unique_ptr<object_descriptor> _current
-                = std::make_unique<object_descriptor>();
+        std::unique_ptr<object_metadata> _current
+                = std::make_unique<object_metadata>();
 
        protected:
-        size_t add_property_impl(property_info info) const
+        size_t add_property_impl(property_metadata info) const
         {
             assert(not _current->is_primitive());
 
             // force property load
-            info.descriptor();
+            info.type;
 
             auto index = _current->_props.size();
             _current->_props.emplace_back(std::move(info));
@@ -691,11 +692,11 @@ class object_descriptor
          * Generate object descriptor instance.
          * Sorts keys, build incremental offset lookup table, etc.
          */
-        std::unique_ptr<object_descriptor> create() const
+        std::unique_ptr<object_metadata> create() const
         {
             static std::atomic_uint64_t unique_id_allocator;
 
-            auto result     = std::make_unique<object_descriptor>(*_current);
+            auto result     = std::make_unique<object_metadata>(*_current);
             auto& generated = *result;
             auto lookup     = &generated._offset_lookup;
 
@@ -708,11 +709,11 @@ class object_descriptor
             for (auto& prop : generated._props)
             {
                 lookup->emplace_back(std::make_pair(prop.offset, n));
-                prop.index_self = static_cast<int>(n++);
-                prop._owner     = result.get();
+                prop.index_self  = static_cast<int>(n++);
+                prop._owner_type = result.get();
 
 #ifndef NDEBUG
-                object_end = std::max(object_end, prop.offset + prop.descriptor()->extent());
+                object_end = std::max(object_end, prop.offset + prop.type->extent());
 #endif
             }
 
@@ -780,26 +781,13 @@ class object_descriptor
 
        protected:
         template <typename Class_, typename MemVar_>
-        static property_info create_property_info(MemVar_ Class_::*mem_ptr)
+        static property_metadata create_property_metadata(MemVar_ Class_::*mem_ptr)
         {
-            property_info info;
-            info.descriptor = default_object_descriptor_fn<MemVar_>();
-            info.offset     = reinterpret_cast<size_t>(
+            property_metadata info;
+            info.type   = default_object_metadata_fn<MemVar_>()();
+            info.offset = reinterpret_cast<size_t>(
                     &(reinterpret_cast<Class_ const volatile*>(NULL)->*mem_ptr));
 
-            return info;
-        }
-
-        template <typename Class_, typename MemVar_>
-        static property_info create_property_info(Class_ const* class_type, MemVar_ const* mem_ptr)
-        {
-            property_info info;
-            info.descriptor = default_object_descriptor_fn<MemVar_>();
-            info.offset     = static_cast<size_t>(
-                    reinterpret_cast<char const*>(mem_ptr)
-                    - reinterpret_cast<char const*>(class_type));
-
-            assert(info.offset >= 0);
             return info;
         }
     };
@@ -816,7 +804,7 @@ class object_descriptor
             return *this;
         }
 
-        auto& add_property(std::string key, property_info info) const
+        auto& add_property(std::string key, property_metadata info) const
         {
             auto index          = add_property_impl(std::move(info));
             auto [pair, is_new] = _current->_keys->try_emplace(std::move(key), index);
@@ -834,7 +822,7 @@ class object_descriptor
         using super = object_factory_base<object_factory>;
 
        public:
-        auto& add_property(property_info info) const
+        auto& add_property(property_metadata info) const
         {
             add_property_impl(std::move(info));
 
@@ -856,7 +844,7 @@ class object_descriptor
         template <typename MemVar_>
         auto& property(std::string key, MemVar_ Class_::*mem_ptr) const
         {
-            auto info = create_property_info(mem_ptr);
+            auto info = create_property_metadata(mem_ptr);
             add_property(std::move(key), std::move(info));
             return *this;
         }
@@ -876,7 +864,7 @@ class object_descriptor
         template <typename MemVar_>
         auto& property(MemVar_ Class_::*mem_ptr) const
         {
-            add_property(create_property_info(mem_ptr));
+            add_property(create_property_metadata(mem_ptr));
             return *this;
         }
     };
@@ -885,13 +873,13 @@ class object_descriptor
 template <typename Class_>
 auto define_object()
 {
-    return object_descriptor::templated_object_factory<Class_>::define();
+    return object_metadata::templated_object_factory<Class_>::define();
 }
 
 template <typename Class_>
 auto define_tuple()
 {
-    return object_descriptor::template_tuple_factory<Class_>::define();
+    return object_metadata::template_tuple_factory<Class_>::define();
 }
 
 /**
@@ -910,7 +898,7 @@ operator<<(archive::if_writer& strm, object_const_view_t obj)
 inline archive::if_reader&
 operator>>(archive::if_reader& strm, object_view_t obj)
 {
-    object_descriptor::restore_context ctx;
+    object_metadata::restore_context ctx;
     obj.meta->_restore_from(&strm, obj.data, &ctx, nullptr);
     return strm;
 }
@@ -924,11 +912,11 @@ constexpr bool is_cpph_refl_object_v = false;
 
 template <typename Ty_>
 constexpr bool is_cpph_refl_object_v<
-        Ty_, std::void_t<decltype(std::declval<Ty_>().initialize_object_descriptor())>> = true;
+        Ty_, std::void_t<decltype(std::declval<Ty_>().initialize_object_metadata())>> = true;
 }  // namespace detail
 
 template <typename ValTy_>
-auto get_object_descriptor() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>;
+auto get_object_metadata() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>;
 
 }  // namespace CPPHEADERS_NS_::refl
 
@@ -950,43 +938,43 @@ constexpr type_tag<ValTy_> type_tag_v = {};
 
 namespace detail {
 template <typename ValTy_>
-auto initialize_object_descriptor(type_tag<ValTy_>)
+auto initialize_object_metadata(type_tag<ValTy_>)
         -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
 
-struct initialize_object_descriptor_fn
+struct initialize_object_metadata_fn
 {
     template <typename ValTy_>
     auto operator()(type_tag<ValTy_>) const
-            -> decltype(initialize_object_descriptor(type_tag_v<ValTy_>))
+            -> decltype(initialize_object_metadata(type_tag_v<ValTy_>))
     {
-        return initialize_object_descriptor(type_tag_v<ValTy_>);
+        return initialize_object_metadata(type_tag_v<ValTy_>);
     }
 };
 }  // namespace detail
 
 namespace {
-static constexpr auto initialize_object_descriptor
-        = static_const<detail::initialize_object_descriptor_fn>::value;
+static constexpr auto initialize_object_metadata
+        = static_const<detail::initialize_object_metadata_fn>::value;
 }
 
 template <typename ValTy_>
-auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<
-        object_descriptor_ptr, decltype(initialize_object_descriptor(type_tag_v<ValTy_>))>>
+auto get_object_metadata() -> object_sfinae_t<std::is_same_v<
+        object_metadata_ptr, decltype(initialize_object_metadata(type_tag_v<ValTy_>))>>
 {
-    static auto instance = initialize_object_descriptor(type_tag_v<ValTy_>);
+    static auto instance = initialize_object_metadata(type_tag_v<ValTy_>);
     return &*instance;
 }
 
 template <typename Ty_>
 object_view_t::object_view_t(Ty_* p) noexcept : data((object_data_t*)p)
 {
-    meta = get_object_descriptor<Ty_>();
+    meta = get_object_metadata<Ty_>();
 }
 
 template <typename Ty_>
 object_const_view_t::object_const_view_t(const Ty_& p) noexcept : data((object_data_t const*)&p)
 {
-    meta = get_object_descriptor<Ty_>();
+    meta = get_object_metadata<Ty_>();
 }
 
 }  // namespace CPPHEADERS_NS_::refl

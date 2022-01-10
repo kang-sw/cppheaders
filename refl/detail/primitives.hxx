@@ -61,9 +61,9 @@ namespace CPPHEADERS_NS_::refl {
  * Object descriptor
  */
 template <typename ValTy_>
-auto get_object_descriptor() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>
+auto get_object_metadata() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>
 {
-    static object_descriptor_ptr inst = ((ValTy_*)nullptr)->initialize_object_descriptor();
+    static object_metadata_ptr inst = ((ValTy_*)nullptr)->initialize_object_metadata();
 
     return &*inst;
 }
@@ -77,15 +77,15 @@ struct primitive_manipulator : if_primitive_control
 {
     void archive(archive::if_writer* writer,
                  const void* p_void,
-                 object_descriptor_t,
-                 property_info_t) const override
+                 object_metadata_t,
+                 optional_property_metadata) const override
     {
         *writer << *(ValTy_*)p_void;
     }
     void restore(archive::if_reader* reader,
                  void* p_void,
-                 object_descriptor_t,
-                 property_info_t) const override
+                 object_metadata_t,
+                 optional_property_metadata) const override
     {
         *reader >> *(ValTy_*)p_void;
     }
@@ -93,7 +93,7 @@ struct primitive_manipulator : if_primitive_control
 }  // namespace detail
 
 template <typename ValTy_>
-auto get_object_descriptor() -> object_sfinae_t<
+auto get_object_metadata() -> object_sfinae_t<
         (is_any_of_v<ValTy_, bool, nullptr_t, std::string>)
         || (std::is_integral_v<ValTy_>)
         || (std::is_floating_point_v<ValTy_>)  //
@@ -114,7 +114,7 @@ auto get_object_descriptor() -> object_sfinae_t<
     } manip;
 
     static auto desc
-            = object_descriptor::primitive_factory{}
+            = object_metadata::primitive_factory{}
                       .setup(sizeof(ValTy_), [] { return &manip; })
                       .create();
 
@@ -126,7 +126,7 @@ auto get_object_descriptor() -> object_sfinae_t<
  */
 namespace detail {
 template <typename ElemTy_>
-object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
+object_metadata* fixed_size_descriptor(size_t extent, size_t num_elems)
 {
     static struct manip_t : if_primitive_control
     {
@@ -134,14 +134,14 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
         {
             return primitive_t::tuple;
         }
-        const object_descriptor* element_type() const noexcept override
+        const object_metadata* element_type() const noexcept override
         {
-            return get_object_descriptor<ElemTy_>();
+            return get_object_metadata<ElemTy_>();
         }
         void archive(archive::if_writer* strm,
                      const void* pvdata,
-                     object_descriptor_t desc,
-                     property_info_t) const override
+                     object_metadata_t desc,
+                     optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
@@ -154,8 +154,8 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
         }
         void restore(archive::if_reader* strm,
                      void* pvdata,
-                     object_descriptor_t desc,
-                     property_info_t) const override
+                     object_metadata_t desc,
+                     optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
@@ -167,7 +167,7 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
     } manip;
 
     static auto desc
-            = object_descriptor::primitive_factory{}
+            = object_metadata::primitive_factory{}
                       .setup(extent, [] { return &manip; })
                       .create();
 
@@ -183,7 +183,7 @@ constexpr bool is_stl_array_v<std::array<Ty_, N_>> = true;
 }  // namespace detail
 
 template <typename ValTy_>
-auto get_object_descriptor() -> object_sfinae_t<std::is_array_v<ValTy_>>
+auto get_object_metadata() -> object_sfinae_t<std::is_array_v<ValTy_>>
 {
     return detail::fixed_size_descriptor<std::remove_extent_t<ValTy_>>(
             sizeof(ValTy_),
@@ -191,7 +191,7 @@ auto get_object_descriptor() -> object_sfinae_t<std::is_array_v<ValTy_>>
 }
 
 template <typename ValTy_>
-auto get_object_descriptor() -> object_sfinae_t<detail::is_stl_array_v<ValTy_>>
+auto get_object_metadata() -> object_sfinae_t<detail::is_stl_array_v<ValTy_>>
 {
     return detail::fixed_size_descriptor<typename ValTy_::value_type>(
             sizeof(ValTy_),
@@ -206,7 +206,7 @@ auto get_object_descriptor() -> object_sfinae_t<detail::is_stl_array_v<ValTy_>>
 namespace detail {
 
 template <typename Container_>
-auto get_list_like_descriptor() -> object_descriptor_t
+auto get_list_like_descriptor() -> object_metadata_t
 {
     using value_type = typename Container_::value_type;
 
@@ -216,14 +216,14 @@ auto get_list_like_descriptor() -> object_descriptor_t
         {
             return primitive_t::array;
         }
-        object_descriptor_t element_type() const noexcept override
+        object_metadata_t element_type() const noexcept override
         {
-            return get_object_descriptor<value_type>();
+            return get_object_metadata<value_type>();
         }
         void archive(archive::if_writer* strm,
                      const void* pvdata,
-                     object_descriptor_t desc,
-                     property_info_t) const override
+                     object_metadata_t desc,
+                     optional_property_metadata) const override
         {
             auto container = reinterpret_cast<Container_ const*>(pvdata);
 
@@ -236,8 +236,8 @@ auto get_list_like_descriptor() -> object_descriptor_t
         }
         void restore(archive::if_reader* strm,
                      void* pvdata,
-                     object_descriptor_t desc,
-                     property_info_t) const override
+                     object_metadata_t desc,
+                     optional_property_metadata) const override
         {
             auto container = reinterpret_cast<Container_*>(pvdata);
             container->clear();
@@ -273,7 +273,7 @@ auto get_list_like_descriptor() -> object_descriptor_t
 
     constexpr auto extent = sizeof(Container_);
     static auto desc
-            = object_descriptor::primitive_factory{}
+            = object_metadata::primitive_factory{}
                       .setup(extent, [] { return &manip; })
                       .create();
 
@@ -282,7 +282,7 @@ auto get_list_like_descriptor() -> object_descriptor_t
 }  // namespace detail
 
 template <typename ValTy_>
-auto get_object_descriptor()
+auto get_object_metadata()
         -> object_sfinae_t<
                 is_template_instance_of<ValTy_, std::vector>::value
                 || is_template_instance_of<ValTy_, std::list>::value>
@@ -292,8 +292,8 @@ auto get_object_descriptor()
 
 inline void compile_test()
 {
-    get_object_descriptor<std::vector<int>>();
-    get_object_descriptor<std::list<std::vector<int>>>();
+    get_object_metadata<std::vector<int>>();
+    get_object_metadata<std::list<std::vector<int>>>();
 }
 
 }  // namespace CPPHEADERS_NS_::refl
@@ -307,7 +307,7 @@ namespace CPPHEADERS_NS_ {
  */
 struct chunk_bypass_adapter
 {
-    chunk_bypass_adapter(refl::object_descriptor_t) noexcept {}
+    chunk_bypass_adapter(refl::object_metadata_t, refl::optional_property_metadata) noexcept {}
 
     const_buffer_view
     operator()(const_buffer_view v)
@@ -368,8 +368,8 @@ static_assert(chunk<std::vector<int>>::is_contiguous);
 static_assert(not chunk<std::list<int>>::is_contiguous);
 
 template <typename Container_, typename Adapter_>
-refl::object_descriptor_ptr
-initialize_object_descriptor(refl::type_tag<chunk<Container_, Adapter_>>)
+refl::object_metadata_ptr
+initialize_object_metadata(refl::type_tag<chunk<Container_, Adapter_>>)
 {
     using chunk_t    = chunk<Container_>;
     using value_type = typename Container_::value_type;
@@ -382,10 +382,10 @@ initialize_object_descriptor(refl::type_tag<chunk<Container_, Adapter_>>)
         }
         void archive(archive::if_writer* strm,
                      const void* pvdata,
-                     refl::object_descriptor_t desc,
-                     refl::property_info_t) const override
+                     refl::object_metadata_t desc,
+                     refl::optional_property_metadata prop) const override
         {
-            Adapter_ adapter{desc};
+            Adapter_ adapter{desc, prop};
             auto container = (Container_ const*)pvdata;
 
             if constexpr (not chunk_t::is_contiguous)  // list, set, etc ...
@@ -409,8 +409,8 @@ initialize_object_descriptor(refl::type_tag<chunk<Container_, Adapter_>>)
         }
         void restore(archive::if_reader* strm,
                      void* pvdata,
-                     refl::object_descriptor_t desc,
-                     refl::property_info_t) const override
+                     refl::object_metadata_t desc,
+                     refl::optional_property_metadata) const override
         {
             // TODO ...
         }
@@ -420,14 +420,14 @@ initialize_object_descriptor(refl::type_tag<chunk<Container_, Adapter_>>)
         }
     } manip;
 
-    return refl::object_descriptor::primitive_factory{}
+    return refl::object_metadata::primitive_factory{}
             .setup(sizeof(Container_), [] { return &manip; })
             .create();
 }
 
 inline void compile_test()
 {
-    refl::get_object_descriptor<chunk<std::vector<int>>>();
+    refl::get_object_metadata<chunk<std::vector<int>>>();
 }
 
 }  // namespace CPPHEADERS_NS_

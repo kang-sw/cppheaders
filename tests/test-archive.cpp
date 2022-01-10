@@ -120,8 +120,8 @@ TEMPLATE_TEST_CASE("archive", "[.]", ns::vectors)
 #define property_  CPPH_PROP_TUPLE
 #define property2_ CPPH_PROP_OBJECT_AUTOKEY
 
-// cpph::refl::object_descriptor_ptr
-// ns::some_other::initialize_object_descriptor() noexcept
+// cpph::refl::object_metadata_ptr
+// ns::some_other::initialize_object_metadata() noexcept
 //{
 //     INTERNAL_CPPH_ARCHIVING_BRK_TOKENS_0("a,b,c,f,t,r")
 //     auto factory = cpph::refl::define_object<std::remove_pointer_t<decltype(this)>>();
