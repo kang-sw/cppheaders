@@ -140,9 +140,7 @@ class function<Ret_(Args_...)>
 
     Ret_ operator()(Args_... args) const
     {
-        if (_callable == nullptr)
-            throw std::bad_function_call{};
-
+        assert(_callable != nullptr);
         return std::invoke(*_callable, std::forward<Args_>(args)...);
     }
 
