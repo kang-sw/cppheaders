@@ -23,8 +23,8 @@
 // project home: https://github.com/perfkitpp
 
 #include "catch.hpp"
-#include "refl/buffer.hxx"
 #include "refl/archive.hxx"
+#include "refl/buffer.hxx"
 #include "refl/object_core.hxx"
 
 struct test_object
@@ -33,6 +33,21 @@ struct test_object
     int b = 2;
     int c = 3;
 };
+
+struct test_object_declref
+{
+    int a = 1;
+    int b = 2;
+    int c = 3;
+};
+
+cpph::refl::object_descriptor_t
+find_object_descriptor(test_object_declref const& arg)
+{
+    return nullptr;
+}
+
+auto descriptor = cpph::refl::get_object_descriptor<test_object_declref>();
 
 struct test_macro_expr_3
 {

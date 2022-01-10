@@ -929,6 +929,33 @@ auto get_object_descriptor() -> object_sfinae_t<detail::is_cpph_refl_object_v<Va
  */
 namespace CPPHEADERS_NS_::refl {
 
+namespace detail {
+template <typename ValTy_>
+auto find_object_descriptor(ValTy_ const&)
+        -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
+
+struct find_object_descriptor_fn
+{
+    template <typename ValTy_>
+    auto operator()(ValTy_ const&) const
+            -> decltype(find_object_descriptor(declref<ValTy_>()))
+    {
+        return find_object_descriptor(declref<ValTy_>());
+    }
+};
+}  // namespace detail
+
+namespace {
+static constexpr auto find_object_descriptor = static_const<detail::find_object_descriptor_fn>::value;
+}
+
+template <typename ValTy_>
+auto get_object_descriptor() -> object_sfinae_t<std::is_same_v<
+        object_descriptor_t, decltype(find_object_descriptor(declref<ValTy_>()))>>
+{
+    return find_object_descriptor(declref<ValTy_>());
+}
+
 template <typename Ty_>
 object_view_t::object_view_t(Ty_* p) noexcept : data((object_data_t*)p)
 {

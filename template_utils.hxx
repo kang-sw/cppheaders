@@ -253,12 +253,25 @@ struct is_template_instance_of<Ref<Args...>, Ref> : std::true_type
 {
 };
 
-// as value type
 template <typename Ty_>
 using remove_cvr_t = std::remove_cv_t<std::remove_reference_t<Ty_>>;
 
-// heleper
 template <typename Type_, size_t N = sizeof(Type_)>
 class test_size_by_error;
+
+template <typename Ty_>
+struct static_const
+{
+    static constexpr Ty_ value{};
+};
+
+template <typename Ty_>
+constexpr Ty_ static_const<Ty_>::value;
+
+template <typename Ty_>
+Ty_& declref() noexcept
+{
+    return *(Ty_*)nullptr;
+}
 
 }  // namespace CPPHEADERS_NS_
