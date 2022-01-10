@@ -916,7 +916,7 @@ constexpr bool is_cpph_refl_object_v = false;
 
 template <typename Ty_>
 constexpr bool is_cpph_refl_object_v<Ty_, std::void_t<
-                                                  decltype(std::declval<Ty_>().CPPH_REFL_create_object_descriptor_once())>> = true;
+                                                  decltype(std::declval<Ty_>().initialize_object_descriptor())>> = true;
 }  // namespace detail
 
 template <typename ValTy_>

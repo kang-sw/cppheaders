@@ -30,8 +30,10 @@
 #ifndef CPPHEADERS_REFL_OBJECT_MACROS
 #    define CPPHEADERS_REFL_OBJECT_MACROS
 
-#    define CPPH_REFL_DEFINE_OBJECT_c(ClassName, ...) INTERNAL_CPPH_REFL_EMBED_DEFINE(ClassName, define_object, (key, this, &value), __VA_ARGS__)
-#    define CPPH_REFL_DEFINE_TUPLE_c(ClassName, ...)  INTERNAL_CPPH_REFL_EMBED_DEFINE(ClassName, define_tuple, (this, &value), __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_OBJECT_c(ClassName, ...)      INTERNAL_CPPH_REFL_EMBED_DEFINE(ClassName::, ClassName, define_object, (key, this, &value), __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_OBJECT_inline(ClassName, ...) INTERNAL_CPPH_REFL_EMBED_DEFINE(, ClassName, define_object, (key, this, &value), __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_TUPLE_c(ClassName, ...)       INTERNAL_CPPH_REFL_EMBED_DEFINE(ClassName::, ClassName, define_tuple, (this, &value), __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_TUPLE_inline(ClassName, ...)  INTERNAL_CPPH_REFL_EMBED_DEFINE(, ClassName, define_tuple, (this, &value), __VA_ARGS__)
 
 #    define CPPH_REFL_DEFINE_OBJECT(ClassName)          INTERNAL_CPPH_DEFINE_IMPL(ClassName, factory, CPPHEADERS_NS_::refl::define_object)
 #    define CPPH_REFL_DEFINE_TUPLE(ClassName)           INTERNAL_CPPH_DEFINE_IMPL(ClassName, factory, CPPHEADERS_NS_::refl::define_tuple)
@@ -39,21 +41,22 @@
 #    define CPPH_PROP_OBJECT(PropNameStr, VarName, ...) property(PropNameStr, INTERNAL_CPPH_REFL_RETRIEVE_MEMPTR(VarName), ##__VA_ARGS__)
 #    define CPPH_PROP_OBJECT_AUTOKEY(VarName, ...)      CPPH_PROP_OBJECT(#    VarName, VarName, ##__VA_ARGS__)
 
-#    define INTERNAL_CPPH_REFL_EMBED_DEFINE(ClassName, FactoryType, ParamType, ...)       \
-        CPPHEADERS_NS_::refl::object_descriptor_ptr                                       \
-        ClassName::CPPH_REFL_create_object_descriptor_once()                              \
-        {                                                                                 \
-            INTERNAL_CPPH_ARCHIVING_BRK_TOKENS_0(#__VA_ARGS__)                            \
-            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>(); \
-                                                                                          \
-            CPPHEADERS_NS_::macro_utils::visit_with_key(                                  \
-                    INTERNAL_CPPH_BRK_TOKENS_ACCESS_VIEW(),                               \
-                    [&](std::string_view key, auto& value) {                              \
-                        _cpph_internal_factory.property ParamType;                        \
-                    },                                                                    \
-                    __VA_ARGS__);                                                         \
-                                                                                          \
-            return _cpph_internal_factory.create();                                       \
+#    define INTERNAL_CPPH_REFL_EMBED_DEFINE(Qualify, ClassName, FactoryType, ParamType, ...) \
+        CPPHEADERS_NS_::refl::object_descriptor_ptr                                          \
+                Qualify                                                                      \
+                initialize_object_descriptor()                                               \
+        {                                                                                    \
+            INTERNAL_CPPH_ARCHIVING_BRK_TOKENS_0(#__VA_ARGS__)                               \
+            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>();    \
+                                                                                             \
+            CPPHEADERS_NS_::macro_utils::visit_with_key(                                     \
+                    INTERNAL_CPPH_BRK_TOKENS_ACCESS_VIEW(),                                  \
+                    [&](std::string_view key, auto& value) {                                 \
+                        _cpph_internal_factory.property ParamType;                           \
+                    },                                                                       \
+                    __VA_ARGS__);                                                            \
+                                                                                             \
+            return _cpph_internal_factory.create();                                          \
         }
 
 #    define INTERNAL_CPPH_REFL_RETRIEVE_MEMPTR(VarName) \

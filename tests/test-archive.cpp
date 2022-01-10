@@ -38,6 +38,12 @@ struct inner_arg_1
     bool k                    = true;
     std::array<bool, 4> bools = {false, false, true, false};
     double g                  = 3.14;
+
+    CPPH_REFL_DEFINE_OBJECT_inline(
+            inner_arg_1,
+            str1,
+            str2,
+            var, k, bools, g);
 };
 
 struct inner_arg_2
@@ -47,12 +53,19 @@ struct inner_arg_2
     nullptr_t nothing2 = nullptr;
 
     int ints[3] = {1, 23, 4};
+
+    CPPH_REFL_DEFINE_TUPLE_inline(
+            inner_arg_2,
+            rtt, nothing, nothing2, ints);
 };
 
 struct outer
 {
     inner_arg_1 arg1;
     inner_arg_2 arg2;
+
+    CPPH_REFL_DEFINE_TUPLE_inline(
+            outer, arg1, arg2);
 };
 
 struct some_other
@@ -83,10 +96,6 @@ namespace cpph::refl {
 
 }
 
-CPPH_REFL_DECLARE(ns::inner_arg_1);
-CPPH_REFL_DECLARE(ns::inner_arg_2);
-CPPH_REFL_DECLARE(ns::outer);
-
 TEMPLATE_TEST_CASE("archive", "[.]", ns::some_other_2)
 {
     archive::debug_string_writer writer{archive::obuffer(std::cout)};
@@ -99,38 +108,9 @@ TEMPLATE_TEST_CASE("archive", "[.]", ns::some_other_2)
 
 #define property_  CPPH_PROP_TUPLE
 #define property2_ CPPH_PROP_OBJECT_AUTOKEY
-CPPH_REFL_DEFINE_TUPLE(ns::inner_arg_1)
-{
-    return factory
-            .property_(str1)
-            .property_(str2)
-            .property_(var)
-            .property_(k)
-            .property_(g)
-            .property_(bools)
-            .create();
-};
-
-CPPH_REFL_DEFINE_OBJECT(ns::inner_arg_2)
-{
-    return factory
-            .property2_(nothing)
-            .property2_(rtt)
-            .property2_(nothing2)
-            .property2_(ints)
-            .create();
-};
-
-CPPH_REFL_DEFINE_OBJECT(ns::outer)
-{
-    return factory
-            .property2_(arg1)
-            .property2_(arg2)
-            .create();
-};
 
 // cpph::refl::object_descriptor_ptr
-// ns::some_other::CPPH_REFL_create_object_descriptor_once() noexcept
+// ns::some_other::initialize_object_descriptor() noexcept
 //{
 //     INTERNAL_CPPH_ARCHIVING_BRK_TOKENS_0("a,b,c,f,t,r")
 //     auto factory = cpph::refl::define_object<std::remove_pointer_t<decltype(this)>>();

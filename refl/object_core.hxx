@@ -37,14 +37,11 @@ using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_d
  */
 
 #ifndef CPPH_REFL_DECLARE
-#    define CPPH_REFL_DECLARE(ClassName)                                  \
-        namespace CPPHEADERS_NS_::refl {                                  \
-        template <class TypeName_>                                        \
-        auto get_object_descriptor()                                      \
-                -> object_sfinae_t<std::is_same_v<TypeName_, ClassName>>; \
-        }
+#    define CPPH_REFL_DECLARE(ClassName)              \
+        ::CPPHEADERS_NS_::refl::object_descriptor_ptr \
+        initialize_object_descriptor(ClassName const&);
 
-#    define CPPH_REFL_DECLARE_c               \
+#    define CPPH_REFL_DECLARE_c                     \
         CPPHEADERS_NS_::refl::object_descriptor_ptr \
-        CPPH_REFL_create_object_descriptor_once();
+        initialize_object_descriptor() ;
 #endif
