@@ -73,7 +73,10 @@ enum class primitive_t : uint16_t
 {
     invalid,
 
-    map,
+    object,
+    dictionary,
+
+    tuple,
     array,
 
     null,
@@ -953,7 +956,7 @@ inline std::string to_string(CPPHEADERS_NS_::refl::primitive_t t)
         case CPPHEADERS_NS_::refl::primitive_t::boolean: return "boolean";
         case CPPHEADERS_NS_::refl::primitive_t::string: return "string";
         case CPPHEADERS_NS_::refl::primitive_t::binary: return "binary";
-        case CPPHEADERS_NS_::refl::primitive_t::map: return "map";
+        case CPPHEADERS_NS_::refl::primitive_t::dictionary: return "map";
         case CPPHEADERS_NS_::refl::primitive_t::array: return "array";
         case CPPHEADERS_NS_::refl::primitive_t::integer: return "integer";
         case CPPHEADERS_NS_::refl::primitive_t::floating_point: return "floating_point";

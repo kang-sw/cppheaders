@@ -104,7 +104,7 @@ object_descriptor* fixed_size_descriptor(size_t extent, size_t num_elems)
     {
         primitive_t type() const noexcept override
         {
-            return primitive_t::array;
+            return primitive_t::tuple;
         }
         const object_descriptor* element_type() const noexcept override
         {
