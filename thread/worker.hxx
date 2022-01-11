@@ -67,10 +67,16 @@ class worker
     {
         shutdown();
         _active.store(true);
-        _worker = std::thread{
-                std::forward<Starter_>(fn),
-                std::forward<Args_>(args)...,
-                std::cref(_active)};
+
+        if constexpr (std::is_invocable_v<Starter_, Args_..., flag_ref_t>)
+            _worker = std::thread{
+                    std::forward<Starter_>(fn),
+                    std::forward<Args_>(args)...,
+                    std::cref(_active)};
+        else
+            _worker = std::thread{
+                    std::forward<Starter_>(fn),
+                    std::forward<Args_>(args)...};
     }
 
     void stop()
