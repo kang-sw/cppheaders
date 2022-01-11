@@ -26,12 +26,15 @@
 #include <atomic>
 #include <thread>
 
+#include "../functional.hxx"
 #include "../macros.hxx"
 
 //
 #include "../__namespace__"
 
 namespace CPPHEADERS_NS_::thread {
+using flag_ref_t = std::atomic_bool const&;
+
 class worker
 {
    public:
@@ -64,7 +67,10 @@ class worker
     {
         shutdown();
         _active.store(true);
-        _worker = std::thread{std::forward<Starter_>(fn), std::forward<Args_>(args)..., &_active};
+        _worker = std::thread{
+                std::forward<Starter_>(fn),
+                std::forward<Args_>(args)...,
+                std::cref(_active)};
     }
 
     void stop()
