@@ -32,6 +32,13 @@
 
 using namespace cpph;
 
+enum class my_enum
+{
+    test1,
+    test2,
+    test3
+};
+
 namespace ns {
 struct inner_arg_1
 {
@@ -85,9 +92,12 @@ struct vectors
     std::vector<std::list<double>> f2
             = {{1., 2., 3.}, {4., 5, 6}};
 
-    cpph::chunk<std::vector<int>> f3{1, 2, 3, 4};
+    cpph::binary<std::vector<int>> f3{1, 2, 3, 4};
+    cpph::binary<std::list<int>> f4{0x5abbccdd, 0x12213456, 0x31315142};
 
-    CPPH_REFL_DEFINE_OBJECT_inline(f, f2, f3);
+    my_enum my_enum_value = my_enum::test3;
+
+    CPPH_REFL_DEFINE_OBJECT_inline(f, f2, f3, f4, my_enum_value);
 };
 
 struct some_other_2

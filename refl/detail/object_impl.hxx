@@ -62,6 +62,9 @@ CPPH_DECLARE_EXCEPTION(invalid_read_state, object_archive_exception);
 CPPH_DECLARE_EXCEPTION(invalid_write_state, object_archive_exception);
 CPPH_DECLARE_EXCEPTION(missing_entity, object_archive_exception);
 
+CPPH_DECLARE_EXCEPTION(primitive, object_archive_exception);
+CPPH_DECLARE_EXCEPTION(binary_out_of_range, object_archive_exception);
+
 }  // namespace error
 
 /**
@@ -172,6 +175,9 @@ struct property_metadata
     object_metadata_t _owner_type = {};
 
    public:
+    auto owner_type() const { return _owner_type; }
+
+   public:
     property_metadata() = default;
     property_metadata(
             size_t offset,
@@ -221,8 +227,8 @@ class if_primitive_control
      */
     virtual void archive(archive::if_writer* strm,
                          void const* pvdata,
-                         object_metadata_t desc,
-                         optional_property_metadata opt_property) const
+                         object_metadata_t desc_self,
+                         optional_property_metadata opt_as_property) const
     {
         *strm << nullptr;
     }
@@ -233,8 +239,8 @@ class if_primitive_control
      */
     virtual void restore(archive::if_reader* strm,
                          void* pvdata,
-                         object_metadata_t desc,
-                         optional_property_metadata opt_property) const = 0;
+                         object_metadata_t desc_self,
+                         optional_property_metadata opt_as_property) const = 0;
 
     /**
      * Check status of given parameter. Default is 'required', which cannot be ignored.
@@ -735,12 +741,19 @@ class object_metadata
     class primitive_factory : public basic_factory
     {
        public:
-        auto& setup(size_t extent, std::function<if_primitive_control const*()> func) const
+        static object_metadata_ptr
+        define(size_t extent, if_primitive_control const* static_ref_prm_ctrl)
+        {
+            return primitive_factory{}.setup(extent, static_ref_prm_ctrl).create();
+        }
+
+       private:
+        primitive_factory const& setup(size_t extent, if_primitive_control const* ref) const
         {
             *_current = {};
 
             _current->_extent    = extent;
-            _current->_primitive = func();
+            _current->_primitive = ref;
 
             return *this;
         }
@@ -781,8 +794,8 @@ class object_metadata
         static property_metadata create_property_metadata(MemVar_ Class_::*mem_ptr)
         {
             property_metadata info;
-            info.type = default_object_metadata_fn<MemVar_>()();
-            info.offset   = reinterpret_cast<size_t>(
+            info.type   = default_object_metadata_fn<MemVar_>()();
+            info.offset = reinterpret_cast<size_t>(
                     &(reinterpret_cast<Class_ const volatile*>(NULL)->*mem_ptr));
 
             return info;
@@ -792,8 +805,8 @@ class object_metadata
         static property_metadata create_property_metadata(Class_ const* class_type, MemVar_ const* mem_ptr)
         {
             property_metadata info;
-            info.type = default_object_metadata_fn<MemVar_>();
-            info.offset   = static_cast<size_t>(
+            info.type   = default_object_metadata_fn<MemVar_>();
+            info.offset = static_cast<size_t>(
                     reinterpret_cast<char const*>(mem_ptr)
                     - reinterpret_cast<char const*>(class_type));
 
@@ -974,6 +987,13 @@ auto get_object_metadata() -> object_sfinae_t<std::is_same_v<
     static auto instance = initialize_object_metadata(type_tag_v<ValTy_>);
     return &*instance;
 }
+
+template <typename ValTy_, class = void>
+constexpr bool has_object_metadata_initializer_v = false;
+
+template <typename ValTy_>
+constexpr bool has_object_metadata_initializer_v<
+        ValTy_, std::void_t<decltype(initialize_object_metadata(type_tag_v<ValTy_>))>> = true;
 
 template <typename Ty_>
 object_view_t::object_view_t(Ty_* p) noexcept : data((object_data_t*)p)

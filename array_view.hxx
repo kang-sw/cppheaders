@@ -166,6 +166,12 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
     size_t _size;
 };
 
+template <typename Ty_>
+using const_array_view = array_view<Ty_ const>;
+
+template <typename Ty_>
+using mutable_array_view = array_view<Ty_>;
+
 template <>
 class array_view<void> : public array_view<char>
 {

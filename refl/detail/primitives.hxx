@@ -47,6 +47,7 @@ INTERNAL_CPPH_pewpew(has_reserve_v, T, std::declval<T>().reserve(0));
 INTERNAL_CPPH_pewpew(has_emplace_back, T, std::declval<T>().emplace_back());
 INTERNAL_CPPH_pewpew(has_emplace_front, T, std::declval<T>().emplace_front());
 INTERNAL_CPPH_pewpew(has_emplace, T, std::declval<T>().emplace());
+INTERNAL_CPPH_pewpew(has_resize, T, std::declval<T>().resize(0));
 
 static_assert(has_reserve_v<std::vector<int>>);
 static_assert(has_emplace_back<std::list<int>>);
@@ -68,41 +69,19 @@ auto get_object_metadata() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValT
     return &*inst;
 }
 
-/*
- * Primitives
- */
-namespace detail {
-template <typename ValTy_>
-struct primitive_manipulator : if_primitive_control
-{
-    void archive(archive::if_writer* writer,
-                 const void* p_void,
-                 object_metadata_t,
-                 optional_property_metadata) const override
-    {
-        *writer << *(ValTy_*)p_void;
-    }
-    void restore(archive::if_reader* reader,
-                 void* p_void,
-                 object_metadata_t,
-                 optional_property_metadata) const override
-    {
-        *reader >> *(ValTy_*)p_void;
-    }
-};
-}  // namespace detail
-
 template <typename ValTy_>
 auto get_object_metadata() -> object_sfinae_t<
         (is_any_of_v<ValTy_, bool, nullptr_t, std::string>)
+        || (std::is_enum_v<ValTy_> && not has_object_metadata_initializer_v<ValTy_>)
         || (std::is_integral_v<ValTy_>)
         || (std::is_floating_point_v<ValTy_>)  //
         >
 {
-    static struct manip_t : detail::primitive_manipulator<ValTy_>
+    static struct manip_t : if_primitive_control
     {
         primitive_t type() const noexcept override
         {
+            if constexpr (std::is_enum_v<ValTy_>) { return primitive_t::integer; }
             if constexpr (std::is_integral_v<ValTy_>) { return primitive_t::integer; }
             if constexpr (std::is_floating_point_v<ValTy_>) { return primitive_t::floating_point; }
             if constexpr (std::is_same_v<ValTy_, nullptr_t>) { return primitive_t::null; }
@@ -111,13 +90,33 @@ auto get_object_metadata() -> object_sfinae_t<
 
             return primitive_t::invalid;
         }
+
+        void archive(archive::if_writer* strm, const void* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            if constexpr (std::is_enum_v<ValTy_>)
+            {
+                *strm << *(std::underlying_type_t<ValTy_> const*)pvdata;
+            }
+            else
+            {
+                *strm << *(ValTy_ const*)pvdata;
+            }
+        }
+
+        void restore(archive::if_reader* strm, void* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            if constexpr (std::is_enum_v<ValTy_>)
+            {
+                *strm >> *(std::underlying_type_t<ValTy_>*)pvdata;
+            }
+            else
+            {
+                *strm >> *(ValTy_*)pvdata;
+            }
+        }
     } manip;
 
-    static auto desc
-            = object_metadata::primitive_factory{}
-                      .setup(sizeof(ValTy_), [] { return &manip; })
-                      .create();
-
+    static auto desc = object_metadata::primitive_factory::define(sizeof(ValTy_), &manip);
     return &*desc;
 }
 
@@ -126,7 +125,7 @@ auto get_object_metadata() -> object_sfinae_t<
  */
 namespace detail {
 template <typename ElemTy_>
-object_metadata* fixed_size_descriptor(size_t extent, size_t num_elems)
+object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
 {
     static struct manip_t : if_primitive_control
     {
@@ -166,11 +165,7 @@ object_metadata* fixed_size_descriptor(size_t extent, size_t num_elems)
         }
     } manip;
 
-    static auto desc
-            = object_metadata::primitive_factory{}
-                      .setup(extent, [] { return &manip; })
-                      .create();
-
+    static auto desc = object_metadata::primitive_factory::define(extent, &manip);
     return &*desc;
 }
 
@@ -272,11 +267,7 @@ auto get_list_like_descriptor() -> object_metadata_t
     } manip;
 
     constexpr auto extent = sizeof(Container_);
-    static auto desc
-            = object_metadata::primitive_factory{}
-                      .setup(extent, [] { return &manip; })
-                      .create();
-
+    static auto desc      = object_metadata::primitive_factory::define(extent, &manip);
     return &*desc;
 }
 }  // namespace detail
@@ -300,79 +291,57 @@ inline void compile_test()
 
 namespace CPPHEADERS_NS_ {
 /**
- * Basic chunk adapter ... simple bypasses buffer
- *
- * Adapters are basically mutable and stateful, as they are instantiated for every
- *  serialization/deserialization process
- */
-struct chunk_bypass_adapter
-{
-    chunk_bypass_adapter(refl::object_metadata_t, refl::optional_property_metadata) noexcept {}
-
-    const_buffer_view
-    operator()(const_buffer_view v)
-    {
-        return v;
-    }
-
-    mutable_buffer_view
-    operator()(mutable_buffer_view v)
-    {
-        return v;
-    }
-};
-
-// TODO: big_endian_adapter
-// NOTE: for example, compress adapter, AES256 adapter, etc ...
-//       As parameters can't be delievered to adapters directly,
-
-/**
  *
  * @tparam Container_
  * @tparam Adapter_
  */
 template <typename Container_,
-          typename Adapter_ = chunk_bypass_adapter,
-          class             = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
-class chunk : public Container_
+          class = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
+class binary : public Container_
 {
    public:
     using Container_::Container_;
-    using adapter = Adapter_;
 
     enum
     {
+        is_container  = true,
         is_contiguous = false
     };
 };
 
-template <typename Container_, typename Adapter_>
-class chunk<Container_,
-            Adapter_,
-            std::enable_if_t<
-                    std::is_trivial_v<
-                            remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
+template <typename Container_>
+class binary<Container_,
+             std::enable_if_t<
+                     std::is_trivial_v<
+                             remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
         : public Container_
 {
    public:
     using Container_::Container_;
-    using adapter = Adapter_;
 
     enum
     {
+        is_container  = true,
         is_contiguous = true
     };
 };
 
-static_assert(chunk<std::vector<int>>::is_contiguous);
-static_assert(not chunk<std::list<int>>::is_contiguous);
-
-template <typename Container_, typename Adapter_>
-refl::object_metadata_ptr
-initialize_object_metadata(refl::type_tag<chunk<Container_, Adapter_>>)
+template <typename ValTy_>
+class binary<ValTy_, std::enable_if_t<std::is_trivial_v<ValTy_>>> : ValTy_
 {
-    using chunk_t    = chunk<Container_>;
-    using value_type = typename Container_::value_type;
+   public:
+    using ValTy_::ValTy_;
+};
+
+static_assert(binary<std::vector<int>>::is_contiguous);
+static_assert(not binary<std::list<int>>::is_contiguous);
+
+template <typename Container_>
+refl::object_metadata_ptr
+initialize_object_metadata(refl::type_tag<binary<Container_>>)
+{
+    using binary_type = binary<Container_>;
+    using value_type  = typename Container_::value_type;
 
     static struct manip_t : refl::if_primitive_control
     {
@@ -385,49 +354,85 @@ initialize_object_metadata(refl::type_tag<chunk<Container_, Adapter_>>)
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
         {
-            Adapter_ adapter{desc, prop};
-            auto container = (Container_ const*)pvdata;
+            auto container = static_cast<binary_type const*>(pvdata);
 
-            if constexpr (not chunk_t::is_contiguous)  // list, set, etc ...
+            if constexpr (binary_type::is_contiguous)  // list, set, etc ...
             {
-                auto total_size = sizeof(value_type) * container->size();
+                *strm << const_buffer_view{*container};
+            }
+            else
+            {
+                auto total_size = sizeof(value_type) * std::size(*container);
 
                 strm->binary_push(total_size);
                 for (auto& elem : *container)
                 {
-                    strm->binary_write_some(adapter(elem));
+                    strm->binary_write_some(const_buffer_view{&elem, 1});
                 }
                 strm->binary_pop();
             }
-            else
-            {
-                auto pdata = (chunk_t const*)pvdata;
-                *strm << const_buffer_view{*pdata};
-            }
-
-            // TODO: handle endianness
         }
         void restore(archive::if_reader* strm,
                      void* pvdata,
                      refl::object_metadata_t desc,
-                     refl::optional_property_metadata) const override
+                     refl::optional_property_metadata prop) const override
         {
             // TODO ...
-        }
-        refl::requirement_status_tag status(const void* pvdata) const noexcept override
-        {
-            return if_primitive_control::status(pvdata);
+            auto container = static_cast<binary_type*>(pvdata);
+            auto binsize   = strm->next_binary_size();
+            auto elemsize  = binsize / sizeof(value_type);
+
+            if (binsize % sizeof(value_type) != 0)
+                throw refl::error::primitive{}.set(strm).message("Byte data alignment mismatch");
+
+            if constexpr (binary_type::is_contiguous)
+            {
+                if constexpr (refl::has_resize<Container_>)
+                {
+                    // If it's dynamic, read all.
+                    container->resize(elemsize);
+                }
+
+                bool const buffer_small_than_recv = std::size(*container) < elemsize;
+                strm->binary_read_some({std::data(*container), std::size(*container)});
+
+                if (buffer_small_than_recv)
+                {
+                    // Only take part of data.
+                    strm->binary_break();
+                }
+            }
+            else
+            {
+                if constexpr (refl::has_reserve_v<Container_>)
+                {
+                    container->reserve(elemsize);
+                }
+
+                value_type* mutable_data = {};
+                for (auto idx : perfkit::count(elemsize))
+                {
+                    if constexpr (refl::has_emplace_back<Container_>)  // maybe vector, list, deque ...
+                        mutable_data = &container->emplace_back();
+                    else if constexpr (refl::has_emplace_front<Container_>)  // maybe forward_list
+                        mutable_data = &container->emplace_front();
+                    else if constexpr (refl::has_emplace<Container_>)  // maybe set
+                        mutable_data = &*container->emplace().first;
+                    else
+                        Container_::ERROR_INVALID_CONTAINER;
+
+                    strm->binary_read_some({mutable_data, 1});
+                }
+            }
         }
     } manip;
 
-    return refl::object_metadata::primitive_factory{}
-            .setup(sizeof(Container_), [] { return &manip; })
-            .create();
+    return refl::object_metadata::primitive_factory::define(sizeof(Container_), &manip);
 }
 
 inline void compile_test()
 {
-    refl::get_object_metadata<chunk<std::vector<int>>>();
+    refl::get_object_metadata<binary<std::vector<int>>>();
 }
 
 }  // namespace CPPHEADERS_NS_
