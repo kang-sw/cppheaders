@@ -263,6 +263,43 @@ class if_primitive_control
     //       - value setter/getter
 };
 
+template <typename Ty_>
+class templated_primitive_control : public if_primitive_control
+{
+   public:
+    void archive(archive::if_writer* strm, const void* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const final
+    {
+        archive(strm, *(const Ty_*)pvdata, desc_self, opt_as_property);
+    }
+    void restore(archive::if_reader* strm, void* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const final
+    {
+        restore(strm, (Ty_*)pvdata, desc_self, opt_as_property);
+    }
+    requirement_status_tag status(void const* pvdata) const noexcept final
+    {
+        return status(*(Ty_ const*)pvdata);
+    }
+
+   protected:
+    virtual void archive(
+            archive::if_writer* strm,
+            const Ty_& data,
+            object_metadata_t desc_self,
+            optional_property_metadata opt_as_property) const = 0;
+
+    virtual void restore(
+            archive::if_reader* strm,
+            Ty_* pvdata,
+            object_metadata_t desc_self,
+            optional_property_metadata opt_as_property) const = 0;
+
+    virtual requirement_status_tag
+    status(const Ty_& data) const noexcept
+    {
+        return requirement_status_tag::required;
+    }
+};
+
 /**
  * SFINAE helper for overloading get_object_metadata
  */

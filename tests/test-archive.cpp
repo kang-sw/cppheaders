@@ -84,6 +84,20 @@ struct outer
     CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2);
 };
 
+template <typename S, typename T>
+class Values
+{
+    S a, b, c;
+};
+
+template <typename S, typename T>
+cpph::refl::object_metadata_ptr
+initialize_object_metadata(cpph::refl::type_tag<Values<S, T>>)
+{
+    return {};
+}
+
+static auto pp_ptr = refl::get_object_metadata<Values<int, double>>();
 static_assert(perfkit::is_binary_compatible_v<abcd>);
 
 struct some_other

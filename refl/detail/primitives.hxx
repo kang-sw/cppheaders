@@ -78,7 +78,7 @@ auto get_object_metadata() -> object_sfinae_t<
         || (std::is_floating_point_v<ValTy_>)  //
         >
 {
-    static struct manip_t : if_primitive_control
+    static struct manip_t : templated_primitive_control<ValTy_>
     {
         primitive_t type() const noexcept override
         {
@@ -92,19 +92,19 @@ auto get_object_metadata() -> object_sfinae_t<
             return primitive_t::invalid;
         }
 
-        void archive(archive::if_writer* strm, const void* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             if constexpr (std::is_enum_v<ValTy_>)
             {
-                *strm << *(std::underlying_type_t<ValTy_> const*)pvdata;
+                *strm << (std::underlying_type_t<ValTy_>)pvdata;
             }
             else
             {
-                *strm << *(ValTy_ const*)pvdata;
+                *strm << pvdata;
             }
         }
 
-        void restore(archive::if_reader* strm, void* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             if constexpr (std::is_enum_v<ValTy_>)
             {
@@ -112,7 +112,7 @@ auto get_object_metadata() -> object_sfinae_t<
             }
             else
             {
-                *strm >> *(ValTy_*)pvdata;
+                *strm >> *pvdata;
             }
         }
     } manip;
@@ -128,7 +128,7 @@ namespace detail {
 template <typename ElemTy_>
 object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
 {
-    static struct manip_t : if_primitive_control
+    static struct manip_t : templated_primitive_control<ElemTy_>
     {
         primitive_t type() const noexcept override
         {
@@ -139,13 +139,13 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             return get_object_metadata<ElemTy_>();
         }
         void archive(archive::if_writer* strm,
-                     const void* pvdata,
+                     ElemTy_ const& data,
                      object_metadata_t desc,
                      optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
-            auto begin  = (ElemTy_ const*)pvdata;
+            auto begin  = (ElemTy_ const*)&data;
             auto end    = begin + n_elem;
 
             strm->array_push(n_elem);
@@ -153,13 +153,13 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             strm->array_pop();
         }
         void restore(archive::if_reader* strm,
-                     void* pvdata,
+                     ElemTy_* data,
                      object_metadata_t desc,
                      optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
-            auto begin  = (ElemTy_*)pvdata;
+            auto begin  = data;
             auto end    = begin + n_elem;
 
             std::for_each(begin, end, [&](auto&& elem) { *strm >> elem; });
@@ -200,13 +200,12 @@ auto get_object_metadata() -> object_sfinae_t<detail::is_stl_array_v<ValTy_>>
  * (set, map, vector ...)
  */
 namespace detail {
-
 template <typename Container_>
 auto get_list_like_descriptor() -> object_metadata_t
 {
     using value_type = typename Container_::value_type;
 
-    static struct manip_t : if_primitive_control
+    static struct manip_t : templated_primitive_control<Container_>
     {
         primitive_t type() const noexcept override
         {
@@ -217,11 +216,11 @@ auto get_list_like_descriptor() -> object_metadata_t
             return get_object_metadata<value_type>();
         }
         void archive(archive::if_writer* strm,
-                     const void* pvdata,
+                     const Container_& data,
                      object_metadata_t desc,
                      optional_property_metadata) const override
         {
-            auto container = reinterpret_cast<Container_ const*>(pvdata);
+            auto container = &data;
 
             strm->array_push(container->size());
             {
@@ -231,11 +230,10 @@ auto get_list_like_descriptor() -> object_metadata_t
             strm->array_pop();
         }
         void restore(archive::if_reader* strm,
-                     void* pvdata,
+                     Container_* container,
                      object_metadata_t desc,
                      optional_property_metadata) const override
         {
-            auto container = reinterpret_cast<Container_*>(pvdata);
             container->clear();
 
             if (not strm->is_array_next())
@@ -260,10 +258,6 @@ auto get_list_like_descriptor() -> object_metadata_t
                 else
                     Container_::ERROR_INVALID_CONTAINER;
             }
-        }
-        requirement_status_tag status(const void* pvdata) const noexcept override
-        {
-            return if_primitive_control::status(pvdata);
         }
     } manip;
 
@@ -290,8 +284,67 @@ inline void compile_test()
 
 }  // namespace CPPHEADERS_NS_::refl
 
-namespace CPPHEADERS_NS_ {
+/*
+ * Map like access
+ */
+namespace CPPHEADERS_NS_::refl {
+namespace detail {
+template <typename Map_>
+auto get_map_like_descriptor() -> object_metadata_ptr
+{
+}
+}  // namespace detail
+}  // namespace CPPHEADERS_NS_::refl
 
+/*
+ * Tuple access
+ */
+namespace CPPHEADERS_NS_::refl {
+template <typename ValTy_>
+auto get_object_metadata()
+        -> object_sfinae_t<is_template_instance_of<ValTy_, std::tuple>::value>
+{
+}
+
+template <typename ValTy_>
+auto get_object_metadata()
+        -> object_sfinae_t<is_template_instance_of<ValTy_, std::pair>::value>
+{
+    static struct manip_t : templated_primitive_control<ValTy_>
+    {
+        primitive_t type() const noexcept override
+        {
+            return primitive_t::tuple;
+        }
+        void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            strm->array_push(2);
+
+            strm->array_pop();
+        }
+        void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            // TODO
+        }
+    } manip;
+
+    return nullptr;
+}
+
+}  // namespace CPPHEADERS_NS_::refl
+
+/*
+ * TODO: Optional
+ */
+
+/*
+ * TODO: Variant
+ */
+
+/*
+ * Binary
+ */
+namespace CPPHEADERS_NS_ {
 template <typename Container_, class = void>
 class binary;
 
@@ -351,18 +404,18 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
 {
     using binary_type = binary<Container_>;
 
-    static struct manip_t : refl::if_primitive_control
+    static struct manip_t : refl::templated_primitive_control<binary_type>
     {
         refl::primitive_t type() const noexcept override
         {
             return refl::primitive_t::binary;
         }
         void archive(archive::if_writer* strm,
-                     const void* pvdata,
+                     const binary_type& pvdata,
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
         {
-            auto data = static_cast<binary_type const*>(pvdata);
+            auto data = &pvdata;
 
             if constexpr (not binary_type::is_container)
             {
@@ -386,13 +439,10 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
             }
         }
         void restore(archive::if_reader* strm,
-                     void* pvdata,
+                     binary_type* data,
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
         {
-            // TODO ...
-            auto data = static_cast<binary_type*>(pvdata);
-
             if constexpr (not binary_type::is_container)
             {
                 *strm >> mutable_buffer_view{data, 1};
@@ -454,11 +504,3 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
 }
 
 }  // namespace CPPHEADERS_NS_
-
-namespace CPPHEADERS_NS_ {
-
-}
-
-namespace CPPHEADERS_NS_::refl {
-
-}
