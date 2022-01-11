@@ -65,13 +65,26 @@ struct inner_arg_2
     CPPH_REFL_DEFINE_TUPLE_inline(rtt, nothing, nothing2, ints);
 };
 
+struct abcd
+{
+    int arg0 = 1;
+    int arg1 = 2;
+    int arg2 = 3;
+    int arg3 = 4;
+
+    CPPH_REFL_DEFINE_OBJECT_inline(arg0, arg1, arg2, arg3);
+};
+
 struct outer
 {
     inner_arg_1 arg1;
     inner_arg_2 arg2;
+    perfkit::binary<abcd> r;
 
     CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2);
 };
+
+static_assert(perfkit::is_binary_compatible_v<abcd>);
 
 struct some_other
 {

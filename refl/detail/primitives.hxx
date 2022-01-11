@@ -48,6 +48,7 @@ INTERNAL_CPPH_pewpew(has_emplace_back, T, std::declval<T>().emplace_back());
 INTERNAL_CPPH_pewpew(has_emplace_front, T, std::declval<T>().emplace_front());
 INTERNAL_CPPH_pewpew(has_emplace, T, std::declval<T>().emplace());
 INTERNAL_CPPH_pewpew(has_resize, T, std::declval<T>().resize(0));
+INTERNAL_CPPH_pewpew(has_data, T, std::data(std::declval<T>()));
 
 static_assert(has_reserve_v<std::vector<int>>);
 static_assert(has_emplace_back<std::list<int>>);
@@ -290,14 +291,17 @@ inline void compile_test()
 }  // namespace CPPHEADERS_NS_::refl
 
 namespace CPPHEADERS_NS_ {
-/**
- *
- * @tparam Container_
- * @tparam Adapter_
- */
-template <typename Container_,
-          class = std::enable_if_t<std::is_trivial_v<typename Container_::value_type>>>
-class binary : public Container_
+
+template <typename Container_, class = void>
+class binary;
+
+template <typename Container_>
+class binary<
+        Container_,
+        std::enable_if_t<
+                (is_binary_compatible_v<typename Container_::value_type>)  //
+                &&(not refl::has_data<Container_>)>>
+        : public Container_
 {
    public:
     using Container_::Container_;
@@ -312,7 +316,7 @@ class binary : public Container_
 template <typename Container_>
 class binary<Container_,
              std::enable_if_t<
-                     std::is_trivial_v<
+                     is_binary_compatible_v<
                              remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
         : public Container_
 {
@@ -327,10 +331,15 @@ class binary<Container_,
 };
 
 template <typename ValTy_>
-class binary<ValTy_, std::enable_if_t<std::is_trivial_v<ValTy_>>> : ValTy_
+class binary<ValTy_, std::enable_if_t<is_binary_compatible_v<ValTy_>>> : ValTy_
 {
    public:
     using ValTy_::ValTy_;
+
+    enum
+    {
+        is_container = false,
+    };
 };
 
 static_assert(binary<std::vector<int>>::is_contiguous);
@@ -341,7 +350,6 @@ refl::object_metadata_ptr
 initialize_object_metadata(refl::type_tag<binary<Container_>>)
 {
     using binary_type = binary<Container_>;
-    using value_type  = typename Container_::value_type;
 
     static struct manip_t : refl::if_primitive_control
     {
@@ -354,18 +362,23 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
         {
-            auto container = static_cast<binary_type const*>(pvdata);
+            auto data = static_cast<binary_type const*>(pvdata);
 
-            if constexpr (binary_type::is_contiguous)  // list, set, etc ...
+            if constexpr (not binary_type::is_container)
             {
-                *strm << const_buffer_view{*container};
+                *strm << const_buffer_view{data, 1};
+            }
+            else if constexpr (binary_type::is_contiguous)  // list, set, etc ...
+            {
+                *strm << const_buffer_view{*data};
             }
             else
             {
-                auto total_size = sizeof(value_type) * std::size(*container);
+                using value_type = typename Container_::value_type;
+                auto total_size  = sizeof(value_type) * std::size(*data);
 
                 strm->binary_push(total_size);
-                for (auto& elem : *container)
+                for (auto& elem : *data)
                 {
                     strm->binary_write_some(const_buffer_view{&elem, 1});
                 }
@@ -378,50 +391,60 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                      refl::optional_property_metadata prop) const override
         {
             // TODO ...
-            auto container = static_cast<binary_type*>(pvdata);
-            auto binsize   = strm->next_binary_size();
-            auto elemsize  = binsize / sizeof(value_type);
+            auto data = static_cast<binary_type*>(pvdata);
 
-            if (binsize % sizeof(value_type) != 0)
-                throw refl::error::primitive{}.set(strm).message("Byte data alignment mismatch");
-
-            if constexpr (binary_type::is_contiguous)
+            if constexpr (not binary_type::is_container)
             {
-                if constexpr (refl::has_resize<Container_>)
-                {
-                    // If it's dynamic, read all.
-                    container->resize(elemsize);
-                }
-
-                bool const buffer_small_than_recv = std::size(*container) < elemsize;
-                strm->binary_read_some({std::data(*container), std::size(*container)});
-
-                if (buffer_small_than_recv)
-                {
-                    // Only take part of data.
-                    strm->binary_break();
-                }
+                *strm >> mutable_buffer_view{data, 1};
             }
             else
             {
-                if constexpr (refl::has_reserve_v<Container_>)
+                using value_type = typename Container_::value_type;
+
+                auto binsize  = strm->next_binary_size();
+                auto elemsize = binsize / sizeof(value_type);
+
+                if (binsize % sizeof(value_type) != 0)
+                    throw refl::error::primitive{}.set(strm).message("Byte data alignment mismatch");
+
+                if constexpr (binary_type::is_contiguous)
                 {
-                    container->reserve(elemsize);
+                    if constexpr (refl::has_resize<Container_>)
+                    {
+                        // If it's dynamic, read all.
+                        data->resize(elemsize);
+                    }
+
+                    bool const buffer_small_than_recv = std::size(*data) < elemsize;
+                    strm->binary_read_some({std::data(*data), std::size(*data)});
+
+                    if (buffer_small_than_recv)
+                    {
+                        // Only take part of data.
+                        strm->binary_break();
+                    }
                 }
-
-                value_type* mutable_data = {};
-                for (auto idx : perfkit::count(elemsize))
+                else
                 {
-                    if constexpr (refl::has_emplace_back<Container_>)  // maybe vector, list, deque ...
-                        mutable_data = &container->emplace_back();
-                    else if constexpr (refl::has_emplace_front<Container_>)  // maybe forward_list
-                        mutable_data = &container->emplace_front();
-                    else if constexpr (refl::has_emplace<Container_>)  // maybe set
-                        mutable_data = &*container->emplace().first;
-                    else
-                        Container_::ERROR_INVALID_CONTAINER;
+                    if constexpr (refl::has_reserve_v<Container_>)
+                    {
+                        data->reserve(elemsize);
+                    }
 
-                    strm->binary_read_some({mutable_data, 1});
+                    value_type* mutable_data = {};
+                    for (auto idx : perfkit::count(elemsize))
+                    {
+                        if constexpr (refl::has_emplace_back<Container_>)  // maybe vector, list, deque ...
+                            mutable_data = &data->emplace_back();
+                        else if constexpr (refl::has_emplace_front<Container_>)  // maybe forward_list
+                            mutable_data = &data->emplace_front();
+                        else if constexpr (refl::has_emplace<Container_>)  // maybe set
+                            mutable_data = &*data->emplace().first;
+                        else
+                            Container_::ERROR_INVALID_CONTAINER;
+
+                        strm->binary_read_some({mutable_data, 1});
+                    }
                 }
             }
         }
@@ -430,12 +453,11 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
     return refl::object_metadata::primitive_factory::define(sizeof(Container_), &manip);
 }
 
-inline void compile_test()
-{
-    refl::get_object_metadata<binary<std::vector<int>>>();
-}
-
 }  // namespace CPPHEADERS_NS_
+
+namespace CPPHEADERS_NS_ {
+
+}
 
 namespace CPPHEADERS_NS_::refl {
 

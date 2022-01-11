@@ -172,13 +172,17 @@ using const_array_view = array_view<Ty_ const>;
 template <typename Ty_>
 using mutable_array_view = array_view<Ty_>;
 
+template <typename Ty_>
+constexpr bool is_binary_compatible_v
+        = (std::is_trivially_destructible_v<Ty_>)&&(std::is_trivially_copyable_v<Ty_>);
+
 template <>
 class array_view<void> : public array_view<char>
 {
    public:
     array_view() noexcept = default;
 
-    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
+    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<
                                     typename std::remove_reference_t<Ty_>::value_type>>>
     explicit array_view(Ty_&& other) noexcept
             : array_view<char>(reinterpret_cast<char*>(std::data(other)),
@@ -186,14 +190,14 @@ class array_view<void> : public array_view<char>
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<Ty_>>>
+    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<Ty_>>>
     array_view(Ty_* data, size_t size) noexcept
             : array_view<char>(reinterpret_cast<char*>(data),
                                sizeof(Ty_) * size)
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
+    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<
                                     typename std::remove_reference_t<Ty_>::value_type>>>
     array_view& operator=(Ty_&& other) noexcept
     {
@@ -211,7 +215,7 @@ class array_view<void const> : public array_view<char const>
    public:
     array_view() noexcept = default;
 
-    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
+    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<
                                     typename std::remove_reference_t<Ty_>::value_type>>>
     explicit array_view(Ty_&& other) noexcept
             : array_view<char const>(reinterpret_cast<char const*>(std::data(other)),
@@ -219,14 +223,14 @@ class array_view<void const> : public array_view<char const>
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<Ty_>>>
+    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<Ty_>>>
     array_view(Ty_ const* data, size_t size) noexcept
             : array_view<char const>(reinterpret_cast<char const*>(data),
                                      sizeof(Ty_) * size)
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<
+    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<
                                     typename std::remove_reference_t<Ty_>::value_type>>>
     array_view& operator=(Ty_&& other) noexcept
 
