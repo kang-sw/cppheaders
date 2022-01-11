@@ -69,6 +69,8 @@ CPPH_DECLARE_EXCEPTION(reader_invalid_context, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_parse_failed, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_read_stream_error, reader_exception);
 
+CPPH_DECLARE_EXCEPTION(reader_assertion_failed, reader_exception);
+
 struct reader_key_missing : reader_exception
 {
     explicit reader_key_missing(
@@ -348,6 +350,41 @@ class if_reader : public if_archive_base
 
         return next.depth == key.depth && key.id != next.id
             || next.depth < key.depth;
+    }
+
+    void expect_context(context_key const& key)
+    {
+        context_key compare;
+        context(&compare);
+
+        if (key.id != compare.id || key.depth != compare.depth)
+        {
+            throw error::reader_assertion_failed{this}.message("context different!");
+        }
+    }
+
+    void expect_break(context_key const& key)
+    {
+        if (not should_break(key))
+        {
+            throw error::reader_assertion_failed{this}.message("have to break out!");
+        }
+    }
+
+    //! assertion helpers
+    void expect_array()
+    {
+        // TODO
+    }
+
+    void expect_binary()
+    {
+        // TODO
+    }
+
+    void expect_object()
+    {
+        // TODO
     }
 };
 

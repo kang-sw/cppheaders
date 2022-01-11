@@ -162,7 +162,14 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             auto begin  = data;
             auto end    = begin + n_elem;
 
-            std::for_each(begin, end, [&](auto&& elem) { *strm >> elem; });
+            archive::context_key context;
+
+            strm->expect_array();
+            strm->context(&context);
+            std::for_each(begin, end, [&](auto&& elem) {
+                strm->expect_context(context);
+                *strm >> elem;
+            });
         }
     } manip;
 
@@ -235,9 +242,7 @@ auto get_list_like_descriptor() -> object_metadata_t
                      optional_property_metadata) const override
         {
             container->clear();
-
-            if (not strm->is_array_next())
-                throw error::invalid_read_state{}.set(strm);
+            strm->expect_array();
 
             // reserve if possible
             if constexpr (has_reserve_v<Container_>)
@@ -319,11 +324,13 @@ auto get_object_metadata()
         void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             strm->array_push(2);
-
+            *strm << pvdata.first;
+            *strm << pvdata.second;
             strm->array_pop();
         }
         void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
+            strm->is_array_next();
             // TODO
         }
     } manip;
@@ -443,6 +450,8 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
         {
+            strm->expect_binary();
+
             if constexpr (not binary_type::is_container)
             {
                 *strm >> mutable_buffer_view{data, 1};
