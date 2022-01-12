@@ -38,7 +38,7 @@ class _cleanup_t
 };
 
 template <typename Callable_>
-auto cleanup(Callable_&& callable)
+[[maybe_unused]] auto cleanup(Callable_&& callable)
 {
     return _cleanup_t<std::remove_reference_t<Callable_>>{
             std::forward<Callable_>(callable)};

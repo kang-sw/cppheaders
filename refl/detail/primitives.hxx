@@ -30,6 +30,7 @@
 #include <tuple>
 #include <vector>
 
+#include "../utility/cleanup.hxx"
 #include "object_impl.hxx"
 
 namespace CPPHEADERS_NS_::refl {
@@ -80,16 +81,16 @@ auto get_object_metadata() -> object_sfinae_t<
 {
     static struct manip_t : templated_primitive_control<ValTy_>
     {
-        primitive_t type() const noexcept override
+        entity_type type() const noexcept override
         {
-            if constexpr (std::is_enum_v<ValTy_>) { return primitive_t::integer; }
-            if constexpr (std::is_integral_v<ValTy_>) { return primitive_t::integer; }
-            if constexpr (std::is_floating_point_v<ValTy_>) { return primitive_t::floating_point; }
-            if constexpr (std::is_same_v<ValTy_, nullptr_t>) { return primitive_t::null; }
-            if constexpr (std::is_same_v<ValTy_, bool>) { return primitive_t::boolean; }
-            if constexpr (std::is_same_v<ValTy_, std::string>) { return primitive_t::string; }
+            if constexpr (std::is_enum_v<ValTy_>) { return entity_type::integer; }
+            if constexpr (std::is_integral_v<ValTy_>) { return entity_type::integer; }
+            if constexpr (std::is_floating_point_v<ValTy_>) { return entity_type::floating_point; }
+            if constexpr (std::is_same_v<ValTy_, nullptr_t>) { return entity_type::null; }
+            if constexpr (std::is_same_v<ValTy_, bool>) { return entity_type::boolean; }
+            if constexpr (std::is_same_v<ValTy_, std::string>) { return entity_type::string; }
 
-            return primitive_t::invalid;
+            return entity_type::invalid;
         }
 
         void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
@@ -130,9 +131,9 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
 {
     static struct manip_t : templated_primitive_control<ElemTy_>
     {
-        primitive_t type() const noexcept override
+        entity_type type() const noexcept override
         {
-            return primitive_t::tuple;
+            return entity_type::tuple;
         }
         const object_metadata* element_type() const noexcept override
         {
@@ -162,14 +163,9 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             auto begin  = data;
             auto end    = begin + n_elem;
 
-            archive::context_key context;
-
-            strm->expect_array();
-            strm->context(&context);
-            std::for_each(begin, end, [&](auto&& elem) {
-                strm->expect_context(context);
-                *strm >> elem;
-            });
+            auto context = strm->begin_array();
+            std::for_each(begin, end, [&](auto&& elem) { *strm >> elem; });
+            strm->end_array(context);
         }
     } manip;
 
@@ -214,9 +210,9 @@ auto get_list_like_descriptor() -> object_metadata_t
 
     static struct manip_t : templated_primitive_control<Container_>
     {
-        primitive_t type() const noexcept override
+        entity_type type() const noexcept override
         {
-            return primitive_t::array;
+            return entity_type::array;
         }
         object_metadata_t element_type() const noexcept override
         {
@@ -242,15 +238,12 @@ auto get_list_like_descriptor() -> object_metadata_t
                      optional_property_metadata) const override
         {
             container->clear();
-            strm->expect_array();
+            auto key = strm->begin_array();
 
             // reserve if possible
             if constexpr (has_reserve_v<Container_>)
-                if (auto n = strm->num_elem_next(); n != ~size_t{})
+                if (auto n = strm->elem_left(); n != ~size_t{})
                     container->reserve(n);
-
-            archive::context_key key;
-            strm->context(&key);
 
             while (not strm->should_break(key))
             {
@@ -263,6 +256,8 @@ auto get_list_like_descriptor() -> object_metadata_t
                 else
                     Container_::ERROR_INVALID_CONTAINER;
             }
+
+            strm->end_array(key);
         }
     } manip;
 
@@ -317,9 +312,9 @@ auto get_object_metadata()
 {
     static struct manip_t : templated_primitive_control<ValTy_>
     {
-        primitive_t type() const noexcept override
+        entity_type type() const noexcept override
         {
-            return primitive_t::tuple;
+            return entity_type::tuple;
         }
         void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
@@ -330,8 +325,10 @@ auto get_object_metadata()
         }
         void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
-            strm->is_array_next();
-            // TODO
+            auto key = strm->begin_array();
+            *strm >> pvdata->first;
+            *strm >> pvdata->second;
+            strm->end_array(key);
         }
     } manip;
 
@@ -413,9 +410,9 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
 
     static struct manip_t : refl::templated_primitive_control<binary_type>
     {
-        refl::primitive_t type() const noexcept override
+        refl::entity_type type() const noexcept override
         {
-            return refl::primitive_t::binary;
+            return refl::entity_type::binary;
         }
         void archive(archive::if_writer* strm,
                      const binary_type& pvdata,
@@ -450,18 +447,17 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
         {
-            strm->expect_binary();
+            auto binsize                = strm->begin_binary();
+            [[maybe_unused]] auto clean = cleanup([&] { strm->end_binary(); });
 
             if constexpr (not binary_type::is_container)
             {
-                *strm >> mutable_buffer_view{data, 1};
+                strm->binary_read_some(mutable_buffer_view{data, 1});
             }
             else
             {
                 using value_type = typename Container_::value_type;
-
-                auto binsize  = strm->next_binary_size();
-                auto elemsize = binsize / sizeof(value_type);
+                auto elemsize    = binsize / sizeof(value_type);
 
                 if (binsize % sizeof(value_type) != 0)
                     throw refl::error::primitive{}.set(strm).message("Byte data alignment mismatch");
@@ -474,14 +470,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                         data->resize(elemsize);
                     }
 
-                    bool const buffer_small_than_recv = std::size(*data) < elemsize;
                     strm->binary_read_some({std::data(*data), std::size(*data)});
-
-                    if (buffer_small_than_recv)
-                    {
-                        // Only take part of data.
-                        strm->binary_break();
-                    }
                 }
                 else
                 {

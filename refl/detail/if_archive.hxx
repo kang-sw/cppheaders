@@ -39,6 +39,27 @@
  */
 namespace CPPHEADERS_NS_::archive {
 
+/**
+ * List of available property formats
+ */
+enum class entity_type : uint16_t
+{
+    invalid,
+
+    object,
+    dictionary,
+
+    tuple,
+    array,
+
+    null,
+    boolean,
+    integer,
+    floating_point,
+    string,
+    binary,
+};
+
 class if_writer;
 class if_reader;
 
@@ -286,50 +307,24 @@ class if_reader : public if_archive_base
 
     virtual if_reader& operator>>(std::string& v) = 0;
 
-    virtual if_reader& operator>>(mutable_buffer_view v)
-    {
-        auto n_next = next_binary_size();
-        if (n_next < v.size())
-            throw error::reader_read_stream_error{this}
-                    .message("buffer size %lld expected (now %lld)", v.size(), n_next);
-
-        binary_read_some(v);
-
-        if (n_next != v.size())
-            binary_break();  // discard rest of bytes
-    }
-
     //! Deserialize arbitrary type
     template <typename Ty_>
     if_reader& operator>>(Ty_& other);
 
-    //! @throw parse_error next token is not valid target
-    virtual bool is_object_next() = 0;
-    virtual bool is_array_next()  = 0;
+    //! Get next element type
+    virtual entity_type type_next() const = 0;
 
-    //! returns number of child elements available next
-    //!
-    //! @throw parse_error if next element is not object or array.
-    //! @return eof if element count couldn't be retreived
-    virtual size_t num_elem_next() { return eof; };
+    //! Tries to get number of remaining element for currently active context.
+    //! @return -1 if feature not available
+    virtual size_t elem_left() const = 0;
 
     //! returns next binary size
     //! @throw parse_error if current context is not binary (binary can read multiple times)
-    //! @return number of bytes. -1 if cannot be retrieved.
-    virtual size_t next_binary_size() { return eof; }
+    //! @return number of bytes to be read from stream. Implementation always return valid value,
+    //!    unless it throw.
+    virtual size_t begin_binary()                              = 0;
     virtual if_reader& binary_read_some(mutable_buffer_view v) = 0;
-
-    //! force break of current context
-    //! @throw invalid_context
-    virtual void object_break() = 0;
-    virtual void array_break()  = 0;
-    virtual void binary_break() = 0;  // discard rest of bytes
-
-    //! Check if next element will be restored as key.
-    virtual bool is_key_next() const = 0;
-
-    //! check if next statement is null
-    virtual bool is_null_next() const = 0;
+    virtual void end_binary()                                  = 0;
 
     /**
      * to distinguish variable sized object's boundary.
@@ -339,52 +334,45 @@ class if_reader : public if_archive_base
      * depth == next_depth && id != next_id := switched to unrelated. BREAK
      * depth >  next_depth                  := switched to parent.    BREAK
      */
-    virtual void context(context_key*) = 0;
+
+    //! enter into context
+    //! @throw invalid_context if
+    virtual context_key begin_object() = 0;
+    virtual context_key begin_array()  = 0;
+
+    //! Check should break out of this object/array context
+    //! Used for dynamic object retrival
+    virtual bool should_break(context_key const& key) const = 0;
+
+    //! break current context, regardless if there's any remaining object.
+    //! @throw invalid_context
+    virtual void end_object(context_key) = 0;
+    virtual void end_array(context_key)  = 0;
+
+    //! Assert key on next read
+    virtual bool read_key_next() const = 0;
+
+    //! check if next statement is null
+    virtual bool is_null_next() const = 0;
+
+   private:
+    template <typename... Args_>
+    bool entity_any_of(Args_... args) const noexcept
+    {
+        auto ty = type_next();
+        return ((ty == args) || ...);
+    }
 
    public:
-    //! Check should break out of this object/array context
-    bool should_break(context_key const& key)
+    //! type getters
+    bool is_object_next() const
     {
-        context_key next = {};
-        context(&next);
-
-        return next.depth == key.depth && key.id != next.id
-            || next.depth < key.depth;
+        return entity_any_of(entity_type::object, entity_type::dictionary);
     }
 
-    void expect_context(context_key const& key)
+    bool is_array_next() const
     {
-        context_key compare;
-        context(&compare);
-
-        if (key.id != compare.id || key.depth != compare.depth)
-        {
-            throw error::reader_assertion_failed{this}.message("context different!");
-        }
-    }
-
-    void expect_break(context_key const& key)
-    {
-        if (not should_break(key))
-        {
-            throw error::reader_assertion_failed{this}.message("have to break out!");
-        }
-    }
-
-    //! assertion helpers
-    void expect_array()
-    {
-        // TODO
-    }
-
-    void expect_binary()
-    {
-        // TODO
-    }
-
-    void expect_object()
-    {
-        // TODO
+        return entity_any_of(entity_type::array, entity_type::tuple);
     }
 };
 

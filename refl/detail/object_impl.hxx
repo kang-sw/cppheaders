@@ -67,26 +67,7 @@ CPPH_DECLARE_EXCEPTION(binary_out_of_range, object_archive_exception);
 
 }  // namespace error
 
-/**
- * List of available property formats
- */
-enum class primitive_t : uint16_t
-{
-    invalid,
-
-    object,
-    dictionary,
-
-    tuple,
-    array,
-
-    null,
-    boolean,
-    integer,
-    floating_point,
-    string,
-    binary,
-};
+using archive::entity_type;
 
 /**
  * dummy incomplete class type to give objects type resolution
@@ -210,7 +191,7 @@ class if_primitive_control
     /**
      * Return actual type of this primitive
      */
-    virtual primitive_t type() const noexcept = 0;
+    virtual entity_type type() const noexcept = 0;
 
     /**
      * Underlying element type if this primitive is sort of container
@@ -577,22 +558,19 @@ class object_metadata
                         .set(strm)
                         .message("'object' expected");
 
-            archive::context_key context_key;
-            strm->context(&context_key);
+            auto context_key = strm->begin_object();
 
             std::vector<bool> found;
             found.resize(_props.size(), false);
 
             while (not strm->should_break(context_key))
             {
-                if (not strm->is_key_next())
-                    throw error::invalid_read_state{}
-                            .set(strm)
-                            .message("'key' expected");
-
                 // retrive key, and find it from my properties list
                 auto& keybuf = context->keybuf;
+
+                strm->read_key_next();
                 *strm >> keybuf;
+
                 auto elem = find_ptr(*_keys, keybuf);
 
                 // simply ignore unexpected keys
@@ -609,6 +587,8 @@ class object_metadata
                 child->_restore_from(strm, child_data, context, opt_property);
             }
 
+            strm->end_object(context_key);
+
             for (auto index : perfkit::count(found.size()))
             {
                 if (found[index]) { continue; }
@@ -624,23 +604,11 @@ class object_metadata
         }
         else if (is_tuple())
         {
-            if (not strm->is_array_next())
-                throw error::invalid_read_state{}
-                        .set(strm)
-                        .message("'array' expected");
-
-            archive::context_key context_key;
-            strm->context(&context_key);
+            auto context_key = strm->begin_array();
 
             // tuple is always in fixed-order
             for (auto& prop : _props)
             {
-                if (strm->should_break(context_key))
-                    throw error::missing_entity{}
-                            .set(strm)
-                            .message("Only %d out of %d properties found.",
-                                     (int)(&prop - _props.data()), (int)_props.size());
-
                 auto child = prop.type;
                 if (child->is_optional() && strm->is_null_next())
                 {
@@ -653,6 +621,8 @@ class object_metadata
                 auto child_data = child->retrieve_self(data, prop);
                 child->_restore_from(strm, child_data, context, &prop);
             }
+
+            strm->end_array(context_key);
         }
         else
         {
@@ -1047,21 +1017,21 @@ object_const_view_t::object_const_view_t(const Ty_& p) noexcept : data((object_d
 }  // namespace CPPHEADERS_NS_::refl
 
 namespace std {
-inline std::string to_string(CPPHEADERS_NS_::refl::primitive_t t)
+inline std::string to_string(CPPHEADERS_NS_::refl::entity_type t)
 {
     switch (t)
     {
-        case CPPHEADERS_NS_::refl::primitive_t::invalid: return "invalid";
-        case CPPHEADERS_NS_::refl::primitive_t::null: return "null";
-        case CPPHEADERS_NS_::refl::primitive_t::boolean: return "boolean";
-        case CPPHEADERS_NS_::refl::primitive_t::string: return "string";
-        case CPPHEADERS_NS_::refl::primitive_t::binary: return "binary";
-        case CPPHEADERS_NS_::refl::primitive_t::dictionary: return "dictionary";
-        case CPPHEADERS_NS_::refl::primitive_t::array: return "array";
-        case CPPHEADERS_NS_::refl::primitive_t::integer: return "integer";
-        case CPPHEADERS_NS_::refl::primitive_t::floating_point: return "floating_point";
-        case CPPHEADERS_NS_::refl::primitive_t::object: return "object";
-        case CPPHEADERS_NS_::refl::primitive_t::tuple: return "tuple";
+        case CPPHEADERS_NS_::refl::entity_type::invalid: return "invalid";
+        case CPPHEADERS_NS_::refl::entity_type::null: return "null";
+        case CPPHEADERS_NS_::refl::entity_type::boolean: return "boolean";
+        case CPPHEADERS_NS_::refl::entity_type::string: return "string";
+        case CPPHEADERS_NS_::refl::entity_type::binary: return "binary";
+        case CPPHEADERS_NS_::refl::entity_type::dictionary: return "dictionary";
+        case CPPHEADERS_NS_::refl::entity_type::array: return "array";
+        case CPPHEADERS_NS_::refl::entity_type::integer: return "integer";
+        case CPPHEADERS_NS_::refl::entity_type::floating_point: return "floating_point";
+        case CPPHEADERS_NS_::refl::entity_type::object: return "object";
+        case CPPHEADERS_NS_::refl::entity_type::tuple: return "tuple";
         default: return "__NONE__";
     }
 }
