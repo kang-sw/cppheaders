@@ -276,12 +276,6 @@ auto get_object_metadata()
     return detail::get_list_like_descriptor<ValTy_>();
 }
 
-inline void compile_test()
-{
-    get_object_metadata<std::vector<int>>();
-    get_object_metadata<std::list<std::vector<int>>>();
-}
-
 }  // namespace CPPHEADERS_NS_::refl
 
 /*
@@ -290,8 +284,9 @@ inline void compile_test()
 namespace CPPHEADERS_NS_::refl {
 namespace detail {
 template <typename Map_>
-auto get_map_like_descriptor() -> object_metadata_ptr
+auto get_dictionary_descriptor() -> object_metadata_ptr
 {
+    // TODO
 }
 }  // namespace detail
 }  // namespace CPPHEADERS_NS_::refl
@@ -304,6 +299,7 @@ template <typename ValTy_>
 auto get_object_metadata()
         -> object_sfinae_t<is_template_instance_of<ValTy_, std::tuple>::value>
 {
+    // TODO
 }
 
 template <typename ValTy_>
@@ -332,7 +328,8 @@ auto get_object_metadata()
         }
     } manip;
 
-    return nullptr;
+    static auto desc = object_metadata::primitive_factory::define(sizeof(ValTy_), &manip);
+    return &*desc;
 }
 
 }  // namespace CPPHEADERS_NS_::refl
@@ -500,5 +497,9 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
 
     return refl::object_metadata::primitive_factory::define(sizeof(Container_), &manip);
 }
+
+/*
+ * TODO: Trivial binary with contiguous memory chunk, which can apply read/write adapters
+ */
 
 }  // namespace CPPHEADERS_NS_

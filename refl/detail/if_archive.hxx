@@ -23,7 +23,6 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <functional>
 #include <stdexcept>
 #include <streambuf>
 #include <string_view>
@@ -238,6 +237,8 @@ class if_writer : public if_archive_base
     if_writer& operator<<(Ty_ const& other);
 
     //! push/pop write binary context
+    //! Firstly pushed binary size is immutable. call binary_pop only when
+    //!  'total' bytes was written!
     virtual if_writer& binary_push(size_t total)            = 0;
     virtual if_writer& binary_write_some(const_buffer_view) = 0;
     virtual if_writer& binary_pop()                         = 0;

@@ -24,13 +24,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "../functional.hxx"
-#include "../macros.hxx"
 #include "detail/object_impl.hxx"
-
-namespace CPPHEADERS_NS_::refl {
-using descriptor_generate_fn = CPPHEADERS_NS_::function<std::unique_ptr<object_metadata>()>;
-}
 
 /**
  * All macros must be placed in global namespace!

@@ -24,15 +24,13 @@
 // project home: https://github.com/perfkitpp
 #pragma once
 
-#include <functional>
 #include <map>
-#include <optional>
 #include <string_view>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include "../../__namespace__"
-#include "../../utility/singleton.hxx"
 #include "../algorithm/std.hxx"
 #include "../counter.hxx"
 #include "if_archive.hxx"
