@@ -24,6 +24,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <variant>
 
 #include "catch.hpp"
 #include "refl/archive/debug_string_writer.hxx"
@@ -79,9 +80,12 @@ struct outer
 {
     inner_arg_1 arg1;
     inner_arg_2 arg2;
+    std::pair<int, bool> arg                = {3, false};
+    std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
+
     perfkit::binary<abcd> r;
 
-    CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2);
+    CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2, arg, bb);
 };
 
 template <typename S, typename T>
@@ -124,7 +128,10 @@ struct vectors
 
     my_enum my_enum_value = my_enum::test3;
 
-    CPPH_REFL_DEFINE_OBJECT_inline(f, f2, f3, f4, my_enum_value);
+    std::pair<int, bool> arg                = {3, false};
+    std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
+
+    CPPH_REFL_DEFINE_OBJECT_inline(f, f2, f3, f4, my_enum_value, arg, bb);
 };
 
 struct some_other_2

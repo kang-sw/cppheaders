@@ -289,17 +289,56 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
     // TODO
 }
 }  // namespace detail
+
+template <typename MapTy_>
+auto get_object_metadata()
+        -> object_sfinae_t<is_template_instance_of<MapTy_, std::map>::value>
+{
+    static auto inst = detail::get_dictionary_descriptor<MapTy_>();
+    return &*inst;
+}
 }  // namespace CPPHEADERS_NS_::refl
 
 /*
  * Tuple access
  */
 namespace CPPHEADERS_NS_::refl {
+namespace detail {
+template <typename... Args_>
+auto get_tuple_descriptor(type_tag<std::tuple<Args_...>>)
+{
+    static struct manip_t : templated_primitive_control<std::tuple<Args_...>>
+    {
+        entity_type type() const noexcept override
+        {
+            return entity_type::integer;
+        }
+
+       protected:
+        void archive(archive::if_writer* strm, const std::tuple<Args_...>& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            strm->array_push(sizeof...(Args_));
+            std::apply([strm](auto const&... args) { ((*strm << args), ...); }, data);
+            strm->array_pop();
+        }
+        void restore(archive::if_reader* strm, std::tuple<Args_...>* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            auto key = strm->begin_array();
+            std::apply([strm](auto&... args) { ((*strm >> args), ...); }, *pvdata);
+            strm->end_array(key);
+        }
+    } manip;
+
+    return object_metadata::primitive_factory::define(sizeof(std::tuple<Args_...>), &manip);
+}
+}  // namespace detail
+
 template <typename ValTy_>
 auto get_object_metadata()
         -> object_sfinae_t<is_template_instance_of<ValTy_, std::tuple>::value>
 {
-    // TODO
+    static auto inst = detail::get_tuple_descriptor(type_tag_v<ValTy_>);
+    return &*inst;
 }
 
 template <typename ValTy_>
