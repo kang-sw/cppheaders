@@ -89,7 +89,11 @@ struct outer
             {3.11, {1, 3, 2, 5}},
     };
 
-    CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2, arg, bb, afs);
+    std::unique_ptr<int> no_value;
+    std::unique_ptr<int> has_value   = std::make_unique<int>(3);
+    std::shared_ptr<int> has_value_s = std::make_shared<int>(3);
+
+    CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2, arg, bb, afs, no_value, has_value, has_value_s);
 };
 
 template <typename S, typename T>
@@ -137,7 +141,12 @@ struct vectors
 
     outer some_outer;
 
-    CPPH_REFL_DEFINE_OBJECT_inline(f, f2, f3, f4, my_enum_value, arg, bb, some_outer);
+    std::optional<int> no_val;
+    std::optional<int> has_val = 1;
+
+    CPPH_REFL_DEFINE_OBJECT_inline(
+            f, f2, f3, f4, my_enum_value, arg, bb, some_outer,
+            no_val, has_val);
 };
 
 struct some_other_2

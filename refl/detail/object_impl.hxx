@@ -256,7 +256,7 @@ class templated_primitive_control : public if_primitive_control
     }
     requirement_status_tag status(void const* pvdata) const noexcept final
     {
-        return status(*(Ty_ const*)pvdata);
+        return status((Ty_ const*)pvdata);
     }
 
    protected:
@@ -273,7 +273,7 @@ class templated_primitive_control : public if_primitive_control
             optional_property_metadata opt_as_property) const = 0;
 
     virtual requirement_status_tag
-    status(const Ty_& data) const noexcept
+    status(const Ty_* data) const noexcept
     {
         return requirement_status_tag::required;
     }
@@ -363,6 +363,12 @@ class object_metadata
     bool is_object() const noexcept { return _keys.has_value(); }
     bool is_tuple() const noexcept { return not is_primitive() && not is_object(); }
     bool is_optional() const noexcept { return is_primitive() && _primitive->status() != requirement_status_tag::required; }
+
+    entity_type type() const noexcept
+    {
+        if (is_primitive()) { return _primitive->type(); }
+        return is_object() ? entity_type::object : entity_type::tuple;
+    }
 
     /**
      * Current requirement status of given property

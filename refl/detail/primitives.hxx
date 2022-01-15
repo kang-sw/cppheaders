@@ -296,6 +296,11 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
             return entity_type::dictionary;
         }
 
+        object_metadata_t element_type() const noexcept override
+        {
+            return get_object_metadata<std::pair<key_type, mapped_type>>();
+        }
+
        protected:
         void archive(archive::if_writer* strm, const Map_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
@@ -391,6 +396,7 @@ auto get_object_metadata()
         {
             return entity_type::tuple;
         }
+
         void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             strm->array_push(2);
@@ -398,6 +404,7 @@ auto get_object_metadata()
             *strm << pvdata.second;
             strm->array_pop();
         }
+
         void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             auto key = strm->begin_array();
@@ -414,12 +421,71 @@ auto get_object_metadata()
 }  // namespace CPPHEADERS_NS_::refl
 
 /*
- * TODO: Optional
+ * Optionals, pointers
  */
+namespace CPPHEADERS_NS_::refl {
+template <typename ValTy_>
+auto get_object_metadata()
+        -> object_sfinae_t<
+                is_template_instance_of<ValTy_, std::optional>::value
+                || is_template_instance_of<ValTy_, std::unique_ptr>::value
+                || is_template_instance_of<ValTy_, std::shared_ptr>::value>
+{
+    using value_type             = remove_cvr_t<decltype(*std::declval<ValTy_>())>;
+    constexpr bool is_optional   = is_template_instance_of<ValTy_, std::optional>::value;
+    constexpr bool is_unique_ptr = is_template_instance_of<ValTy_, std::unique_ptr>::value;
+    constexpr bool is_shared_ptr = is_template_instance_of<ValTy_, std::shared_ptr>::value;
 
-/*
- * TODO: Variant
- */
+    static struct manip_t : templated_primitive_control<ValTy_>
+    {
+        entity_type type() const noexcept override
+        {
+            return get_object_metadata<value_type>()->type();
+        }
+
+       protected:
+        void archive(archive::if_writer* strm, const ValTy_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            if (not data)
+            {
+                *strm << nullptr;
+                return;
+            }
+
+            *strm << *data;
+        }
+
+        void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            if (not *pvdata)
+            {
+                if constexpr (is_optional)
+                    (*pvdata).emplace();
+                else if constexpr (is_unique_ptr)
+                    (*pvdata) = std::make_unique<value_type>();
+                else if constexpr (is_shared_ptr)
+                    (*pvdata) = std::make_shared<value_type>();
+                else
+                    pvdata->INVALID_POINTER_TYPE;
+            }
+
+            *strm >> **pvdata;
+        }
+
+        requirement_status_tag status(const ValTy_* data) const noexcept override
+        {
+            if (not data) { return requirement_status_tag::optional; }
+
+            return (!!*data)
+                         ? requirement_status_tag::optional_has_value
+                         : requirement_status_tag::optional_empty;
+        }
+    } manip;
+
+    static auto desc = object_metadata::primitive_factory::define(sizeof(ValTy_), &manip);
+    return &*desc;
+}
+}  // namespace CPPHEADERS_NS_::refl
 
 /*
  * Binary
