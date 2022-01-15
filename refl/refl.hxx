@@ -26,5 +26,4 @@
 #include "archive.hxx"
 #include "archive/binstream.hxx"
 #include "buffer.hxx"
-#include "detail/containers.hxx"
 #include "object.hxx"
