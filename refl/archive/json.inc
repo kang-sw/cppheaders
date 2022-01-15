@@ -502,7 +502,6 @@ void reader::_validate()
 {
     // data is ready
     if (self->pos_next != ~size_t{}) { return; }
-    if (_buf->in_avail() <= 0) { throw error::reader_read_stream_error{this}.message("stream is empty!"); }
 
     // Clear state
     self->scopes.clear();

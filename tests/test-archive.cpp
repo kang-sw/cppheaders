@@ -141,7 +141,7 @@ struct vectors
     my_enum my_enum_value = my_enum::test3;
 
     std::pair<int, bool> arg                = {3, false};
-    std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
+    std::tuple<int, double, std::string> bb = {5, 1.14, "hell금방갈게요o"};
 
     outer some_outer;
 
@@ -184,12 +184,11 @@ struct testarg_2
 };
 
 static auto ssvd = [] {
-    using TestType = testarg_2;
+    using TestType = ns::vectors;
     std::stringbuf strbuf;
     archive::json::writer writer{strbuf};
     writer.indent = 4;
     TestType arg{};
-    arg.unistr = "hello, 가나다라!";
 
     std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
     writer.serialize(arg);
@@ -205,6 +204,10 @@ static auto ssvd = [] {
     wr2.indent = 4;
     wr2.serialize(other);
     std::cout << "\n\n------- DONE  " << typeid(TestType).name() << " -------\n\n";
+
+    (archive::if_writer&)writer << std::string_view{"hello"};
+    std::string str;
+    (archive::if_reader&)reader >> str;
 
     return nullptr;
 }();
