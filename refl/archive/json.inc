@@ -435,10 +435,7 @@ if_reader& reader::binary_read_some(mutable_buffer_view v)
         auto hi = *head++;
         auto lo = *head++;
 
-        hi = (hi >= 'a') ? (hi - 'a' + 0xa) : (hi - '0');
-        lo = (lo >= 'a') ? (lo - 'a' + 0xa) : (lo - '0');
-
-        chref = (hi << 4) + lo;
+        chref = strutil::hexval(hi, lo);
     }
 
     // consume buffer
@@ -515,7 +512,22 @@ void reader::_validate()
     auto tok = &self->tokens;
 
     str->clear();
-    for (char c; (c = _buf->sbumpc()) != EOF;) { str->push_back(c); }
+    for (char c; (c = _buf->sbumpc()) != EOF;)
+    {
+        // escape negative hex(utf-8 encodings)
+        if (c >= 0)
+        {
+            str->push_back(c);
+        }
+        else
+        {
+            uint8_t uc           = c;
+            constexpr auto table = "0123456789abcdef";
+            *str += "\\x";
+            str->push_back(table[(uc >> 4) & 0x0f]);
+            str->push_back(table[(uc >> 0) & 0x0f]);
+        }
+    }
 
     jsmn_init(&self->parser);
     auto n_tok = jsmn_parse(&self->parser, str->data(), str->size(), nullptr, 0);

@@ -7,7 +7,7 @@ if (NOT PROJECT_NAME)
 endif ()
 
 if (MSVC)
-    add_compile_options(/showIncludes)
+    add_compile_options(/utf-8)
 endif ()
 
 add_subdirectory(tests)

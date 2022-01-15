@@ -94,10 +94,64 @@ void escape(InIt_ begin, InIt_ end, OutIt_ out)
     for (auto it = begin; it != end; ++it) { _escape_ch(*it, out); }
 }
 
+inline int hexval(char hi, char lo)
+{
+    hi = (hi >= 'a') ? (hi - 'a' + 0xa) : (hi - '0');
+    lo = (lo >= 'a') ? (lo - 'a' + 0xa) : (lo - '0');
+
+    return (hi << 4) + lo;
+}
+
 template <typename InputIt_, typename OutIt_>
 void unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
 {
-    // TODO: implement this!
-    for (; begin != end; ++begin) { *out++ = *begin; }
+    for (auto it = begin; it != end;)
+    {
+        char ch = *it++;
+        if (ch != '\\')
+        {
+            *out++ = ch;
+        }
+        else
+        {
+            if (it == end) { return; }
+            switch (ch = *it++)
+            {
+                case 'a': *out++ = '\a'; break;
+                case 'b': *out++ = '\b'; break;
+                case 'f': *out++ = '\f'; break;
+                case 'n': *out++ = '\n'; break;
+                case 'r': *out++ = '\r'; break;
+                case 't': *out++ = '\t'; break;
+                case 'v': *out++ = '\v'; break;
+                case '\\': *out++ = '\\'; break;
+                case '\'': *out++ = '\''; break;
+                case '"': *out++ = '\"'; break;
+                case '?': *out++ = '\?'; break;
+
+                case 'u':
+                {
+                    if (it == end) { return; }
+                    char hi = *it++;
+                    if (it == end) { return; }
+                    char lo = *it++;
+
+                    *out++ = hexval(hi, lo);
+                    [[fallthrough]];
+                }
+
+                case 'x':
+                {
+                    if (it == end) { return; }
+                    char hi = *it++;
+                    if (it == end) { return; }
+                    char lo = *it++;
+
+                    *out++ = hexval(hi, lo);
+                    break;
+                }
+            }
+        }
+    }
 }
 }  // namespace CPPHEADERS_NS_::strutil

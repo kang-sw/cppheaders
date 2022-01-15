@@ -45,7 +45,7 @@ enum class my_enum
 namespace ns {
 struct inner_arg_1
 {
-    std::string str1          = (char const*)u8"str1-value 까짓것 금방입니다\r\t\n\\n";
+    std::string str1          = (char const*)u8"str1-value\r\t\n\\n";
     std::string str2          = "str2-value";
     int var                   = 133;
     bool k                    = true;
@@ -176,14 +176,23 @@ namespace cpph::refl {
 
 }
 
+struct testarg_2
+{
+    std::string unistr;
+
+    CPPH_REFL_DEFINE_OBJECT_inline(unistr);
+};
+
 static auto ssvd = [] {
-    using TestType = ns::vectors;
+    using TestType = testarg_2;
     std::stringbuf strbuf;
     archive::json::writer writer{strbuf};
     writer.indent = 4;
+    TestType arg{};
+    arg.unistr = "hello, 가나다라!";
 
     std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
-    writer.serialize(TestType{});
+    writer.serialize(arg);
     std::cout << strbuf.str();
     std::cout.flush();
 
@@ -198,9 +207,7 @@ static auto ssvd = [] {
     std::cout << "\n\n------- DONE  " << typeid(TestType).name() << " -------\n\n";
 
     return nullptr;
-};
-
-static auto ss = ssvd();
+}();
 
 TEST_CASE("archive", "[.]")
 {
