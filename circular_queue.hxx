@@ -47,8 +47,11 @@ class circular_queue
    public:
     using value_type = Ty_;
 
-    constexpr static bool is_safe_ctor = std::is_nothrow_constructible_v<Ty_>;
-    constexpr static bool is_safe_dtor = std::is_nothrow_destructible_v<Ty_>;
+    enum
+    {
+        is_safe_ctor = std::is_nothrow_constructible_v<value_type>,
+        is_safe_dtor = std::is_nothrow_destructible_v<value_type>,
+    };
 
    public:
     template <bool Constant_ = true, bool Reverse_ = false>
@@ -126,7 +129,7 @@ class circular_queue
     };
 
    public:
-    circular_queue(size_t capacity) noexcept
+    explicit circular_queue(size_t capacity) noexcept
             : _capacity(capacity + 1), _data(capacity ? std::make_unique<chunk_t[]>(_capacity) : nullptr) {}
 
     circular_queue(const circular_queue& op) noexcept(is_safe_ctor) { *this = op; }
@@ -253,7 +256,7 @@ class circular_queue
     {
         assert(n <= size());
 
-        if constexpr (std::is_trivially_destructible_v<Ty_>)
+        if constexpr (std::is_trivially_destructible_v<Ty_> && std::is_trivially_copyable_v<Ty_>)
         {
             std::copy(begin(), begin() + n, oit);
             _tail = _jmp(_tail, n);
@@ -262,7 +265,7 @@ class circular_queue
         {
             while (n--)
             {
-                oit = std::move(front());
+                *oit++ = std::move(front());
                 pop();
             }
         }
@@ -343,7 +346,7 @@ class circular_queue
 
     size_t _reserve()
     {
-        if (is_full()) throw std::bad_array_new_length();
+        if (is_full()) { throw std::bad_array_new_length(); }
         auto retval = _head;
         _head       = _next(_head);
         return retval;
