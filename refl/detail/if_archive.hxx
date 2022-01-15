@@ -313,7 +313,7 @@ class if_reader : public if_archive_base
 
     //! Tries to get number of remaining element for currently active context.
     //! @return -1 if feature not available
-    virtual size_t elem_left() const = 0;
+    virtual size_t elem_left() const { return ~size_t{}; }
 
     //! returns next binary size
     //! @throw parse_error if current context is not binary (binary can read multiple times)
@@ -347,7 +347,7 @@ class if_reader : public if_archive_base
     virtual void end_array(context_key)  = 0;
 
     //! Assert key on next read
-    virtual bool read_key_next() const = 0;
+    virtual void read_key_next() = 0;
 
     //! check if next statement is null
     virtual bool is_null_next() const = 0;

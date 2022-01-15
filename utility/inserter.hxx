@@ -27,90 +27,34 @@
 #include <type_traits>
 
 #include "../__namespace__"
+#include "../template_utils.hxx"
 
 namespace CPPHEADERS_NS_ {
-template <typename Ty_>
-class polymorphic_inserter
+template <typename InsertFn_>
+class adapt_insert_iterator
 {
    public:
-    virtual ~polymorphic_inserter() noexcept = default;
-    polymorphic_inserter& operator*() noexcept { return *this; };
-    polymorphic_inserter& operator++(int) noexcept { return *this; }
-    polymorphic_inserter& operator++() noexcept { return *this; }
+    InsertFn_ assign;
 
    public:
-    polymorphic_inserter& operator=(Ty_&& other)
-    {
-        this->assign(std::move(other));
-        return *this;
-    };
-    polymorphic_inserter& operator=(Ty_ const& other)
-    {
-        this->assign(other);
-        return *this;
-    };
+    adapt_insert_iterator(InsertFn_ fn) noexcept : assign(std::move(fn)) {}
 
-   private:
-    virtual void assign(Ty_&& other)      = 0;
-    virtual void assign(Ty_ const& other) = 0;
+    adapt_insert_iterator& operator*() noexcept { return *this; };
+    adapt_insert_iterator& operator++(int) noexcept { return *this; }
+    adapt_insert_iterator& operator++() noexcept { return *this; }
+
+    template <typename Ty_, class = std::enable_if_t<not std::is_same_v<Ty_, adapt_insert_iterator>>>
+    adapt_insert_iterator& operator=(Ty_&& other)
+    {
+        assign(std::forward<Ty_>(other));
+        return *this;
+    }
 };
 
-template <typename Range_>
-auto back_inserter(Range_& range)
+template <typename InsertFn_>
+auto adapt_inserter(InsertFn_&& insert_fn)
 {
-    using value_type
-            = std::remove_const_t<
-                    std::remove_reference_t<
-                            decltype(*std::begin(std::declval<Range_>()))>>;
-
-    class _iterator_impl : polymorphic_inserter<value_type>
-    {
-       public:
-        Range_* _range;
-
-       private:
-        void assign(value_type&& other) override
-        {
-            _range->insert(_range->end(), std::move(other));
-        }
-        void assign(const value_type& other) override
-        {
-            _range->insert(_range->end(), other);
-        }
-    } iter{&range};
-
-    return iter;
+    return adapt_insert_iterator<remove_cvr_t<InsertFn_>>{std::forward<InsertFn_>(insert_fn)};
 }
 
-template <typename Range_>
-auto array_inserter(Range_& range, size_t offset = 0)
-{
-    using value_type
-            = std::remove_const_t<
-                    std::remove_reference_t<
-                            decltype(*std::begin(std::declval<Range_>()))>>;
-
-    class _iterator_impl : polymorphic_inserter<value_type>
-    {
-       public:
-        value_type* _where;
-        value_type* _end;
-
-       private:
-        void assign(value_type&& other) override
-        {
-            if (_where >= _end)
-                throw std::out_of_range{"array out of range"};
-            *_where++ = std::move(other);
-        }
-        void assign(const value_type& other) override
-        {
-            if (_where >= _end)
-                throw std::out_of_range{"array out of range"};
-            *_where++ = other;
-        }
-    } iter{&*std::data(range) + offset, &*std::data(range) + std::size(range)};
-
-    return iter;
-}
 }  // namespace CPPHEADERS_NS_

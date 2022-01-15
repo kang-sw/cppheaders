@@ -45,7 +45,7 @@ enum class my_enum
 namespace ns {
 struct inner_arg_1
 {
-    std::string str1          = "str1-value";
+    std::string str1          = "str1-value\r\t\n\\n";
     std::string str2          = "str2-value";
     int var                   = 133;
     bool k                    = true;
