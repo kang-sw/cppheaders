@@ -311,9 +311,6 @@ class if_reader : public if_archive_base
     template <typename Ty_>
     if_reader& operator>>(Ty_& other);
 
-    //! Get next element type
-    virtual entity_type type_next() const = 0;
-
     //! Tries to get number of remaining element for currently active context.
     //! @return -1 if feature not available
     virtual size_t elem_left() const = 0;
@@ -355,25 +352,9 @@ class if_reader : public if_archive_base
     //! check if next statement is null
     virtual bool is_null_next() const = 0;
 
-   private:
-    template <typename... Args_>
-    bool entity_any_of(Args_... args) const noexcept
-    {
-        auto ty = type_next();
-        return ((ty == args) || ...);
-    }
-
-   public:
     //! type getters
-    bool is_object_next() const
-    {
-        return entity_any_of(entity_type::object, entity_type::dictionary);
-    }
-
-    bool is_array_next() const
-    {
-        return entity_any_of(entity_type::array, entity_type::tuple);
-    }
+    virtual bool is_object_next() const = 0;
+    virtual bool is_array_next() const  = 0;
 };
 
 }  // namespace CPPHEADERS_NS_::archive

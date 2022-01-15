@@ -65,4 +65,40 @@ class writer : public archive::if_writer
     void _brk_indent();
 };
 
+class reader : public archive::if_reader
+{
+    struct impl;
+    std::unique_ptr<impl> self;
+
+   public:
+    explicit reader(std::streambuf& buf);
+    ~reader() override;
+
+    //! Prepare for next list of tokens
+    void reset();
+
+   public:
+    if_reader& operator>>(nullptr_t a_nullptr) override;
+    if_reader& operator>>(bool& v) override;
+    if_reader& operator>>(int64_t& v) override;
+    if_reader& operator>>(double& v) override;
+    if_reader& operator>>(std::string& v) override;
+    size_t elem_left() const override;
+    size_t begin_binary() override;
+    if_reader& binary_read_some(mutable_buffer_view v) override;
+    void end_binary() override;
+    context_key begin_object() override;
+    context_key begin_array() override;
+    bool should_break(const context_key& key) const override;
+    void end_object(context_key key) override;
+    void end_array(context_key key) override;
+    bool read_key_next() const override;
+    bool is_null_next() const override;
+    bool is_object_next() const override;
+    bool is_array_next() const override;
+
+   private:
+    void _validate();
+};
+
 }  // namespace CPPHEADERS_NS_::archive::json

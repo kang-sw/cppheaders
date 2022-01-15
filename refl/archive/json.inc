@@ -27,6 +27,8 @@
 #include "json.hpp"
 
 #define JSMN_STATIC
+#define JSMN_PARENT_LINKS
+#define JSMN_STRICT
 #include "../../third/jsmn.h"
 
 namespace CPPHEADERS_NS_::archive::json {
@@ -72,6 +74,8 @@ if_writer& writer::operator<<(std::string_view v)
     if (d.need_comma) { _append_comma(); }
     if (d.need_indent) { _brk_indent(); }
 
+    // TODO: Escape strings
+
     _buf->sputc('"');
     _buf->sputn(v.data(), v.size());
     _buf->sputc('"');
@@ -92,7 +96,7 @@ if_writer& writer::operator<<(bool v)
         _buf->sputn("true", 4);
     else
         _buf->sputn("false", 5);
-    
+
     return *this;
 }
 
@@ -194,4 +198,148 @@ void writer::_brk_indent()
     _buf->sputc('\n');
     for (int i = 0; i < indent * _ctx.depth(); ++i) { _buf->sputc(' '); }
 }
+
+}  // namespace CPPHEADERS_NS_::archive::json
+
+namespace CPPHEADERS_NS_::archive::json {
+
+struct reader::impl
+{
+    std::vector<jsmntok_t> tokens;
+    std::string string;
+    jsmn_parser parser;
+    size_t pos_next = ~size_t{};
+};
+
+reader::reader(std::streambuf& buf) : if_reader(buf), self(new impl) { reset(), _validate(); }
+
+if_reader& reader::operator>>(nullptr_t a_nullptr)
+{
+    _validate();
+    return *this;
+}
+
+if_reader& reader::operator>>(bool& v)
+{
+    _validate();
+
+    return *this;
+}
+
+if_reader& reader::operator>>(int64_t& v)
+{
+    _validate();
+
+    return *this;
+}
+
+if_reader& reader::operator>>(double& v)
+{
+    _validate();
+
+    return *this;
+}
+
+if_reader& reader::operator>>(std::string& v)
+{
+    _validate();
+
+    return *this;
+}
+
+size_t reader::elem_left() const
+{
+    return 0;
+}
+
+size_t reader::begin_binary()
+{
+    return 0;
+}
+
+if_reader& reader::binary_read_some(mutable_buffer_view v)
+{
+    return *this;
+}
+
+void reader::end_binary()
+{
+}
+
+context_key reader::begin_object()
+{
+    return context_key();
+}
+
+context_key reader::begin_array()
+{
+    return context_key();
+}
+
+bool reader::should_break(const context_key& key) const
+{
+    return false;
+}
+
+void reader::end_object(context_key key)
+{
+}
+
+void reader::end_array(context_key key)
+{
+}
+
+bool reader::read_key_next() const
+{
+    return false;
+}
+
+bool reader::is_null_next() const
+{
+    return false;
+}
+
+void reader::reset()
+{
+    self->pos_next = ~size_t{};
+}
+
+void reader::_validate()
+{
+    // data is ready
+    if (self->pos_next != ~size_t{}) { return; }
+    if (_buf->in_avail() <= 0) { throw error::reader_read_stream_error{this}.message("stream is empty!"); }
+
+    // Read until EOF, and try parse
+    auto str = &self->string;
+    auto tok = &self->tokens;
+
+    str->clear();
+    for (char c; (c = _buf->sbumpc()) != EOF;) { str->push_back(c); }
+
+    jsmn_init(&self->parser);
+    auto n_tok = jsmn_parse(&self->parser, str->data(), str->size(), nullptr, 0);
+
+    if (n_tok <= 0) { throw error::reader_parse_failed{this}.message("jsmn error: %d", n_tok); }
+
+    jsmn_init(&self->parser);
+    tok->resize(n_tok);
+    auto n_proc = jsmn_parse(&self->parser, str->data(), str->size(), tok->data(), tok->size());
+
+    assert(n_tok == n_proc);
+    self->pos_next = 0;  // Ready to start parsing
+}
+
+bool reader::is_object_next() const
+{
+    return false;
+}
+
+bool reader::is_array_next() const
+{
+    return false;
+}
+
+reader::~reader() = default;
+
 }  // namespace CPPHEADERS_NS_::archive::json

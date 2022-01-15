@@ -178,19 +178,41 @@ namespace cpph::refl {
 
 static auto ssvd = [] {
     using TestType = ns::vectors;
-    archive::json::writer writer{*std::cout.rdbuf()};
+    std::stringbuf strbuf;
+    archive::json::writer writer{strbuf};
     writer.indent = 4;
 
     std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
     writer.serialize(TestType{});
-
+    std::cout << strbuf.str();
     std::cout.flush();
+
+    std::cout << "\n\n------- PARSE " << typeid(TestType).name() << " -------\n\n";
+    archive::json::reader reader{strbuf};
+    TestType other;
+    reader.deserialize(other);
+
     return nullptr;
 };
+
+static auto ss = ssvd();
 
 TEST_CASE("archive", "[.]")
 {
     ssvd();
+
+    std::stringbuf strbuf;
+    strbuf.sputn("1234", 4);
+
+    strbuf.sbumpc();
+    strbuf.sbumpc();
+    strbuf.sbumpc();
+    strbuf.sbumpc();
+
+    REQUIRE(strbuf.sbumpc() == EOF);
+    strbuf.sputc('4');
+    REQUIRE(strbuf.sbumpc() == '4');
+    REQUIRE(strbuf.sbumpc() == EOF);
 }
 
 #define property_  CPPH_PROP_TUPLE

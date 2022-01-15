@@ -274,6 +274,8 @@ class write_context_helper
 
 class read_context_helper
 {
+   public:
+
 };
 
 }  // namespace CPPHEADERS_NS_::archive::detail
