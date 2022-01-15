@@ -286,7 +286,47 @@ namespace detail {
 template <typename Map_>
 auto get_dictionary_descriptor() -> object_metadata_ptr
 {
-    // TODO
+    using key_type    = typename Map_::key_type;
+    using mapped_type = typename Map_::mapped_type;
+
+    static struct manip_t : templated_primitive_control<Map_>
+    {
+        entity_type type() const noexcept override
+        {
+            return entity_type::dictionary;
+        }
+
+       protected:
+        void archive(archive::if_writer* strm, const Map_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            strm->object_push(data.size());
+            for (auto& [k, v] : data)
+            {
+                strm->write_key_next();
+                *strm << k;
+                *strm << v;
+            }
+            strm->object_pop();
+        }
+
+        void restore(archive::if_reader* strm, Map_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            auto ctx = strm->begin_object();
+            while (not strm->should_break(ctx))
+            {
+                std::pair<key_type, mapped_type> kv;
+
+                strm->read_key_next();
+                *strm >> kv.first;
+                *strm >> kv.second;
+
+                pvdata->emplace(std::move(kv));
+            }
+            strm->end_object(ctx);
+        }
+    } manip;
+
+    return object_metadata::primitive_factory::define(sizeof(Map_), &manip);
 }
 }  // namespace detail
 
@@ -311,7 +351,7 @@ auto get_tuple_descriptor(type_tag<std::tuple<Args_...>>)
     {
         entity_type type() const noexcept override
         {
-            return entity_type::integer;
+            return entity_type::tuple;
         }
 
        protected:

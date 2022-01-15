@@ -281,9 +281,10 @@ class debug_string_writer : public if_writer
         return *this;
     }
 
-    bool is_key_next() const override
+    void write_key_next() override
     {
-        return _state() == context_state::object_key;
+        if (_state() != context_state::object_key)
+            throw error::writer_invalid_context{this}.message("");
     }
 };
 

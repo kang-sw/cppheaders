@@ -252,8 +252,8 @@ class if_writer : public if_archive_base
     virtual if_writer& array_push(size_t num_elems) = 0;
     virtual if_writer& array_pop()                  = 0;
 
-    //! Check if next element will be archived as key.
-    virtual bool is_key_next() const = 0;
+    //! Assert to write key next
+    virtual void write_key_next() = 0;
 };
 
 /**

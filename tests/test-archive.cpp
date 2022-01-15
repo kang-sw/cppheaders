@@ -84,8 +84,12 @@ struct outer
     std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
 
     perfkit::binary<abcd> r;
+    std::map<double, abcd> afs = {
+            {3.14, {1, 2, 3, 4}},
+            {3.11, {1, 3, 2, 5}},
+    };
 
-    CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2, arg, bb);
+    CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2, arg, bb, afs);
 };
 
 template <typename S, typename T>
@@ -131,7 +135,9 @@ struct vectors
     std::pair<int, bool> arg                = {3, false};
     std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
 
-    CPPH_REFL_DEFINE_OBJECT_inline(f, f2, f3, f4, my_enum_value, arg, bb);
+    outer some_outer;
+
+    CPPH_REFL_DEFINE_OBJECT_inline(f, f2, f3, f4, my_enum_value, arg, bb, some_outer);
 };
 
 struct some_other_2

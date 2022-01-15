@@ -25,8 +25,8 @@
 #pragma once
 
 #include <map>
-#include <string_view>
 #include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -477,11 +477,6 @@ class object_metadata
                 strm->object_push(_keys->size());
                 for (auto& [key, index] : *_keys)
                 {
-                    if (not strm->is_key_next())
-                        throw error::invalid_write_state{}
-                                .set(strm)
-                                .message("'key' expected.");
-
                     auto& prop = _props.at(index);
 
                     auto child      = prop.type;
@@ -495,7 +490,9 @@ class object_metadata
                     }
                     else
                     {
+                        strm->write_key_next();
                         *strm << key;
+
                         child->_archive_to(strm, child_data, &prop);
                     }
                 }
