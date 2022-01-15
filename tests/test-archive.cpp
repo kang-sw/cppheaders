@@ -210,10 +210,12 @@ static auto ssvd = [] {
     (archive::if_reader&)reader >> str;
 
     return nullptr;
-}();
+};
 
 TEST_CASE("archive", "[.]")
 {
+    ssvd();
+
     std::stringbuf strbuf;
     strbuf.sputn("1234", 4);
 
