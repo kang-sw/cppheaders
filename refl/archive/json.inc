@@ -22,4 +22,176 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include <charconv>
+
 #include "json.hpp"
+
+#define JSMN_STATIC
+#include "../../third/jsmn.h"
+
+namespace CPPHEADERS_NS_::archive::json {
+
+writer::writer(std::streambuf& buf, size_t depth_maybe) : if_writer(buf)
+{
+    _ctx.reserve_depth(depth_maybe);
+}
+
+if_writer& writer::operator<<(double v)
+{
+    _on_write();
+
+    char buf[32];
+    auto r = std::to_chars(buf, buf + sizeof buf, v);
+
+    _buf->sputn(buf, r.ptr - buf);
+    return *this;
+}
+
+if_writer& writer::operator<<(int64_t v)
+{
+    _on_write();
+
+    char buf[32];
+    auto r = std::to_chars(buf, buf + sizeof buf, v);
+
+    _buf->sputn(buf, r.ptr - buf);
+    return *this;
+}
+
+if_writer& writer::operator<<(nullptr_t a_nullptr)
+{
+    _on_write();
+
+    _buf->sputn("null", 4);
+    return *this;
+}
+
+if_writer& writer::operator<<(std::string_view v)
+{
+    auto d = _ctx.write_next();
+    if (d.need_comma) { _append_comma(); }
+    if (d.need_indent) { _brk_indent(); }
+
+    _buf->sputc('"');
+    _buf->sputn(v.data(), v.size());
+    _buf->sputc('"');
+
+    if (d.is_key)
+    {
+        _buf->sputc(':');
+        if (indent >= 0) { _buf->sputc(' '); }
+    }
+    return *this;
+}
+
+if_writer& writer::operator<<(bool v)
+{
+    _on_write();
+
+    if (v)
+        _buf->sputn("true", 4);
+    else
+        _buf->sputn("false", 5);
+    
+    return *this;
+}
+
+if_writer& writer::binary_push(size_t total)
+{
+    _on_write();
+
+    _ctx.push_binary(total);
+    _buf->sputc('"');
+    return *this;
+}
+
+if_writer& writer::binary_write_some(const_buffer_view view)
+{
+    _ctx.binary_write_some(view.size());
+
+    constexpr auto table = "0123456789abcdef";
+
+    for (uint8_t c : view)
+    {
+        _buf->sputc(table[(c >> 4) & 0xf]);
+        _buf->sputc(table[(c >> 0) & 0xf]);
+    }
+
+    return *this;
+}
+
+if_writer& writer::binary_pop()
+{
+    _ctx.pop_binary();
+    _buf->sputc('"');
+    return *this;
+}
+
+if_writer& writer::object_push(size_t num_elems)
+{
+    _on_write();
+
+    _ctx.push_object(num_elems);
+    _buf->sputc('{');
+
+    return *this;
+}
+
+if_writer& writer::object_pop()
+{
+    if (_ctx.pop_object() > 0) { _brk_indent(); }
+    _buf->sputc('}');
+
+    return *this;
+}
+
+if_writer& writer::array_push(size_t num_elems)
+{
+    _on_write();
+
+    _ctx.push_array(num_elems);
+    _buf->sputc('[');
+
+    return *this;
+}
+
+if_writer& writer::array_pop()
+{
+    if (_ctx.pop_array() > 0) { _brk_indent(); }
+    _buf->sputc(']');
+
+    return *this;
+}
+
+void writer::write_key_next()
+{
+    _ctx.write_key_next();
+}
+
+void writer::_on_write()
+{
+    auto d = _ctx.write_next();
+    if (d.is_key) { _throw_invalid_key_type(); }
+    if (d.need_comma) { _append_comma(); }
+    if (d.need_indent) { _brk_indent(); }
+}
+
+void writer::_append_comma()
+{
+    _buf->sputc(',');
+}
+
+void writer::_throw_invalid_key_type()
+{
+    throw invalid_key_type{this};
+}
+
+void writer::_brk_indent()
+{
+    // no indent
+    if (indent < 0) { return; }
+
+    _buf->sputc('\n');
+    for (int i = 0; i < indent * _ctx.depth(); ++i) { _buf->sputc(' '); }
+}
+}  // namespace CPPHEADERS_NS_::archive::json
