@@ -25,8 +25,9 @@
 #include <chrono>
 #include <memory>
 
-#include "catch.hpp"
 #include <functional.hxx>
+
+#include "catch.hpp"
 
 TEST_CASE("overall operation", "[functional]")
 {
@@ -48,7 +49,6 @@ TEST_CASE("overall operation", "[functional]")
 
     auto d = std::move(s);
 
-    REQUIRE_THROWS(s());
     CHECK(d() == 3);
     CHECK(d.is_sbo());
 
@@ -128,7 +128,6 @@ TEST_CASE("release")
     SECTION("iter 1")
     {
         auto g = std::move(f);
-        REQUIRE_THROWS(f());
 
         CHECK(g() == 1);
         g = {};

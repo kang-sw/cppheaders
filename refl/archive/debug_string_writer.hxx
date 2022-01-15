@@ -202,7 +202,7 @@ class debug_string_writer : public if_writer
     if_writer& object_push(size_t n) override
     {
         if (_state() == context_state::object_key)
-            throw error::writer_invalid_context{this}.message("invalid state: object_key");
+            throw error::writer_invalid_state{this}.message("invalid state: object_key");
 
         if (_state() == context_state::object_value)
             _state(context_state::object_key);
@@ -221,7 +221,7 @@ class debug_string_writer : public if_writer
     if_writer& object_pop() override
     {
         if (_state() != context_state::object_key)
-            throw error::writer_invalid_context{this}.message("expect object_key");
+            throw error::writer_invalid_state{this}.message("expect object_key");
 
         bool was_empty  = not _comma_required;
         _comma_required = true;
@@ -243,7 +243,7 @@ class debug_string_writer : public if_writer
     if_writer& array_push(size_t n) override
     {
         if (_state() == context_state::object_key)
-            throw error::writer_invalid_context{this}.message("invalid state: object_key");
+            throw error::writer_invalid_state{this}.message("invalid state: object_key");
 
         if (_state() == context_state::object_value)
             _state(context_state::object_key);
@@ -262,7 +262,7 @@ class debug_string_writer : public if_writer
     if_writer& array_pop() override
     {
         if (_state() != context_state::array)
-            throw error::writer_invalid_context{this}.message("expect array");
+            throw error::writer_invalid_state{this}.message("expect array");
 
         bool was_empty  = not _comma_required;
         _comma_required = true;
@@ -284,7 +284,7 @@ class debug_string_writer : public if_writer
     void write_key_next() override
     {
         if (_state() != context_state::object_key)
-            throw error::writer_invalid_context{this}.message("");
+            throw error::writer_invalid_state{this}.message("");
     }
 };
 

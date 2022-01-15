@@ -76,7 +76,6 @@ struct writer_exception : archive_exception
     explicit writer_exception(if_writer* wr) : writer(wr) {}
 };
 
-CPPH_DECLARE_EXCEPTION(writer_invalid_context, writer_exception);
 CPPH_DECLARE_EXCEPTION(writer_invalid_state, writer_exception);
 
 struct reader_exception : archive_exception
@@ -262,8 +261,7 @@ class if_writer : public if_archive_base
  */
 struct context_key
 {
-    int depth = 0;
-    int id    = 0;
+    int64_t value;
 };
 
 /**

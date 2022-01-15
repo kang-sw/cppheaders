@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2022. Seungwoo Kang
+// Copyright (c) 2021-2022. Seungwoo Kang
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@
 
 #include "catch.hpp"
 #include "refl/archive/debug_string_writer.hxx"
+#include "refl/archive/json.hpp"
 #include "refl/buffer.hxx"
 #include "refl/container/variant.hxx"
 #include "refl/object.hxx"
@@ -44,8 +45,8 @@ enum class my_enum
 namespace ns {
 struct inner_arg_1
 {
-    std::string str1          = "str1";
-    std::string str2          = "str2";
+    std::string str1          = "str1-value";
+    std::string str2          = "str2-value";
     int var                   = 133;
     bool k                    = true;
     std::array<bool, 4> bools = {false, false, true, false};
@@ -85,9 +86,9 @@ struct outer
     std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
 
     perfkit::binary<abcd> r;
-    std::map<double, abcd> afs = {
-            {3.14, {1, 2, 3, 4}},
-            {3.11, {1, 3, 2, 5}},
+    std::map<std::string, abcd> afs = {
+            {"aa", {1, 2, 3, 4}},
+            {"bb", {1, 3, 2, 5}},
     };
 
     std::unique_ptr<int> no_value;
@@ -175,14 +176,21 @@ namespace cpph::refl {
 
 }
 
-TEMPLATE_TEST_CASE("archive", "[.]", ns::vectors)
-{
-    archive::debug_string_writer writer{*std::cout.rdbuf()};
+static auto ssvd = [] {
+    using TestType = ns::vectors;
+    archive::json::writer writer{*std::cout.rdbuf()};
+    writer.indent = 4;
 
     std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
     writer.serialize(TestType{});
 
     std::cout.flush();
+    return nullptr;
+};
+
+TEST_CASE("archive", "[.]")
+{
+    ssvd();
 }
 
 #define property_  CPPH_PROP_TUPLE

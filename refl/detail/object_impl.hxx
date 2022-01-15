@@ -480,7 +480,23 @@ class object_metadata
         {
             if (is_object())
             {
-                strm->object_push(_keys->size());
+                size_t num_filled = 0;
+                for (auto& [key, index] : *_keys)
+                {
+                    auto& prop = _props.at(index);
+
+                    auto child      = prop.type;
+                    auto child_data = retrieve_self(data, prop);
+                    assert(child_data);
+
+                    if (auto status = child->requirement_status(child_data);
+                        status != requirement_status_tag::optional_empty)
+                    {
+                        ++num_filled;
+                    }
+                }
+
+                strm->object_push(num_filled);
                 for (auto& [key, index] : *_keys)
                 {
                     auto& prop = _props.at(index);
