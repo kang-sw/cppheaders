@@ -29,6 +29,7 @@
 #include "catch.hpp"
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/buffer.hxx"
+#include "refl/container/variant.hxx"
 #include "refl/object.hxx"
 
 using namespace cpph;
@@ -123,6 +124,8 @@ struct some_other
     CPPH_REFL_DECLARE_c;
 };
 
+using variant_type = std::variant<int, double, std::string, bool>;
+
 struct vectors
 {
     std::vector<std::vector<double>> f
@@ -144,9 +147,15 @@ struct vectors
     std::optional<int> no_val;
     std::optional<int> has_val = 1;
 
+    variant_type vt1 = 3;
+    variant_type vt2 = 3.14;
+    variant_type vt3 = std::string{"hello!"};
+    variant_type vt4 = false;
+
     CPPH_REFL_DEFINE_OBJECT_inline(
             f, f2, f3, f4, my_enum_value, arg, bb, some_outer,
-            no_val, has_val);
+            no_val, has_val,
+            vt1, vt2, vt3, vt4);
 };
 
 struct some_other_2

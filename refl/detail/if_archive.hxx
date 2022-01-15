@@ -51,12 +51,13 @@ enum class entity_type : uint16_t
     tuple,
     array,
 
+    binary,
+
     null,
     boolean,
     integer,
     floating_point,
     string,
-    binary,
 };
 
 class if_writer;
@@ -222,9 +223,9 @@ class if_writer : public if_archive_base
     virtual if_writer& operator<<(double v) = 0;
 
     virtual if_writer& operator<<(std::string_view v) = 0;
-    virtual if_writer& operator<<(std::string const& v) { return *this << std::string_view{v}; }
+    if_writer& operator<<(std::string const& v) { return *this << std::string_view{v}; }
 
-    virtual if_writer& operator<<(const_buffer_view v)
+    if_writer& operator<<(const_buffer_view v)
     {
         binary_push(v.size());
         binary_write_some(v);
