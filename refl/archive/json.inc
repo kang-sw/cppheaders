@@ -244,7 +244,7 @@ struct reader::impl
     std::string_view tokstr(jsmntok_t const& tok) const
     {
         std::string_view view{string};
-        return view.substr(tok.start, tok.end);
+        return view.substr(tok.start, tok.end - tok.start);
     }
 
     std::string_view next_value_token() const
@@ -254,16 +254,17 @@ struct reader::impl
 
     reader_scope_context_t const* step_in(reader_scope_type t)
     {
-        if (t == reader_scope_type::object && next()->type != JSMN_OBJECT)
+        auto ntok = next();
+
+        if (t == reader_scope_type::object && ntok->type != JSMN_OBJECT)
             throw error::reader_parse_failed{self};
-        if (t == reader_scope_type::array && next()->type != JSMN_ARRAY)
+        if (t == reader_scope_type::array && ntok->type != JSMN_ARRAY)
             throw error::reader_parse_failed{self};
 
-        auto ntok               = next();
         auto elem               = &scopes.emplace_back();
         elem->type              = t;
         elem->token_pos         = pos_next++;
-        elem->elem_left         = ntok->size;
+        elem->elem_left         = ntok->size * ((t == reader_scope_type::object) + 1);
         elem->context_key.value = ++context_keygen;
 
         return elem;
@@ -271,12 +272,57 @@ struct reader::impl
 
     void step_over()
     {
-        auto ntok = next();
+        if (scopes.empty()) { return; }
 
+        auto scope = &scopes.back();
+        auto ntok  = next();
+
+        if (scope->is_key_next && ntok->type != JSMN_STRING) { throw error::reader_invalid_context{self}; }
+
+        if (ntok->type == JSMN_OBJECT || ntok->type == JSMN_ARRAY)
+        {
+            auto it = std::lower_bound(
+                    tokens.begin() + pos_next, tokens.end(), ntok->end,
+                    [](jsmntok_t const& t, int e) { return t.start < e; });
+            pos_next = it - tokens.begin();
+        }
+        else
+        {
+            ++pos_next;
+        }
+
+        if (scope->elem_left-- <= 0)
+            throw error::reader_invalid_context{self}.message("end of object");
+
+        scope->is_key_next = false;
     }
 
     void step_out(context_key key)
     {
+        if (scopes.empty()) { throw error::reader_invalid_context{self}; }
+
+        auto scope = &scopes.back();
+        if (scope->context_key.value != key.value) { throw error::reader_invalid_context{self}; }
+        if (scope->is_key_next) { throw error::reader_invalid_context{self}; }
+
+        auto it_tok = tokens.begin() + scope->token_pos;
+
+        auto it = std::lower_bound(
+                it_tok, tokens.end(), it_tok->end,
+                [](jsmntok_t const& t, int e) { return t.start < e; });
+        pos_next = it - tokens.begin();
+        scopes.pop_back();
+
+        if (scopes.empty())
+        {
+            pos_next = ~size_t{};
+        }
+        else
+        {
+            scope = &scopes.back();
+            --scope->elem_left;
+            scope->is_key_next = false;
+        }
     }
 };
 
@@ -345,6 +391,7 @@ if_reader& reader::operator>>(std::string& v)
     auto tok  = self->tokstr(*next);
     if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
 
+    v.clear();
     strutil::unescape(tok.begin(), tok.end(), std::back_inserter(v));
 
     self->step_over();

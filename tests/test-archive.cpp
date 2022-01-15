@@ -45,7 +45,7 @@ enum class my_enum
 namespace ns {
 struct inner_arg_1
 {
-    std::string str1          = "str1-value\r\t\n\\n";
+    std::string str1          = (char const*)u8"str1-value 까짓것 금방입니다\r\t\n\\n";
     std::string str2          = "str2-value";
     int var                   = 133;
     bool k                    = true;
@@ -192,6 +192,11 @@ static auto ssvd = [] {
     TestType other;
     reader.deserialize(other);
 
+    archive::json::writer wr2{*std::cout.rdbuf()};
+    wr2.indent = 4;
+    wr2.serialize(other);
+    std::cout << "\n\n------- DONE  " << typeid(TestType).name() << " -------\n\n";
+
     return nullptr;
 };
 
@@ -199,8 +204,6 @@ static auto ss = ssvd();
 
 TEST_CASE("archive", "[.]")
 {
-    ssvd();
-
     std::stringbuf strbuf;
     strbuf.sputn("1234", 4);
 

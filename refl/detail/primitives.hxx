@@ -622,6 +622,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                         data->reserve(elemsize);
                     }
 
+                    data->clear();
                     value_type* mutable_data = {};
                     for (auto idx : perfkit::count(elemsize))
                     {

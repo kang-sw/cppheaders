@@ -591,14 +591,19 @@ class object_metadata
                 auto elem = find_ptr(*_keys, keybuf);
 
                 // simply ignore unexpected keys
-                if (not elem) { continue; }
+                if (not elem)
+                {
+                    nullptr_t discard = {};
+                    *strm >> discard;
+                    continue;
+                }
 
                 auto index   = elem->second;
                 found[index] = true;
 
                 auto& prop      = _props.at(index);
                 auto child      = prop.type;
-                auto child_data = child->retrieve_self(data, prop);
+                auto child_data = retrieve_self(data, prop);
                 assert(child_data);
 
                 child->_restore_from(strm, child_data, context, opt_property);
@@ -635,7 +640,7 @@ class object_metadata
                     continue;
                 }
 
-                auto child_data = child->retrieve_self(data, prop);
+                auto child_data = retrieve_self(data, prop);
                 child->_restore_from(strm, child_data, context, &prop);
             }
 
