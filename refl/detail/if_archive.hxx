@@ -213,9 +213,9 @@ class if_writer : public if_archive_base
     virtual if_writer& operator<<(int32_t v) { return *this << (int64_t)v; }
     virtual if_writer& operator<<(int64_t v) = 0;
 
-    virtual if_writer& operator<<(uint8_t v) { return *this << (int8_t)v; }
-    virtual if_writer& operator<<(uint16_t v) { return *this << (int16_t)v; }
-    virtual if_writer& operator<<(uint32_t v) { return *this << (int32_t)v; }
+    virtual if_writer& operator<<(uint8_t v) { return *this << (int64_t)v; }
+    virtual if_writer& operator<<(uint16_t v) { return *this << (int64_t)v; }
+    virtual if_writer& operator<<(uint32_t v) { return *this << (int64_t)v; }
     virtual if_writer& operator<<(uint64_t v) { return *this << (int64_t)v; }
 
     virtual if_writer& operator<<(float v) { return *this << (double)v; }

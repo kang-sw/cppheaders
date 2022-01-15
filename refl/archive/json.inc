@@ -27,11 +27,11 @@
 #include "json.hpp"
 
 #define JSMN_STATIC
-#define JSMN_PARENT_LINKS
 #define JSMN_STRICT
 #include "../../third/jsmn.h"
 
 namespace CPPHEADERS_NS_::archive::json {
+using namespace std::literals;
 
 writer::writer(std::streambuf& buf, size_t depth_maybe) : if_writer(buf)
 {
@@ -203,19 +203,56 @@ void writer::_brk_indent()
 
 namespace CPPHEADERS_NS_::archive::json {
 
+struct reader_scope_context_t
+{
+    int64_t context_key;
+    int token_pos    = false;
+    bool is_key_next = false;
+};
+
 struct reader::impl
 {
+    if_reader* self;
+
     std::vector<jsmntok_t> tokens;
     std::string string;
     jsmn_parser parser;
     size_t pos_next = ~size_t{};
+
+    std::vector<reader_scope_context_t> scopes;
+    int64_t context_keygen = 0;
+
+   public:
+    auto next() const { return &tokens.at(pos_next); }
+    auto next() { return &tokens.at(pos_next); }
+
+    std::string_view token(jsmntok_t const& tok) const
+    {
+        std::string_view view{string};
+        return view.substr(tok.start, tok.end);
+    }
+
+    std::string_view next_value_token() const
+    {
+        return "";
+    }
+
+    int64_t step_in()
+    {
+        return 0;
+    }
+
+    void step_over()
+    {
+    }
 };
 
-reader::reader(std::streambuf& buf) : if_reader(buf), self(new impl) { reset(), _validate(); }
+reader::reader(std::streambuf& buf) : if_reader(buf), self(new impl{this}) { reset(), _validate(); }
 
 if_reader& reader::operator>>(nullptr_t a_nullptr)
 {
     _validate();
+
     return *this;
 }
 
@@ -268,6 +305,9 @@ void reader::end_binary()
 
 context_key reader::begin_object()
 {
+    if (not is_object_next()) { throw error::reader_parse_failed{this}.message("next token is not object"); }
+    self->step_in();
+
     return context_key();
 }
 
@@ -296,7 +336,8 @@ bool reader::read_key_next() const
 
 bool reader::is_null_next() const
 {
-    return false;
+    auto next = self->next();
+    return next->type == JSMN_PRIMITIVE && self->token(*next) == "null"sv;
 }
 
 void reader::reset()
@@ -309,6 +350,9 @@ void reader::_validate()
     // data is ready
     if (self->pos_next != ~size_t{}) { return; }
     if (_buf->in_avail() <= 0) { throw error::reader_read_stream_error{this}.message("stream is empty!"); }
+
+    // Clear state
+    self->scopes.clear();
 
     // Read until EOF, and try parse
     auto str = &self->string;
@@ -332,12 +376,12 @@ void reader::_validate()
 
 bool reader::is_object_next() const
 {
-    return false;
+    return self->next()->type == JSMN_OBJECT;
 }
 
 bool reader::is_array_next() const
 {
-    return false;
+    return self->next()->type == JSMN_ARRAY;
 }
 
 reader::~reader() = default;

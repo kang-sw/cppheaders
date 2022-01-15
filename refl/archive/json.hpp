@@ -77,6 +77,10 @@ class reader : public archive::if_reader
     //! Prepare for next list of tokens
     void reset();
 
+    //! Validate internal state.
+    //! Reads content from buffer.
+    void validate() { _validate(); }
+
    public:
     if_reader& operator>>(nullptr_t a_nullptr) override;
     if_reader& operator>>(bool& v) override;
