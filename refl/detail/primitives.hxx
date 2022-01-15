@@ -589,8 +589,13 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
         {
+            using value_type = typename Container_::value_type;
+
             auto binsize                = strm->begin_binary();
             [[maybe_unused]] auto clean = cleanup([&] { strm->end_binary(); });
+
+            if (binsize % sizeof(value_type) != 0)
+                throw refl::error::primitive{}.set(strm).message("Binary alignment mismatch");
 
             if constexpr (not binary_type::is_container)
             {
@@ -598,11 +603,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
             }
             else
             {
-                using value_type = typename Container_::value_type;
-                auto elemsize    = binsize / sizeof(value_type);
-
-                if (binsize % sizeof(value_type) != 0)
-                    throw refl::error::primitive{}.set(strm).message("Byte data alignment mismatch");
+                auto elemsize = binsize / sizeof(value_type);
 
                 if constexpr (binary_type::is_contiguous)
                 {
