@@ -22,6 +22,7 @@
 //
 // project home: https://github.com/perfkitpp
 
-/**
- * Primitive binary stream, which only provides IN-ORDERED archive
- */
+#pragma once
+#include "../detail/if_archive.hxx"
+
+
