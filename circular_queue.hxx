@@ -396,7 +396,7 @@ class circular_queue
     Ty_& _r_at(size_t i) const
     {
         assert(!empty());
-        return const_cast<Ty_&>(*cend()[-i - 1]);
+        return const_cast<Ty_&>(cend()[-i - 1]);
     }
 
     Ty_& _back() const

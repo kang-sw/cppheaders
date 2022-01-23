@@ -70,7 +70,7 @@
 
 /* "cleanup.hxx" **********************************************************************************/
 #define CPPH_FINALLY(Callable) \
-    auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = CPPHEADERS_NS_::cleanup(Callable)
+    [[maybe_unused]] auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = CPPHEADERS_NS_::cleanup(Callable)
 
 #define CPPH_SFINAE_EXPR(Name, TParam, ...)                                  \
     template <typename TParam, class = void>                                 \

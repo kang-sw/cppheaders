@@ -68,7 +68,7 @@ struct basic_exception : std::exception
         return std::move(*static_cast<RTy_*>(this));
     }
 
-    const char* what() const override
+    const char* what() const noexcept override
     {
         if (_message.empty()) { _setmsg(typeid(*this).name()); }
         return _message.c_str();

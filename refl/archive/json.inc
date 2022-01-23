@@ -46,9 +46,9 @@ if_writer& writer::operator<<(double v)
     _on_write();
 
     char buf[32];
-    auto r = std::to_chars(buf, buf + sizeof buf, v);
+    auto r = snprintf(buf, sizeof buf, "%f", v);
 
-    _buf->sputn(buf, r.ptr - buf);
+    _buf->sputn(buf, r);
     return *this;
 }
 
@@ -217,7 +217,7 @@ enum class reader_scope_type
 struct reader_scope_context_t
 {
     reader_scope_type type  = {};
-    context_key context_key = {};
+    context_key context     = {};
     int token_pos           = false;
     bool is_key_next        = false;
     int elem_left           = 0;
@@ -265,7 +265,7 @@ struct reader::impl
         elem->type              = t;
         elem->token_pos         = pos_next++;
         elem->elem_left         = ntok->size * ((t == reader_scope_type::object) + 1);
-        elem->context_key.value = ++context_keygen;
+        elem->context.value = ++context_keygen;
 
         return elem;
     }
@@ -302,7 +302,7 @@ struct reader::impl
         if (scopes.empty()) { throw error::reader_invalid_context{self}; }
 
         auto scope = &scopes.back();
-        if (scope->context_key.value != key.value) { throw error::reader_invalid_context{self}; }
+        if (scope->context.value != key.value) { throw error::reader_invalid_context{self}; }
         if (scope->is_key_next) { throw error::reader_invalid_context{self}; }
 
         auto it_tok = tokens.begin() + scope->token_pos;
@@ -376,8 +376,9 @@ if_reader& reader::operator>>(double& v)
     auto tok  = self->tokstr(*next);
     if (next->type != JSMN_PRIMITIVE) { throw error::reader_parse_failed{this}; }
 
-    auto r = std::from_chars(tok.data(), tok.data() + tok.size(), v);
-    if (r.ptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}.message(tok); }
+    char* eptr = {};
+    v          = strtod(tok.data(), &eptr);
+    if (eptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}.message(tok); }
 
     self->step_over();
     return *this;
@@ -452,18 +453,18 @@ void reader::end_binary()
 
 context_key reader::begin_object()
 {
-    return self->step_in(reader_scope_type::object)->context_key;
+    return self->step_in(reader_scope_type::object)->context;
 }
 
 context_key reader::begin_array()
 {
-    return self->step_in(reader_scope_type::array)->context_key;
+    return self->step_in(reader_scope_type::array)->context;
 }
 
 bool reader::should_break(const context_key& key) const
 {
     auto& top = self->scopes.back();
-    if (top.context_key.value != key.value) { return false; }
+    if (top.context.value != key.value) { return false; }
 
     return top.elem_left == 0;
 }
