@@ -231,6 +231,29 @@ auto lerp(ValTy_ const& a, ValTy_ const& b, Alpha_ const& alpha)
 {
     return a + (b - a) * alpha;
 }
+
+template <typename ValTy_ = double, typename Iter_, typename Mult_ = std::multiplies<>>
+auto variance(Iter_ begin, Iter_ end, Mult_ mult = std::multiplies<>{})
+{
+    auto div  = static_cast<ValTy_>(std::distance(begin, end));
+    auto mean = std::reduce(begin, end) / div;
+    return std::transform_reduce(
+                   begin, end,
+                   decltype(mean){},
+                   std::plus<>{},
+                   [&](auto&& v) {
+                       auto s = v - mean;
+                       return mult(s, s);
+                   })
+         / div;
+}
+
+template <typename ValTy_ = double, typename Container_, typename Mult_ = std::multiplies<>>
+auto variance(Container_&& cont, Mult_ mult = std::multiplies<>{})
+{
+    return variance(std::begin(cont), std::end(cont), std::forward<Mult_>(mult));
+}
+
 }  // namespace algorithm
 }  // namespace CPPHEADERS_NS_
 
