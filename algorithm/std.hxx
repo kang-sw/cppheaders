@@ -214,6 +214,23 @@ auto find_ptr(Set_&& set, Key_ const& key)
     }
 }
 
+template <typename Float_>
+auto range_alpha(Float_ value, Float_ v1, Float_ v2)
+{
+    if (v1 == v2) { return Float_(value > v1); }
+    auto [min, max] = std::minmax(v1, v2);
+
+    Float_ alpha = std::clamp(value, min, max);
+    alpha        = (alpha - min) / (max - min);
+
+    return alpha;
+}
+
+template <typename Alpha_, typename ValTy_>
+auto lerp(ValTy_ const& a, ValTy_ const& b, Alpha_ const& alpha)
+{
+    return a + (b - a) * alpha;
+}
 }  // namespace algorithm
 }  // namespace CPPHEADERS_NS_
 
