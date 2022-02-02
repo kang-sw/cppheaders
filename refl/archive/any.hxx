@@ -22,4 +22,4 @@
 //
 // project home: https://github.com/perfkitpp
 
-#include "msgpack.hpp"
+#pragma once

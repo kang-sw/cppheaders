@@ -823,7 +823,7 @@ class object_metadata
         static property_metadata create_property_metadata(MemVar_ Class_::*mem_ptr)
         {
             property_metadata info;
-            info.type   = default_object_metadata_fn<MemVar_>()();
+            info.type   = get_object_metadata<MemVar_>();
             info.offset = reinterpret_cast<size_t>(
                     &(reinterpret_cast<Class_ const volatile*>(NULL)->*mem_ptr));
 

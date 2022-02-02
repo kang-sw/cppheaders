@@ -29,6 +29,7 @@
 #include "catch.hpp"
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/archive/json.hpp"
+#include "refl/archive/msgpack.hxx"
 #include "refl/buffer.hxx"
 #include "refl/container/variant.hxx"
 #include "refl/object.hxx"
