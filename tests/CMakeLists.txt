@@ -13,6 +13,7 @@ add_executable(
         test-thread.cpp
         test-templates.cpp
         test-archive.cpp
+        test-container.cpp
 )
 
 target_compile_definitions(
