@@ -42,6 +42,13 @@ constexpr inline size_t _nearlest_llog2(size_t value)
 
     return n;
 }
+
+constexpr inline bool _is_pow2(size_t value)
+{
+    size_t n_one = 0;
+    for (; value > 0; value >>= 1) { n_one += value & 1; }
+    return n_one == 1;
+}
 }  // namespace detail
 
 template <typename Ty_,
@@ -49,6 +56,9 @@ template <typename Ty_,
           typename Alloc_   = std::allocator<Ty_>>
 class deque : Alloc_  // zero_size optimization
 {
+    // block size must be power of 2 for optimization
+    static_assert(detail::_is_pow2(BlockSize_));
+
    public:
     using value_type      = Ty_;
     using reference       = Ty_&;
@@ -71,7 +81,10 @@ class deque : Alloc_  // zero_size optimization
     {
         _ct_df_trive = std::is_trivially_default_constructible_v<value_type>,
         _cp_triv     = std::is_trivially_copyable_v<value_type>,
-        _dt_triv     = std::is_trivially_destructible_v<value_type>
+        _dt_triv     = std::is_trivially_destructible_v<value_type>,
+
+        _power = detail::_nearlest_llog2(block_size),
+        _mask  = block_size - 1,
     };
 
    public:
@@ -108,21 +121,27 @@ class deque : Alloc_  // zero_size optimization
     auto size() const noexcept { return _size; }
     auto capacity() const noexcept { return _n_blocks() * block_size; }
 
+    void reserve(size_type n_elems)
+    {
+        auto n_new_blk = _n_blocks(n_elems) - _n_blocks();
+    }
+
    private:
-    size_t _n_blocks() const noexcept
+    constexpr static size_type _div(size_type n) noexcept { return n >> _power; }
+    constexpr static size_type _mod(size_type n) noexcept { return n & _mask; }
+
+    size_type _n_blocks() const noexcept
     {
         return (_in_use.empty() ? 0 : _in_use.size() - 1) + _in_avail.size();
     }
 
-    void _reserve_blocks(size_t n_total)
+    size_type _n_blocks(size_type n_elems) const noexcept
     {
-        if (n_total >= _n_blocks()) { return; }
-        n_total -= _n_blocks();
+    }
 
-        _in_avail.reserve(_in_avail.size() + n_total);
-
-        while (n_total--)
-            _in_avail.push_back(reinterpret_cast<_block_type*>(this->allocate(block_size)));
+    void _alloc_once(size_type n_total)
+    {
+        _in_avail.push_back(reinterpret_cast<_block_type*>(this->allocate(block_size)));
     }
 };
 
@@ -131,4 +150,5 @@ static_assert(deque<double>::block_size == 128);
 static_assert(deque<std::array<char, 511>>::block_size == 2);
 static_assert(deque<std::array<char, 512>>::block_size == 2);
 static_assert(deque<std::array<char, 513>>::block_size == 1);
+static_assert(deque<std::array<char, 10041>>::block_size == 1);
 }  // namespace CPPHEADERS_NS_
