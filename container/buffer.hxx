@@ -72,13 +72,18 @@ class buffer
     void resize(size_type new_size)
     {
         if (_size == new_size) { return; }
+
+        if (new_size == 0)
+        {
+            _try_release();
+            return;
+        }
+
         auto buflen = sizeof(value_type) * new_size;
         _size       = new_size;
 
         if (not _buffer)
             _buffer = (Ty_*)malloc(buflen);
-        else if (new_size == 0)
-            _try_release();
         else
             _buffer = (Ty_*)realloc(_buffer, buflen);
 
