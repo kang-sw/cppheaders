@@ -87,13 +87,17 @@ class matrix
      * Construct matrix from row-majorly ordered values
      * @param values
      */
-    constexpr matrix(array_view<const value_type> values) noexcept : value()
+
+    template <typename Other_>
+    explicit constexpr matrix(array_view<Other_> values) noexcept : value()
     {
         for (int i = 0; i < length; ++i)
         {
             value[i] = values[i];
         }
     }
+
+    constexpr matrix(value_type const* values, size_t n) noexcept : matrix(array_view{values, n}) {}
 
     constexpr matrix(value_type const& v) noexcept : value()
     {
@@ -124,6 +128,12 @@ class matrix
     constexpr int rows() const noexcept { return Row_; }
     constexpr int cols() const noexcept { return Col_; }
     constexpr int size() const noexcept { return Row_ * Col_; }
+
+    template <typename Other_>
+    operator matrix<Other_, Row_, Col_>() const
+    {
+        return matrix<Other_, Row_, Col_>{array_view{value}};
+    }
 
    private:
     constexpr value_type* _get(int index) const noexcept
@@ -180,13 +190,15 @@ class matrix
     auto& operator[](int index) const
     {
         assert(0 <= index && index < num_rows);
-        return *(row_type const*)_get(index, 0);
+        using rtype = std::conditional_t<num_cols == 1, value_type, row_type>;
+        return *(rtype const*)_get(index, 0);
     }
 
     auto& operator[](int index) noexcept
     {
         assert(0 <= index && index < num_rows);
-        return *(row_type*)_get(index, 0);
+        using rtype = std::conditional_t<num_cols == 1, value_type, row_type>;
+        return *(rtype*)_get(index, 0);
     }
 
     // factory operations
@@ -293,7 +305,7 @@ class matrix
     constexpr auto
     row(size_t n) const noexcept
     {
-        return row_type({&value[0] + n * num_cols, num_cols});
+        return row_type{&value[0] + n * num_cols, num_cols};
     }
 
     constexpr auto
