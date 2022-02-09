@@ -109,4 +109,28 @@ inline auto readin(char const* path)
     return std::make_pair(std::move(buffer), size);
 }
 
+inline auto readin_str(char const* path)
+{
+    file_ptr ptr;
+
+    ptr.reset(fopen(path, "r"));
+    if (not ptr)
+        throw file_not_exist{path};
+
+    auto size = (fseek(&*ptr, 0, SEEK_END), ftell(&*ptr));
+    if (size == 0)
+        while (fgetc(&*ptr) != EOF) { ++size; }
+
+    rewind(&*ptr);
+
+    std::string buffer;
+    buffer.resize(size);
+    auto n_read = fread(buffer.data(), 1, size, &*ptr);
+
+    if (n_read == 0)
+        throw file_read_error{path};
+
+    return buffer;
+}
+
 }  // namespace CPPHEADERS_NS_::futils
