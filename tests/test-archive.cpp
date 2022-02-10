@@ -225,7 +225,6 @@ static auto ssvd = [] {
     using TestType = ns::vectors;
     std::stringbuf strbuf;
     archive::json::writer writer{&strbuf};
-    writer.indent = 4;
 
     TestType arg{};
 
@@ -240,7 +239,6 @@ static auto ssvd = [] {
     reader.deserialize(other);
 
     archive::json::writer wr2{std::cout.rdbuf()};
-    wr2.indent = 4;
     wr2.serialize(other);
     std::cout << "\n\n------- DONE  " << typeid(TestType).name() << " -------\n\n";
 
@@ -249,19 +247,16 @@ static auto ssvd = [] {
     reader >> str;
 
     std::stringstream msgpack_bufb64;
-    stream_debug_adapter adapter{*msgpack_bufb64.rdbuf(), &g_debugstr_1};
-    streambuf::b64 cvtbase64{&adapter};
+    streambuf::b64 cvtbase64{msgpack_bufb64.rdbuf()};
 
     archive::msgpack::writer msgwr{&cvtbase64};
     msgwr.serialize(TestType{});
 
     cvtbase64.pubsync();
+    std::cout << msgpack_bufb64.str();
     std::cout << "\n----------- MSGPACK READING -------------- " << std::endl;
 
-    streambuf::basic_b64<1, 256> cvtbase64_r{&adapter};
-    stream_debug_adapter adapter_2{cvtbase64_r, &g_debugstr_2};
-
-    archive::msgpack::reader msgrd{&adapter_2};
+    archive::msgpack::reader msgrd{&cvtbase64};
 
     TestType other2{};
     other2.arg     = {};
@@ -272,10 +267,10 @@ static auto ssvd = [] {
     g_debugstr_1.clear();
     msgrd >> other2;
 
+    wr2 << other2;
+
     return nullptr;
 };
-
-static const auto f = ssvd();
 
 TEST_CASE("archive", "[.]")
 {
