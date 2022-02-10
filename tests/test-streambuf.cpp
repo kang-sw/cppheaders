@@ -22,4 +22,28 @@
 //
 // project home: https://github.com/perfkitpp
 
-#pragma once
+#include <iostream>
+#include <sstream>
+
+#include "catch.hpp"
+#include "streambuf/base64.hxx"
+#include "streambuf/view.hxx"
+
+using namespace cpph;
+
+TEST_CASE("base64 feature test", "[streambuf]")
+{
+    std::string str = "hello, world! 0abcdefg_1234_HZZEE";
+    streambuf::b64 b64{};
+
+    std::stringstream buffer;
+
+    b64.reset(buffer.rdbuf());
+    b64.sputn(str.data(), str.size());
+    REQUIRE(buffer.str() == "aGVsbG8sIHdvcmxkISAwYWJjZGVmZ18xMjM0X0haWkVF");
+
+    std::stringstream binbuf;
+    binbuf << &b64;
+
+    REQUIRE(binbuf.str() == str);
+}
