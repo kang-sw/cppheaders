@@ -11,6 +11,7 @@ add_executable(
         test-math.cpp
         test-reflect.cpp
         test-thread.cpp
+        test-streambuf.cpp
         test-templates.cpp
         test-archive.cpp
         test-container.cpp

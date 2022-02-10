@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "../../streambuf/base64.hxx"
 #include "context_helper.hxx"
 
 namespace CPPHEADERS_NS_::archive::json {
@@ -36,6 +37,7 @@ class writer : public archive::if_writer
 
    public:
     int indent = -1;
+    streambuf::b64 _base64;
 
    public:
     explicit writer(std::streambuf& buf, size_t depth_maybe = 0);

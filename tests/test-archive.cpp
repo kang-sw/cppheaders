@@ -251,3 +251,33 @@ TEST_CASE("archive", "[.]")
 // }
 CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, a, b, c, f, t, r, e, ff);
 CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, a, b, c, f, t, r, e, ff);
+
+struct bintest
+{
+    binary<std::string> binstr = "hello, world!";
+
+    CPPH_REFL_DEFINE_OBJECT_inline(binstr);
+};
+
+TEST_CASE("base64 restoration", "[archive]")
+{
+    std::stringbuf strbuf;
+    archive::json::writer writer{strbuf};
+    writer.indent = 4;
+
+    writer.serialize(bintest{});
+
+    INFO("---- ARCHIVED ----\n"
+         << strbuf.str());
+
+    bintest restored;
+    restored.binstr = {};
+
+    archive::json::reader reader{strbuf};
+    reader.deserialize(restored);
+
+    INFO("---- RESTORED.binstr ----\n"
+         << restored.binstr);
+
+    REQUIRE(restored.binstr == bintest{}.binstr);
+}

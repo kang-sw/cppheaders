@@ -26,6 +26,8 @@
 #include <iterator>
 
 #include "../../helper/strutil.hxx"
+#include "../../streambuf/base64.hxx"
+#include "../../streambuf/view.hxx"
 #include "../../utility/inserter.hxx"
 #include "json.hpp"
 
@@ -36,7 +38,8 @@
 namespace CPPHEADERS_NS_::archive::json {
 using namespace std::literals;
 
-writer::writer(std::streambuf& buf, size_t depth_maybe) : if_writer(buf)
+writer::writer(std::streambuf& buf, size_t depth_maybe)
+        : if_writer(buf), _base64(&buf)
 {
     _ctx.reserve_depth(depth_maybe);
 }
@@ -116,21 +119,14 @@ if_writer& writer::binary_push(size_t total)
 if_writer& writer::binary_write_some(const_buffer_view view)
 {
     _ctx.binary_write_some(view.size());
-
-    constexpr auto table = "0123456789abcdef";
-
-    for (uint8_t c : view)
-    {
-        _buf->sputc(table[(c >> 4) & 0xf]);
-        _buf->sputc(table[(c >> 0) & 0xf]);
-    }
-
+    _base64.sputn(view.data(), view.size());
     return *this;
 }
 
 if_writer& writer::binary_pop()
 {
     _ctx.pop_binary();
+    _base64.pubsync();
     _buf->sputc('"');
     return *this;
 }
@@ -216,11 +212,11 @@ enum class reader_scope_type
 
 struct reader_scope_context_t
 {
-    reader_scope_type type  = {};
-    context_key context     = {};
-    int token_pos           = false;
-    bool is_key_next        = false;
-    int elem_left           = 0;
+    reader_scope_type type = {};
+    context_key context    = {};
+    int token_pos          = false;
+    bool is_key_next       = false;
+    int elem_left          = 0;
 };
 
 struct reader::impl
@@ -235,7 +231,8 @@ struct reader::impl
     std::vector<reader_scope_context_t> scopes;
     int64_t context_keygen = 0;
 
-    int bincursor = -1;
+    streambuf::view base64_view{};
+    streambuf::b64 base64{&base64_view};
 
    public:
     auto next() const { return &tokens.at(pos_next); }
@@ -261,10 +258,10 @@ struct reader::impl
         if (t == reader_scope_type::array && ntok->type != JSMN_ARRAY)
             throw error::reader_parse_failed{self};
 
-        auto elem               = &scopes.emplace_back();
-        elem->type              = t;
-        elem->token_pos         = pos_next++;
-        elem->elem_left         = ntok->size * ((t == reader_scope_type::object) + 1);
+        auto elem           = &scopes.emplace_back();
+        elem->type          = t;
+        elem->token_pos     = pos_next++;
+        elem->elem_left     = ntok->size * ((t == reader_scope_type::object) + 1);
         elem->context.value = ++context_keygen;
 
         return elem;
@@ -326,7 +323,11 @@ struct reader::impl
     }
 };
 
-reader::reader(std::streambuf& buf) : if_reader(buf), self(new impl{this}) { reset(), _validate(); }
+reader::reader(std::streambuf& buf)
+        : if_reader(buf), self(new impl{this})
+{
+    reset(), _validate();
+}
 
 if_reader& reader::operator>>(nullptr_t a_nullptr)
 {
@@ -408,46 +409,31 @@ size_t reader::begin_binary()
 {
     auto next = self->next();
     if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
-    if (self->bincursor != -1) { throw error::reader_invalid_context{this}; }
 
     auto binsize = (next->end - next->start);
     if (binsize & 1) { throw error::reader_parse_failed{this}; }
+    if (binsize & 0x3) { throw error::reader_parse_failed{this}.message("invalid base64 binary: %llu", binsize); }
 
-    self->bincursor = next->start;
-    return binsize / 2;
+    auto buffer = array_view<char>(self->string).subspan(next->start, binsize);
+    self->base64_view.reset(buffer);
+
+    return base64::decoded_size(buffer);
 }
 
 if_reader& reader::binary_read_some(mutable_buffer_view v)
 {
     auto next = self->next();
     if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
-    if (self->bincursor == -1) { throw error::reader_invalid_context{this}; }
-
-    std::string_view buf{self->string};
-    buf = buf.substr(self->bincursor, next->end);
-
-    auto buflen = buf.size() / 2;
-    if (v.size() > buflen) { throw error::reader_parse_failed{this}; }
 
     // copy buffer
-    char const* head = buf.data();
-    for (auto& chref : v)
-    {
-        auto hi = *head++;
-        auto lo = *head++;
-
-        chref = strutil::hexval(hi, lo);
-    }
-
-    // consume buffer
-    self->bincursor += v.size() * 2;
+    auto n_read = self->base64.sgetn(v.data(), v.size());
+    if (n_read != v.size()) { throw error::reader_parse_failed{this}.message("buffer size mismatch"); }
 
     return *this;
 }
 
 void reader::end_binary()
 {
-    self->bincursor = -1;
     self->step_over();
 }
 
