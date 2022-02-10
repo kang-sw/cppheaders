@@ -37,7 +37,7 @@ class writer : public archive::if_writer
 
    public:
     int indent = -1;
-    streambuf::b64<10, 0> _base64;
+    streambuf::b64_w _base64;
 
    public:
     explicit writer(std::streambuf* buf, size_t depth_maybe = 0);

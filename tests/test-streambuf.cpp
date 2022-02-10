@@ -34,7 +34,7 @@ using namespace cpph;
 TEST_CASE("base64 feature test", "[streambuf]")
 {
     std::string str = "hello, world! 0abcdefg_1234_HZZEE";
-    streambuf::b64 b64{};
+    streambuf::basic_b64 b64{};
 
     std::stringstream buffer;
 
