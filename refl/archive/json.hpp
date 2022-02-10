@@ -25,7 +25,7 @@
 #pragma once
 
 #include "../../streambuf/base64.hxx"
-#include "context_helper.hxx"
+#include "detail/context_helper.hxx"
 
 namespace CPPHEADERS_NS_::archive::json {
 CPPH_DECLARE_EXCEPTION(invalid_key_type, error::writer_exception);

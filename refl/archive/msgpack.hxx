@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "context_helper.hxx"
+#include "detail/context_helper.hxx"
 
 namespace CPPHEADERS_NS_::archive::msgpack {
 enum class typecode : uint8_t
@@ -563,7 +563,10 @@ class reader : public archive::if_reader
    private:
     void _break_scope()
     {
-        // TODO
+        for (auto scope = &_scope_ref(); scope->elems_left > 0; --scope->elems_left)
+            _skip_once();
+
+        _scope.pop_back();
     }
 
     void _skip_once()

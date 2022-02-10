@@ -24,6 +24,5 @@
 
 #pragma once
 #include "archive.hxx"
-#include "archive/binstream.hxx"
 #include "buffer.hxx"
 #include "object.hxx"
