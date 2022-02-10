@@ -187,8 +187,9 @@ struct testarg_2
 static auto ssvd = [] {
     using TestType = ns::vectors;
     std::stringbuf strbuf;
-    archive::json::writer writer{strbuf};
+    archive::json::writer writer{&strbuf};
     writer.indent = 4;
+
     TestType arg{};
 
     std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
@@ -197,11 +198,11 @@ static auto ssvd = [] {
     std::cout.flush();
 
     std::cout << "\n\n------- PARSE " << typeid(TestType).name() << " -------\n\n";
-    archive::json::reader reader{strbuf};
+    archive::json::reader reader{&strbuf};
     TestType other;
     reader.deserialize(other);
 
-    archive::json::writer wr2{*std::cout.rdbuf()};
+    archive::json::writer wr2{std::cout.rdbuf()};
     wr2.indent = 4;
     wr2.serialize(other);
     std::cout << "\n\n------- DONE  " << typeid(TestType).name() << " -------\n\n";
@@ -210,11 +211,18 @@ static auto ssvd = [] {
     std::string str;
     (archive::if_reader&)reader >> str;
 
-    streambuf::b64 b64buf{std::cout.rdbuf()};
-    archive::msgpack::writer msgwr{b64buf};
-
+    std::stringstream msgpack_buf;
+    streambuf::b64 b64buf{msgpack_buf.rdbuf()};
+    archive::msgpack::writer msgwr{&b64buf};
     msgwr.serialize(TestType{});
-    b64buf.reset();
+
+    TestType other2{};
+    other2.arg     = {};
+    other2.bb      = {};
+    other2.f       = {};
+    other2.has_val = {};
+
+    b64buf.pubsync();
 
     return nullptr;
 };
@@ -268,7 +276,7 @@ struct bintest
 TEST_CASE("base64 restoration", "[archive]")
 {
     std::stringbuf strbuf;
-    archive::json::writer writer{strbuf};
+    archive::json::writer writer{&strbuf};
     writer.indent = 4;
 
     writer.serialize(bintest{});
@@ -279,7 +287,7 @@ TEST_CASE("base64 restoration", "[archive]")
     bintest restored;
     restored.binstr = {};
 
-    archive::json::reader reader{strbuf};
+    archive::json::reader reader{&strbuf};
     reader.deserialize(restored);
 
     INFO("---- RESTORED.binstr ----\n"

@@ -40,7 +40,7 @@ class writer : public archive::if_writer
     streambuf::b64<10, 0> _base64;
 
    public:
-    explicit writer(std::streambuf& buf, size_t depth_maybe = 0);
+    explicit writer(std::streambuf* buf, size_t depth_maybe = 0);
 
     if_writer& operator<<(nullptr_t a_nullptr) override;
     if_writer& operator<<(int64_t v) override;
@@ -73,7 +73,7 @@ class reader : public archive::if_reader
     std::unique_ptr<impl> self;
 
    public:
-    explicit reader(std::streambuf& buf);
+    explicit reader(std::streambuf* buf);
     ~reader() override;
 
     //! Prepare for next list of tokens

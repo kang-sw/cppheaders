@@ -165,7 +165,7 @@ class if_archive_base
     std::streambuf* const _buf = {};
 
    public:
-    explicit if_archive_base(std::streambuf& buf) noexcept : _buf(&buf) {}
+    explicit if_archive_base(std::streambuf* buf) noexcept : _buf(buf) {}
     virtual ~if_archive_base() = default;
 
     //! Gets internal buffer
@@ -190,7 +190,7 @@ class if_archive_base
 class if_writer : public if_archive_base
 {
    public:
-    explicit if_writer(std::streambuf& buf) noexcept : if_archive_base(buf) {}
+    explicit if_writer(std::streambuf* buf) noexcept : if_archive_base(buf) {}
     ~if_writer() override = default;
 
    public:
@@ -270,7 +270,7 @@ struct context_key
 class if_reader : public if_archive_base
 {
    public:
-    explicit if_reader(std::streambuf& buf) noexcept : if_archive_base(buf) {}
+    explicit if_reader(std::streambuf* buf) noexcept : if_archive_base(buf) {}
     ~if_reader() override = default;
 
    private:

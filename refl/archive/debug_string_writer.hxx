@@ -145,7 +145,7 @@ class debug_string_writer : public if_writer
     }
 
    public:
-    explicit debug_string_writer(std::streambuf& buf) : if_writer(buf)
+    explicit debug_string_writer(std::streambuf* buf) : if_writer(buf)
     {
     }
 

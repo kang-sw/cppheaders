@@ -36,6 +36,8 @@ enum class typecode : uint8_t
     fixarray = 0b1001'0000,
     fixstr   = 0b101'00000,
 
+    error = 0xc1,
+
     nil        = 0xc0,
     bool_false = 0xc2,
     bool_true  = 0xc3,
@@ -187,7 +189,13 @@ class writer : public archive::if_writer
     }
 
    public:
-    explicit writer(std::streambuf& buf, size_t depth_estimated = 0) : archive::if_writer(buf) { _ctx.reserve_depth(depth_estimated); }
+    explicit writer(std::streambuf* buf, size_t depth_estimated = 0)
+            : archive::if_writer(buf)
+    {
+        _ctx.reserve_depth(depth_estimated);
+    }
+
+    void reserve_depth(size_t n) { _ctx.reserve_depth(n); }
 
     if_writer& operator<<(nullptr_t a_nullptr) override
     {
@@ -320,42 +328,181 @@ class writer : public archive::if_writer
 
 class reader : public archive::if_reader
 {
-    struct impl;
-    std::unique_ptr<impl> self;
+    union key_t
+    {
+        context_key key;
+        struct
+        {
+            uint32_t id;
+            uint32_t index;
+        };
+    };
+
+    struct scope_t
+    {
+        enum type_t
+        {
+            type_obj,
+            type_array,
+            type_binary
+        };
+
+        key_t key;
+        type_t type;
+        uint32_t elems_left;
+
+        bool _reading_key = false;
+    };
+
+   private:
+    std::vector<scope_t> _scope;
 
    public:
-    explicit reader(std::streambuf& buf);
-    ~reader() override;
+    explicit reader(std::streambuf* buf, size_t reserved_depth = 0)
+            : archive::if_reader(buf)
+    {
+        _scope.reserve(reserved_depth);
+    }
 
-    //! Prepare for next list of tokens
-    void reset();
+    void reserve_depth(size_t n) { _scope.reserve(n); }
 
-    //! Validate internal state.
-    //! Reads content from buffer.
-    void validate() { _validate(); }
+   private:
+    template <typecode... Args_>
+    void _verify_type(typecode code) const
+    {
+        if (((code != Args_) || ...))
+        {
+            throw error::reader_parse_failed{(if_reader*)this}.message("[msgpack] type error");
+        }
+    }
+
+    template <typecode... Args_>
+    void _verify_type(char c) const
+    {
+        _verify_type<Args_...>(_typecode(c));
+    }
+
+    template <typename ValTy_, typename CastTo_ = ValTy_>
+    CastTo_ _read_number() const
+    {
+        char buffer[sizeof(ValTy_)];
+        for (int i = sizeof buffer - 1; i >= 0; --i)
+            buffer[i] = _buf->sgetc();
+
+        return static_cast<CastTo_>(*reinterpret_cast<ValTy_*>(buffer));
+    }
+
+    template <typename ValTy_>
+    auto _get_number(char ch) const
+    {
+        auto const code = typecode(ch);
+        switch (code)
+        {
+            case typecode::positive_fixint:
+            case typecode::negative_fixint:
+                return ValTy_(ch);
+
+            case typecode::bool_false: return ValTy_(0);
+            case typecode::bool_true: return ValTy_(1);
+
+            case typecode::float32: return _read_number<float, ValTy_>();
+            case typecode::float64: return _read_number<double, ValTy_>();
+
+            case typecode::uint8: return _read_number<uint8_t, ValTy_>();
+            case typecode::uint16: return _read_number<uint16_t, ValTy_>();
+            case typecode::uint32: return _read_number<uint32_t, ValTy_>();
+            case typecode::uint64: return _read_number<uint64_t, ValTy_>();
+            case typecode::int8: return _read_number<int8_t, ValTy_>();
+            case typecode::int16: return _read_number<int16_t, ValTy_>();
+            case typecode::int32: return _read_number<int32_t, ValTy_>();
+            case typecode::int64: return _read_number<int64_t, ValTy_>();
+
+            default:
+                throw error::reader_parse_failed{(if_reader*)this}.message("[msgpack] number type expected: %d", code);
+        }
+    }
 
    public:
-    if_reader& operator>>(nullptr_t a_nullptr) override;
-    if_reader& operator>>(bool& v) override;
-    if_reader& operator>>(int64_t& v) override;
-    if_reader& operator>>(double& v) override;
+    if_reader& operator>>(nullptr_t a_nullptr) override
+    {
+        _step_context();
+        _verify_type<typecode::nil>(_buf->sgetc());
+
+        return *this;
+    }
+
+    if_reader& operator>>(bool& v) override
+    {
+        _step_context();
+        v = _get_number<bool>(_buf->sgetc());
+        return *this;
+    }
+
+   private:
+    template <typename T_>
+    if_reader& _quick_get_num(T_& ref)
+    {
+        _step_context();
+        ref = _get_number<T_>(_buf->sgetc());
+        return *this;
+    }
+
+   public:
+    if_reader& operator>>(int8_t& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(int16_t& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(int32_t& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(int64_t& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(uint8_t& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(uint16_t& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(uint32_t& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(uint64_t& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(float& v) override { return _quick_get_num(v); }
+    if_reader& operator>>(double& v) override { return _quick_get_num(v); }
+
     if_reader& operator>>(std::string& v) override;
+
     size_t elem_left() const override;
     size_t begin_binary() override;
+
     if_reader& binary_read_some(mutable_buffer_view v) override;
+
     void end_binary() override;
+
     context_key begin_object() override;
     context_key begin_array() override;
+
     bool should_break(const context_key& key) const override;
+
     void end_object(context_key key) override;
     void end_array(context_key key) override;
     void read_key_next() override;
+
     bool is_null_next() const override;
     bool is_object_next() const override;
     bool is_array_next() const override;
 
    private:
-    void _validate();
+    void _step_context()
+    {
+        if (_scope.empty()) { return; }
+
+        auto scope = &_scope.back();
+        if (scope->elems_left == 0) { throw error::reader_invalid_context{this}.message("[msgpack] scope already finished"); }
+        --scope->elems_left;
+    }
+
+   private:
+    static typecode _typecode(char v) noexcept
+    {
+        if (v & 0xe0) { return typecode::negative_fixint; }
+        if (v & 0xc0) { return typecode(v); }
+        if ((v & 0x7f) == 0) { return typecode::positive_fixint; }
+        if (v & 0b101'00000) { return typecode::fixstr; }
+        if (v & 0b1000'0000) { return typecode::fixmap; }
+        if (v & 0b1001'0000) { return typecode::fixarray; }
+
+        return typecode::error;
+    }
 };
 
 }  // namespace CPPHEADERS_NS_::archive::msgpack

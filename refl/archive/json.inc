@@ -38,8 +38,8 @@
 namespace CPPHEADERS_NS_::archive::json {
 using namespace std::literals;
 
-writer::writer(std::streambuf& buf, size_t depth_maybe)
-        : if_writer(buf), _base64(&buf)
+writer::writer(std::streambuf* buf, size_t depth_maybe)
+        : if_writer(buf), _base64(buf)
 {
     _ctx.reserve_depth(depth_maybe);
 }
@@ -323,7 +323,7 @@ struct reader::impl
     }
 };
 
-reader::reader(std::streambuf& buf)
+reader::reader(std::streambuf* buf)
         : if_reader(buf), self(new impl{this})
 {
     reset(), _validate();
