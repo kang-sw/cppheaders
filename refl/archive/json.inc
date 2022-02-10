@@ -360,10 +360,15 @@ if_reader& reader::read(int64_t& v)
 
     auto next = self->next();
     auto tok  = self->tokstr(*next);
-    if (next->type != JSMN_PRIMITIVE) { throw error::reader_parse_failed{this}; }
-
-    auto r = std::from_chars(tok.data(), tok.data() + tok.size(), v);
-    if (r.ptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}.message(tok); }
+    if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE)
+    {
+        auto r = std::from_chars(tok.data(), tok.data() + tok.size(), v);
+        if (r.ptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}.message(tok); }
+    }
+    else
+    {
+        throw error::reader_parse_failed{this};
+    }
 
     self->step_over();
     return *this;
@@ -375,11 +380,16 @@ if_reader& reader::read(double& v)
 
     auto next = self->next();
     auto tok  = self->tokstr(*next);
-    if (next->type != JSMN_PRIMITIVE) { throw error::reader_parse_failed{this}; }
-
-    char* eptr = {};
-    v          = strtod(tok.data(), &eptr);
-    if (eptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}.message(tok); }
+    if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE)
+    {
+        char* eptr = {};
+        v          = strtod(tok.data(), &eptr);
+        if (eptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}.message(tok); }
+    }
+    else
+    {
+        throw error::reader_parse_failed{this};
+    }
 
     self->step_over();
     return *this;
@@ -420,16 +430,16 @@ size_t reader::begin_binary()
     return base64::decoded_size(buffer);
 }
 
-if_reader& reader::binary_read_some(mutable_buffer_view v)
+size_t reader::binary_read_some(mutable_buffer_view v)
 {
     auto next = self->next();
     if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
 
     // copy buffer
     auto n_read = self->base64.sgetn(v.data(), v.size());
-    if (n_read != v.size()) { throw error::reader_parse_failed{this}.message("buffer size mismatch"); }
+    if (n_read == EOF) { return 0; }
 
-    return *this;
+    return n_read;
 }
 
 void reader::end_binary()

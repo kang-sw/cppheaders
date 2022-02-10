@@ -584,18 +584,14 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                 strm->binary_pop();
             }
         }
+
         void restore(archive::if_reader* strm,
                      binary_type* data,
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
         {
-            using value_type = typename Container_::value_type;
-
-            auto binsize                = strm->begin_binary();
+            auto chunk_size             = strm->begin_binary();
             [[maybe_unused]] auto clean = cleanup([&] { strm->end_binary(); });
-
-            if (binsize % sizeof(value_type) != 0)
-                throw refl::error::primitive{}.set(strm).message("Binary alignment mismatch");
 
             if constexpr (not binary_type::is_container)
             {
@@ -603,39 +599,116 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
             }
             else
             {
-                auto elemsize = binsize / sizeof(value_type);
+                using value_type = typename Container_::value_type;
+
+                auto elem_count_verified =
+                        [&] {
+                            if (chunk_size % sizeof(value_type) != 0)
+                                throw refl::error::primitive{}.set(strm).message("Binary alignment mismatch");
+
+                            return chunk_size / sizeof(value_type);
+                        };
 
                 if constexpr (binary_type::is_contiguous)
                 {
-                    if constexpr (refl::has_resize<Container_>)
+                    if (chunk_size != ~size_t{})
                     {
-                        // If it's dynamic, read all.
-                        data->resize(elemsize);
-                    }
+                        if constexpr (refl::has_resize<Container_>)
+                        {
+                            // If it's dynamic, read all.
+                            data->resize(elem_count_verified());
+                        }
 
-                    strm->binary_read_some({std::data(*data), std::size(*data)});
+                        strm->binary_read_some({std::data(*data), std::size(*data)});
+                    }
+                    else  // if chunk size is not specified ...
+                    {
+                        if constexpr (refl::has_emplace_back<Container_>)
+                            data->clear();
+
+                        value_type elem_buf;
+                        value_type* elem;
+
+                        for (size_t idx = 0;; ++idx)
+                        {
+                            if constexpr (refl::has_emplace_back<Container_>)
+                                elem = &elem_buf;
+                            else if (idx < std::size(*data))
+                                elem = std::data(*data) + idx;
+                            else
+                                break;
+
+                            auto n = strm->binary_read_some(mutable_buffer_view{elem, 1});
+
+                            if (n == sizeof *elem)
+                            {
+                                if constexpr (refl::has_emplace_back<Container_>)
+                                    data->emplace_back(std::move(*elem));
+                            }
+                            else if (n == 0)
+                            {
+                                if constexpr (refl::has_emplace_back<Container_>)
+                                    break;
+                                else
+                                    throw refl::error::primitive{}.set(strm).message("missing data");
+                            }
+                            else if (n != sizeof(value_type))
+                            {
+                                throw refl::error::primitive{}.set(strm).message("binary data alignment mismatch");
+                            }
+                        }
+                    }
                 }
                 else
                 {
-                    if constexpr (refl::has_reserve_v<Container_>)
+                    if (chunk_size != ~size_t{})
                     {
-                        data->reserve(elemsize);
+                        auto elemsize = elem_count_verified();
+
+                        if constexpr (refl::has_reserve_v<Container_>)
+                        {
+                            data->reserve(elemsize);
+                        }
+
+                        data->clear();
+                        value_type* mutable_data = {};
+                        for (auto idx : perfkit::count(elemsize))
+                        {
+                            if constexpr (refl::has_emplace_back<Container_>)  // maybe vector, list, deque ...
+                                mutable_data = &data->emplace_back();
+                            else if constexpr (refl::has_emplace_front<Container_>)  // maybe forward_list
+                                mutable_data = &data->emplace_front();
+                            else if constexpr (refl::has_emplace<Container_>)  // maybe set
+                                mutable_data = &*data->emplace().first;
+                            else
+                                Container_::ERROR_INVALID_CONTAINER;
+
+                            strm->binary_read_some({mutable_data, 1});
+                        }
                     }
-
-                    data->clear();
-                    value_type* mutable_data = {};
-                    for (auto idx : perfkit::count(elemsize))
+                    else  // chunk size not specified
                     {
-                        if constexpr (refl::has_emplace_back<Container_>)  // maybe vector, list, deque ...
-                            mutable_data = &data->emplace_back();
-                        else if constexpr (refl::has_emplace_front<Container_>)  // maybe forward_list
-                            mutable_data = &data->emplace_front();
-                        else if constexpr (refl::has_emplace<Container_>)  // maybe set
-                            mutable_data = &*data->emplace().first;
-                        else
-                            Container_::ERROR_INVALID_CONTAINER;
+                        data->clear();
+                        value_type chunk;
 
-                        strm->binary_read_some({mutable_data, 1});
+                        for (;;)
+                        {
+                            auto n = strm->binary_read_some({&chunk, 1});
+
+                            if (n == 0)
+                                break;
+                            else if (n != sizeof chunk)
+                                throw refl::error::primitive{}.set(strm).message("binary data alignment mismatch");
+
+                            if constexpr (refl::has_emplace_back<Container_>)  // maybe vector, list, deque ...
+                                data->emplace_back(std::move(chunk));
+                            else if constexpr (refl::has_emplace_front<Container_>)  // maybe forward_list
+                                data->emplace_front(std::move(chunk));
+                            else if constexpr (refl::has_emplace<Container_>)  // maybe set
+                                data->emplace(std::move(chunk));
+                            else
+                                Container_::ERROR_INVALID_CONTAINER;
+                        }
                     }
                 }
             }

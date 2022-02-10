@@ -317,11 +317,13 @@ class if_reader : public if_archive_base
 
     //! returns next binary size
     //! @throw parse_error if current context is not binary (binary can read multiple times)
-    //! @return number of bytes to be read from stream. Implementation always return valid value,
-    //!    unless it throw.
-    virtual size_t begin_binary()                              = 0;
-    virtual if_reader& binary_read_some(mutable_buffer_view v) = 0;
-    virtual void end_binary()                                  = 0;
+    //! @return number of bytes to be read from stream. If binary size cannot be known without
+    //!          reading content, implementation may return -1.
+    virtual size_t begin_binary() = 0;
+
+    //! @return number of bytes actually read.
+    virtual size_t binary_read_some(mutable_buffer_view v) = 0;
+    virtual void end_binary()                              = 0;
 
     /**
      * to distinguish variable sized object's boundary.

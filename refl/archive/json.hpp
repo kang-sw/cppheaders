@@ -91,7 +91,7 @@ class reader : public archive::if_reader
     if_reader& read(std::string& v) override;
     size_t elem_left() const override;
     size_t begin_binary() override;
-    if_reader& binary_read_some(mutable_buffer_view v) override;
+    size_t binary_read_some(mutable_buffer_view v) override;
     void end_binary() override;
     context_key begin_object() override;
     context_key begin_array() override;

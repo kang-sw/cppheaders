@@ -136,8 +136,9 @@ struct vectors
     std::vector<std::list<double>> f2
             = {{1., 2., 3.}, {4., 5, 6}};
 
-    cpph::binary<std::vector<int>> f3{1, 2, 3, 4};
-    cpph::binary<std::list<int>> f4{0x5abbccdd, 0x12213456, 0x31315142};
+    binary<std::vector<int>> f3{1, 2, 3, 4};
+    binary<std::list<int>> f4{0x5abbccdd, 0x12213456, 0x31315142};
+    binary<abcd> f5;
 
     my_enum my_enum_value = my_enum::test3;
 
@@ -155,7 +156,7 @@ struct vectors
     variant_type vt4 = false;
 
     CPPH_REFL_DEFINE_OBJECT_inline(
-            f, f2, f3, f4, my_enum_value, arg, bb, some_outer,
+            f, f2, f3, f4, f5, my_enum_value, arg, bb, some_outer,
             no_val, has_val,
             vt1, vt2, vt3, vt4);
 };
@@ -223,6 +224,7 @@ static auto ssvd = [] {
     other2.has_val = {};
 
     b64buf.pubsync();
+    std::cout << msgpack_buf.str();
 
     return nullptr;
 };
