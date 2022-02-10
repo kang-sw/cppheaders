@@ -79,7 +79,7 @@ class basic_b64 : public std::streambuf
             if (_n_obuf() != 0) { _write_word(); }
 
             _o()[0] = ch;
-            setp(_o().data(), _o().data() + 1, _o().data() + _o().size());
+            setp(_o().data() + 1, _o().data() + _o().size());
 
             return traits_type::to_int_type(ch);
         }

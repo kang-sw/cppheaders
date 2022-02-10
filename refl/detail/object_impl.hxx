@@ -24,6 +24,7 @@
 // project home: https://github.com/perfkitpp
 #pragma once
 
+#include <atomic>
 #include <map>
 #include <optional>
 #include <string_view>
@@ -31,8 +32,8 @@
 #include <vector>
 
 #include "../../__namespace__"
-#include "../algorithm/std.hxx"
-#include "../counter.hxx"
+#include "../../algorithm/std.hxx"
+#include "../../counter.hxx"
 #include "if_archive.hxx"
 
 namespace CPPHEADERS_NS_::refl {
@@ -681,8 +682,8 @@ class object_metadata
     class basic_factory
     {
        public:
-        virtual ~basic_factory() noexcept       = default;
-        basic_factory() noexcept                = default;
+        virtual ~basic_factory()                = default;
+        basic_factory()                         = default;
         basic_factory(basic_factory&&) noexcept = default;
         basic_factory& operator=(basic_factory&&) noexcept = default;
 

@@ -41,7 +41,7 @@ class view : public std::streambuf
     void reset(array_view<char> buf)
     {
         setg(buf.data(), buf.data(), buf.data() + buf.size());
-        setp(buf.data(), buf.data(), buf.data() + buf.size());
+        setp(buf.data(), buf.data() + buf.size());
     }
 };
 
