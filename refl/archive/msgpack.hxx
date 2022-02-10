@@ -330,7 +330,7 @@ class reader : public archive::if_reader
 {
     union key_t
     {
-        context_key key;
+        context_key data;
         struct
         {
             uint32_t id;
@@ -349,13 +349,14 @@ class reader : public archive::if_reader
 
         key_t key;
         type_t type;
-        uint32_t elems_left;
 
-        bool _reading_key = false;
+        uint32_t elems_left;
+        bool reading_key = false;
     };
 
    private:
     std::vector<scope_t> _scope;
+    uint32_t _scope_key_gen = 0;
 
    public:
     explicit reader(std::streambuf* buf, size_t reserved_depth = 0)
@@ -367,74 +368,111 @@ class reader : public archive::if_reader
     void reserve_depth(size_t n) { _scope.reserve(n); }
 
    private:
-    template <typecode... Args_>
-    void _verify_type(typecode code) const
-    {
-        if (((code != Args_) || ...))
-        {
-            throw error::reader_parse_failed{(if_reader*)this}.message("[msgpack] type error");
-        }
-    }
-
-    template <typecode... Args_>
-    void _verify_type(char c) const
-    {
-        _verify_type<Args_...>(_typecode(c));
-    }
-
     template <typename ValTy_, typename CastTo_ = ValTy_>
-    CastTo_ _read_number() const
+    CastTo_ _get_n_endian()
     {
         char buffer[sizeof(ValTy_)];
         for (int i = sizeof buffer - 1; i >= 0; --i)
-            buffer[i] = _buf->sgetc();
+            buffer[i] = _buf->sbumpc();
 
         return static_cast<CastTo_>(*reinterpret_cast<ValTy_*>(buffer));
     }
 
-    template <typename ValTy_>
-    auto _get_number(char ch) const
+    constexpr static typecode _do_offset(typecode value, int n)
     {
-        auto const code = typecode(ch);
+        return typecode((int)value + n);
+    }
+
+    // Used for str8, bin8
+    template <typecode Base_, typecode Fix_ = typecode::error, size_t FixMask_ = 0,
+              typename HeaderChar_,
+              typename = std::enable_if_t<sizeof(HeaderChar_) == 1>>
+    uint32_t _read_elem_count(HeaderChar_ header)
+    {
+        switch (typecode(header))
+        {
+            case Fix_: return (uint8_t)header & FixMask_;
+            case Base_: return _get_n_endian<uint8_t>();
+            case _do_offset(Base_, 1): return _get_n_endian<uint16_t>();
+            case _do_offset(Base_, 2): return _get_n_endian<uint32_t>();
+
+            default:
+                throw error::reader_parse_failed{this}.message("type error");
+        }
+    }
+
+    // Used for array16, bin16
+
+    double _parse_number(char header)
+    {
+        char buf[64];
+        char buflen = (char)_read_elem_count<typecode::str8, typecode::fixstr, 31>(header);
+
+        if (buflen >= sizeof buf)
+            throw error::reader_parse_failed{this}.message("too big number");
+
+        if (_buf->sgetn(buf, buflen) != buflen)
+            throw error::reader_read_stream_error{this}.message("invalid EOF");
+
+        buf[buflen] = '\0';
+        char* tail;
+        auto value = strtod(buf, &tail);
+
+        if (tail - buf != buflen)
+            throw error::reader_parse_failed{this}.message("given string is not a number");
+
+        return value;
+    }
+
+    template <typename ValTy_>
+    auto _read_number(char header)
+    {
+        auto const code = typecode(header);
         switch (code)
         {
             case typecode::positive_fixint:
             case typecode::negative_fixint:
-                return ValTy_(ch);
+                return ValTy_(header);
 
             case typecode::bool_false: return ValTy_(0);
             case typecode::bool_true: return ValTy_(1);
 
-            case typecode::float32: return _read_number<float, ValTy_>();
-            case typecode::float64: return _read_number<double, ValTy_>();
+            case typecode::float32: return _get_n_endian<float, ValTy_>();
+            case typecode::float64: return _get_n_endian<double, ValTy_>();
 
-            case typecode::uint8: return _read_number<uint8_t, ValTy_>();
-            case typecode::uint16: return _read_number<uint16_t, ValTy_>();
-            case typecode::uint32: return _read_number<uint32_t, ValTy_>();
-            case typecode::uint64: return _read_number<uint64_t, ValTy_>();
-            case typecode::int8: return _read_number<int8_t, ValTy_>();
-            case typecode::int16: return _read_number<int16_t, ValTy_>();
-            case typecode::int32: return _read_number<int32_t, ValTy_>();
-            case typecode::int64: return _read_number<int64_t, ValTy_>();
+            case typecode::uint8: return _get_n_endian<uint8_t, ValTy_>();
+            case typecode::uint16: return _get_n_endian<uint16_t, ValTy_>();
+            case typecode::uint32: return _get_n_endian<uint32_t, ValTy_>();
+            case typecode::uint64: return _get_n_endian<uint64_t, ValTy_>();
+            case typecode::int8: return _get_n_endian<int8_t, ValTy_>();
+            case typecode::int16: return _get_n_endian<int16_t, ValTy_>();
+            case typecode::int32: return _get_n_endian<int32_t, ValTy_>();
+            case typecode::int64: return _get_n_endian<int64_t, ValTy_>();
+
+            case typecode::fixstr:
+            case typecode::str8:
+            case typecode::str16:
+            case typecode::str32:
+                return ValTy_(_parse_number(header));
 
             default:
-                throw error::reader_parse_failed{(if_reader*)this}.message("[msgpack] number type expected: %d", code);
+                throw error::reader_parse_failed{(if_reader*)this}
+                        .message("number type expected: %02x", code);
         }
     }
 
    public:
-    if_reader& read(nullptr_t a_nullptr) override
+    if_reader& read(nullptr_t) override
     {
-        _step_context();
-        _verify_type<typecode::nil>(_buf->sgetc());
-
+        // skip single item
+        _skip_once();
         return *this;
     }
 
     if_reader& read(bool& v) override
     {
         _step_context();
-        v = _get_number<bool>(_buf->sgetc());
+        v = _read_number<bool>(_verify_eof(_buf->sbumpc()));
         return *this;
     }
 
@@ -443,7 +481,7 @@ class reader : public archive::if_reader
     if_reader& _quick_get_num(T_& ref)
     {
         _step_context();
-        ref = _get_number<T_>(_buf->sgetc());
+        ref = _read_number<T_>(_verify_eof(_buf->sbumpc()));
         return *this;
     }
 
@@ -459,21 +497,62 @@ class reader : public archive::if_reader
     if_reader& read(float& v) override { return _quick_get_num(v); }
     if_reader& read(double& v) override { return _quick_get_num(v); }
 
-    if_reader& read(std::string& v) override;
+    if_reader& read(std::string& v) override
+    {
+        _step_context();
 
-    size_t elem_left() const override;
-    size_t begin_binary() override;
+        auto header     = _verify_eof(_buf->sbumpc());
+        uint32_t buflen = _read_elem_count<typecode::str8, typecode::fixstr, 31>(header);
 
-    if_reader& binary_read_some(mutable_buffer_view v) override;
+        v.resize(buflen);
+        _buf->sgetn(v.data(), v.size());
+
+        return *this;
+    }
+
+    size_t elem_left() const override { return _scope_ref().elems_left; }
+
+    bool should_break(const context_key& key) const override
+    {
+        auto scope = &_scope.back();
+        return key.value == scope->key.data.value && scope->elems_left == 0;
+    }
+
+    context_key begin_object() override
+    {
+        _verify_not_key_type();
+        _step_context();
+
+        auto header = _verify_eof(_buf->sbumpc());
+        auto n_elem = _read_elem_count<_do_offset(typecode::map16, -1), typecode::fixmap, 15>(header);
+
+        return _new_scope(scope_t::type_obj, n_elem)->key.data;
+    }
+
+    void end_object(context_key key) override
+    {
+        _verify_end(key);
+        _break_scope();
+    }
+
+    size_t begin_binary() override
+    {
+        _verify_not_key_type();
+        _step_context();
+
+        auto header     = _verify_eof(_buf->sbumpc());
+        uint32_t buflen = _read_elem_count<typecode::bin8>(header);
+
+        _new_scope(scope_t::type_binary, buflen);
+        return buflen;
+    }
+
+    size_t binary_read_some(mutable_buffer_view v) override;
 
     void end_binary() override;
 
-    context_key begin_object() override;
     context_key begin_array() override;
 
-    bool should_break(const context_key& key) const override;
-
-    void end_object(context_key key) override;
     void end_array(context_key key) override;
     void read_key_next() override;
 
@@ -482,14 +561,143 @@ class reader : public archive::if_reader
     bool is_array_next() const override;
 
    private:
+    void _break_scope()
+    {
+        // TODO
+    }
+
+    void _skip_once()
+    {
+        // intentionally uses getc instead of bumpc
+        auto header         = _verify_eof(_buf->sgetc());
+        uint32_t skip_bytes = 0;
+        switch (typecode(header))
+        {
+            case typecode::positive_fixint:
+            case typecode::negative_fixint:
+            case typecode::bool_false:
+            case typecode::bool_true:
+            case typecode::float32:
+            case typecode::float64:
+            case typecode::uint8:
+            case typecode::uint16:
+            case typecode::uint32:
+            case typecode::uint64:
+            case typecode::int8:
+            case typecode::int16:
+            case typecode::int32:
+            case typecode::int64:
+                _buf->sbumpc();
+                _read_number<uint64_t>(header);
+                break;
+
+            case typecode::fixstr:
+            case typecode::str8:
+            case typecode::str16:
+            case typecode::str32:
+                // 1 for header, bumpc
+                skip_bytes = 1 + _read_elem_count<typecode::str8, typecode::fixstr, 31>(header);
+                break;
+
+            case typecode::bin8:
+            case typecode::bin16:
+            case typecode::bin32:
+                skip_bytes = 1 + _read_elem_count<typecode::bin8>(header) + 1;
+                break;
+
+            case typecode::fixarray:
+            case typecode::array16:
+            case typecode::array32:
+                end_array(begin_array());
+                break;
+
+            case typecode::fixmap:
+            case typecode::map16:
+            case typecode::map32:
+                end_object(begin_object());
+                break;
+
+            case typecode::nil:
+                skip_bytes = 1;
+                break;
+
+            case typecode::fixext1: skip_bytes = 3; break;
+            case typecode::fixext2: skip_bytes = 4; break;
+            case typecode::fixext4: skip_bytes = 6; break;
+            case typecode::fixext8: skip_bytes = 10; break;
+            case typecode::fixext16: skip_bytes = 18; break;
+
+            case typecode::ext8:
+            case typecode::ext16:
+            case typecode::ext32:
+                skip_bytes = 1 + _read_elem_count<typecode::ext8>(header);
+                break;
+
+            case typecode::error:
+                throw error::reader_parse_failed{this}.message("unsupported format: %02x", header);
+        }
+
+        while (skip_bytes--) { _buf->sbumpc(); }
+    }
+
+    void _verify_end(context_key key)
+    {
+        // top scope is same as given key
+    }
+
+    scope_t* _new_scope(scope_t::type_t ty, uint32_t n_elems)
+    {
+        auto scope         = &_scope.emplace_back();
+        scope->type        = ty;
+        scope->elems_left  = n_elems + n_elems * (ty == scope_t::type_obj);
+        scope->reading_key = false;
+        scope->key.index   = uint32_t(_scope.size() - 1);
+        scope->key.id      = ++_scope_key_gen;
+
+        return scope;
+    }
+
+    void _verify_not_key_type()
+    {
+        if (_scope.empty()) { return; }
+
+        auto const& scope = _scope.back();
+        if (scope.type != scope_t::type_obj
+            || (scope.elems_left & 1) && not scope.reading_key)
+        {
+            return;
+        }
+
+        throw error::reader_invalid_context{this}.message("must be in value context");
+    }
+
+    char _verify_eof(int value)
+    {
+        if (value == EOF) { throw error::reader_read_stream_error{this}.message("invalid end of file"); }
+        return char(value);
+    }
+
     void _step_context()
     {
         if (_scope.empty()) { return; }
 
         auto scope = &_scope.back();
-        if (scope->elems_left == 0) { throw error::reader_invalid_context{this}.message("[msgpack] scope already finished"); }
-        --scope->elems_left;
+        if (scope->elems_left-- == 0)
+            throw error::reader_invalid_context{this}.message("all elements read");
+
+        // TODO: if key, validate key context ...
     }
+
+    scope_t const& _scope_ref() const
+    {
+        auto size = _scope.size();
+        if (size == 0)
+            throw error::reader_invalid_context{(if_reader*)this}.message("not in any valid scope!");
+
+        return _scope[size - 1];
+    }
+
+    scope_t& _scope_ref() { return (scope_t&)((reader const*)this)->_scope_ref(); }
 
    private:
     static typecode _typecode(char v) noexcept
