@@ -73,7 +73,7 @@ CPPH_DECLARE_EXCEPTION(archive_exception, basic_exception<archive_exception>);
 struct writer_exception : archive_exception
 {
     if_writer* writer;
-    explicit writer_exception(if_writer* wr) : writer(wr) {}
+    explicit writer_exception(if_writer const* wr) : writer((if_writer*)wr) {}
 };
 
 CPPH_DECLARE_EXCEPTION(writer_invalid_state, writer_exception);
@@ -81,7 +81,7 @@ CPPH_DECLARE_EXCEPTION(writer_invalid_state, writer_exception);
 struct reader_exception : archive_exception
 {
     if_reader* reader;
-    explicit reader_exception(if_reader* rd) : reader(rd) {}
+    explicit reader_exception(if_reader const* rd) : reader((if_reader*)rd) {}
 };
 
 CPPH_DECLARE_EXCEPTION(reader_finished_sequence, reader_exception);

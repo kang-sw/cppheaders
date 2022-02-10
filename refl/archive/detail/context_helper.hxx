@@ -23,8 +23,8 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "../../__namespace__"
-#include "../detail/if_archive.hxx"
+#include "../../../__namespace__"
+#include "../../detail/if_archive.hxx"
 
 namespace CPPHEADERS_NS_::archive::error {
 CPPH_DECLARE_EXCEPTION(writer_out_of_range, writer_invalid_state);
@@ -275,7 +275,6 @@ class write_context_helper
 class read_context_helper
 {
    public:
-
 };
 
 }  // namespace CPPHEADERS_NS_::archive::detail

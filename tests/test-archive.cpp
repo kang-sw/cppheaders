@@ -29,7 +29,8 @@
 #include "catch.hpp"
 #include "refl/archive/debug_string_writer.hxx"
 #include "refl/archive/json.hpp"
-#include "refl/archive/msgpack.hxx"
+#include "refl/archive/msgpack-reader.hxx"
+#include "refl/archive/msgpack-writer.hxx"
 #include "refl/buffer.hxx"
 #include "refl/container/variant.hxx"
 #include "refl/object.hxx"
@@ -156,7 +157,7 @@ struct vectors
     variant_type vt4 = false;
 
     CPPH_REFL_DEFINE_OBJECT_inline(
-            f, f2, f3, f4, f5, my_enum_value, arg, bb, some_outer,
+            bb, f, f2, f3, f4, f5, my_enum_value, arg, some_outer,
             no_val, has_val,
             vt1, vt2, vt3, vt4);
 };
@@ -185,6 +186,41 @@ struct testarg_2
     CPPH_REFL_DEFINE_OBJECT_inline(unistr);
 };
 
+std::string g_debugstr_1;
+std::string g_debugstr_2;
+
+class stream_debug_adapter : public std::streambuf
+{
+    std::streambuf* _other;
+    std::string* _str;
+
+   public:
+    stream_debug_adapter(std::streambuf& other, std::string* str) : _other(&other), _str(str) {}
+
+   protected:
+    int_type overflow(int_type ch) override
+    {
+        fputc(ch, stdout), fflush(stdout);
+        _str->push_back(ch);
+        return _other->sputc(ch);
+    }
+
+    int_type underflow() override
+    {
+        auto ch = _other->sgetc();
+        return ch;
+    }
+
+    int_type uflow() override
+    {
+        auto ch = _other->sbumpc();
+        fputc(ch, stdout), fflush(stdout);
+        _str->push_back(ch);
+
+        return ch;
+    }
+};
+
 static auto ssvd = [] {
     using TestType = ns::vectors;
     std::stringbuf strbuf;
@@ -194,7 +230,7 @@ static auto ssvd = [] {
     TestType arg{};
 
     std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
-    writer.serialize(arg);
+    writer << arg;
     std::cout << strbuf.str();
     std::cout.flush();
 
@@ -212,10 +248,20 @@ static auto ssvd = [] {
     std::string str;
     reader >> str;
 
-    std::stringstream msgpack_buf;
-    streambuf::b64 b64buf{msgpack_buf.rdbuf()};
-    archive::msgpack::writer msgwr{&b64buf};
+    std::stringstream msgpack_bufb64;
+    stream_debug_adapter adapter{*msgpack_bufb64.rdbuf(), &g_debugstr_1};
+    streambuf::b64 cvtbase64{&adapter};
+
+    archive::msgpack::writer msgwr{&cvtbase64};
     msgwr.serialize(TestType{});
+
+    cvtbase64.pubsync();
+    std::cout << "\n----------- MSGPACK READING -------------- " << std::endl;
+
+    streambuf::basic_b64<1, 256> cvtbase64_r{&adapter};
+    stream_debug_adapter adapter_2{cvtbase64_r, &g_debugstr_2};
+
+    archive::msgpack::reader msgrd{&adapter_2};
 
     TestType other2{};
     other2.arg     = {};
@@ -223,11 +269,13 @@ static auto ssvd = [] {
     other2.f       = {};
     other2.has_val = {};
 
-    b64buf.pubsync();
-    std::cout << msgpack_buf.str();
+    g_debugstr_1.clear();
+    msgrd >> other2;
 
     return nullptr;
 };
+
+static const auto f = ssvd();
 
 TEST_CASE("archive", "[.]")
 {

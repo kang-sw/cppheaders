@@ -25,15 +25,15 @@
 #include <charconv>
 #include <iterator>
 
-#include "../../helper/strutil.hxx"
-#include "../../streambuf/base64.hxx"
-#include "../../streambuf/view.hxx"
-#include "../../utility/inserter.hxx"
-#include "json.hpp"
+#include "../../../helper/strutil.hxx"
+#include "../../../streambuf/base64.hxx"
+#include "../../../streambuf/view.hxx"
+#include "../../../utility/inserter.hxx"
+#include "../json.hpp"
 
 #define JSMN_STATIC
 #define JSMN_STRICT
-#include "../../third/jsmn.h"
+#include "../../../third/jsmn.h"
 
 namespace CPPHEADERS_NS_::archive::json {
 using namespace std::literals;

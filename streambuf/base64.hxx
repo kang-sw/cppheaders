@@ -40,19 +40,24 @@ class basic_b64 : public std::streambuf
     {
         n_write_words = WriteWords_,
         n_read_words  = ReadWords_,
+
+        n_write_bytes = n_write_words * 3,
+        n_read_bytes  = n_read_words * 3,
+
+        read_offset = (n_write_bytes + 3) / 4 * 4
     };
 
-    char _iobuf[n_write_words * 3 + n_read_words * 3];
+    char _iobuf[read_offset + n_read_bytes];
 
    public:
-    auto& _obuf() { return (char(&)[n_write_words * 3]) _iobuf; }
-    auto& _ibuf() { return (char(&)[n_read_words * 3]) _iobuf[n_write_words * 3]; }
+    auto& _o() { return *reinterpret_cast<std::array<char, n_write_bytes>*>(_iobuf); }
+    auto& _i() { return *reinterpret_cast<std::array<char, n_read_bytes>*>(_iobuf + read_offset); }
 
    public:
     explicit basic_b64(std::streambuf* adapted = nullptr) noexcept
             : _src(adapted)
     {
-        setp(_obuf(), _obuf() + n_write_words * 3);
+        setp(_o().data(), _o().data() + n_write_bytes);
     }
 
     std::streambuf* reset(std::streambuf* adapted = nullptr) noexcept
@@ -73,8 +78,8 @@ class basic_b64 : public std::streambuf
         {
             if (_n_obuf() != 0) { _write_word(); }
 
-            _obuf()[0] = ch;
-            setp(_obuf(), _obuf() + 1, _obuf() + sizeof _obuf());
+            _o()[0] = ch;
+            setp(_o().data(), _o().data() + 1, _o().data() + _o().size());
 
             return traits_type::to_int_type(ch);
         }
@@ -88,15 +93,17 @@ class basic_b64 : public std::streambuf
     {
         if constexpr (n_read_words > 0)
         {
-            char buf[base64::encoded_size(sizeof _ibuf())];
+            char buf[base64::encoded_size(n_read_bytes)];
             auto n_read = _src->sgetn(buf, sizeof buf);
-            if (n_read % 4 != 0) { return traits_type::eof(); }  // errnous situation
+
+            if (n_read % 4 != 0)
+                return traits_type::eof();
 
             auto n_decoded = base64::decoded_size(array_view(buf, n_read));
-            base64::decode_bytes(buf, n_read, _ibuf());
+            base64::decode_bytes(buf, n_read, _i().begin());
 
-            setg(_ibuf(), _ibuf(), _ibuf() + n_decoded);
-            return traits_type::to_int_type(_ibuf()[0]);
+            setg(_i().data(), _i().data(), _i().data() + n_decoded);
+            return traits_type::to_int_type(_i()[0]);
         }
         else
         {
@@ -112,7 +119,7 @@ class basic_b64 : public std::streambuf
             if (_n_obuf() > 0)
             {
                 _write_word();
-                setp(_obuf(), _obuf() + sizeof _obuf());
+                setp(_o().data(), _o().data() + _o().size());
             }
 
         return _src->pubsync();
@@ -128,11 +135,11 @@ class basic_b64 : public std::streambuf
     {
         if constexpr (n_write_words > 0)
         {
-            char encoded[base64::encoded_size(sizeof _obuf())];
+            char encoded[base64::encoded_size(n_write_bytes)];
 
             auto n_obuf    = _n_obuf();
             auto n_written = base64::encoded_size(n_obuf);
-            base64::encode_bytes(_obuf(), n_obuf, encoded);
+            base64::encode_bytes(_o().data(), n_obuf, encoded);
             _src->sputn(encoded, n_written);
         }
     }
