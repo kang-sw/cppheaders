@@ -49,7 +49,7 @@ if_writer& writer::operator<<(double v)
     _on_write();
 
     char buf[32];
-    auto r = snprintf(buf, sizeof buf, "%f", v);
+    auto r = snprintf(buf, sizeof buf, "%.14g", v);
 
     _buf->sputn(buf, r);
     return *this;
