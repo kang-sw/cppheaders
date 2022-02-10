@@ -232,7 +232,7 @@ struct reader::impl
     int64_t context_keygen = 0;
 
     streambuf::view base64_view{};
-    streambuf::b64 base64{&base64_view};
+    streambuf::b64<0, 10> base64{&base64_view};
 
    public:
     auto next() const { return &tokens.at(pos_next); }

@@ -31,19 +31,24 @@
 
 namespace CPPHEADERS_NS_::streambuf {
 
+template <size_t WriteWords_ = 1, size_t ReadWords_ = 1>
 class b64 : public std::streambuf
 {
     std::streambuf* _src;
 
-    char _obuf[3];
-    char _n_obuf = 0;
-
-    char _ibuf[3];
+    enum
+    {
+        n_write_words = std::max<size_t>(1, WriteWords_),
+        n_read_words  = std::max<size_t>(1, ReadWords_),
+    };
+    char _obuf[n_write_words * 3];
+    char _ibuf[n_read_words * 3];
 
    public:
     explicit b64(std::streambuf* adapted = nullptr) noexcept
             : _src(adapted)
     {
+        setp(_obuf, _obuf + sizeof _obuf);
     }
 
     std::streambuf* reset(std::streambuf* adapted = nullptr) noexcept
@@ -52,27 +57,29 @@ class b64 : public std::streambuf
         return std::swap(_src, adapted), adapted;
     }
 
-    ~b64() noexcept
+    ~b64() noexcept override
     {
-        if (_src && _n_obuf) { _write_word(); }
+        if (_src && _n_obuf() > 0) { _write_word(); }
     }
 
    protected:
     int_type overflow(int_type ch) override
     {
-        _obuf[_n_obuf++] = traits_type ::to_char_type(ch);
-        if (_n_obuf == 3) { _write_word(); }
+        if (_n_obuf() != 0) { _write_word(); }
+
+        _obuf[0] = ch;
+        setp(_obuf, _obuf + 1, _obuf + sizeof _obuf);
 
         return traits_type::to_int_type(ch);
     }
 
     int_type underflow() override
     {
-        char buf[4];
-        auto n_read = _src->sgetn(buf, 4);
-        if (n_read != 4) { return traits_type::eof(); }
+        char buf[base64::encoded_size(sizeof _ibuf)];
+        auto n_read = _src->sgetn(buf, sizeof buf);
+        if (n_read % 4 != 0) { return traits_type::eof(); }  // errnous situation
 
-        auto n_decoded = base64::decoded_size(buf);
+        auto n_decoded = base64::decoded_size(array_view(buf, n_read));
         base64::decode_bytes(buf, n_read, _ibuf);
 
         setg(_ibuf, _ibuf, _ibuf + n_decoded);
@@ -82,18 +89,30 @@ class b64 : public std::streambuf
     int sync() override
     {
         if (not _src) { throw std::runtime_error{"source buffer not set"}; }
+        if (_n_obuf() > 0)
+        {
+            _write_word();
+            setp(_obuf, _obuf + sizeof _obuf);
+        }
 
-        if (_n_obuf > 0) { _write_word(); }
         return _src->pubsync();
     }
 
    private:
+    std::streamsize _n_obuf() const noexcept
+    {
+        return pptr() - pbase();
+    }
+
     void _write_word()
     {
-        char encoded[4];
-        base64::encode_bytes(_obuf, _n_obuf, encoded);
-        _src->sputn(encoded, 4);
-        _n_obuf = 0;
+        char encoded[base64::encoded_size(sizeof _obuf)];
+
+        auto n_obuf    = _n_obuf();
+        auto n_written = base64::encoded_size(n_obuf);
+        base64::encode_bytes(_obuf, n_obuf, encoded);
+        _src->sputn(encoded, n_written);
     }
 };
+
 }  // namespace CPPHEADERS_NS_::streambuf

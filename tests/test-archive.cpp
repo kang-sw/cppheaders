@@ -214,6 +214,7 @@ static auto ssvd = [] {
     archive::msgpack::writer msgwr{b64buf};
 
     msgwr.serialize(TestType{});
+    b64buf.reset();
 
     return nullptr;
 };
