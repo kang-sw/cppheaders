@@ -207,9 +207,9 @@ static auto ssvd = [] {
     wr2.serialize(other);
     std::cout << "\n\n------- DONE  " << typeid(TestType).name() << " -------\n\n";
 
-    (archive::if_writer&)writer << std::string_view{"hello"};
+    writer << std::string_view{"hello"};
     std::string str;
-    (archive::if_reader&)reader >> str;
+    reader >> str;
 
     std::stringstream msgpack_buf;
     streambuf::b64 b64buf{msgpack_buf.rdbuf()};

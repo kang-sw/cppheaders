@@ -916,27 +916,6 @@ auto define_tuple()
     return object_metadata::template_tuple_factory<Class_>::define();
 }
 
-/**
- * Dump object to archive
- */
-inline archive::if_writer&
-operator<<(archive::if_writer& strm, object_const_view_t obj)
-{
-    obj.meta->_archive_to(&strm, obj.data, nullptr);
-    return strm;
-}
-
-/**
- * Restore object from archive
- */
-inline archive::if_reader&
-operator>>(archive::if_reader& strm, object_view_t obj)
-{
-    object_metadata::restore_context ctx;
-    obj.meta->_restore_from(&strm, obj.data, &ctx, nullptr);
-    return strm;
-}
-
 /*
  * User type definition
  */
@@ -1043,6 +1022,35 @@ inline std::string to_string(CPPHEADERS_NS_::refl::entity_type t)
 
 namespace CPPHEADERS_NS_::archive {
 
+/**
+ * Dump object to archive
+ */
+template <>
+inline if_writer&
+operator<<(if_writer& writer, refl::object_const_view_t const& value)
+{
+    value.meta->_archive_to(&writer, value.data, nullptr);
+    return writer;
+}
+
+/**
+ * Restore object from archive
+ */
+inline if_reader&
+operator>>(if_reader& strm, refl::object_view_t const& obj)
+{
+    refl::object_metadata::restore_context ctx;
+    obj.meta->_restore_from(&strm, obj.data, &ctx, nullptr);
+    return strm;
+}
+
+template <>
+inline if_reader&
+operator>>(if_reader& strm, refl::object_view_t& obj)
+{
+    return strm >> (const refl::object_view_t&)obj;
+}
+
 template <typename ValTy_>
 if_writer& if_writer::serialize(const ValTy_& in)
 {
@@ -1051,7 +1059,7 @@ if_writer& if_writer::serialize(const ValTy_& in)
 }
 
 template <typename Ty_>
-if_writer& if_writer::operator<<(const Ty_& other)
+if_writer& if_writer::write(const Ty_& other)
 {
     return serialize(other);
 }
@@ -1064,7 +1072,7 @@ if_reader& if_reader::deserialize(ValTy_& out)
 }
 
 template <typename Ty_>
-if_reader& if_reader::operator>>(Ty_& other)
+if_reader& if_reader::read(Ty_& other)
 {
     return deserialize(other);
 }

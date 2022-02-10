@@ -42,11 +42,11 @@ class writer : public archive::if_writer
    public:
     explicit writer(std::streambuf* buf, size_t depth_maybe = 0);
 
-    if_writer& operator<<(nullptr_t a_nullptr) override;
-    if_writer& operator<<(int64_t v) override;
-    if_writer& operator<<(double v) override;
-    if_writer& operator<<(bool v) override;
-    if_writer& operator<<(std::string_view v) override;
+    if_writer& write(nullptr_t a_nullptr) override;
+    if_writer& write(int64_t v) override;
+    if_writer& write(double v) override;
+    if_writer& write(bool v) override;
+    if_writer& write(std::string_view v) override;
 
     if_writer& binary_push(size_t total) override;
     if_writer& binary_write_some(const_buffer_view view) override;
@@ -84,11 +84,11 @@ class reader : public archive::if_reader
     void validate() { _validate(); }
 
    public:
-    if_reader& operator>>(nullptr_t a_nullptr) override;
-    if_reader& operator>>(bool& v) override;
-    if_reader& operator>>(int64_t& v) override;
-    if_reader& operator>>(double& v) override;
-    if_reader& operator>>(std::string& v) override;
+    if_reader& read(nullptr_t a_nullptr) override;
+    if_reader& read(bool& v) override;
+    if_reader& read(int64_t& v) override;
+    if_reader& read(double& v) override;
+    if_reader& read(std::string& v) override;
     size_t elem_left() const override;
     size_t begin_binary() override;
     if_reader& binary_read_some(mutable_buffer_view v) override;

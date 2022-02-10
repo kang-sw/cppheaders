@@ -44,7 +44,7 @@ writer::writer(std::streambuf* buf, size_t depth_maybe)
     _ctx.reserve_depth(depth_maybe);
 }
 
-if_writer& writer::operator<<(double v)
+if_writer& writer::write(double v)
 {
     _on_write();
 
@@ -55,7 +55,7 @@ if_writer& writer::operator<<(double v)
     return *this;
 }
 
-if_writer& writer::operator<<(int64_t v)
+if_writer& writer::write(int64_t v)
 {
     _on_write();
 
@@ -66,7 +66,7 @@ if_writer& writer::operator<<(int64_t v)
     return *this;
 }
 
-if_writer& writer::operator<<(nullptr_t a_nullptr)
+if_writer& writer::write(nullptr_t a_nullptr)
 {
     _on_write();
 
@@ -74,7 +74,7 @@ if_writer& writer::operator<<(nullptr_t a_nullptr)
     return *this;
 }
 
-if_writer& writer::operator<<(std::string_view v)
+if_writer& writer::write(std::string_view v)
 {
     auto d = _ctx.write_next();
     if (d.need_comma) { _append_comma(); }
@@ -95,7 +95,7 @@ if_writer& writer::operator<<(std::string_view v)
     return *this;
 }
 
-if_writer& writer::operator<<(bool v)
+if_writer& writer::write(bool v)
 {
     _on_write();
 
@@ -329,14 +329,14 @@ reader::reader(std::streambuf* buf)
     reset(), _validate();
 }
 
-if_reader& reader::operator>>(nullptr_t a_nullptr)
+if_reader& reader::read(nullptr_t a_nullptr)
 {
     _validate();
     self->step_over();
     return *this;
 }
 
-if_reader& reader::operator>>(bool& v)
+if_reader& reader::read(bool& v)
 {
     _validate();
     auto next = self->next();
@@ -354,7 +354,7 @@ if_reader& reader::operator>>(bool& v)
     return *this;
 }
 
-if_reader& reader::operator>>(int64_t& v)
+if_reader& reader::read(int64_t& v)
 {
     _validate();
 
@@ -369,7 +369,7 @@ if_reader& reader::operator>>(int64_t& v)
     return *this;
 }
 
-if_reader& reader::operator>>(double& v)
+if_reader& reader::read(double& v)
 {
     _validate();
 
@@ -385,7 +385,7 @@ if_reader& reader::operator>>(double& v)
     return *this;
 }
 
-if_reader& reader::operator>>(std::string& v)
+if_reader& reader::read(std::string& v)
 {
     _validate();
 

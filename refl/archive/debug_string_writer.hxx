@@ -149,27 +149,27 @@ class debug_string_writer : public if_writer
     {
     }
 
-    if_writer& operator<<(bool v) override
+    if_writer& write(bool v) override
     {
         return _write_value(v ? "true" : "false");
     }
 
-    if_writer& operator<<(nullptr_t a_nullptr) override
+    if_writer& write(nullptr_t a_nullptr) override
     {
         return _write_value("null");
     }
 
-    if_writer& operator<<(int64_t v) override
+    if_writer& write(int64_t v) override
     {
         return _write_value("%lld", v);
     }
 
-    if_writer& operator<<(double v) override
+    if_writer& write(double v) override
     {
         return _write_value("%f", v);
     }
 
-    if_writer& operator<<(std::string_view v) override
+    if_writer& write(std::string_view v) override
     {
         return _write_value("%s", std::string(v).c_str());
     }

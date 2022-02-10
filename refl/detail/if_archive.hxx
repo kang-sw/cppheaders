@@ -204,27 +204,27 @@ class if_writer : public if_archive_base
     if_writer& serialize(ValTy_ const&);
 
    public:
-    virtual if_writer& operator<<(nullptr_t) = 0;
+    virtual if_writer& write(nullptr_t) = 0;
 
-    virtual if_writer& operator<<(bool v) { return *this << (int64_t)v; }
+    virtual if_writer& write(bool v) { return this->write((int64_t)v); }
 
-    virtual if_writer& operator<<(int8_t v) { return *this << (int64_t)v; }
-    virtual if_writer& operator<<(int16_t v) { return *this << (int64_t)v; }
-    virtual if_writer& operator<<(int32_t v) { return *this << (int64_t)v; }
-    virtual if_writer& operator<<(int64_t v) = 0;
+    virtual if_writer& write(int8_t v) { return this->write((int64_t)v); }
+    virtual if_writer& write(int16_t v) { return this->write((int64_t)v); }
+    virtual if_writer& write(int32_t v) { return this->write((int64_t)v); }
+    virtual if_writer& write(int64_t v) = 0;
 
-    virtual if_writer& operator<<(uint8_t v) { return *this << (int64_t)v; }
-    virtual if_writer& operator<<(uint16_t v) { return *this << (int64_t)v; }
-    virtual if_writer& operator<<(uint32_t v) { return *this << (int64_t)v; }
-    virtual if_writer& operator<<(uint64_t v) { return *this << (int64_t)v; }
+    virtual if_writer& write(uint8_t v) { return this->write((int64_t)v); }
+    virtual if_writer& write(uint16_t v) { return this->write((int64_t)v); }
+    virtual if_writer& write(uint32_t v) { return this->write((int64_t)v); }
+    virtual if_writer& write(uint64_t v) { return this->write((int64_t)v); }
 
-    virtual if_writer& operator<<(float v) { return *this << (double)v; }
-    virtual if_writer& operator<<(double v) = 0;
+    virtual if_writer& write(float v) { return this->write((double)v); }
+    virtual if_writer& write(double v) = 0;
 
-    virtual if_writer& operator<<(std::string_view v) = 0;
-    if_writer& operator<<(std::string const& v) { return *this << std::string_view{v}; }
+    virtual if_writer& write(std::string_view v) = 0;
+    if_writer& write(std::string const& v) { return this->write(std::string_view{v}); }
 
-    if_writer& operator<<(const_buffer_view v)
+    if_writer& write(const_buffer_view v)
     {
         binary_push(v.size());
         binary_write_some(v);
@@ -234,7 +234,7 @@ class if_writer : public if_archive_base
 
     //! Serialize arbitrary type
     template <typename Ty_>
-    if_writer& operator<<(Ty_ const& other);
+    if_writer& write(Ty_ const& other);
 
     //! push/pop write binary context
     //! Firstly pushed binary size is immutable. call binary_pop only when
@@ -278,7 +278,7 @@ class if_reader : public if_archive_base
     if_reader& _upcast(ValTy_& out)
     {
         Target_ value;
-        *this >> value;
+        this->read(value);
         out = static_cast<ValTy_>(value);
         return *this;
     }
@@ -288,28 +288,28 @@ class if_reader : public if_archive_base
     if_reader& deserialize(ValTy_& out);
 
    public:
-    virtual if_reader& operator>>(nullptr_t) = 0;
+    virtual if_reader& read(nullptr_t) = 0;
 
-    virtual if_reader& operator>>(bool& v) { return _upcast<int64_t>(v); }
+    virtual if_reader& read(bool& v) { return _upcast<int64_t>(v); }
 
-    virtual if_reader& operator>>(int8_t& v) { return _upcast<int64_t>(v); }
-    virtual if_reader& operator>>(int16_t& v) { return _upcast<int64_t>(v); }
-    virtual if_reader& operator>>(int32_t& v) { return _upcast<int64_t>(v); }
-    virtual if_reader& operator>>(int64_t& v) = 0;
+    virtual if_reader& read(int8_t& v) { return _upcast<int64_t>(v); }
+    virtual if_reader& read(int16_t& v) { return _upcast<int64_t>(v); }
+    virtual if_reader& read(int32_t& v) { return _upcast<int64_t>(v); }
+    virtual if_reader& read(int64_t& v) = 0;
 
-    virtual if_reader& operator>>(uint8_t& v) { return *this >> (int8_t&)v; }
-    virtual if_reader& operator>>(uint16_t& v) { return *this >> (int16_t&)v; }
-    virtual if_reader& operator>>(uint32_t& v) { return *this >> (int32_t&)v; }
-    virtual if_reader& operator>>(uint64_t& v) { return *this >> (int64_t&)v; }
+    virtual if_reader& read(uint8_t& v) { return this->read((int8_t&)v); }
+    virtual if_reader& read(uint16_t& v) { return this->read((int16_t&)v); }
+    virtual if_reader& read(uint32_t& v) { return this->read((int32_t&)v); }
+    virtual if_reader& read(uint64_t& v) { return this->read((int64_t&)v); }
 
-    virtual if_reader& operator>>(float& v) { return _upcast<double>(v); }
-    virtual if_reader& operator>>(double& v) = 0;
+    virtual if_reader& read(float& v) { return _upcast<double>(v); }
+    virtual if_reader& read(double& v) = 0;
 
-    virtual if_reader& operator>>(std::string& v) = 0;
+    virtual if_reader& read(std::string& v) = 0;
 
     //! Deserialize arbitrary type
     template <typename Ty_>
-    if_reader& operator>>(Ty_& other);
+    if_reader& read(Ty_& other);
 
     //! Tries to get number of remaining element for currently active context.
     //! @return -1 if feature not available
@@ -356,5 +356,17 @@ class if_reader : public if_archive_base
     virtual bool is_object_next() const = 0;
     virtual bool is_array_next() const  = 0;
 };
+
+template <typename Any_>
+if_writer& operator<<(if_writer& writer, Any_ const& value)
+{
+    return writer.write(value);
+}
+
+template <typename Any_>
+if_reader& operator>>(if_reader& reader, Any_& ref)
+{
+    return reader.read(ref);
+}
 
 }  // namespace CPPHEADERS_NS_::archive

@@ -197,21 +197,21 @@ class writer : public archive::if_writer
 
     void reserve_depth(size_t n) { _ctx.reserve_depth(n); }
 
-    if_writer& operator<<(nullptr_t a_nullptr) override
+    if_writer& write(nullptr_t a_nullptr) override
     {
         _ctx.write_next();
         _ap(typecode::nil);
         return *this;
     }
 
-    if_writer& operator<<(bool v) override
+    if_writer& write(bool v) override
     {
         _ctx.write_next();
         _ap(v ? typecode::bool_true : typecode::bool_false);
         return *this;
     }
 
-    if_writer& operator<<(std::string_view v) override
+    if_writer& write(std::string_view v) override
     {
         _assert_32bitsize(v.size());
 
@@ -226,29 +226,29 @@ class writer : public archive::if_writer
         return *this;
     }
 
-    if_writer& operator<<(float v) override
+    if_writer& write(float v) override
     {
         _ctx.write_next();
         _ap(typecode::float32), _putbin<float>(v);
         return *this;
     }
 
-    if_writer& operator<<(double v) override
+    if_writer& write(double v) override
     {
         _ctx.write_next();
         _ap(typecode::float64), _putbin<double>(v);
         return *this;
     }
 
-    if_writer& operator<<(int8_t v) override { return _write_int(v); }
-    if_writer& operator<<(int16_t v) override { return _write_int(v); }
-    if_writer& operator<<(int32_t v) override { return _write_int(v); }
-    if_writer& operator<<(int64_t v) override { return _write_int(v); }
+    if_writer& write(int8_t v) override { return _write_int(v); }
+    if_writer& write(int16_t v) override { return _write_int(v); }
+    if_writer& write(int32_t v) override { return _write_int(v); }
+    if_writer& write(int64_t v) override { return _write_int(v); }
 
-    if_writer& operator<<(uint8_t v) override { return _write_uint(v); }
-    if_writer& operator<<(uint16_t v) override { return _write_uint(v); }
-    if_writer& operator<<(uint32_t v) override { return _write_uint(v); }
-    if_writer& operator<<(uint64_t v) override { return _write_uint(v); }
+    if_writer& write(uint8_t v) override { return _write_uint(v); }
+    if_writer& write(uint16_t v) override { return _write_uint(v); }
+    if_writer& write(uint32_t v) override { return _write_uint(v); }
+    if_writer& write(uint64_t v) override { return _write_uint(v); }
 
     if_writer& binary_push(size_t total) override
     {
@@ -423,7 +423,7 @@ class reader : public archive::if_reader
     }
 
    public:
-    if_reader& operator>>(nullptr_t a_nullptr) override
+    if_reader& read(nullptr_t a_nullptr) override
     {
         _step_context();
         _verify_type<typecode::nil>(_buf->sgetc());
@@ -431,7 +431,7 @@ class reader : public archive::if_reader
         return *this;
     }
 
-    if_reader& operator>>(bool& v) override
+    if_reader& read(bool& v) override
     {
         _step_context();
         v = _get_number<bool>(_buf->sgetc());
@@ -448,18 +448,18 @@ class reader : public archive::if_reader
     }
 
    public:
-    if_reader& operator>>(int8_t& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(int16_t& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(int32_t& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(int64_t& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(uint8_t& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(uint16_t& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(uint32_t& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(uint64_t& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(float& v) override { return _quick_get_num(v); }
-    if_reader& operator>>(double& v) override { return _quick_get_num(v); }
+    if_reader& read(int8_t& v) override { return _quick_get_num(v); }
+    if_reader& read(int16_t& v) override { return _quick_get_num(v); }
+    if_reader& read(int32_t& v) override { return _quick_get_num(v); }
+    if_reader& read(int64_t& v) override { return _quick_get_num(v); }
+    if_reader& read(uint8_t& v) override { return _quick_get_num(v); }
+    if_reader& read(uint16_t& v) override { return _quick_get_num(v); }
+    if_reader& read(uint32_t& v) override { return _quick_get_num(v); }
+    if_reader& read(uint64_t& v) override { return _quick_get_num(v); }
+    if_reader& read(float& v) override { return _quick_get_num(v); }
+    if_reader& read(double& v) override { return _quick_get_num(v); }
 
-    if_reader& operator>>(std::string& v) override;
+    if_reader& read(std::string& v) override;
 
     size_t elem_left() const override;
     size_t begin_binary() override;
