@@ -210,6 +210,11 @@ static auto ssvd = [] {
     std::string str;
     (archive::if_reader&)reader >> str;
 
+    streambuf::b64 b64buf{std::cout.rdbuf()};
+    archive::msgpack::writer msgwr{b64buf};
+
+    msgwr.serialize(TestType{});
+
     return nullptr;
 };
 

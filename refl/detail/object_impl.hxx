@@ -576,10 +576,6 @@ class object_metadata
                         .message("'object' expected");
 
             auto context_key = strm->begin_object();
-
-            std::vector<bool> found;
-            found.resize(_props.size(), false);
-
             while (not strm->should_break(context_key))
             {
                 // retrive key, and find it from my properties list
@@ -598,8 +594,7 @@ class object_metadata
                     continue;
                 }
 
-                auto index   = elem->second;
-                found[index] = true;
+                auto index = elem->second;
 
                 auto& prop      = _props.at(index);
                 auto child      = prop.type;
@@ -610,19 +605,6 @@ class object_metadata
             }
 
             strm->end_object(context_key);
-
-            for (auto index : perfkit::count(found.size()))
-            {
-                if (found[index]) { continue; }
-
-                auto& prop = _props[index];
-                auto child = prop.type;
-
-                if (not child->is_optional())
-                    throw error::missing_entity{}
-                            .message("property [%d: in offset %d] missing",
-                                     (int)index, (int)prop.offset);
-            }
         }
         else if (is_tuple())
         {

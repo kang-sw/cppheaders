@@ -40,8 +40,7 @@ enum class typecode : uint8_t
     bool_false = 0xc2,
     bool_true  = 0xc3,
 
-    bin_base = 0xc4,
-    bin8     = 0xc4,
+    bin8 = 0xc4,
     bin16,
     bin32,
 
@@ -63,15 +62,13 @@ enum class typecode : uint8_t
     fixext8,
     fixext16,
 
-    ext_base = 0xc7,
-    ext8     = 0xc7,
+    ext8 = 0xc7,
     ext16,
     ext32,
 
-    str_base = 0xd9,
-    str8     = 0xd9,
-    str16    = 0xda,
-    str32    = 0xdb,
+    str8  = 0xd9,
+    str16 = 0xda,
+    str32 = 0xdb,
 
     array16 = 0xdc,
     array32 = 0xdd,
@@ -89,7 +86,12 @@ class writer : public archive::if_writer
     template <typename ValTy_, typename Ty_, typename = std::enable_if_t<std::is_trivial_v<ValTy_>>>
     void _putbin(Ty_ const& val)
     {
-        _buf->sputn((char const*)&val, sizeof(ValTy_));
+        char inv[sizeof(ValTy_)];
+
+        for (auto i = 0; i < sizeof(ValTy_); ++i)
+            inv[sizeof(ValTy_) - 1 - i] = ((char const*)&val)[i];
+
+        _buf->sputn(inv, sizeof inv);
     }
 
     void _ap(typecode code)
@@ -151,7 +153,7 @@ class writer : public archive::if_writer
                 _apm<5>(typecode::negative_fixint, value);
             else if (value >= -0x8000)
                 _ap(typecode::int16), _putbin<int16_t>(value);
-            else if (value >= -0x8000'0000)
+            else if (value >= -0x8000'0000ll)
                 _ap(typecode::int32), _putbin<int32_t>(value);
             else
                 _ap(typecode::int64), _putbin<int64_t>(value);
@@ -210,7 +212,7 @@ class writer : public archive::if_writer
         if (v.size() < 32)
             _apm<5>(typecode::fixstr, v.size());
         else
-            _apsize_1(typecode::str_base, v.size());
+            _apsize_1(typecode::str8, v.size());
 
         _buf->sputn(v.data(), v.size());
         return *this;
@@ -244,8 +246,10 @@ class writer : public archive::if_writer
     {
         _assert_32bitsize(total);
 
+        _ctx.write_next();
         _ctx.push_binary(total);
-        _apsize_1(typecode::bin_base, total);
+
+        _apsize_1(typecode::bin8, total);
         return *this;
     }
 
@@ -266,7 +270,9 @@ class writer : public archive::if_writer
     {
         _assert_32bitsize(num_elems);
 
+        _ctx.write_next();
         _ctx.push_object(num_elems);
+
         if (num_elems < 16)
             _apm<4>(typecode::fixmap, num_elems);
         else if (num_elems < 0x8000)
@@ -287,7 +293,9 @@ class writer : public archive::if_writer
     {
         _assert_32bitsize(num_elems);
 
+        _ctx.write_next();
         _ctx.push_array(num_elems);
+
         if (num_elems < 16)
             _apm<4>(typecode::fixarray, num_elems);
         else if (num_elems < 0x8000)

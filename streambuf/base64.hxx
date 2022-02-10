@@ -52,6 +52,11 @@ class b64 : public std::streambuf
         return std::swap(_src, adapted), adapted;
     }
 
+    ~b64() noexcept
+    {
+        if (_src && _n_obuf) { _write_word(); }
+    }
+
    protected:
     int_type overflow(int_type ch) override
     {
