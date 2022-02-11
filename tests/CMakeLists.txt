@@ -17,6 +17,7 @@ add_executable(
         test-container.cpp
 )
 
+
 target_compile_definitions(
         ${PROJECT_NAME}
 
@@ -52,3 +53,26 @@ endif ()
 if (MSVC)
     add_compile_options(/utf-8)
 endif ()
+
+
+project(${PROJECT_NAME}-gcc-compilation)
+
+add_executable(
+        ${PROJECT_NAME}
+
+        test-gcccompile.cpp
+)
+
+target_compile_definitions(
+        ${PROJECT_NAME}
+
+        PRIVATE
+        -Dcpph=CPPHEADERS_NS_
+)
+
+target_compile_features(
+        ${PROJECT_NAME}
+
+        PRIVATE
+        cxx_std_17
+)
