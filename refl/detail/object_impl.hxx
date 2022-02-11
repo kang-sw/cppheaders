@@ -149,7 +149,10 @@ struct property_metadata
     //! index of self
     int index_self = 0;
 
-    //! name if this is used as key
+    //! index key if this is property of 'object'
+    int name_key_self = -1;
+
+    //! name if this is property of 'object'
     std::string_view name;
 
    public:
@@ -354,10 +357,11 @@ class object_metadata
     // [optional]
     bool _is_object = false;
 
-    // if _is_object is true, this indicates
-    sorted_vector<std::string, size_t> _keys;
+    // if _is_object is true, this indicates name of properties
+    sorted_vector<std::string, int> _keys;
 
-    //
+    // if _is_object is true, this indicates set of indices which is used for fast-access key
+    sorted_vector<int, int> _key_indices;
 
    private:
     /*  Transients  */
@@ -708,8 +712,9 @@ class object_metadata
         {
             assert(not _current->is_primitive());
 
-            auto index = _current->_props.size();
-            _current->_props.emplace_back(std::move(info));
+            auto index       = _current->_props.size();
+            auto prop        = &_current->_props.emplace_back(info);
+            prop->index_self = index;
 
             return index;
         }
@@ -828,14 +833,7 @@ class object_metadata
         template <typename Class_, typename MemVar_>
         static property_metadata create_property_metadata(Class_ const* class_type, MemVar_ const* mem_ptr)
         {
-            property_metadata info;
-            info.type   = default_object_metadata_fn<MemVar_>();
-            info.offset = static_cast<size_t>(
-                    reinterpret_cast<char const*>(mem_ptr)
-                    - reinterpret_cast<char const*>(class_type));
-
-            assert(info.offset >= 0);
-            return info;
+            return create_property_metadata<Class_, MemVar_>();
         }
     };
 
@@ -849,13 +847,14 @@ class object_metadata
             object_factory_base::define_basic(extent);
             _current->_is_object = true;
             _current->_keys.reserve(extent);
+            _current->_key_indices.reserve(extent);
             return *this;
         }
 
         auto& add_property(std::string key, property_metadata info) const
         {
             auto index          = add_property_impl(std::move(info));
-            auto [pair, is_new] = _current->_keys.try_emplace(std::move(key), index);
+            auto [pair, is_new] = _current->_keys.try_emplace(std::move(key), int(index));
             assert("Key must be unique" && is_new);
 
             // register property name

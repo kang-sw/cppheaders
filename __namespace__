@@ -25,7 +25,7 @@
 #undef CPPHEADERS_NS_
 
 #if __has_include("../__cppheaders_ns__")
-// Content of __cppheaders_ns__.h should be following:
+// Content of __cppheaders_ns__ should be following:
 // #define CPPHEADERS_NS_ YOUR_NAMESPACE
 #    include "../__cppheaders_ns__"
 #else

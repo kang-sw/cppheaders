@@ -177,6 +177,7 @@ class deque : Alloc_  // zero_size optimization
         auto [min, max] = std::minmax(_blk_tail(), _blk_head());
         auto n_empty    = (max - min) * block_size;
 
+        return 0;
     }
 
     size_t _space_tail() const noexcept

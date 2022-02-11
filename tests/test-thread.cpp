@@ -22,7 +22,6 @@
 //
 // project home: https://github.com/perfkitpp
 
-#pragma once
 #include <future>
 
 #include "catch.hpp"
