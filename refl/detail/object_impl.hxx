@@ -292,8 +292,16 @@ using object_sfinae_ptr = std::enable_if_t<Test_, object_metadata_ptr>;
 template <typename A_, typename B_>
 using object_sfinae_overload_t = object_sfinae_t<std::is_same_v<A_, B_>>;
 
+template <typename ValTy_, class = void>
+struct get_object_metadata_t
+{
+};
+
 template <typename ValTy_>
-auto get_object_metadata() -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
+auto get_object_metadata()
+{
+    return get_object_metadata_t<ValTy_>{}();
+}
 
 template <typename ValTy_, class = void>
 constexpr bool has_object_metadata_v = false;
@@ -930,7 +938,10 @@ constexpr bool is_cpph_refl_object_v<
 }  // namespace detail
 
 template <typename ValTy_>
-auto get_object_metadata() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>;
+struct get_object_metadata_t<ValTy_, std::enable_if_t<detail::is_cpph_refl_object_v<ValTy_>>>
+{
+    auto operator()() const;
+};
 
 }  // namespace CPPHEADERS_NS_::refl
 
@@ -972,12 +983,17 @@ static constexpr auto initialize_object_metadata
 }
 
 template <typename ValTy_>
-auto get_object_metadata() -> object_sfinae_t<std::is_same_v<
-        object_metadata_ptr, decltype(initialize_object_metadata(type_tag_v<ValTy_>))>>
+struct get_object_metadata_t<
+        ValTy_,
+        std::enable_if_t<std::is_same_v<
+                object_metadata_ptr, decltype(initialize_object_metadata(type_tag_v<ValTy_>))>>>
 {
-    static auto instance = initialize_object_metadata(type_tag_v<ValTy_>);
-    return &*instance;
-}
+    auto operator()() const
+    {
+        static auto instance = initialize_object_metadata(type_tag_v<ValTy_>);
+        return &*instance;
+    }
+};
 
 template <typename ValTy_, class = void>
 constexpr bool has_object_metadata_initializer_v = false;

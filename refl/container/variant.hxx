@@ -27,6 +27,9 @@
 
 #include "../detail/primitives.hxx"
 
+//
+#include "../detail/_init_macros.hxx"
+
 namespace CPPHEADERS_NS_::refl {
 namespace detail::variant {
 template <typename... Args_>
@@ -99,10 +102,10 @@ auto get_metadata(type_tag<std::variant<Args_...>>)
 }
 }  // namespace detail::variant
 
-template <typename ValTy_>
-auto get_object_metadata()
-        -> object_sfinae_t<is_template_instance_of<ValTy_, std::variant>::value>
+INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::variant>::value))
 {
     return detail::variant::get_metadata(type_tag_v<ValTy_>);
 }
 }  // namespace CPPHEADERS_NS_::refl
+
+#include "../detail/_deinit_macros.hxx"

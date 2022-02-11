@@ -59,26 +59,27 @@ static_assert(has_emplace_back<std::list<int>>);
 
 }  // namespace CPPHEADERS_NS_::refl
 
+#include "_init_macros.hxx"
+
 namespace CPPHEADERS_NS_::refl {
 
 /**
  * Object descriptor
  */
 template <typename ValTy_>
-auto get_object_metadata() -> object_sfinae_t<detail::is_cpph_refl_object_v<ValTy_>>
+auto get_object_metadata_t<ValTy_, std::enable_if_t<detail::is_cpph_refl_object_v<ValTy_>>>::operator()() const
 {
     static object_metadata_ptr inst = ((ValTy_*)nullptr)->initialize_object_metadata();
 
     return &*inst;
 }
 
-template <typename ValTy_>
-auto get_object_metadata() -> object_sfinae_t<
+INTERNAL_CPPH_define_(
+        ValTy_,
         (is_any_of_v<ValTy_, bool, nullptr_t, std::string>)
-        || (std::is_enum_v<ValTy_> && not has_object_metadata_initializer_v<ValTy_>)
-        || (std::is_integral_v<ValTy_>)
-        || (std::is_floating_point_v<ValTy_>)  //
-        >
+                || (std::is_enum_v<ValTy_> && not has_object_metadata_initializer_v<ValTy_>)
+                || (std::is_integral_v<ValTy_>)
+                || (std::is_floating_point_v<ValTy_>))
 {
     static struct manip_t : templated_primitive_control<ValTy_>
     {
@@ -182,16 +183,14 @@ constexpr bool is_stl_array_v<std::array<Ty_, N_>> = true;
 
 }  // namespace detail
 
-template <typename ValTy_>
-auto get_object_metadata() -> object_sfinae_t<std::is_array_v<ValTy_>>
+INTERNAL_CPPH_define_(ValTy_, std::is_array_v<ValTy_>)
 {
     return detail::fixed_size_descriptor<std::remove_extent_t<ValTy_>>(
             sizeof(ValTy_),
             std::size(*(ValTy_*)0));
 }
 
-template <typename ValTy_>
-auto get_object_metadata() -> object_sfinae_t<detail::is_stl_array_v<ValTy_>>
+INTERNAL_CPPH_define_(ValTy_, detail::is_stl_array_v<ValTy_>)
 {
     return detail::fixed_size_descriptor<typename ValTy_::value_type>(
             sizeof(ValTy_),
@@ -268,11 +267,10 @@ auto get_list_like_descriptor() -> object_metadata_t
 }
 }  // namespace detail
 
-template <typename ValTy_>
-auto get_object_metadata()
-        -> object_sfinae_t<
-                is_template_instance_of<ValTy_, std::vector>::value
-                || is_template_instance_of<ValTy_, std::list>::value>
+INTERNAL_CPPH_define_(
+        ValTy_,
+        (is_template_instance_of<ValTy_, std::vector>::value
+         || is_template_instance_of<ValTy_, std::list>::value))
 {
     return detail::get_list_like_descriptor<ValTy_>();
 }
@@ -336,9 +334,7 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
 }
 }  // namespace detail
 
-template <typename MapTy_>
-auto get_object_metadata()
-        -> object_sfinae_t<is_template_instance_of<MapTy_, std::map>::value>
+INTERNAL_CPPH_define_(MapTy_, (is_template_instance_of<MapTy_, std::map>::value))
 {
     static auto inst = detail::get_dictionary_descriptor<MapTy_>();
     return &*inst;
@@ -379,17 +375,13 @@ auto get_tuple_descriptor(type_tag<std::tuple<Args_...>>)
 }
 }  // namespace detail
 
-template <typename ValTy_>
-auto get_object_metadata()
-        -> object_sfinae_t<is_template_instance_of<ValTy_, std::tuple>::value>
+INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::tuple>::value))
 {
     static auto inst = detail::get_tuple_descriptor(type_tag_v<ValTy_>);
     return &*inst;
 }
 
-template <typename ValTy_>
-auto get_object_metadata()
-        -> object_sfinae_t<is_template_instance_of<ValTy_, std::pair>::value>
+INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::pair>::value))
 {
     static struct manip_t : templated_primitive_control<ValTy_>
     {
@@ -425,12 +417,11 @@ auto get_object_metadata()
  * Optionals, pointers
  */
 namespace CPPHEADERS_NS_::refl {
-template <typename ValTy_>
-auto get_object_metadata()
-        -> object_sfinae_t<
-                is_template_instance_of<ValTy_, std::optional>::value
-                || is_template_instance_of<ValTy_, std::unique_ptr>::value
-                || is_template_instance_of<ValTy_, std::shared_ptr>::value>
+INTERNAL_CPPH_define_(
+        ValTy_,
+        (is_template_instance_of<ValTy_, std::optional>::value
+         || is_template_instance_of<ValTy_, std::unique_ptr>::value
+         || is_template_instance_of<ValTy_, std::shared_ptr>::value))
 {
     using value_type             = remove_cvr_t<decltype(*std::declval<ValTy_>())>;
     constexpr bool is_optional   = is_template_instance_of<ValTy_, std::optional>::value;
@@ -724,3 +715,5 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
  */
 
 }  // namespace CPPHEADERS_NS_
+
+#include "_deinit_macros.hxx"
