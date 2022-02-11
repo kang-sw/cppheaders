@@ -57,7 +57,7 @@ class sorted_vector
     {
         return std::lower_bound(
                 _vector.begin(), _vector.end(),
-                std::forward<Key_>(key),
+                key,
                 [](value_type const& a, auto const& b) { return a.first < b; });
     }
 
@@ -66,7 +66,7 @@ class sorted_vector
     {
         return std::lower_bound(
                 _vector.begin(), _vector.end(),
-                std::forward<Key_>(key),
+                key,
                 [](value_type const& a, auto const& b) { return a.first < b; });
     }
 
@@ -120,14 +120,14 @@ class sorted_vector
     auto find(Key_ const& key) const
     {
         auto it = _lower_bound(key);
-        return key < it->first ? _vector.end() : it;
+        return it != _vector.end() && key < it->first ? _vector.end() : it;
     }
 
     template <typename Key_>
     auto find(Key_ const& key)
     {
         auto it = _lower_bound(key);
-        return key < it->first ? _vector.end() : it;
+        return it != _vector.end() && key < it->first ? _vector.end() : it;
     }
 
     template <typename Key_>
@@ -151,8 +151,8 @@ class sorted_vector
     template <typename Key_, typename... Args_>
     auto try_emplace(Key_&& key, Args_&&... args)
     {
-        auto it = find(key);
-        if (it == _vector.end() || key < it->first) { return std::make_pair(it, false); }
+        auto it = _lower_bound(key);
+        if (it != _vector.end() && not(key < it->first)) { return std::make_pair(it, false); }
 
         it = _vector.insert(
                 it, value_type{

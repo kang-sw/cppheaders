@@ -33,6 +33,7 @@
 
 #include "../../__namespace__"
 #include "../../algorithm/std.hxx"
+#include "../../container/sorted_vector.hxx"
 #include "../../counter.hxx"
 #include "if_archive.hxx"
 
@@ -351,9 +352,12 @@ class object_metadata
     std::vector<property_metadata> _props;
 
     // [optional]
-    // list of keys. if this exists, this object indicate an object.
-    // otherwise, array.
-    std::optional<std::map<std::string, size_t, std::less<>>> _keys;
+    bool _is_object = false;
+
+    // if _is_object is true, this indicates
+    sorted_vector<std::string, size_t> _keys;
+
+    //
 
    private:
     /*  Transients  */
@@ -369,7 +373,7 @@ class object_metadata
      * Archive/Serialization will
      */
     bool is_primitive() const noexcept { return !!_primitive; }
-    bool is_object() const noexcept { return _keys.has_value(); }
+    bool is_object() const noexcept { return _is_object; }
     bool is_tuple() const noexcept { return not is_primitive() && not is_object(); }
     bool is_optional() const noexcept { return is_primitive() && _primitive->status() != requirement_status_tag::required; }
 
@@ -444,9 +448,9 @@ class object_metadata
      */
     property_metadata const* property(std::string_view key) const
     {
-        if (not _keys) { return nullptr; }  // this is not object.
+        if (not _is_object) { return nullptr; }  // this is not object.
 
-        auto ptr = perfkit::find_ptr(*_keys, key);
+        auto ptr = perfkit::find_ptr(_keys, key);
         if (not ptr) { return nullptr; }
 
         return &_props.at(ptr->second);
@@ -490,7 +494,7 @@ class object_metadata
             if (is_object())
             {
                 size_t num_filled = 0;
-                for (auto& [key, index] : *_keys)
+                for (auto& [key, index] : _keys)
                 {
                     auto& prop = _props.at(index);
 
@@ -506,7 +510,7 @@ class object_metadata
                 }
 
                 strm->object_push(num_filled);
-                for (auto& [key, index] : *_keys)
+                for (auto& [key, index] : _keys)
                 {
                     auto& prop = _props.at(index);
 
@@ -593,7 +597,7 @@ class object_metadata
                 strm->read_key_next();
                 *strm >> keybuf;
 
-                auto elem = find_ptr(*_keys, keybuf);
+                auto elem = find_ptr(_keys, keybuf);
 
                 // simply ignore unexpected keys
                 if (not elem)
@@ -843,14 +847,14 @@ class object_metadata
         object_factory const& define_basic(size_t extent) override
         {
             object_factory_base::define_basic(extent);
-            _current->_keys.emplace();
+            _current->_is_object = true;
             return *this;
         }
 
         auto& add_property(std::string key, property_metadata info) const
         {
             auto index          = add_property_impl(std::move(info));
-            auto [pair, is_new] = _current->_keys->try_emplace(std::move(key), index);
+            auto [pair, is_new] = _current->_keys.try_emplace(std::move(key), index);
             assert("Key must be unique" && is_new);
 
             // register property name

@@ -272,6 +272,8 @@ static auto ssvd = [] {
     return nullptr;
 };
 
+auto static fff = ssvd();
+
 TEST_CASE("archive", "[.]")
 {
     ssvd();
