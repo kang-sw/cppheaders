@@ -84,7 +84,8 @@ class sorted_vector
    public:
     auto size() const noexcept { return _vector.size(); }
     auto empty() const noexcept { return _vector.empty(); }
-    auto shrink_to_fit() { return _vector.shrink_to_fit(); }
+    auto shrink_to_fit() { _vector.shrink_to_fit(); }
+    auto reserve(size_t n) { _vector.reserve(n); }
 
     auto begin() noexcept { return _vector.begin(); }
     auto begin() const noexcept { return _vector.begin(); }

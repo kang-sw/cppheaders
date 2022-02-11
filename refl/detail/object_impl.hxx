@@ -848,6 +848,7 @@ class object_metadata
         {
             object_factory_base::define_basic(extent);
             _current->_is_object = true;
+            _current->_keys.reserve(extent);
             return *this;
         }
 
