@@ -49,10 +49,17 @@ struct _freleae
 template <typename... Args_>
 inline char const* usprintf(char const* fmt, Args_&&... args)
 {
-    thread_local static char buf[512] = {};
-    snprintf(buf, sizeof buf - 1, fmt, args...);
+    if constexpr (sizeof...(Args_) == 0)
+    {
+        return fmt;
+    }
+    else
+    {
+        thread_local static char buf[512] = {};
+        snprintf(buf, sizeof buf - 1, fmt, args...);
 
-    return buf;
+        return buf;
+    }
 }
 
 template <typename... Args_>
