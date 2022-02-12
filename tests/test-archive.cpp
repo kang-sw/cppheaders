@@ -101,19 +101,28 @@ struct outer
 };
 
 template <typename S, typename T>
-class Values
+class values_0
 {
-    S a, b, c;
+   public:
+    S a, b, c, d, e, f;
 };
 
 template <typename S, typename T>
-cpph::refl::object_metadata_ptr
-initialize_object_metadata(cpph::refl::type_tag<Values<S, T>>)
+auto initialize_object_metadata(cpph::refl::type_tag<values_0<S, T>>)
 {
-    return {};
+    using Self = values_0<S, T>;
+
+    return cpph::refl::define_object<Self>()
+            .property("a", &Self::a)
+            .property("b", &Self::b, 3)
+            .property("c", &Self::c)
+            .property("d", &Self::d, 5)
+            .property("e", &Self::e)
+            .property("f", &Self::f, 18)
+            .create();
 }
 
-static auto pp_ptr = refl::get_object_metadata<Values<int, double>>();
+static auto pp_ptr = refl::get_object_metadata<values_0<int, double>>();
 static_assert(perfkit::is_binary_compatible_v<abcd>);
 
 struct some_other

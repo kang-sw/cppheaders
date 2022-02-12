@@ -24,6 +24,7 @@
 // project home: https://github.com/perfkitpp
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <map>
 #include <optional>
@@ -724,7 +725,7 @@ class object_metadata
          * Generate object descriptor instance.
          * Sorts keys, build incremental offset lookup table, etc.
          */
-        std::unique_ptr<object_metadata> create() const
+        object_metadata_ptr create() const
         {
             static std::atomic_uint64_t unique_id_allocator;
 
@@ -734,19 +735,73 @@ class object_metadata
 
             lookup->reserve(generated._props.size());
 
-            size_t n = 0;
+            // for name key autogeneration
+            std::vector<int> used_name_keys;
+
+            bool const is_object = generated.is_object();
+            used_name_keys.reserve(generated._props.size());
+
 #ifndef NDEBUG
             size_t object_end = 0;
 #endif
             for (auto& prop : generated._props)
             {
-                lookup->emplace_back(std::make_pair(prop.offset, n));
-                prop.index_self  = static_cast<int>(n++);
+                lookup->emplace_back(std::make_pair(prop.offset, prop.index_self));
                 prop._owner_type = result.get();
+
+                if (is_object)
+                {
+                    if (prop.name_key_self == 0)
+                        throw std::logic_error{"name key must be larger than 0!"};
+                    if (prop.name_key_self > 0)
+                    {
+                        used_name_keys.push_back(prop.name_key_self);
+                        push_heap(used_name_keys, std::greater<>{});
+                    }
+                }
 
 #ifndef NDEBUG
                 object_end = std::max(object_end, prop.offset + prop.type->extent());
 #endif
+            }
+
+            // assign name_key table
+            if (is_object)
+            {
+                if (adjacent_find(used_name_keys) != used_name_keys.end())
+                    throw std::logic_error("duplicated name key assignment found!");
+
+                // target key table
+                generated._key_indices.reserve(generated._props.size());
+
+                size_t idx_table    = 0;
+                int generated_index = 1;
+                for (auto& prop : generated._props)
+                {
+                    // autogenerate unassigned ones
+                    if (prop.name_key_self < 0)
+                    {
+                        // skip all already pre-assigned indices
+                        while (not used_name_keys.empty() && used_name_keys.front() <= generated_index)
+                        {
+                            generated_index = used_name_keys.front() + 1;
+
+                            pop_heap(used_name_keys, std::greater<>{});
+                            used_name_keys.pop_back();
+                        }
+
+                        prop.name_key_self = generated_index++;
+                    }
+
+                    auto const is_unique
+                            = generated
+                                      ._key_indices
+                                      .try_emplace(prop.name_key_self, prop.index_self)
+                                      .second;
+
+                    (void)is_unique;  // prevent warning on NDEBUG
+                    assert(is_unique);
+                }
             }
 
             // simply sort incrementally.
@@ -846,8 +901,10 @@ class object_metadata
         {
             object_factory_base::define_basic(extent);
             _current->_is_object = true;
-            _current->_keys.reserve(extent);
-            _current->_key_indices.reserve(extent);
+
+            // hard coded object size estimation ...
+            _current->_keys.reserve(32);
+
             return *this;
         }
 
@@ -855,6 +912,8 @@ class object_metadata
         {
             auto index          = add_property_impl(std::move(info));
             auto [pair, is_new] = _current->_keys.try_emplace(std::move(key), int(index));
+            // _current->_key_indices: delay until key evaluation on create()
+
             assert("Key must be unique" && is_new);
 
             // register property name
@@ -889,9 +948,10 @@ class object_metadata
         }
 
         template <typename MemVar_>
-        auto& property(std::string key, MemVar_ Class_::*mem_ptr) const
+        auto& property(std::string key, MemVar_ Class_::*mem_ptr, int name_key = -1) const
         {
-            auto info = create_property_metadata(mem_ptr);
+            auto info          = create_property_metadata(mem_ptr);
+            info.name_key_self = name_key;
             add_property(std::move(key), std::move(info));
             return *this;
         }

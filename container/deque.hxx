@@ -168,6 +168,7 @@ class deque : Alloc_  // zero_size optimization
 
     bool _is_block_full() const noexcept
     {
+        return false;
     }
 
     size_t _space_head() const noexcept
