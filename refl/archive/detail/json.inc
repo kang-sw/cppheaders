@@ -57,12 +57,27 @@ if_writer& writer::write(double v)
 
 if_writer& writer::write(int64_t v)
 {
-    _on_write();
+    auto d = _ctx.write_next();
+    if (d.need_comma) { _append_comma(); }
+    if (d.need_indent) { _brk_indent(); }
 
     char buf[32];
     auto r = std::to_chars(buf, buf + sizeof buf, v);
 
-    _buf->sputn(buf, r.ptr - buf);
+    if (d.is_key)
+    {
+        _buf->sputc('"');
+        _buf->sputn(buf, r.ptr - buf);
+        _buf->sputc('"');
+
+        _buf->sputc(':');
+        if (indent >= 0) { _buf->sputc(' '); }
+    }
+    else
+    {
+        _buf->sputn(buf, r.ptr - buf);
+    }
+
     return *this;
 }
 
@@ -113,6 +128,8 @@ if_writer& writer::binary_push(size_t total)
 
     _ctx.push_binary(total);
     _buf->sputc('"');
+
+    _base64.reset(_buf);
     return *this;
 }
 

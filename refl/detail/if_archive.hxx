@@ -161,15 +161,24 @@ class error_info
 class if_archive_base
 {
    protected:
-    error_info _err            = {};
-    std::streambuf* const _buf = {};
+    error_info _err      = {};
+    std::streambuf* _buf = {};
 
    public:
-    explicit if_archive_base(std::streambuf* buf) noexcept : _buf(buf) {}
+    bool use_integer_key : 1;
+
+   public:
     virtual ~if_archive_base() = default;
+    explicit if_archive_base(std::streambuf* buf) noexcept
+            : _buf(buf),
+              use_integer_key(false)
+    {
+    }
 
     //! Gets internal buffer
     std::streambuf* rdbuf() const noexcept { return _buf; }
+
+    std::streambuf* rdbuf(std::streambuf* buf) noexcept { return std::swap(buf, _buf), buf; }
 
     //! Dumps additional debug information related current context
     //! (e.g. cursor pos, current token, ...)

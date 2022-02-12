@@ -515,27 +515,36 @@ class object_metadata
                 }
 
                 strm->object_push(num_filled);
-                for (auto& [key, index] : _keys)
-                {
-                    auto& prop = _props.at(index);
 
-                    auto child      = prop.type;
-                    auto child_data = retrieve_self(data, prop);
-                    assert(child_data);
+                auto do_write
+                        = [&](auto&& key, int index) {
+                              auto& prop = _props.at(index);
 
-                    if (auto status = child->requirement_status(child_data);
-                        status == requirement_status_tag::optional_empty)
-                    {
-                        continue;  // skip empty optional property
-                    }
-                    else
-                    {
-                        strm->write_key_next();
-                        *strm << key;
+                              auto child      = prop.type;
+                              auto child_data = retrieve_self(data, prop);
+                              assert(child_data);
 
-                        child->_archive_to(strm, child_data, &prop);
-                    }
-                }
+                              if (auto status = child->requirement_status(child_data);
+                                  status == requirement_status_tag::optional_empty)
+                              {
+                                  return;  // skip empty optional property
+                              }
+                              else
+                              {
+                                  strm->write_key_next();
+                                  *strm << key;
+
+                                  child->_archive_to(strm, child_data, &prop);
+                              }
+                          };
+
+                if (not strm->use_integer_key)
+                    for (auto& [key, index] : _keys)
+                        do_write(key, index);
+                else
+                    for (auto& [key, index] : _key_indices)
+                        do_write(key, index);
+
                 strm->object_pop();
             }
             else if (is_tuple())
@@ -593,26 +602,39 @@ class object_metadata
                         .set(strm)
                         .message("'object' expected");
 
-            auto context_key = strm->begin_object();
+            auto context_key           = strm->begin_object();
+            bool const use_integer_key = strm->use_integer_key;
+
             while (not strm->should_break(context_key))
             {
-                // retrive key, and find it from my properties list
-                auto& keybuf = context->keybuf;
-
+                int index = -1;
                 strm->read_key_next();
-                *strm >> keybuf;
 
-                auto elem = find_ptr(_keys, keybuf);
+                if (use_integer_key)
+                {
+                    int integer_key;
+                    *strm >> integer_key;
+
+                    auto elem = find_ptr(_key_indices, integer_key);
+                    if (elem) { index = elem->second; }
+                }
+                else
+                {
+                    // retrive key, and find it from my properties list
+                    auto& keybuf = context->keybuf;
+                    *strm >> keybuf;
+
+                    auto elem = find_ptr(_keys, keybuf);
+                    if (elem) { index = elem->second; }
+                }
 
                 // simply ignore unexpected keys
-                if (not elem)
+                if (index == -1)
                 {
                     nullptr_t discard = {};
                     *strm >> discard;
                     continue;
                 }
-
-                auto index = elem->second;
 
                 auto& prop      = _props.at(index);
                 auto child      = prop.type;

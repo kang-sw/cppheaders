@@ -242,6 +242,20 @@ static auto ssvd = [] {
     std::cout << strbuf.str();
     std::cout.flush();
 
+    std::cout << "\n\n------- CLASS INTKEY << " << typeid(TestType).name() << " -------\n\n";
+    std::stringbuf strbuf_intkey;
+    archive::json::writer writer_intkey{&strbuf_intkey};
+    writer_intkey.use_integer_key = true;
+    writer_intkey << arg;
+    std::cout << strbuf_intkey.str() << std::endl;
+
+    std::cout << "\n\n------- CLASS INTKEY >> " << typeid(TestType).name() << " -------\n\n";
+    archive::json::reader reader_intkey{&strbuf_intkey};
+    reader_intkey.use_integer_key = true;
+    reader_intkey >> arg;
+    writer_intkey.rdbuf(std::cout.rdbuf());
+    writer_intkey << arg;
+
     std::cout << "\n\n------- PARSE " << typeid(TestType).name() << " -------\n\n";
     archive::json::reader reader{&strbuf};
     TestType other;
@@ -280,8 +294,6 @@ static auto ssvd = [] {
 
     return nullptr;
 };
-
-auto static fff = ssvd();
 
 TEST_CASE("archive", "[.]")
 {
