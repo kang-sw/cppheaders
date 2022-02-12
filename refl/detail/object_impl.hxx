@@ -709,7 +709,7 @@ class object_metadata
                 = std::make_unique<object_metadata>();
 
        protected:
-        size_t add_property_impl(property_metadata info) const
+        size_t add_property_impl(property_metadata info)
         {
             assert(not _current->is_primitive());
 
@@ -725,11 +725,11 @@ class object_metadata
          * Generate object descriptor instance.
          * Sorts keys, build incremental offset lookup table, etc.
          */
-        object_metadata_ptr create() const
+        object_metadata_ptr create()
         {
             static std::atomic_uint64_t unique_id_allocator;
 
-            auto result     = std::make_unique<object_metadata>(*_current);
+            auto result     = std::move(_current);
             auto& generated = *result;
             auto lookup     = &generated._offset_lookup;
 
@@ -832,7 +832,7 @@ class object_metadata
         }
 
        private:
-        primitive_factory const& setup(size_t extent, if_primitive_control const* ref) const
+        primitive_factory& setup(size_t extent, if_primitive_control const* ref)
         {
             *_current = {};
 
@@ -852,7 +852,7 @@ class object_metadata
             return static_cast<Ty_ const&>(*this);
         }
 
-       public:
+       protected:
         template <typename Class_>
         Ty_ const& define_class()
         {
@@ -864,7 +864,6 @@ class object_metadata
             return _self();
         }
 
-       public:
         virtual Ty_ const& define_basic(size_t extent)
         {
             *_current         = {};
@@ -873,7 +872,6 @@ class object_metadata
             return _self();
         }
 
-       protected:
         template <typename Class_, typename MemVar_>
         static property_metadata create_property_metadata(MemVar_ Class_::*mem_ptr)
         {
@@ -896,7 +894,7 @@ class object_metadata
     {
         using super = object_factory_base<object_factory>;
 
-       public:
+       protected:
         object_factory const& define_basic(size_t extent) override
         {
             object_factory_base::define_basic(extent);
@@ -908,7 +906,7 @@ class object_metadata
             return *this;
         }
 
-        auto& add_property(std::string key, property_metadata info) const
+        auto& add_property(std::string key, property_metadata info)
         {
             auto index          = add_property_impl(std::move(info));
             auto [pair, is_new] = _current->_keys.try_emplace(std::move(key), int(index));
@@ -927,8 +925,8 @@ class object_metadata
     {
         using super = object_factory_base<object_factory>;
 
-       public:
-        auto& add_property(property_metadata info) const
+       protected:
+        auto& add_property(property_metadata info)
         {
             add_property_impl(std::move(info));
 
@@ -948,7 +946,7 @@ class object_metadata
         }
 
         template <typename MemVar_>
-        auto& property(std::string key, MemVar_ Class_::*mem_ptr, int name_key = -1) const
+        auto& property(std::string key, MemVar_ Class_::*mem_ptr, int name_key = -1)
         {
             auto info          = create_property_metadata(mem_ptr);
             info.name_key_self = name_key;
@@ -969,7 +967,7 @@ class object_metadata
         }
 
         template <typename MemVar_>
-        auto& property(MemVar_ Class_::*mem_ptr) const
+        auto& property(MemVar_ Class_::*mem_ptr)
         {
             add_property(create_property_metadata(mem_ptr));
             return *this;
