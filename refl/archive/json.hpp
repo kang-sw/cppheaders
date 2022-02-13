@@ -73,7 +73,7 @@ class reader : public archive::if_reader
     std::unique_ptr<impl> self;
 
    public:
-    explicit reader(std::streambuf* buf);
+    explicit reader(std::streambuf* buf, bool use_intkey = false);
     ~reader() override;
 
     //! Prepare for next list of tokens

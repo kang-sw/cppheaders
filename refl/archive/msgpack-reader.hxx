@@ -170,6 +170,7 @@ class reader : public archive::if_reader
     if_reader& read(nullptr_t) override
     {
         // skip single item
+        _step_context();
         _skip_once();
         return *this;
     }
