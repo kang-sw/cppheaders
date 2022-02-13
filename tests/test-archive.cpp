@@ -54,9 +54,8 @@ struct inner_arg_1
     std::array<bool, 4> bools = {false, false, true, false};
     double g                  = 3.14;
 
-    CPPH_REFL_DEFINE_OBJECT_inline(
-            str1, str2,
-            var, k, bools, g);
+    CPPH_REFL_DEFINE_OBJECT_inline((), (str1), (str2),
+                                   (var), (k), (bools), (g));
 };
 
 struct inner_arg_2
@@ -67,7 +66,7 @@ struct inner_arg_2
 
     int ints[3] = {1, 23, 4};
 
-    CPPH_REFL_DEFINE_TUPLE_inline(rtt, nothing, nothing2, ints);
+    CPPH_REFL_DEFINE_TUPLE_inline((), (rtt), (nothing), (nothing2), (ints));
 };
 
 struct abcd
@@ -77,7 +76,7 @@ struct abcd
     int arg2 = 3;
     int arg3 = 4;
 
-    CPPH_REFL_DEFINE_OBJECT_inline(arg0, arg1, arg2, arg3);
+    CPPH_REFL_DEFINE_OBJECT_inline((), (arg0), (arg1), (arg2), (arg3));
 };
 
 struct outer
@@ -87,7 +86,8 @@ struct outer
     std::pair<int, bool> arg                = {3, false};
     std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
 
-    perfkit::binary<abcd> r;
+    binary<abcd> r;
+
     std::map<std::string, abcd> afs = {
             {"aa", {1, 2, 3, 4}},
             {"bb", {1, 3, 2, 5}},
@@ -97,7 +97,7 @@ struct outer
     std::unique_ptr<int> has_value   = std::make_unique<int>(3);
     std::shared_ptr<int> has_value_s = std::make_shared<int>(3);
 
-    CPPH_REFL_DEFINE_TUPLE_inline(arg1, arg2, arg, bb, afs, no_value, has_value, has_value_s);
+    CPPH_REFL_DEFINE_OBJECT_inline((), (arg1), (arg2), (arg), (bb), (r), (afs), (no_value), (has_value), (has_value_s));
 };
 
 template <typename S, typename T>
@@ -165,10 +165,9 @@ struct vectors
     variant_type vt3 = std::string{"hello!"};
     variant_type vt4 = false;
 
-    CPPH_REFL_DEFINE_OBJECT_inline(
-            bb, f, f2, f3, f4, f5, my_enum_value, arg, some_outer,
-            no_val, has_val,
-            vt1, vt2, vt3, vt4);
+    CPPH_REFL_DEFINE_OBJECT_inline((), (bb), (f), (f2), (f3), (f4), (f5), (my_enum_value), (arg), (some_outer),
+                                   (no_val), (has_val),
+                                   (vt1), (vt2), (vt3), (vt4));
 };
 
 struct some_other_2
@@ -192,7 +191,7 @@ struct testarg_2
 {
     std::string unistr;
 
-    CPPH_REFL_DEFINE_OBJECT_inline(unistr);
+    CPPH_REFL_DEFINE_OBJECT_inline((), (unistr));
 };
 
 std::string g_debugstr_1;
@@ -331,14 +330,14 @@ TEST_CASE("archive", "[.]")
 //
 //     return factory.create();
 // }
-CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, a, b, c, f, t, r, e, ff);
-CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, a, b, c, f, t, r, e, ff);
+CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, (), (a), (b), (c), (f), (t), (r), (e), (ff));
+CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, (), (a), (b), (c), (f), (t), (r), (e), (ff));
 
 struct bintest
 {
     binary<std::string> binstr = "hello, world!";
 
-    CPPH_REFL_DEFINE_OBJECT_inline(binstr);
+    CPPH_REFL_DEFINE_OBJECT_inline((), (binstr));
 };
 
 TEST_CASE("base64 restoration", "[archive]")

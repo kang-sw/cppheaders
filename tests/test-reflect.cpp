@@ -51,5 +51,5 @@ TEST_CASE("macro test", "[.]")
 
 #include "refl/refl.hxx"
 namespace my_ns {
-CPPH_REFL_DEFINE_OBJECT(test_object_1, a, b, c, d);
+CPPH_REFL_DEFINE_OBJECT(test_object_1, (a), (b), (c), (d));
 }
