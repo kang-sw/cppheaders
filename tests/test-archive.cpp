@@ -166,7 +166,7 @@ struct vectors
     variant_type vt3 = std::string{"hello!"};
     variant_type vt4 = false;
 
-    CPPH_REFL_DEFINE_OBJECT_inline((), (bb), (f), (f2), (f3), (f4), (f5), (my_enum_value), (arg), (some_outer),
+    CPPH_REFL_DEFINE_OBJECT_inline((), (bb, "BB", 0x7fffffff), (f), (f2), (f3), (f4), (f5), (my_enum_value), (arg), (some_outer),
                                    (no_val), (has_val),
                                    (vt1), (vt2), (vt3), (vt4));
 };
@@ -273,13 +273,15 @@ static auto ssvd = [] {
     streambuf::b64 cvtbase64{msgpack_bufb64.rdbuf()};
 
     archive::msgpack::writer msgwr{&cvtbase64};
-    msgwr.serialize(TestType{});
+    msgwr.use_integer_key = true;
+    msgwr << TestType{};
 
     cvtbase64.pubsync();
     std::cout << msgpack_bufb64.str();
     std::cout << "\n----------- MSGPACK READING -------------- " << std::endl;
 
     archive::msgpack::reader msgrd{&cvtbase64};
+    msgrd.use_integer_key = true;
 
     TestType other2{};
     other2.arg     = {};
