@@ -98,7 +98,7 @@ class basic_b64 : public std::streambuf
             char buf[base64::encoded_size(n_read_bytes)];
             auto n_read = _src->sgetn(buf, sizeof buf);
 
-            if (n_read % 4 != 0)
+            if (n_read == 0 || n_read % 4 != 0)
                 return traits_type::eof();
 
             auto n_decoded = base64::decoded_size(array_view(buf, n_read));

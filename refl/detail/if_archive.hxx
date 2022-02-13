@@ -375,7 +375,19 @@ if_writer& operator<<(if_writer& writer, Any_ const& value)
 }
 
 template <typename Any_>
+if_writer& operator<<(if_writer&& writer, Any_ const& value)
+{
+    return writer.write(value);
+}
+
+template <typename Any_>
 if_reader& operator>>(if_reader& reader, Any_& ref)
+{
+    return reader.read(ref);
+}
+
+template <typename Any_>
+if_reader& operator>>(if_reader&& reader, Any_& ref)
 {
     return reader.read(ref);
 }

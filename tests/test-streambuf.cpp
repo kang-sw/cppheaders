@@ -40,6 +40,7 @@ TEST_CASE("base64 feature test", "[streambuf]")
 
     b64.reset(buffer.rdbuf());
     b64.sputn(str.data(), str.size());
+    b64.pubsync();
     REQUIRE(buffer.str() == "aGVsbG8sIHdvcmxkISAwYWJjZGVmZ18xMjM0X0haWkVF");
 
     std::stringstream binbuf;

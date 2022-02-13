@@ -36,12 +36,21 @@ struct base_object
     std::list<int> list_int;
     cpph::binary<std::vector<char>> bin_vec_chars;
 
-    void fill()
+    auto& fill()
     {
-        opt_double = 1.;
+        opt_double = 31314.;
         list_int   = {1, 2, 34};
         bin_vec_chars.assign({'h', 'e', 'l', 'l', 'o'});
+
+        return *this;
     }
+};
+
+struct child_object : base_object
+{
+    CPPH_REFL_DECLARE_c;
+
+    nullptr_t placeholder;
 };
 
 CPPH_REFL_DECLARE(base_object);
@@ -54,5 +63,43 @@ CPPH_REFL_DECLARE(base_object);
 #include "refl/archive/msgpack-reader.hxx"
 #include "refl/archive/msgpack-writer.hxx"
 #include "refl/buffer.hxx"
+#include "refl/container/binary.hxx"
 #include "refl/container/variant.hxx"
 #include "refl/object.hxx"
+
+using namespace cpph;
+
+CPPH_REFL_DEFINE_OBJECT(base_object, (), (opt_double), (list_int), (bin_vec_chars));
+CPPH_REFL_DEFINE_OBJECT_c(child_object, (.extend<base_object>()), (placeholder));
+
+TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
+                   (std::pair<archive::json::writer, archive::json::reader>),
+                   (std::pair<archive::msgpack::writer, archive::msgpack::reader>))
+{
+    using writer = typename TestType::first_type;
+    using reader = typename TestType::second_type;
+
+    for (int intkey = 0; intkey < 2; ++intkey)
+    {
+        std::stringstream sstrm;
+
+        writer wr{sstrm.rdbuf()};
+        wr.use_integer_key = intkey;
+
+        child_object enc{};
+        enc.fill();
+        wr << enc;
+        auto content_1 = sstrm.str();
+        INFO(content_1);
+
+        child_object b;
+        reader rd{sstrm.rdbuf()};
+        rd.use_integer_key = intkey;
+        rd >> b;
+
+        sstrm.str(""), wr << b;
+        auto content_2 = sstrm.str();
+
+        REQUIRE(content_1 == content_2);
+    }
+}
