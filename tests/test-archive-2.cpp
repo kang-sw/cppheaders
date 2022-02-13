@@ -86,7 +86,7 @@ TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
         writer wr{sstrm.rdbuf()};
         wr.use_integer_key = intkey;
 
-        base_object enc{};
+        child_object enc{};
         enc.fill();
         wr << enc;
         auto content_1 = sstrm.str();
