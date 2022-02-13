@@ -9,11 +9,11 @@ add_executable(
         test-queue.cpp
         test-functional.cpp
         test-math.cpp
-        test-reflect.cpp
         test-thread.cpp
         test-streambuf.cpp
         test-templates.cpp
         test-archive.cpp
+        test-archive-2.cpp
         test-container.cpp
 )
 

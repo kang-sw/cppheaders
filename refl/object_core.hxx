@@ -24,6 +24,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include "detail/binary_fwd.hxx"
 #include "detail/object_impl.hxx"
 
 /**
@@ -31,12 +32,12 @@
  */
 
 #ifndef CPPH_REFL_DECLARE
-#    define CPPH_REFL_DECLARE(ClassName)              \
+#    define CPPH_REFL_DECLARE(ClassName)            \
         ::CPPHEADERS_NS_::refl::object_metadata_ptr \
                 initialize_object_metadata(         \
                         CPPHEADERS_NS_::refl::type_tag<ClassName>);
 
-#    define CPPH_REFL_DECLARE_c                     \
+#    define CPPH_REFL_DECLARE_c                   \
         CPPHEADERS_NS_::refl::object_metadata_ptr \
         initialize_object_metadata();
 #endif

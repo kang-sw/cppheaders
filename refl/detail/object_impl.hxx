@@ -934,10 +934,24 @@ class object_metadata
             auto [pair, is_new] = _current->_keys.try_emplace(std::move(key), int(index));
             // _current->_key_indices: delay until key evaluation on create()
 
-            assert("Key must be unique" && is_new);
+            if (not is_new) { throw std::logic_error{"Key must be unique"}; }
 
             // register property name
             _current->_props[index].name = pair->first;
+
+            return *this;
+        }
+
+        auto& basic_extend(object_metadata_t meta, size_t base_offset)
+        {
+            if (not meta->is_object()) { throw std::logic_error{"Non-object cannot be derived"}; }
+            // TODO: add metadata for representing base object itself, for dynamic usage?
+
+            for (auto prop : meta->_props)
+            {
+                prop.offset += base_offset;
+                add_property(std::string{prop.name}, prop);
+            }
 
             return *this;
         }
@@ -986,6 +1000,15 @@ class object_metadata
         auto& _property_3(MemVar_ Class_::*mem_ptr, KeyStr_&&, std::string name, int name_key = -1)
         {
             return property(mem_ptr, std::move(name), name_key);
+        }
+
+        template <typename Base_, typename = std::enable_if_t<std::is_base_of_v<Base_, Class_>>>
+        auto& extend()
+        {
+            constexpr Class_* pointer = nullptr;
+            const auto offset         = (intptr_t) static_cast<Base_*>(pointer) - (intptr_t)pointer;
+
+            return basic_extend(get_object_metadata<Base_>(), offset);
         }
     };
 

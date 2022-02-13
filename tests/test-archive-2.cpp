@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2022. Seungwoo Kang
+// Copyright (c) 2021-2022. Seungwoo Kang
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,34 +22,37 @@
 //
 // project home: https://github.com/perfkitpp
 
-#include "catch.hpp"
-#include "helper/macro_for_each.hxx"
-#include "refl/archive.hxx"
-#include "refl/buffer.hxx"
+// H
+#include <iostream>
+#include <list>
+#include <optional>
+#include <sstream>
+
 #include "refl/object_core.hxx"
 
-namespace my_ns {
-struct test_object_1
+struct base_object
 {
-    int a, b, c, d;
+    std::optional<double> opt_double;
+    std::list<int> list_int;
+    cpph::binary<std::vector<char>> bin_vec_chars;
+
+    void fill()
+    {
+        opt_double = 1.;
+        list_int   = {1, 2, 34};
+        bin_vec_chars.assign({'h', 'e', 'l', 'l', 'o'});
+    }
 };
 
-struct test_object_2
-{
-    int a, b, c, d;
-};
+CPPH_REFL_DECLARE(base_object);
 
-CPPH_REFL_DECLARE(test_object_1);
-static auto const ptr = cpph::refl::get_object_metadata<test_object_1>();
+// CPP
 
-}  // namespace my_ns
-
-TEST_CASE("macro test", "[.]")
-{
-    CPPH_FOR_EACH(puts, "ha", "he");
-}
-
-#include "refl/refl.hxx"
-namespace my_ns {
-CPPH_REFL_DEFINE_OBJECT(test_object_1, (), (a), (b), (c), (d));
-}
+#include "catch.hpp"
+#include "refl/archive/debug_string_writer.hxx"
+#include "refl/archive/json.hpp"
+#include "refl/archive/msgpack-reader.hxx"
+#include "refl/archive/msgpack-writer.hxx"
+#include "refl/buffer.hxx"
+#include "refl/container/variant.hxx"
+#include "refl/object.hxx"

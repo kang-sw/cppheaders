@@ -30,37 +30,37 @@
 #ifndef CPPHEADERS_REFL_OBJECT_MACROS
 #    define CPPHEADERS_REFL_OBJECT_MACROS
 
-#    define CPPH_REFL_DEFINE_OBJECT_c(ClassName, RESERVED, ...) \
-        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, RESERVED, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_OBJECT_c(ClassName, AttrOps, ...) \
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, AttrOps, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
 
-#    define CPPH_REFL_DEFINE_OBJECT_inline(RESERVED, ...) \
-        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, RESERVED, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_OBJECT_inline(AttrOps, ...) \
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, AttrOps, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
 
-#    define CPPH_REFL_DEFINE_TUPLE_c(ClassName, RESERVED, ...) \
-        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, RESERVED, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_TUPLE_c(ClassName, AttrOps, ...) \
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, AttrOps, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
-#    define CPPH_REFL_DEFINE_TUPLE_inline(RESERVED, ...) \
-        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, RESERVED, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_TUPLE_inline(AttrOps, ...) \
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, AttrOps, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
-#    define CPPH_REFL_DEFINE_OBJECT(ClassName, RESERVED, ...) \
-        INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, RESERVED, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_OBJECT(ClassName, AttrOps, ...) \
+        INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
 
-#    define CPPH_REFL_DEFINE_TUPLE(ClassName, RESERVED, ...) \
-        INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, RESERVED, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
+#    define CPPH_REFL_DEFINE_TUPLE(ClassName, AttrOps, ...) \
+        INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
-#    define INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(Qualify, RESERVED, FactoryType, Iterator, ...) \
-        CPPHEADERS_NS_::refl::object_metadata_ptr                                               \
-                Qualify                                                                         \
-                initialize_object_metadata()                                                    \
-        {                                                                                       \
-            INTERNAL_CPPH_reserved RESERVED;                                                    \
-            using ClassName             = std::remove_pointer_t<decltype(this)>;                \
-            using self_t                = ClassName;                                            \
-            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>();       \
-                                                                                                \
-            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                               \
-                                                                                                \
-            return _cpph_internal_factory.create();                                             \
+#    define INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(Qualify, AttrOps, FactoryType, Iterator, ...) \
+        CPPHEADERS_NS_::refl::object_metadata_ptr                                              \
+                Qualify                                                                        \
+                initialize_object_metadata()                                                   \
+        {                                                                                      \
+            using ClassName             = std::remove_pointer_t<decltype(this)>;               \
+            using self_t                = ClassName;                                           \
+            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>();      \
+                                                                                               \
+            _cpph_internal_factory INTERNAL_CPPH_REFL_UNWRAP AttrOps;                          \
+            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                              \
+                                                                                               \
+            return _cpph_internal_factory.create();                                            \
         }
 
 #    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_3(VarName, ...) \
@@ -72,20 +72,20 @@
 #    define INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR(VarName) \
         _cpph_internal_factory.property(&self_t::VarName)
 
-#    define INTERNAL_CPPH_reserved()
+#    define INTERNAL_CPPH_REFL_UNWRAP(...) __VA_ARGS__
 
-#    define INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, RESERVED, FactoryType, Iterator, ...) \
-        CPPHEADERS_NS_::refl::object_metadata_ptr                                           \
-        initialize_object_metadata(                                                         \
-                CPPHEADERS_NS_::refl::type_tag<ClassName>)                                  \
-        {                                                                                   \
-            INTERNAL_CPPH_reserved RESERVED;                                                \
-            using self_t                = ClassName;                                        \
-            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>();   \
-                                                                                            \
-            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                           \
-                                                                                            \
-            return _cpph_internal_factory.create();                                         \
+#    define INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, FactoryType, Iterator, ...) \
+        CPPHEADERS_NS_::refl::object_metadata_ptr                                          \
+        initialize_object_metadata(                                                        \
+                CPPHEADERS_NS_::refl::type_tag<ClassName>)                                 \
+        {                                                                                  \
+            using self_t                = ClassName;                                       \
+            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>();  \
+                                                                                           \
+            _cpph_internal_factory INTERNAL_CPPH_REFL_UNWRAP AttrOps;                      \
+            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                          \
+                                                                                           \
+            return _cpph_internal_factory.create();                                        \
         }
 
 #endif
