@@ -63,17 +63,14 @@
             return _cpph_internal_factory.create();                                             \
         }
 
-#    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_0(VarName) \
-        _cpph_internal_factory.property(#VarName, &self_t::VarName)
+#    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_3(VarName, ...) \
+        _cpph_internal_factory._property_3(&self_t::VarName, #VarName, ##__VA_ARGS__)
 
-#    define INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR_0(VarName) \
+#    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR(Param) \
+        INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_3 Param
+
+#    define INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR(VarName) \
         _cpph_internal_factory.property(&self_t::VarName)
-
-#    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR(...) \
-        INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_0 __VA_ARGS__
-
-#    define INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR(...) \
-        INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR_0 __VA_ARGS__
 
 #    define INTERNAL_CPPH_reserved()
 

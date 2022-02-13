@@ -66,7 +66,7 @@ struct inner_arg_2
 
     int ints[3] = {1, 23, 4};
 
-    CPPH_REFL_DEFINE_TUPLE_inline((), (rtt), (nothing), (nothing2), (ints));
+    CPPH_REFL_DEFINE_TUPLE_inline((), rtt, nothing, nothing2, ints);
 };
 
 struct abcd
@@ -97,7 +97,8 @@ struct outer
     std::unique_ptr<int> has_value   = std::make_unique<int>(3);
     std::shared_ptr<int> has_value_s = std::make_shared<int>(3);
 
-    CPPH_REFL_DEFINE_OBJECT_inline((), (arg1), (arg2), (arg), (bb), (r), (afs), (no_value), (has_value), (has_value_s));
+    CPPH_REFL_DEFINE_OBJECT_inline((), (arg1),
+                                   (arg2, "afd"), (arg, 1), (bb, "gcd", 13), (r), (afs), (no_value), (has_value), (has_value_s));
 };
 
 template <typename S, typename T>
@@ -113,12 +114,12 @@ auto initialize_object_metadata(cpph::refl::type_tag<values_0<S, T>>)
     using Self = values_0<S, T>;
 
     return cpph::refl::define_object<Self>()
-            .property("a", &Self::a)
-            .property("b", &Self::b, 3)
-            .property("c", &Self::c)
-            .property("d", &Self::d, 5)
-            .property("e", &Self::e)
-            .property("f", &Self::f, 18)
+            .property(&Self::a, "a")
+            .property(&Self::b, "b", 3)
+            .property(&Self::c, "c")
+            .property(&Self::d, "d", 5)
+            .property(&Self::e, "e")
+            .property(&Self::f, "f", 18)
             .create();
 }
 
@@ -330,8 +331,8 @@ TEST_CASE("archive", "[.]")
 //
 //     return factory.create();
 // }
-CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, (), (a), (b), (c), (f), (t), (r), (e), (ff));
-CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, (), (a), (b), (c), (f), (t), (r), (e), (ff));
+CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, (), (a, "hello", 3), (b), (c), (f), (t), (r), (e), (ff));
+CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, (), a, b, c, f, t, r, e, ff);
 
 struct bintest
 {

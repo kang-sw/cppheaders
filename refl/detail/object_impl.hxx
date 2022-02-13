@@ -968,12 +968,24 @@ class object_metadata
         }
 
         template <typename MemVar_>
-        auto& property(std::string key, MemVar_ Class_::*mem_ptr, int name_key = -1)
+        auto& property(MemVar_ Class_::*mem_ptr, std::string name, int name_key = -1)
         {
             auto info          = create_property_metadata(mem_ptr);
             info.name_key_self = name_key;
-            add_property(std::move(key), std::move(info));
+            add_property(std::move(name), std::move(info));
             return *this;
+        }
+
+        template <typename MemVar_>
+        auto& _property_3(MemVar_ Class_::*mem_ptr, std::string name, int name_key = -1)
+        {
+            return property(mem_ptr, std::move(name), -1);
+        }
+
+        template <typename KeyStr_, typename MemVar_>
+        auto& _property_3(MemVar_ Class_::*mem_ptr, KeyStr_&&, std::string name, int name_key = -1)
+        {
+            return property(mem_ptr, std::move(name), name_key);
         }
     };
 
