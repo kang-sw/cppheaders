@@ -154,7 +154,7 @@ struct property_metadata
     int name_key_self = -1;
 
     //! name if this is property of 'object'
-    std::string_view name;
+    std::string name;
 
    public:
     object_metadata_t _owner_type = {};
