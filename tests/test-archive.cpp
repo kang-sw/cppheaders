@@ -31,7 +31,6 @@
 #include "refl/archive/json.hpp"
 #include "refl/archive/msgpack-reader.hxx"
 #include "refl/archive/msgpack-writer.hxx"
-#include "refl/buffer.hxx"
 #include "refl/container/binary.hxx"
 #include "refl/container/variant.hxx"
 #include "refl/object.hxx"

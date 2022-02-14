@@ -28,7 +28,7 @@
 #include <optional>
 #include <sstream>
 
-#include "refl/object_core.hxx"
+#include "refl/core.hxx"
 
 struct base_object
 {
@@ -62,7 +62,6 @@ CPPH_REFL_DECLARE(base_object);
 #include "refl/archive/json.hpp"
 #include "refl/archive/msgpack-reader.hxx"
 #include "refl/archive/msgpack-writer.hxx"
-#include "refl/buffer.hxx"
 #include "refl/container/binary.hxx"
 #include "refl/container/variant.hxx"
 #include "refl/object.hxx"

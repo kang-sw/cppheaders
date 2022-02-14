@@ -25,7 +25,7 @@
 #pragma once
 #include "../helper/macro_utility.hxx"
 #include "detail/primitives.hxx"
-#include "object_core.hxx"
+#include "core.hxx"
 
 #ifndef CPPHEADERS_REFL_OBJECT_MACROS
 #    define CPPHEADERS_REFL_OBJECT_MACROS
