@@ -631,8 +631,7 @@ class object_metadata
                 // simply ignore unexpected keys
                 if (index == -1)
                 {
-                    nullptr_t discard = {};
-                    *strm >> discard;
+                    *strm >> nullptr;
                     continue;
                 }
 

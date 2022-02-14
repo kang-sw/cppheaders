@@ -392,4 +392,14 @@ if_reader& operator>>(if_reader&& reader, Any_& ref)
     return reader.read(ref);
 }
 
+inline if_reader& operator>>(if_reader& reader, nullptr_t nil)
+{
+    return reader.read(nil);
+}
+
+inline if_reader& operator>>(if_reader&& reader, nullptr_t nil)
+{
+    return reader.read(nil);
+}
+
 }  // namespace CPPHEADERS_NS_::archive
