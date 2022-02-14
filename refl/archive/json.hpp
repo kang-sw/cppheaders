@@ -23,8 +23,10 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include <sstream>
 
 #include "../../streambuf/base64.hxx"
+#include "../../streambuf/view.hxx"
 #include "detail/context_helper.hxx"
 
 namespace CPPHEADERS_NS_::archive::json {
@@ -108,3 +110,24 @@ class reader : public archive::if_reader
 };
 
 }  // namespace CPPHEADERS_NS_::archive::json
+
+namespace CPPHEADERS_NS_::archive {
+
+template <typename ValTy_>
+std::string to_json(ValTy_ const& value)
+{
+    std::stringbuf sstr;
+    json::writer wr{&sstr, 8};
+    wr << value;
+    return sstr.str();
+}
+
+template <typename ValTy_>
+void from_json(std::string_view str, ValTy_* ref)
+{
+    streambuf::view view{{(char*)str.data(), str.size()}};
+    json::reader rd{&view};
+    rd >> *ref;
+}
+
+}  // namespace CPPHEADERS_NS_::archive

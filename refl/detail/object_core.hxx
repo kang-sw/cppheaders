@@ -342,7 +342,6 @@ class object_metadata
 
    private:
     /*   Properties   */
-
     // extent of this object
     size_t _extent = 0;
 
@@ -366,10 +365,6 @@ class object_metadata
 
    private:
     /*  Transients  */
-
-    // Check if this descriptor is initialized
-    bool _initialized = false;
-
     // Sorted array for property address ~ index mapping
     std::vector<std::pair<size_t /*offset*/, size_t /*prop_index*/>> _offset_lookup;
 
@@ -467,14 +462,9 @@ class object_metadata
     decltype(_props) const& properties() const noexcept { return _props; }
 
     /**
-     * Check if this is initialized object descriptor
-     */
-    bool is_valid() const noexcept { return _initialized; }
-
-    /**
      * Create default initialized dynamic object
      */
-    dynamic_object_ptr create() const;
+    dynamic_object_ptr create_default() const;
 
     /**
      * Clone dynamic object from template
@@ -844,7 +834,6 @@ class object_metadata
             assert("End of address must be less or equal with actual object extent"
                    && object_end <= generated.extent());
 
-            generated._initialized = true;  // set initialized
             return result;
         }
     };
