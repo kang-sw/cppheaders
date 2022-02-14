@@ -24,12 +24,8 @@
 
 //
 #pragma once
-#include <array>
-#include <list>
-#include <map>
 #include <optional>
 #include <tuple>
-#include <vector>
 
 #include "../../utility/cleanup.hxx"
 #include "object_core.hxx"
@@ -53,7 +49,6 @@ INTERNAL_CPPH_pewpew(has_resize, T, std::declval<T>().resize(0));
 INTERNAL_CPPH_pewpew(has_data, T, std::data(std::declval<T>()));
 
 static_assert(has_reserve_v<std::vector<int>>);
-static_assert(has_emplace_back<std::list<int>>);
 
 #undef INTERNAL_CPPH_pewpew
 
@@ -175,24 +170,11 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
     return &*desc;
 }
 
-template <typename>
-constexpr bool is_stl_array_v = false;
-
-template <typename Ty_, size_t N_>
-constexpr bool is_stl_array_v<std::array<Ty_, N_>> = true;
-
 }  // namespace detail
 
 INTERNAL_CPPH_define_(ValTy_, std::is_array_v<ValTy_>)
 {
     return detail::fixed_size_descriptor<std::remove_extent_t<ValTy_>>(
-            sizeof(ValTy_),
-            std::size(*(ValTy_*)0));
-}
-
-INTERNAL_CPPH_define_(ValTy_, detail::is_stl_array_v<ValTy_>)
-{
-    return detail::fixed_size_descriptor<typename ValTy_::value_type>(
             sizeof(ValTy_),
             std::size(*(ValTy_*)0));
 }
@@ -265,16 +247,15 @@ auto get_list_like_descriptor() -> object_metadata_t
     static auto desc      = object_metadata::primitive_factory::define(extent, &manip);
     return &*desc;
 }
+
 }  // namespace detail
 
 INTERNAL_CPPH_define_(
         ValTy_,
-        (is_template_instance_of<ValTy_, std::vector>::value
-         || is_template_instance_of<ValTy_, std::list>::value))
+        (is_template_instance_of<ValTy_, std::vector>::value))
 {
     return detail::get_list_like_descriptor<ValTy_>();
 }
-
 }  // namespace CPPHEADERS_NS_::refl
 
 /*
@@ -342,78 +323,6 @@ INTERNAL_CPPH_define_(MapTy_, (is_template_instance_of<MapTy_, std::map>::value)
 }  // namespace CPPHEADERS_NS_::refl
 
 /*
- * Tuple access
- */
-namespace CPPHEADERS_NS_::refl {
-namespace detail {
-template <typename... Args_>
-auto get_tuple_descriptor(type_tag<std::tuple<Args_...>>)
-{
-    static struct manip_t : templated_primitive_control<std::tuple<Args_...>>
-    {
-        entity_type type() const noexcept override
-        {
-            return entity_type::tuple;
-        }
-
-       protected:
-        void archive(archive::if_writer* strm, const std::tuple<Args_...>& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
-        {
-            strm->array_push(sizeof...(Args_));
-            std::apply([strm](auto const&... args) { ((*strm << args), ...); }, data);
-            strm->array_pop();
-        }
-        void restore(archive::if_reader* strm, std::tuple<Args_...>* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
-        {
-            auto key = strm->begin_array();
-            std::apply([strm](auto&... args) { ((*strm >> args), ...); }, *pvdata);
-            strm->end_array(key);
-        }
-    } manip;
-
-    return object_metadata::primitive_factory::define(sizeof(std::tuple<Args_...>), &manip);
-}
-}  // namespace detail
-
-INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::tuple>::value))
-{
-    static auto inst = detail::get_tuple_descriptor(type_tag_v<ValTy_>);
-    return &*inst;
-}
-
-INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::pair>::value))
-{
-    static struct manip_t : templated_primitive_control<ValTy_>
-    {
-        entity_type type() const noexcept override
-        {
-            return entity_type::tuple;
-        }
-
-        void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
-        {
-            strm->array_push(2);
-            *strm << pvdata.first;
-            *strm << pvdata.second;
-            strm->array_pop();
-        }
-
-        void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
-        {
-            auto key = strm->begin_array();
-            *strm >> pvdata->first;
-            *strm >> pvdata->second;
-            strm->end_array(key);
-        }
-    } manip;
-
-    static auto desc = object_metadata::primitive_factory::define(sizeof(ValTy_), &manip);
-    return &*desc;
-}
-
-}  // namespace CPPHEADERS_NS_::refl
-
-/*
  * Optionals, pointers
  */
 namespace CPPHEADERS_NS_::refl {
@@ -478,6 +387,5 @@ INTERNAL_CPPH_define_(
     return &*desc;
 }
 }  // namespace CPPHEADERS_NS_::refl
-
 
 #include "_deinit_macros.hxx"

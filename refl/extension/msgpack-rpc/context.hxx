@@ -62,9 +62,16 @@ class session
 };
 }  // namespace detail
 
-class context
+/**
+ * Defines service information
+ */
+class service_info
 {
-    std::map<std::string, function<void()>> _handlers;
+   public:
+    using service_handler_fn = function<void(reader& param, writer& retval)>;
+
+   private:
+    std::map<std::string, service_handler_fn> _handlers;
 
    public:
     /**
@@ -93,6 +100,20 @@ class context
                    *buffer = _handler(std::forward<Params_>(args)...);
                });
     }
+};
+
+class context
+{
+    service_info _service;
+
+   public:
+    /**
+     * Create new context with given service information.
+     * Once service is registered, it becomes read-only.
+     *
+     * @param service
+     */
+    context(service_info&& service) noexcept;
 
     /**
      * Call RPC function.
@@ -113,7 +134,7 @@ class context
 
     /**
      * Create new session with given connection type.
-     * Lifecycle of connection will be manipulated inside of this context.
+     * Lifecycle of connection must be managed outside of class boundary.
      *
      * @tparam Conn_
      * @tparam Args_
@@ -123,8 +144,8 @@ class context
     template <typename Conn_,
               typename... Args_,
               typename = std::enable_if_t<std::is_base_of_v<if_connection, Conn_>>>
-    auto create_session(Args_&&... args)
-            -> std::weak_ptr<Conn_>;
+    [[nodiscard]] auto
+    create_session(Args_&&... args) -> std::shared_ptr<Conn_>;
 };
 
 }  // namespace CPPHEADERS_NS_::msgpack::rpc

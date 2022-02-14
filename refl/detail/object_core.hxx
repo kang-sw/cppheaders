@@ -25,8 +25,8 @@
 #pragma once
 
 #include <algorithm>
-#include <atomic>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -748,8 +748,6 @@ class object_metadata
          */
         object_metadata_ptr create()
         {
-            static std::atomic_uint64_t unique_id_allocator;
-
             auto result     = std::move(_current);
             auto& generated = *result;
             auto lookup     = &generated._offset_lookup;
