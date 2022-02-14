@@ -416,7 +416,7 @@ class reader : public archive::if_reader
             case typecode::ext8:
             case typecode::ext16:
             case typecode::ext32:
-                skip_bytes = 1 + _read_elem_count<typecode::ext8>(header);
+                skip_bytes = 1 + 1 + _read_elem_count<typecode::ext8>(header);
                 break;
 
             case typecode::error:

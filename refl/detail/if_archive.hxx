@@ -208,6 +208,8 @@ class if_writer : public if_archive_base
      */
     virtual void clear() { _err = {}; }
 
+    void flush() { _buf->pubsync(); }
+
    public:
     template <typename ValTy_>
     if_writer& serialize(ValTy_ const&);
