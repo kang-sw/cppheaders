@@ -469,6 +469,10 @@ class session
             }
 
             _reader.end_object(key);
+
+            // waiting for next input.
+            _waiting = true;
+            _conn->begin_waiting();
         }
         catch (detail::rpc_handler_fatal_state&)
         {
