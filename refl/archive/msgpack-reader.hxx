@@ -74,7 +74,7 @@ class reader : public archive::if_reader
 
    private:
     template <typename ValTy_, typename CastTo_ = ValTy_>
-    CastTo_ _get_n_endian()
+    CastTo_ _get_n_bigE()
     {
         char buffer[sizeof(ValTy_)];
         for (int i = sizeof buffer - 1; i >= 0; --i)
@@ -97,9 +97,9 @@ class reader : public archive::if_reader
         switch (_typecode(header))
         {
             case Fix_: return (uint8_t)header & FixMask_;
-            case _do_offset(Base_, Ofst_): return _get_n_endian<uint8_t>();
-            case _do_offset(Base_, Ofst_ + 1): return _get_n_endian<uint16_t>();
-            case _do_offset(Base_, Ofst_ + 2): return _get_n_endian<uint32_t>();
+            case _do_offset(Base_, Ofst_): return _get_n_bigE<uint8_t>();
+            case _do_offset(Base_, Ofst_ + 1): return _get_n_bigE<uint16_t>();
+            case _do_offset(Base_, Ofst_ + 2): return _get_n_bigE<uint32_t>();
 
             default:
                 throw error::reader_parse_failed{this}.message("type error");
@@ -145,17 +145,17 @@ class reader : public archive::if_reader
             case typecode::bool_false: return ValTy_(0);
             case typecode::bool_true: return ValTy_(1);
 
-            case typecode::float32: return _get_n_endian<float, ValTy_>();
-            case typecode::float64: return _get_n_endian<double, ValTy_>();
+            case typecode::float32: return _get_n_bigE<float, ValTy_>();
+            case typecode::float64: return _get_n_bigE<double, ValTy_>();
 
-            case typecode::uint8: return _get_n_endian<uint8_t, ValTy_>();
-            case typecode::uint16: return _get_n_endian<uint16_t, ValTy_>();
-            case typecode::uint32: return _get_n_endian<uint32_t, ValTy_>();
-            case typecode::uint64: return _get_n_endian<uint64_t, ValTy_>();
-            case typecode::int8: return _get_n_endian<int8_t, ValTy_>();
-            case typecode::int16: return _get_n_endian<int16_t, ValTy_>();
-            case typecode::int32: return _get_n_endian<int32_t, ValTy_>();
-            case typecode::int64: return _get_n_endian<int64_t, ValTy_>();
+            case typecode::uint8: return _get_n_bigE<uint8_t, ValTy_>();
+            case typecode::uint16: return _get_n_bigE<uint16_t, ValTy_>();
+            case typecode::uint32: return _get_n_bigE<uint32_t, ValTy_>();
+            case typecode::uint64: return _get_n_bigE<uint64_t, ValTy_>();
+            case typecode::int8: return _get_n_bigE<int8_t, ValTy_>();
+            case typecode::int16: return _get_n_bigE<int16_t, ValTy_>();
+            case typecode::int32: return _get_n_bigE<int32_t, ValTy_>();
+            case typecode::int64: return _get_n_bigE<int64_t, ValTy_>();
 
             case typecode::fixstr:
             case typecode::str8:
