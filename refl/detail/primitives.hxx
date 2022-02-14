@@ -32,7 +32,7 @@
 #include <vector>
 
 #include "../../utility/cleanup.hxx"
-#include "object_impl.hxx"
+#include "object_core.hxx"
 
 namespace CPPHEADERS_NS_::refl {
 /**

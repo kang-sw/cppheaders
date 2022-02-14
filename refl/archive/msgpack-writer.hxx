@@ -33,6 +33,9 @@ class writer : public archive::if_writer
    private:
     detail::write_context_helper _ctx;
 
+   public:
+    void clear() override { if_writer::clear(), _ctx.clear(); }
+
    private:
     template <typename ValTy_, typename Ty_, typename = std::enable_if_t<std::is_trivial_v<ValTy_>>>
     void _putbin(Ty_ const& val)
@@ -275,3 +278,7 @@ class writer : public archive::if_writer
     }
 };
 }  // namespace CPPHEADERS_NS_::archive::msgpack
+
+namespace CPPHEADERS_NS_::msgpack {
+using archive::msgpack::writer;
+}

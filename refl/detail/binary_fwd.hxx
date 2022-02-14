@@ -27,7 +27,7 @@
 
 #pragma once
 #include "../__namespace__"
-#include "../detail/object_impl.hxx"
+#include "../detail/object_core.hxx"
 
 /*
  * Binary

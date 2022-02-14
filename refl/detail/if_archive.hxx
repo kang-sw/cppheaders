@@ -206,7 +206,7 @@ class if_writer : public if_archive_base
     /**
      * Clear internal buffer state
      */
-    void clear() { _err = {}; }
+    virtual void clear() { _err = {}; }
 
    public:
     template <typename ValTy_>

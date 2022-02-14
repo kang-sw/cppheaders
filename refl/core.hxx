@@ -25,7 +25,7 @@
 
 #pragma once
 #include "detail/binary_fwd.hxx"
-#include "detail/object_impl.hxx"
+#include "detail/object_core.hxx"
 
 /**
  * All macros must be placed in global namespace!

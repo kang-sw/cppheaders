@@ -64,10 +64,13 @@ class reader : public archive::if_reader
     explicit reader(std::streambuf* buf, size_t reserved_depth = 0)
             : archive::if_reader(buf)
     {
-        _scope.reserve(reserved_depth);
+        reserve_depth(reserved_depth);
     }
 
     void reserve_depth(size_t n) { _scope.reserve(n); }
+
+    //! Clears internal parsing state
+    void clear() { _scope.clear(), _scope_key_gen = {}; }
 
    private:
     template <typename ValTy_, typename CastTo_ = ValTy_>
@@ -532,3 +535,7 @@ class reader : public archive::if_reader
 };
 
 }  // namespace CPPHEADERS_NS_::archive::msgpack
+
+namespace CPPHEADERS_NS_::msgpack {
+using archive::msgpack::reader;
+}

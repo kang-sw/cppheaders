@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #pragma once
+#include "msgpack-rpc/context.hxx"
 
 /**
  * Provides basic I/O functionality of msgpack-rpc
@@ -69,8 +70,7 @@
  *   ... // server
  *   refl::msgpack::rpc_context ctx;
  *
- *   // does not distinguish request/notify, however, if the return value of function signature is
- *   //  void, server will return error on rpc request.
+ *   // does not distinguish request/notify.
  *   function<std::string(int, std::string)> handler = ...;
  *   ctx.serve("method_name", std::move(handler));
  *
@@ -89,11 +89,12 @@
  *   //   errors can be any of the next:
  *   //     method_not_exist
  *   //     connection_timeout
- *   //     method_can_not_reply // target is notify
  *   //     invalid_signature
  *   //       invalid_parameter  // failed to parse parameter pack
  *   //       invalid_return_type
  *   //     unkown_error // from other library ... error info is incompatible
+ *   //
+ *   // if method return type is void, it simply wait for server reply.
  *   std::string result = ctx.request<std::string>("method_name", 3, "hello!");
  *
  *   // async

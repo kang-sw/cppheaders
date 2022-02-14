@@ -93,6 +93,12 @@ class write_context_helper
         return _scopes.size();
     }
 
+    //! Clears all internal state
+    void clear()
+    {
+        _scopes.clear();
+    }
+
     //! Assert next entity is key
     //! @return true if comma required before write.
     bool write_key_next()
