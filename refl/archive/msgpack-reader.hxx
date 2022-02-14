@@ -241,7 +241,9 @@ class reader : public archive::if_reader
     void end_object(context_key key) override
     {
         _verify_end(scope_t::type_object, key);
-        _break_scope();
+
+        while (not _scope.empty() && _scope.back().ctxkey.data.value == key.value)
+            _break_scope();
     }
 
     size_t begin_binary() override
@@ -291,7 +293,9 @@ class reader : public archive::if_reader
     void end_array(context_key key) override
     {
         _verify_end(scope_t::type_array, key);
-        _break_scope();
+
+        while (not _scope.empty() && _scope.back().ctxkey.data.value == key.value)
+            _break_scope();
     }
 
     void read_key_next() override
@@ -424,8 +428,12 @@ class reader : public archive::if_reader
 
     void _verify_end(scope_t::type_t type, context_key key)
     {
-        if (_verify_scope(type)->ctxkey.data.value != key.value)
-            throw error::reader_invalid_context{this}.message("too early scope end call!");
+        // check if given context key exists in scopes
+        for (auto it = _scope.rbegin(), end = _scope.rend(); it != end; ++it)
+            if (it->ctxkey.data.value == key.value)
+                return;
+
+        throw error::reader_invalid_context{this}.message("too early scope end call!");
     }
 
     scope_t* _new_scope(scope_t::type_t ty, uint32_t n_elems)
