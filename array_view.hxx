@@ -182,9 +182,9 @@ class array_view<void> : public array_view<char>
    public:
     array_view() noexcept = default;
 
-    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<
-                                    typename std::remove_reference_t<Ty_>::value_type>>>
-    explicit array_view(Ty_&& other) noexcept
+    template <typename Container_, typename = std::enable_if_t<is_binary_compatible_v<
+                                    typename std::remove_reference_t<Container_>::value_type>>>
+    explicit array_view(Container_&& other) noexcept
             : array_view<char>(reinterpret_cast<char*>(std::data(other)),
                                std::size(other) * sizeof(*std::data(other)))
     {
@@ -197,9 +197,9 @@ class array_view<void> : public array_view<char>
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<
-                                    typename std::remove_reference_t<Ty_>::value_type>>>
-    array_view& operator=(Ty_&& other) noexcept
+    template <typename Container_, typename = std::enable_if_t<is_binary_compatible_v<
+                                    typename std::remove_reference_t<Container_>::value_type>>>
+    array_view& operator=(Container_&& other) noexcept
     {
         array_view<char>::operator=(
                 array_view<char>(
@@ -215,9 +215,9 @@ class array_view<void const> : public array_view<char const>
    public:
     array_view() noexcept = default;
 
-    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<
-                                    typename std::remove_reference_t<Ty_>::value_type>>>
-    explicit array_view(Ty_&& other) noexcept
+    template <typename Container_, typename = std::enable_if_t<is_binary_compatible_v<
+                                    typename std::remove_reference_t<Container_>::value_type>>>
+    explicit array_view(Container_&& other) noexcept
             : array_view<char const>(reinterpret_cast<char const*>(std::data(other)),
                                      std::size(other) * sizeof(*std::data(other)))
     {
@@ -230,9 +230,9 @@ class array_view<void const> : public array_view<char const>
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<
-                                    typename std::remove_reference_t<Ty_>::value_type>>>
-    array_view& operator=(Ty_&& other) noexcept
+    template <typename Container_, typename = std::enable_if_t<is_binary_compatible_v<
+                                    typename std::remove_reference_t<Container_>::value_type>>>
+    array_view& operator=(Container_&& other) noexcept
 
     {
         array_view<char const>::operator=(
@@ -266,7 +266,7 @@ constexpr auto make_view(Range_&& array)
 template <typename Range_>
 constexpr auto view_array(Range_&& array)
 {
-    return array_view{array.data(), array.size()};
+    return array_view{std::data(array), std::size(array)};
 }
 }  // namespace CPPHEADERS_NS_
 
