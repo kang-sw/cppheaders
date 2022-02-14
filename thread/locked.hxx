@@ -45,6 +45,8 @@ class locked
         auto* operator->() const { return _ptr; }
         auto& operator*() { return *_ptr; }
         auto& operator*() const { return *_ptr; }
+
+        operator bool() const { return _lock; }
     };
 
     struct locked_const_reference
@@ -57,6 +59,8 @@ class locked
         auto* operator->() const { return _ptr; }
         auto& operator*() { return *_ptr; }
         auto& operator*() const { return *_ptr; }
+
+        operator bool() const { return _lock; }
     };
 
    public:
@@ -74,6 +78,16 @@ class locked
         return {&_value, std::unique_lock{_mut}};
     }
 
+    locked_reference try_lock()
+    {
+        return {&_value, std::unique_lock{_mut, std::try_to_lock}};
+    }
+
+    locked_const_reference try_lock() const
+    {
+        return {&_value, std::unique_lock{_mut, std::try_to_lock}};
+    }
+
     template <typename Visitor_>
     void use(Visitor_&& visitor)
     {
@@ -86,6 +100,20 @@ class locked
     {
         std::lock_guard _{_mut};
         visitor(_value);
+    }
+
+    template <typename Visitor_>
+    void try_use(Visitor_&& visitor)
+    {
+        if (std::lock_guard _{_mut, std::try_to_lock})
+            visitor(_value);
+    }
+
+    template <typename Visitor_>
+    void try_use(Visitor_&& visitor) const
+    {
+        if (std::lock_guard _{_mut, std::try_to_lock})
+            visitor(_value);
     }
 
    private:
