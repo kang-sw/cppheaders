@@ -92,16 +92,20 @@ class event_wait
     }
 
     template <typename Pred_>
-    void wait(Pred_&& predicate) const
+    auto wait(Pred_&& predicate) const
     {
         ulock_type lc{_mtx};
         _cvar.wait(lc, std::forward<Pred_>(predicate));
+
+        return lc;
     }
 
-    void wait() const
+    auto wait() const
     {
         ulock_type lc{_mtx};
         _cvar.wait(lc);
+
+        return lc;
     }
 
     template <typename Duration_, typename Pred_>
@@ -116,6 +120,26 @@ class event_wait
     {
         ulock_type lc{_mtx};
         return _cvar.wait_for(lc, std::forward<Duration_>(duration));
+    }
+
+    template <typename Duration_, typename Pred_>
+    auto wait_for_2(Duration_&& duration, Pred_&& predicate) const
+    {
+        ulock_type lc{_mtx};
+        if (_cvar.wait_for(lc, std::forward<Duration_>(duration), std::forward<Pred_>(predicate)))
+            return lc;
+        else
+            return ulock_type{};
+    }
+
+    template <typename Duration_>
+    auto wait_for_2(Duration_&& duration) const
+    {
+        ulock_type lc{_mtx};
+        if (_cvar.wait_for(lc, std::forward<Duration_>(duration)))
+            return lc;
+        else
+            return ulock_type{};
     }
 
     template <typename TimePoint_, typename Predicate_>
@@ -133,6 +157,26 @@ class event_wait
     {
         ulock_type lc{_mtx};
         return _cvar.wait_until(lc, std::forward<TimePoint_>(time_point));
+    }
+
+    template <typename TimePoint_, typename Predicate_>
+    auto wait_until_2(TimePoint_&& time_point, Predicate_&& predicate) const
+    {
+        ulock_type lc{_mtx};
+        auto b = _cvar.wait_until(
+                lc,
+                std::forward<TimePoint_>(time_point),
+                std::forward<Predicate_>(predicate));
+
+        return b ? lc : ulock_type{};
+    }
+
+    template <typename TimePoint_>
+    auto wait_until_2(TimePoint_&& time_point) const
+    {
+        ulock_type lc{_mtx};
+        auto b = _cvar.wait_until(lc, std::forward<TimePoint_>(time_point));
+        return b ? lc : ulock_type{};
     }
 
     template <typename CriticalOp_>

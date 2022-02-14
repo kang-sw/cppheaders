@@ -28,6 +28,7 @@
 #include <future>
 #include <list>
 #include <map>
+#include <set>
 #include <utility>
 
 #include "../../../functional.hxx"
@@ -55,10 +56,6 @@ CPPH_DECLARE_EXCEPTION(rpc_handler_fatal_state, rpc_handler_error);
 namespace detail {
 class session;
 }
-
-namespace errmsg {
-constexpr std::string_view missing_parameter = "ERROR_MISSING_PARAMETER";
-}  // namespace errmsg
 
 class context;
 
@@ -101,7 +98,11 @@ class service_info
      * Optimized version of serve(). it lets handler reuse return value buffer.
      */
     template <typename Str_, typename RetVal_, typename... Params_>
-    service_info& serve_2(Str_&& method_name, function<void(RetVal_*, Params_...)> handler);
+    service_info& serve_2(Str_&& method_name, function<void(RetVal_*, Params_...)> handler)
+    {
+        // TODO
+        return *this;
+    }
 
     /**
      * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
@@ -188,6 +189,21 @@ class if_connection
     void _init_(detail::session* sess) { _owner = sess, initialize(); }
 };
 
+enum class rpc_status
+{
+    okay    = 0,
+    waiting = 1,
+
+    timeout = -10,
+
+    unknown_error       = -1,
+    internal_error      = -2,
+    invalid_parameter   = -3,
+    invalid_return_type = -4,
+
+    dead_peer = -100,
+};
+
 namespace detail {
 class connection_streambuf : public std::streambuf
 {
@@ -197,18 +213,22 @@ class connection_streambuf : public std::streambuf
    protected:
     int_type overflow(int_type int_type) override
     {
+        // TODO
         return basic_streambuf::overflow(int_type);
     }
     int_type underflow() override
     {
+        // TODO
         return basic_streambuf::underflow();
     }
     std::streamsize xsgetn(char* _Ptr, std::streamsize _Count) override
     {
+        // TODO
         return basic_streambuf::xsgetn(_Ptr, _Count);
     }
     std::streamsize xsputn(const char* _Ptr, std::streamsize _Count) override
     {
+        // TODO
         return basic_streambuf::xsputn(_Ptr, _Count);
     }
 };
@@ -219,6 +239,38 @@ enum class rpc_type
     reply   = 1,
     notify  = 2,
 };
+
+inline std::string_view to_string(rpc_status s)
+{
+    static std::map<rpc_status, std::string const, std::less<>> etos{
+            {rpc_status::okay, "OKAY"},
+            {rpc_status::waiting, "WAITING"},
+            {rpc_status::timeout, "ERROR_TIMEOUT"},
+            {rpc_status::unknown_error, "UNKNOWN"},
+            {rpc_status::internal_error, "ERROR_INTERNAL"},
+            {rpc_status::invalid_parameter, "ERROR_INVALID_PARAMETER"},
+            {rpc_status::invalid_return_type, "ERROR_INVALID_RETURN_TYPE"},
+    };
+
+    auto p = find_ptr(etos, s);
+    return p ? std::string_view(p->second) : std::string_view("UNKNOWN");
+}
+
+inline auto from_string(std::string_view s)
+{
+    static std::map<std::string, rpc_status, std::less<>> stoe{
+            {"OKAY", rpc_status::okay},
+            {"WAITING", rpc_status::waiting},
+            {"ERROR_TIMEOUT", rpc_status::timeout},
+            {"UNKOWN", rpc_status::unknown_error},
+            {"ERROR_INTERNAL", rpc_status::internal_error},
+            {"ERROR_INVALID_PARAMETER", rpc_status::invalid_parameter},
+            {"ERROR_INVALID_RETURN_TYPE", rpc_status::invalid_return_type},
+    };
+
+    auto p = find_ptr(stoe, s);
+    return p ? p->second : rpc_status::unknown_error;
+}
 
 /**
  * Indicates single connection
@@ -238,8 +290,8 @@ class session
    private:
     struct request_info
     {
-        stopwatch time_since_request;
-        function<void(reader&)> promise;
+        function<void(reader*)> promise;
+        volatile rpc_status status = rpc_status::waiting;
     };
 
    private:
@@ -265,28 +317,87 @@ class session
     std::atomic_bool _waiting;
 
     // RPC reply table. Old ones may set timeout exceptions
+    std::map<int, request_info> _requests;
+    spinlock _rpc_lock;
+
+    // Recv event wait
+    thread::event_wait _rpc_notify;
 
    public:
     template <typename RetVal_, typename... Params_>
-    auto rpc(std::string_view method, Params_&&... params) -> std::future<RetVal_>
+    auto rpc_send(RetVal_* result, std::string_view method, Params_&&... params)
     {
+        decltype(_requests)::iterator request;
+        int msgid;
+
         // create reply slot
+        {
+            lock_guard lc{_rpc_lock};
+            msgid   = ++_msgid_gen;
+            request = _requests.try_emplace(msgid).first;
+
+            std::atomic_bool ready = false;
+
+            request->second.promise =
+                    [&](reader* rd) mutable {
+                        if constexpr (std::is_same_v<RetVal_, void>)
+                            *rd >> nullptr;  // skip
+                        else
+                            *rd >> *result;
+                    };
+        }
 
         // send message
+        {
+            lock_guard lc{_write_lock};
+
+            _writer.array_push(4);
+            {
+                _writer << rpc_type::request;
+                _writer << msgid;
+                _writer << method;
+
+                _writer.array_push(sizeof...(params));
+                ((_writer << std::forward<Params_>(params)), ...);
+                _writer.array_pop();
+            }
+            _writer.array_pop();
+
+            _writer.flush();
+        }
+
+        return request;
+    }
+
+    auto rpc_wait(decltype(_requests)::iterator request)
+    {
+        // wait for reply
+        auto wait_fn = [&] { return request->second.status != rpc_status::waiting; };
+        auto ready   = _rpc_notify.wait_for(_conf.timeout, wait_fn);
+
+        // timeout
+        auto errc = request->second.status;
+
+        {
+            lock_guard lc{_rpc_lock};
+            _requests.erase(request);
+        }
+
+        return ready ? errc : rpc_status::timeout;
     }
 
     template <typename... Params_>
     void notify(std::string_view method, Params_&&... params)
     {
+        lock_guard lc{_write_lock};
+
         _writer.array_push(3);
         {
             _writer << rpc_type::notify
                     << method;
 
             _writer.array_push(sizeof...(params));
-            {
-                ((_writer << std::forward<Params_>(params)), ...);
-            }
+            ((_writer << std::forward<Params_>(params)), ...);
             _writer.array_pop();
         }
         _writer.array_pop();
@@ -301,35 +412,79 @@ class session
    private:
     void _wakeup_func()
     {
-        // Always entered by single thread.
-
-        // Assume data is ready to be read.
-        auto key = _reader.begin_object();
-
-        rpc_type type;
-
-        switch (_reader >> type, type)
+        try
         {
-            case rpc_type::request: _handle_request(); break;
-            case rpc_type::notify: _handle_notify(); break;
+            // Always entered by single thread.
 
-            case rpc_type::reply:
+            // Assume data is ready to be read.
+            auto key = _reader.begin_object();
+
+            rpc_type type;
+
+            switch (_reader >> type, type)
             {
-                int msgid = -1;
-                _reader >> msgid;
+                case rpc_type::request: _handle_request(); break;
+                case rpc_type::notify: _handle_notify(); break;
 
-                // TODO:
-                //  1. find corresponding reply to msgid
-                //  2. fill promise with value or exception
-                break;
+                case rpc_type::reply:
+                {
+                    int msgid = -1;
+                    _reader >> msgid;
+
+                    //  1. find corresponding reply to msgid
+                    //  2. fill promise with value or exception
+                    auto lc{std::lock_guard{_rpc_lock}};
+                    if (auto preq = find_ptr(_requests, msgid))
+                    {
+                        if (_reader.is_null_next())  // no error
+                        {
+                            _reader >> nullptr;
+
+                            try
+                            {
+                                preq->second.promise(&_reader);
+                            }
+                            catch (std::exception& e)
+                            {
+                                // on failed to parse result, refresh connection
+                                preq->second.status = rpc_status::internal_error;
+                                throw detail::rpc_handler_fatal_state{};
+                            }
+                        }
+                        else
+                        {
+                            std::string errmsg;
+                            _reader >> errmsg;
+                            _reader >> nullptr;  // skip payload
+
+                            preq->second.status = from_string(errmsg);
+                        }
+
+                        // Wake up all waiting candidates.
+                        _rpc_notify.notify_all();
+                    }
+
+                    break;
+                }
             }
-        }
 
-        _reader.end_object(key);
+            _reader.end_object(key);
+        }
+        catch (detail::rpc_handler_fatal_state&)
+        {
+            // on parsing error, refresh internal connection.
+            _refresh();
+        }
+        catch (invalid_connection&)
+        {
+            _conn.reset();
+            _erase_self();
+        }
     }
 
     void _handle_request();
     void _handle_notify();
+    void _erase_self();
 
     void _refresh()
     {
@@ -348,12 +503,21 @@ class context
 {
     friend class detail::session;
 
+    using session_ptr  = std::shared_ptr<detail::session>;
+    using session_wptr = std::weak_ptr<detail::session>;
+
    private:
     // Defined services
     service_info _service;
 
     // List of created sessions.
-    std::list<detail::session> _sessions;
+    std::set<session_ptr, std::owner_less<>> _session_sources;
+    std::list<session_wptr> _sessions;
+
+    thread::event_wait _session_notify;
+
+   public:
+    std::chrono::milliseconds global_timeout{60'000};
 
    public:
     /**
@@ -387,15 +551,29 @@ class context
      *
      * @tparam RetVal_
      * @tparam Params_
+     * @param retval receive output to this memory
      * @param params
      * @return
      */
     template <typename RetVal_, typename... Params_>
-    auto rpc(std::string_view method, Params_&&... params) -> std::future<RetVal_>
+    auto rpc(RetVal_* retval, std::string_view method, Params_&&... params) -> rpc_status
     {
-        // find idle session
+        try
+        {
+            auto session = _checkout();
+            if (not session) { return rpc_status::timeout; }
 
-        // send rpc
+            auto request = session->rpc_send(retval, method, std::forward<Params_>(params)...);
+
+            auto result = session->rpc_wait(request);
+            _checkin(std::move(session));
+            return result;
+        }
+        catch (invalid_connection& e)
+        {
+            // do nothing, session will be disposed automatically by disposing pointer.
+            return rpc_status::dead_peer;
+        }
     }
 
     /**
@@ -404,9 +582,20 @@ class context
     template <typename... Params_>
     void notify(std::string_view method, Params_&&... params)
     {
-        // find next session
+        try
+        {
+            using namespace std::chrono_literals;
 
-        // send notify
+            auto session = _checkout(false);
+            if (not session) { return; }
+
+            session->notify(method, std::forward<Params_>(params)...);
+            _checkin(std::move(session));
+        }
+        catch (invalid_connection& e)
+        {
+            // do nothing, session will be disposed automatically by disposing pointer.
+        }
     }
 
     /**
@@ -415,6 +604,28 @@ class context
     template <typename... Params_>
     void notify_all(std::string_view method, Params_&&... params)
     {
+        std::vector<session_ptr> all;
+
+        _session_notify.critical_section(
+                [&] {
+                    all.reserve(_sessions.size());
+
+                    for (auto& wp : _sessions)
+                        if (auto sp = _impl_checkout(wp)) { all.emplace_back(std::move(sp)); }
+                });
+
+        for (auto& sp : all)
+        {
+            try
+            {
+                sp->notify(method, std::forward<Params_>(params)...);
+                _checkin(std::move(sp));
+            }
+            catch (invalid_connection&)
+            {
+                ;  // do nothing, let it disposed
+            }
+        }
     }
 
     /**
@@ -430,11 +641,83 @@ class context
               typename = std::enable_if_t<std::is_base_of_v<if_connection, Conn_>>>
     void create_session(session_config const& conf, Args_&&...)
     {
+        // TODO
+        // put created session reference to sessions_source and sessions both.
+
+        // notify session creation, for rpc requests which is waiting for
+        //  any valid session.
     }
 
    protected:
     //! Post message for read stream
     virtual void dispatch(function<void()> message) { message(); }
+
+   private:
+    void _dispose_session(detail::session* ptr) {}
+
+    session_ptr _checkout(bool wait = true)
+    {
+        using namespace std::chrono_literals;
+
+        session_ptr session = {};
+        auto predicate =
+                [&] {
+                    if (_sessions.empty()) { return false; }
+
+                    for (;;)
+                    {
+                        auto ptr = std::move(_sessions.front());
+                        _sessions.pop_front();
+
+                        if ((session = _impl_checkout(ptr)) == nullptr)
+                            continue;
+
+                        // push weak pointer back for round-robin load balancing
+                        _sessions.push_back(ptr);
+                    }
+
+                    return true;
+                };
+
+        if (wait)
+            _session_notify.wait_for(global_timeout, predicate);
+        else
+            _session_notify.critical_section(predicate);
+
+        return session;
+    }
+
+    session_ptr _impl_checkout(session_wptr const& ptr)
+    {
+        session_ptr session = {};
+
+        auto source = _session_sources.find(ptr);
+        if (source != _session_sources.end())
+        {  // if given session is never occupied by any other context ..
+            session = *source;
+            _session_sources.erase(source);
+        }
+        else if ((session = ptr.lock()) == nullptr)
+        {
+            // given session seems expired ...
+            // do nothing, as given pointer already removed from sessions ...
+            ;
+        }
+
+        return session;
+    }
+
+    void _checkin(session_ptr&& ptr)
+    {
+        _session_notify.critical_section(
+                [&] {
+                    // if this isn't unique reference, just dispose.
+                    if (ptr.use_count() > 1) { return; }
+
+                    // otherwise, return it to source buffer to keep object valid
+                    _session_sources.insert(std::move(ptr));
+                });
+    }
 };
 
 }  // namespace CPPHEADERS_NS_::msgpack::rpc
@@ -478,13 +761,17 @@ inline void session::_handle_request()
         if (_reader.elem_left() < srv->num_params())
         {
             // number of parameters are insufficient.
-            reply(errmsg::missing_parameter, [] {});
+            reply(to_string(rpc_status::invalid_parameter), [] {});
         }
         else
         {
             auto r_invoke = srv->invoke(_reader);
             if (r_invoke != service_info::invoke_result::error)
-                throw detail::rpc_handler_fatal_state{};  // type error is hard to resolve.
+            {
+                reply(to_string(rpc_status::internal_error), [] {});
+                throw detail::rpc_handler_fatal_state{};
+                // as type error is hard to resolve, simply refresh connection status
+            }
 
             // send reply
             reply(nullptr, [&] { srv->retrieve(_writer); });
