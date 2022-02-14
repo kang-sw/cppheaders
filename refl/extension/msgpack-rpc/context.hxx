@@ -26,10 +26,13 @@
 
 #pragma once
 #include <future>
+#include <list>
 #include <map>
 
 #include "../../../functional.hxx"
 #include "../../../helper/exception.hxx"
+#include "../../../thread/event_wait.hxx"
+#include "../../../thread/locked.hxx"
 #include "../../__namespace__"
 #include "../../archive/msgpack-reader.hxx"
 #include "../../archive/msgpack-writer.hxx"
@@ -40,25 +43,27 @@ namespace CPPHEADERS_NS_::msgpack::rpc {
 CPPH_DECLARE_EXCEPTION(exception, std::exception);
 CPPH_DECLARE_EXCEPTION(invalid_connection, exception);
 
-class if_connection : public std::enable_shared_from_this<if_connection>
-{
-   public:  // signaling
-    //! on received data from buffer ...
-    virtual void on_read(array_view<void const> payload) = 0;
+namespace detail {
+class session;
+}
 
-   public:  // public interface
-    //! returns human-readable peer name.
-    virtual std::string peer() const = 0;
-
-    //! may block forever until all buffer content processed
-    //! @throw invalid_connection when connection became invalid state
-    virtual void write(array_view<void const> payload) = 0;
-};
+class context;
 
 namespace detail {
 class session
 {
-    std::shared_ptr<if_connection> _conn;
+    context* _owner;
+
+    // A session will automatically be expired if connection is destroyed.
+    std::weak_ptr<std::streambuf> _conn;
+
+    // A thread will be created per session.
+
+    // Writing operation is protected.
+    // - When reply to RPC
+    // - When send rpc request
+
+   public:
 };
 }  // namespace detail
 
@@ -78,8 +83,7 @@ class service_info
      * Optimized version of serve(). it lets handler reuse return value buffer.
      */
     template <typename Str_, typename RetVal_, typename... Params_>
-    void
-    serve2(Str_&& method_name, function<void(RetVal_*, Params_...)> handler);
+    service_info& serve_2(Str_&& method_name, function<void(RetVal_*, Params_...)> handler);
 
     /**
      * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
@@ -92,19 +96,26 @@ class service_info
      * @param handler RPC handler. Uses cpph::function to accept move-only signatures
      */
     template <typename Str_, typename RetVal_, typename... Params_>
-    void serve(Str_&& method_name, function<RetVal_(Params_...)> handler)
+    service_info& serve(Str_&& method_name, function<RetVal_(Params_...)> handler)
     {
-        serve2(std::forward<Str_>(method_name),
-               [_handler = std::move(handler)]  //
-               (RetVal_ * buffer, Params_ && ... args) mutable {
-                   *buffer = _handler(std::forward<Params_>(args)...);
-               });
+        this->serve_2(
+                std::forward<Str_>(method_name),
+                [_handler = std::move(handler)]  //
+                (RetVal_ * buffer, Params_ && ... args) mutable {
+                    *buffer = _handler(std::forward<Params_>(args)...);
+                });
+
+        return *this;
     }
 };
 
 class context
 {
+   private:
     service_info _service;
+
+    // only be used for session creation/deletion
+    locked<std::list<std::weak_ptr<std::streambuf>>> _pending_connections;
 
    public:
     /**
@@ -113,10 +124,15 @@ class context
      *
      * @param service
      */
-    context(service_info&& service) noexcept;
+    explicit context(service_info service) noexcept : _service(std::move(service)) {}
 
     /**
-     * Call RPC function.
+     * If context is created without service information,
+     */
+    context() noexcept = default;
+
+    /**
+     * Call RPC function. Will be load-balanced automatically.
      *
      * @tparam RetVal_
      * @tparam Params_
@@ -127,10 +143,16 @@ class context
     auto rpc(std::string_view method, Params_&&... params) -> std::future<RetVal_>;
 
     /**
-     * Call notify
+     * Notify single session
      */
     template <typename... Params_>
     void notify(std::string_view method, Params_&&... params);
+
+    /**
+     * Notify all sessions
+     */
+    template <typename... Params_>
+    void notify_all(std::string_view method, Params_&&... params);
 
     /**
      * Create new session with given connection type.
@@ -143,7 +165,7 @@ class context
      */
     template <typename Conn_,
               typename... Args_,
-              typename = std::enable_if_t<std::is_base_of_v<if_connection, Conn_>>>
+              typename = std::enable_if_t<std::is_base_of_v<std::streambuf, Conn_>>>
     [[nodiscard]] auto
     create_session(Args_&&... args) -> std::shared_ptr<Conn_>;
 };
