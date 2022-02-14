@@ -359,7 +359,7 @@ class object_metadata
     bool _is_object = false;
 
     // if _is_object is true, this indicates name of properties
-    sorted_vector<std::string, int> _keys;
+    sorted_vector<std::string_view, int> _keys;
 
     // if _is_object is true, this indicates set of indices which is used for fast-access key
     sorted_vector<int, int> _key_indices;
@@ -755,13 +755,18 @@ class object_metadata
             auto& generated = *result;
             auto lookup     = &generated._offset_lookup;
 
-            lookup->reserve(generated._props.size());
+            auto const n_props = generated._props.size();
+            lookup->reserve(n_props);
 
             // for name key autogeneration
             std::vector<int> used_name_keys;
 
             bool const is_object = generated.is_object();
-            used_name_keys.reserve(generated._props.size());
+            used_name_keys.reserve(n_props);
+
+            auto* key_table = &generated._keys;
+            if (is_object)
+                key_table->reserve(n_props);
 
 #ifndef NDEBUG
             size_t object_end = 0;
@@ -773,6 +778,9 @@ class object_metadata
 
                 if (is_object)
                 {
+                    if (not key_table->try_emplace(prop.name, prop.index_self).second)
+                        throw std::logic_error{"key must be unique!"};
+
                     if (prop.name_key_self == 0)
                         throw std::logic_error{"name key must be larger than 0!"};
                     if (prop.name_key_self > 0)
@@ -794,7 +802,7 @@ class object_metadata
                     throw std::logic_error("duplicated name key assignment found!");
 
                 // target key table
-                generated._key_indices.reserve(generated._props.size());
+                generated._key_indices.reserve(n_props);
 
                 size_t idx_table    = 0;
                 int generated_index = 1;
@@ -922,22 +930,13 @@ class object_metadata
             object_factory_base::define_basic(extent);
             _current->_is_object = true;
 
-            // hard coded object size estimation ...
-            _current->_keys.reserve(32);
-
             return *this;
         }
 
         auto& add_property(std::string key, property_metadata info)
         {
-            auto index          = add_property_impl(std::move(info));
-            auto [pair, is_new] = _current->_keys.try_emplace(std::move(key), int(index));
-            // _current->_key_indices: delay until key evaluation on create()
-
-            if (not is_new) { throw std::logic_error{"Key must be unique"}; }
-
-            // register property name
-            _current->_props[index].name = pair->first;
+            info.name  = std::move(key);
+            auto index = add_property_impl(std::move(info));
 
             return *this;
         }
