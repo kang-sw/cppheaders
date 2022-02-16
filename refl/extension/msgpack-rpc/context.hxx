@@ -666,6 +666,9 @@ class context
     using session_ptr  = std::shared_ptr<detail::session>;
     using session_wptr = std::weak_ptr<detail::session>;
 
+   public:
+    using dispatch_function = function<void(function<void()>)>;
+
    private:
     // Defined services
     service_info _service;
@@ -675,15 +678,17 @@ class context
     std::list<session_wptr> _sessions;
 
     thread::event_wait _session_notify;
+    dispatch_function _dispatch;
 
    public:
     std::chrono::milliseconds global_timeout{60'000};
 
    public:
     /**
-     * For redefining dispatch function ...
+     * Create new context, with appropriate dispatcher function.
      */
-    virtual ~context() noexcept = default;
+    explicit context(dispatch_function dispatcher = [](auto&& fn) { fn(); })
+            : _dispatch(std::move(dispatcher)) {}
 
     /**
      * Copying/Moving object address is not permitted, as sessions
@@ -815,8 +820,7 @@ class context
     }
 
    protected:
-    //! Post message for read stream
-    virtual void dispatch(function<void()> message) { message(); }
+    void dispatch(function<void()> message) { _dispatch(std::move(message)); }
 
    private:
     void _dispose_session(detail::session* ptr) {}
