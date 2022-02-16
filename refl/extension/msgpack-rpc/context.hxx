@@ -200,12 +200,9 @@ class if_connection
     virtual ~if_connection() = 0;
 
     /**
-     * Wakeup this connection for incoming data stream
-     *
-     * If connection disabled, calling this and throwing error on next read/write will trigger
-     *  disposing connection
+     * Call on read new data
      */
-    void wakeup();
+    void notify();
 
     /**
      * Initialize this connection.
@@ -215,13 +212,6 @@ class if_connection
      * @throw invalid_connection on connection invalidated during initialize
      */
     virtual void initialize() = 0;
-
-    /**
-     * If called, next data receive must call wakeup()
-     *
-     * It may call wakeup immediately, if there's any data available.
-     */
-    virtual void begin_waiting() = 0;
 
     /**
      * Recv n bytes from buffer. Waits infinitely untill read all data.
@@ -268,29 +258,34 @@ enum class rpc_status
 namespace detail {
 class connection_streambuf : public std::streambuf
 {
-   public:
     if_connection* _conn;
+    char _ch = {};
+
+   public:
+    explicit connection_streambuf(if_connection* conn) : _conn{conn} {}
 
    protected:
     int_type overflow(int_type int_type) override
     {
-        // TODO
-        return basic_streambuf::overflow(int_type);
+        auto ch = traits_type::to_char_type(int_type);
+        _conn->write({&ch, 1});
+        return int_type;
     }
     int_type underflow() override
     {
-        // TODO
-        return basic_streambuf::underflow();
+        _conn->read({&_ch, 1});
+        setp(&_ch, &_ch + 1);
+        return traits_type::to_int_type(_ch);
     }
-    std::streamsize xsgetn(char* _Ptr, std::streamsize _Count) override
+    std::streamsize xsgetn(char* ptr, std::streamsize size) override
     {
-        // TODO
-        return basic_streambuf::xsgetn(_Ptr, _Count);
+        _conn->read({ptr, size_t(size)});
+        return size;
     }
-    std::streamsize xsputn(const char* _Ptr, std::streamsize _Count) override
+    std::streamsize xsputn(const char* ptr, std::streamsize size) override
     {
-        // TODO
-        return basic_streambuf::xsputn(_Ptr, _Count);
+        _conn->write({ptr, size_t(size)});
+        return size;
     }
 };
 
@@ -363,7 +358,7 @@ class session : public std::enable_shared_from_this<session>
     std::shared_ptr<if_connection> _conn;
 
     // msgpack stream reader/writers
-    detail::connection_streambuf _buffer;
+    detail::connection_streambuf _buffer{&*_conn};
     reader _reader{&_buffer, 16};
     writer _writer{&_buffer, 16};
 
@@ -542,7 +537,6 @@ class session : public std::enable_shared_from_this<session>
 
             // waiting for next input.
             _waiting = true;
-            _conn->begin_waiting();
         }
         catch (detail::rpc_handler_fatal_state&)
         {
@@ -652,7 +646,6 @@ class session : public std::enable_shared_from_this<session>
         _reader.clear();
         _waiting = true;
         _conn->reconnect();
-        _conn->begin_waiting();
     }
 };
 }  // namespace detail
@@ -902,13 +895,15 @@ class context
 //
 namespace CPPHEADERS_NS_::msgpack::rpc {
 
-inline void if_connection::wakeup() { _owner->wakeup(); }
+inline void if_connection::notify() { _owner->wakeup(); }
 
 namespace detail {
 
 inline void session::wakeup()
 {
-    if (not _waiting.exchange(false)) { throw std::logic_error{"target was not waiting!"}; }
+    // do nothing if not waiting.
+    if (not _waiting.exchange(false)) { return; }
+
     _owner->dispatch(bind_front(&session::_wakeup_func, this));
 }
 
