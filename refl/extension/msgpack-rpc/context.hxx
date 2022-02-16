@@ -71,13 +71,15 @@ class service_info
         error = -1,  // reconnection required
     };
 
-   private:
-    class service_handler
+   public:
+    class if_service_handler
     {
         size_t _n_params = 0;
 
        public:
-        virtual ~service_handler() = 0;
+        if_service_handler(size_t n_params) noexcept : _n_params(n_params) {}
+
+        virtual ~if_service_handler() = 0;
 
         //! invoke with given parameters.
         //! @return error message if invocation failed
@@ -90,8 +92,10 @@ class service_info
         size_t num_params() const noexcept { return _n_params; }
     };
 
+    using handler_table_type = std::map<std::string, std::unique_ptr<if_service_handler>, std::less<>>;
+
    private:
-    std::map<std::string, std::unique_ptr<service_handler>, std::less<>> _handlers;
+    handler_table_type _handlers;
 
    public:
     /**
@@ -100,7 +104,61 @@ class service_info
     template <typename Str_, typename RetVal_, typename... Params_>
     service_info& serve_2(Str_&& method_name, function<void(RetVal_*, Params_...)> handler)
     {
-        // TODO
+        struct service_handler : if_service_handler
+        {
+            using handler_type = decltype(handler);
+            using return_type  = std::conditional_t<std::is_void_v<RetVal_>, nullptr_t, RetVal_>;
+            using tuple_type   = std::tuple<Params_...>;
+
+           public:
+            handler_type _handler;
+            tuple_type _params;
+            return_type _rval;
+
+           public:
+            service_handler(handler_type&& h) noexcept
+                    : if_service_handler(sizeof...(Params_)),
+                      _handler(std::move(h)) {}
+
+            auto invoke(reader& reader) -> invoke_result override
+            {
+                try
+                {
+                    std::apply(
+                            [&](auto&... params) {
+                                ((reader >> params), ...);
+
+                                if constexpr (std::is_void_v<RetVal_>)
+                                    _handler(nullptr, params...);
+                                else
+                                    _handler(&_rval, params...);
+                            },
+                            _params);
+                }
+                catch (archive::error::archive_exception&)
+                {
+                    return invoke_result::error;
+                }
+
+                return invoke_result::ok;
+            }
+
+            void retrieve(writer& writer) override
+            {
+                if constexpr (std::is_void_v<RetVal_>)
+                    writer << nullptr;
+                else
+                    writer << _rval;
+            }
+        };
+
+        auto [it, is_new] = _handlers.try_emplace(
+                std::forward<Str_>(method_name),
+                std::make_unique<service_handler>(std::move(handler)));
+
+        if (not is_new)
+            throw std::logic_error{"Method name may not duplicate!"};
+
         return *this;
     }
 
@@ -121,7 +179,10 @@ class service_info
                 std::forward<Str_>(method_name),
                 [_handler = std::move(handler)]  //
                 (RetVal_ * buffer, Params_ && ... args) mutable {
-                    *buffer = _handler(std::forward<Params_>(args)...);
+                    if constexpr (std::is_void_v<RetVal_>)
+                        _handler(std::forward<Params_>(args)...);
+                    else
+                        *buffer = _handler(std::forward<Params_>(args)...);
                 });
 
         return *this;
@@ -278,7 +339,7 @@ inline auto from_string(std::string_view s)
  * - Write request may occur in multiple threads, thus it should be protected by mutex
  * - Read request may occur only one thread, thus it may not be protected.
  */
-class session
+class session : public std::enable_shared_from_this<session>
 {
    public:
     struct config
@@ -322,6 +383,13 @@ class session
 
     // Recv event wait
     thread::event_wait _rpc_notify;
+
+    // Check if pending kill
+    std::atomic_bool _pending_kill = false;
+
+   public:
+    session(config const& conf, std::shared_ptr<if_connection> conn)
+            : _conf(conf), _conn(std::move(conn)) {}
 
    public:
     template <typename RetVal_, typename... Params_>
@@ -409,6 +477,8 @@ class session
     auto lock_write() { return std::unique_lock{_write_lock}; }
     auto try_lock_write() { return std::unique_lock{_write_lock, std::try_to_lock}; }
 
+    bool pending_kill() const noexcept { return _pending_kill; }
+
    private:
     void _wakeup_func()
     {
@@ -486,8 +556,94 @@ class session
         }
     }
 
-    void _handle_request();
-    void _handle_notify();
+    void _handle_request()
+    {
+        //  1. read msgid
+        //  2. read method name
+        //  3. invoke handler
+        //  4. lock write / retrieve input
+        int msgid = {};
+        _reader >> msgid;
+        _reader >> _method_name_buf;
+
+        if (auto pair = find_ptr(_get_services(), _method_name_buf))
+        {
+            auto reply =
+                    [&](auto&& a, auto&& bn) {
+                        std::lock_guard lc{_write_lock};
+                        _writer.array_push(4);
+                        {
+                            _writer << rpc_type::reply;
+                            _writer << msgid;
+                            _writer << a;
+                            bn();
+                        }
+                        _writer.array_pop();
+                    };
+
+            auto& srv = pair->second;
+            auto ctx  = _reader.begin_array();
+
+            if (_reader.elem_left() < srv->num_params())
+            {
+                // number of parameters are insufficient.
+                reply(to_string(rpc_status::invalid_parameter), [] {});
+            }
+            else
+            {
+                auto r_invoke = srv->invoke(_reader);
+                if (r_invoke != service_info::invoke_result::error)
+                {
+                    reply(to_string(rpc_status::internal_error), [] {});
+                    throw detail::rpc_handler_fatal_state{};
+                    // as type error is hard to resolve, simply refresh connection status
+                }
+
+                // send reply
+                reply(nullptr, [&] { srv->retrieve(_writer); });
+            }
+
+            _reader.end_array(ctx);
+        }
+        else
+        {
+            _reader >> nullptr;
+        }
+    }
+
+    void _handle_notify()
+    {
+        //  1. read method name
+        //  2. invoke handler
+
+        int msgid = {};
+        _reader >> msgid;
+        _reader >> _method_name_buf;
+
+        if (auto pair = find_ptr(_get_services(), _method_name_buf))
+        {
+            auto& srv = pair->second;
+            auto ctx  = _reader.begin_array();
+
+            if (_reader.elem_left() >= srv->num_params())
+            {
+                auto r_invoke = srv->invoke(_reader);
+                if (r_invoke != service_info::invoke_result::error)
+                    throw detail::rpc_handler_fatal_state{};  // type error is hard to resolve.
+
+                // don't need to retrieve result.
+            }
+
+            _reader.end_array(ctx);
+        }
+        else
+        {
+            _reader >> nullptr;
+        }
+    }
+
+    service_info::handler_table_type const& _get_services() const;
+
     void _erase_self();
 
     void _refresh()
@@ -568,8 +724,8 @@ class context
             if (not session) { return rpc_status::timeout; }
 
             auto request = session->rpc_send(retval, method, std::forward<Params_>(params)...);
+            auto result  = session->rpc_wait(request);
 
-            auto result = session->rpc_wait(request);
             _checkin(std::move(session));
             return result;
         }
@@ -643,13 +799,19 @@ class context
      */
     template <typename Conn_, typename... Args_,
               typename = std::enable_if_t<std::is_base_of_v<if_connection, Conn_>>>
-    void create_session(session_config const& conf, Args_&&...)
+    void create_session(session_config const& conf, Args_&&... args)
     {
-        // TODO
         // put created session reference to sessions_source and sessions both.
+        auto connection = std::make_shared<Conn_>(std::forward<Args_>(args)...);
+        auto session    = std::make_shared<detail::session>(conf, std::move(connection));
 
         // notify session creation, for rpc requests which is waiting for
         //  any valid session.
+        _session_notify.notify_all(
+                [&] {
+                    _sessions.push_back(session);
+                    _session_sources.emplace(std::move(session));
+                });
     }
 
    protected:
@@ -719,6 +881,10 @@ class context
                     // if this isn't unique reference, just dispose.
                     if (ptr.use_count() > 1) { return; }
 
+                    // if pointer is pending kill, do not return this to sources buffer.
+                    // which will dispose given session, which was given by move operation.
+                    if (ptr->pending_kill()) { return; }
+
                     // otherwise, return it to source buffer to keep object valid
                     _session_sources.insert(std::move(ptr));
                 });
@@ -735,96 +901,32 @@ namespace CPPHEADERS_NS_::msgpack::rpc {
 inline void if_connection::wakeup() { _owner->wakeup(); }
 
 namespace detail {
-inline void session::_handle_request()
-{
-    //  1. read msgid
-    //  2. read method name
-    //  3. invoke handler
-    //  4. lock write / retrieve input
-    int msgid = {};
-    _reader >> msgid;
-    _reader >> _method_name_buf;
-
-    if (auto pair = find_ptr(_owner->_service._services_(), _method_name_buf))
-    {
-        auto reply =
-                [&](auto&& a, auto&& bn) {
-                    std::lock_guard lc{_write_lock};
-                    _writer.array_push(4);
-                    {
-                        _writer << rpc_type::reply;
-                        _writer << msgid;
-                        _writer << a;
-                        bn();
-                    }
-                    _writer.array_pop();
-                };
-
-        auto& srv = pair->second;
-        auto ctx  = _reader.begin_array();
-
-        if (_reader.elem_left() < srv->num_params())
-        {
-            // number of parameters are insufficient.
-            reply(to_string(rpc_status::invalid_parameter), [] {});
-        }
-        else
-        {
-            auto r_invoke = srv->invoke(_reader);
-            if (r_invoke != service_info::invoke_result::error)
-            {
-                reply(to_string(rpc_status::internal_error), [] {});
-                throw detail::rpc_handler_fatal_state{};
-                // as type error is hard to resolve, simply refresh connection status
-            }
-
-            // send reply
-            reply(nullptr, [&] { srv->retrieve(_writer); });
-        }
-
-        _reader.end_array(ctx);
-    }
-    else
-    {
-        _reader >> nullptr;
-    }
-}
-
-inline void session::_handle_notify()
-{
-    //  1. read method name
-    //  2. invoke handler
-
-    int msgid = {};
-    _reader >> msgid;
-    _reader >> _method_name_buf;
-
-    if (auto pair = find_ptr(_owner->_service._services_(), _method_name_buf))
-    {
-        auto& srv = pair->second;
-        auto ctx  = _reader.begin_array();
-
-        if (_reader.elem_left() >= srv->num_params())
-        {
-            auto r_invoke = srv->invoke(_reader);
-            if (r_invoke != service_info::invoke_result::error)
-                throw detail::rpc_handler_fatal_state{};  // type error is hard to resolve.
-
-            // don't need to retrieve result.
-        }
-
-        _reader.end_array(ctx);
-    }
-    else
-    {
-        _reader >> nullptr;
-    }
-}
 
 inline void session::wakeup()
 {
     if (not _waiting.exchange(false)) { throw std::logic_error{"target was not waiting!"}; }
     _owner->dispatch(bind_front(&session::_wakeup_func, this));
+}
+
+service_info::handler_table_type const& session::_get_services() const
+{
+    return _owner->_service._services_();
+}
+
+void session::_erase_self()
+{
+    _owner->_session_notify.critical_section(
+            [this] {
+                _pending_kill = true;
+                auto wp       = weak_from_this();
+
+                // If any other write request is alive, let it dispose this.
+                if (wp.use_count() != 0) { return; }
+
+                // Otherwise, dispose this
+                auto iter = _owner->_session_sources.find(wp);
+                _owner->_session_sources.erase(iter);
+            });
 }
 
 }  // namespace detail
