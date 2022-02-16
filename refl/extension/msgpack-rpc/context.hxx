@@ -666,21 +666,22 @@ class context
         session_ptr session = {};
         auto predicate =
                 [&] {
-                    if (_sessions.empty()) { return false; }
-
-                    for (;;)
+                    // If there's no sessions active ...
+                    for (; not _sessions.empty();)
                     {
                         auto ptr = std::move(_sessions.front());
                         _sessions.pop_front();
 
                         if ((session = _impl_checkout(ptr)) == nullptr)
-                            continue;
+                            continue;  // dispose wptr
 
                         // push weak pointer back for round-robin load balancing
                         _sessions.push_back(ptr);
+
+                        return true;
                     }
 
-                    return true;
+                    return false;
                 };
 
         if (wait)
