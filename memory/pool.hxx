@@ -24,6 +24,7 @@
 
 #pragma once
 #include <list>
+#include <stdexcept>
 #include <vector>
 
 #include "../functional.hxx"
