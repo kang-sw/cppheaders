@@ -140,7 +140,7 @@ class basic_resource_pool
         return r;
     }
 
-    std::shared_ptr<Ty_> shared_checkout()
+    std::shared_ptr<Ty_> checkout_shared()
     {
         auto handle = checkout();
         auto ptr    = &*handle;
