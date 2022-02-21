@@ -251,7 +251,7 @@ auto bind_front(Callable_&& callable, Captures_&&... captures)
                         std::move(captured),
                         std::forward_as_tuple(std::forward<decltype(args)>(args)...));
 
-                if (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
+                if constexpr (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
                     std::apply(fn, tuple);
                 else
                     return std::apply(fn, tuple);
@@ -276,14 +276,14 @@ auto bind_front_weak(Ptr_&& ref, Callable_&& callable, Captures_&&... captures)
 
                 if (auto anchor = wptr.lock(); anchor)
                 {
-                    if (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
+                    if constexpr (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
                         std::apply(fn, tuple);
                     else
                         return std::apply(fn, tuple);
                 }
                 else
                 {
-                    if (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
+                    if constexpr (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
                         ;
                     else
                         return decltype(std::apply(fn, tuple))();
