@@ -94,6 +94,8 @@ class basic_resource_pool
             return *_ref;
         }
 
+        std::shared_ptr<Ty_> share() && noexcept;
+
        private:
         void _assign(handle_type&& other)
         {
@@ -138,16 +140,6 @@ class basic_resource_pool
         _constructor();
         r._ref = _pool.begin();
         return r;
-    }
-
-    std::shared_ptr<Ty_> checkout_shared()
-    {
-        auto handle = checkout();
-        auto ptr    = &*handle;
-
-        return std::shared_ptr<Ty_>{
-                ptr,
-                shared_handle_deleter{std::move(handle)}};
     }
 
     void checkin(handle_type h)
@@ -201,6 +193,16 @@ class basic_resource_pool
     std::list<Ty_> _pool;
     std::vector<buffer_iterator> _free;
 };
+
+template <typename Ty_, typename Mutex_>
+std::shared_ptr<Ty_> basic_resource_pool<Ty_, Mutex_>::handle_type::share() && noexcept
+{
+    auto ptr = &**this;
+
+    return std::shared_ptr<Ty_>{
+            ptr,
+            shared_handle_deleter{std::move(*this)}};
+}
 
 template <typename Ty_>
 using pool = basic_resource_pool<Ty_, spinlock>;
