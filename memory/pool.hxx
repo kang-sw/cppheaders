@@ -110,6 +110,17 @@ class basic_resource_pool
         typename std::list<Ty_>::iterator _ref{};
     };
 
+    struct shared_handle_deleter
+    {
+        using pointer = Ty_*;
+        handle_type handle;
+
+        void operator()(pointer)
+        {
+            handle.checkin();
+        }
+    };
+
    public:
     handle_type checkout()
     {
@@ -127,6 +138,16 @@ class basic_resource_pool
         _constructor();
         r._ref = _pool.begin();
         return r;
+    }
+
+    std::shared_ptr<Ty_> shared_checkout()
+    {
+        auto handle = checkout();
+        auto ptr    = &*handle;
+
+        return std::shared_ptr<Ty_>{
+                ptr,
+                shared_handle_deleter{std::move(handle)}};
     }
 
     void checkin(handle_type h)
