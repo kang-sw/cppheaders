@@ -74,7 +74,7 @@ class service_info
         size_t _n_params = 0;
 
        public:
-        if_service_handler(size_t n_params) noexcept : _n_params(n_params) {}
+        explicit if_service_handler(size_t n_params) noexcept : _n_params(n_params) {}
 
         virtual ~if_service_handler() = 0;
 
@@ -113,7 +113,7 @@ class service_info
             return_type _rval;
 
            public:
-            service_handler(handler_type&& h) noexcept
+            explicit service_handler(handler_type&& h) noexcept
                     : if_service_handler(sizeof...(Params_)),
                       _handler(std::move(h)) {}
 
@@ -968,12 +968,12 @@ inline void session::wakeup()
     _owner->dispatch(bind_front(&session::_wakeup_func, this));
 }
 
-service_info::handler_table_type const& session::_get_services() const
+inline service_info::handler_table_type const& session::_get_services() const
 {
     return _owner->_service._services_();
 }
 
-void session::_erase_self()
+inline void session::_erase_self()
 {
     _owner->_session_notify.critical_section(
             [this] {
