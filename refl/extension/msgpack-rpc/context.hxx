@@ -43,6 +43,11 @@
 #include "../../detail/primitives.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
+using namespace archive::msgpack;
+
+#ifndef CPPHEADERS_MSGPACK_RPC_STREAMBUF_BUFFERSIZE
+#    define CPPHEADERS_MSGPACK_RPC_STREAMBUF_BUFFERSIZE 384  // some magic number
+#endif
 
 CPPH_DECLARE_EXCEPTION(exception, std::exception);
 CPPH_DECLARE_EXCEPTION(invalid_connection, exception);
@@ -259,16 +264,25 @@ namespace detail {
 class connection_streambuf : public std::streambuf
 {
     if_connection* _conn;
-    char _ch = {};
+    char _ibuf[CPPHEADERS_MSGPACK_RPC_STREAMBUF_BUFFERSIZE] = {};
+    char _obuf[CPPHEADERS_MSGPACK_RPC_STREAMBUF_BUFFERSIZE] = {};
 
    public:
-    explicit connection_streambuf(if_connection* conn) : _conn{conn} {}
+    explicit connection_streambuf(if_connection* conn) : _conn{conn}
+    {
+        setp(_obuf, *(&_obuf + 1));
+    }
 
    protected:
     int_type overflow(int_type int_type) override
     {
-        auto ch = traits_type::to_char_type(int_type);
-        _conn->write({&ch, 1});
+        _conn->write({_obuf, size_t(in_avail())});
+
+        setp(_obuf, *(&_obuf + 1));
+
+        _obuf[0] = traits_type::to_char_type(int_type);
+        this->pbump(1);
+
         return int_type;
     }
     int_type underflow() override
