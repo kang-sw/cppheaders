@@ -278,7 +278,3 @@ class writer : public archive::if_writer
     }
 };
 }  // namespace CPPHEADERS_NS_::archive::msgpack
-
-namespace CPPHEADERS_NS_::msgpack {
-using archive::msgpack::writer;
-}

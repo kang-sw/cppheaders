@@ -28,7 +28,7 @@
 #include "detail/msgpack.hxx"
 
 namespace CPPHEADERS_NS_::archive::msgpack {
-CPPH_DECLARE_EXCEPTION(type_mismatch, error::reader_parse_failed);
+CPPH_DECLARE_EXCEPTION(type_mismatch_exception, error::reader_parse_failed);
 
 class reader : public archive::if_reader
 {
@@ -111,7 +111,7 @@ class reader : public archive::if_reader
             case _do_offset(Base_, Ofst_ + 2): return _bump_n_bigE<uint32_t>();
 
             default:
-                throw type_mismatch{this}.message("type error");
+                throw type_mismatch_exception{this}.message("type error");
         }
     }
 
@@ -174,7 +174,7 @@ class reader : public archive::if_reader
                 return ValTy_(_parse_number(header));
 
             default:
-                throw type_mismatch{(if_reader*)this}
+                throw type_mismatch_exception{(if_reader*)this}
                         .message("number type expected: %02x", header);
         }
     }
@@ -563,7 +563,3 @@ class reader : public archive::if_reader
 };
 
 }  // namespace CPPHEADERS_NS_::archive::msgpack
-
-namespace CPPHEADERS_NS_::msgpack {
-using archive::msgpack::reader;
-}

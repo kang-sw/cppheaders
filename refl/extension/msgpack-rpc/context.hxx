@@ -25,7 +25,6 @@
  ******************************************************************************/
 
 #pragma once
-#include <future>
 #include <list>
 #include <map>
 #include <set>
@@ -70,13 +69,6 @@ class context;
 class service_info
 {
    public:
-    enum class invoke_result
-    {
-        ok    = 0,
-        error = -1,  // reconnection required
-    };
-
-   public:
     class if_service_handler
     {
         size_t _n_params = 0;
@@ -88,7 +80,7 @@ class service_info
 
         //! invoke with given parameters.
         //! @return error message if invocation failed
-        virtual auto invoke(reader&) -> invoke_result = 0;
+        virtual void invoke(reader&) = 0;
 
         //! retrive return value
         virtual void retrieve(writer&) = 0;
@@ -125,27 +117,18 @@ class service_info
                     : if_service_handler(sizeof...(Params_)),
                       _handler(std::move(h)) {}
 
-            auto invoke(reader& reader) -> invoke_result override
+            void invoke(reader& reader) override
             {
-                try
-                {
-                    std::apply(
-                            [&](auto&... params) {
-                                ((reader >> params), ...);
+                std::apply(
+                        [&](auto&... params) {
+                            ((reader >> params), ...);
 
-                                if constexpr (std::is_void_v<RetVal_>)
-                                    _handler(nullptr, params...);
-                                else
-                                    _handler(&_rval, params...);
-                            },
-                            _params);
-                }
-                catch (archive::error::archive_exception&)
-                {
-                    return invoke_result::error;
-                }
-
-                return invoke_result::ok;
+                            if constexpr (std::is_void_v<RetVal_>)
+                                _handler(nullptr, params...);
+                            else
+                                _handler(&_rval, params...);
+                        },
+                        _params);
             }
 
             void retrieve(writer& writer) override
@@ -219,11 +202,12 @@ class if_connection
     virtual void initialize() = 0;
 
     /**
-     * Recv n bytes from buffer. Waits infinitely untill read all data.
+     * Recv n bytes from buffer. Waits infinitely until read all data.
      *
+     * @return Actual bytes that was successfully read
      * @throw invalid_connection on connection invalidated
      */
-    virtual void read(array_view<void> buffer) = 0;
+    virtual size_t read(array_view<void> buffer) = 0;
 
     /**
      * Write n bytes to buffer
@@ -285,21 +269,12 @@ class connection_streambuf : public std::streambuf
 
         return int_type;
     }
+
     int_type underflow() override
     {
-        _conn->read({&_ch, 1});
-        setp(&_ch, &_ch + 1);
-        return traits_type::to_int_type(_ch);
-    }
-    std::streamsize xsgetn(char* ptr, std::streamsize size) override
-    {
-        _conn->read({ptr, size_t(size)});
-        return size;
-    }
-    std::streamsize xsputn(const char* ptr, std::streamsize size) override
-    {
-        _conn->write({ptr, size_t(size)});
-        return size;
+        auto n_read = _conn->read({_ibuf, sizeof _ibuf});
+        setg(_ibuf, _ibuf, *(&_ibuf + 1));
+        return traits_type::to_int_type(_ibuf[0]);
     }
 };
 
@@ -415,6 +390,8 @@ class session : public std::enable_shared_from_this<session>
 
             std::atomic_bool ready = false;
 
+            // This will be invoked when return value from remote is ready, and will directly
+            //  deserialize the result into provided argument.
             request->second.promise =
                     [&](reader* rd) mutable {
                         if constexpr (std::is_same_v<RetVal_, void>)
@@ -554,7 +531,7 @@ class session : public std::enable_shared_from_this<session>
         }
         catch (detail::rpc_handler_fatal_state&)
         {
-            // on parsing error, refresh internal connection.
+            // If internal state irreversible, connection will be refreshed.
             _refresh();
         }
         catch (invalid_connection&)
@@ -576,6 +553,7 @@ class session : public std::enable_shared_from_this<session>
 
         if (auto pair = find_ptr(_get_services(), _method_name_buf))
         {
+            auto return_null = [&] { _writer << nullptr; };
             auto reply =
                     [&](auto&& a, auto&& bn) {
                         std::lock_guard lc{_write_lock};
@@ -595,20 +573,25 @@ class session : public std::enable_shared_from_this<session>
             if (_reader.elem_left() < srv->num_params())
             {
                 // number of parameters are insufficient.
-                reply(to_string(rpc_status::invalid_parameter), [] {});
+                reply(to_string(rpc_status::invalid_parameter), return_null);
             }
             else
             {
-                auto r_invoke = srv->invoke(_reader);
-                if (r_invoke != service_info::invoke_result::error)
+                try
                 {
-                    reply(to_string(rpc_status::internal_error), [] {});
-                    throw detail::rpc_handler_fatal_state{};
-                    // as type error is hard to resolve, simply refresh connection status
-                }
+                    srv->invoke(_reader);
 
-                // send reply
-                reply(nullptr, [&] { srv->retrieve(_writer); });
+                    // send reply
+                    reply(nullptr, [&] { srv->retrieve(_writer); });
+                }
+                catch (type_mismatch_exception&)
+                {
+                    reply(to_string(rpc_status::invalid_parameter), return_null);
+                }
+                catch (archive::error::archive_exception&)
+                {
+                    throw detail::rpc_handler_fatal_state{};
+                }
             }
 
             _reader.end_array(ctx);
@@ -635,11 +618,22 @@ class session : public std::enable_shared_from_this<session>
 
             if (_reader.elem_left() >= srv->num_params())
             {
-                auto r_invoke = srv->invoke(_reader);
-                if (r_invoke != service_info::invoke_result::error)
-                    throw detail::rpc_handler_fatal_state{};  // type error is hard to resolve.
-
-                // don't need to retrieve result.
+                try
+                {
+                    srv->invoke(_reader);
+                }
+                catch (type_mismatch_exception&)
+                {
+                    ;
+                }
+                catch (archive::error::archive_exception&)
+                {
+                    throw detail::rpc_handler_fatal_state{};
+                }
+            }
+            else
+            {
+                ;  // errnous situation ... as this is notify, just ignore.
             }
 
             _reader.end_array(ctx);
