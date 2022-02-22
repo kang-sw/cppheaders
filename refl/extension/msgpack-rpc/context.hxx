@@ -202,9 +202,9 @@ class if_connection
     virtual void initialize() = 0;
 
     /**
-     * Recv n bytes from buffer. Waits infinitely until read all data.
+     * Recv n bytes from buffer. Waits infinitely until read any data
      *
-     * @return Actual bytes that was successfully read
+     * @return Actual bytes that was successfully read.
      * @throw invalid_connection on connection invalidated
      */
     virtual size_t read(array_view<void> buffer) = 0;
@@ -260,7 +260,7 @@ class connection_streambuf : public std::streambuf
    protected:
     int_type overflow(int_type int_type) override
     {
-        _conn->write({_obuf, size_t(in_avail())});
+        _conn->write({pbase(), size_t(pptr() - pbase())});
 
         setp(_obuf, *(&_obuf + 1));
 
@@ -273,8 +273,61 @@ class connection_streambuf : public std::streambuf
     int_type underflow() override
     {
         auto n_read = _conn->read({_ibuf, sizeof _ibuf});
-        setg(_ibuf, _ibuf, *(&_ibuf + 1));
+        setg(_ibuf, _ibuf, _ibuf + n_read);
         return traits_type::to_int_type(_ibuf[0]);
+    }
+
+    std::streamsize xsgetn(char* ptr, std::streamsize count) override
+    {
+        size_t retval = 0;
+
+        // Consume remaining gbuf first
+        {
+            auto navail = std::min(in_avail(), count);
+            traits_type::copy(ptr, gptr(), navail);
+            gbump(navail);
+            count -= navail;
+            retval += navail;
+            ptr += navail;
+        }
+
+        // If remaining buffer size is relatively small, use original functionality which
+        //  buffers incoming bytes first. This lets next read be called
+        if (count < sizeof _ibuf)
+            return retval + std::basic_streambuf<char>::xsgetn(ptr, count);
+
+        // In case of big buffer, which cannot be covered by sizeof(_ibuf), whill directly
+        //  request read without buffering.
+        while (0 < count)
+        {
+            // In case of relatively large buffer, retrieve
+            auto n_read = _conn->read({ptr, size_t(count)});
+            count -= n_read, ptr += n_read, retval += n_read;
+        }
+
+        return retval;
+    }
+
+    std::streamsize xsputn(const char* ptr, std::streamsize count) override
+    {
+        auto pnwrite = pptr() - pbase();
+
+        // If size of bytes to write is relatively small, just use default functionality
+        if (pnwrite + count < (sizeof(_obuf) * 3 / 2))
+            return std::streambuf::xsputn(ptr, count);
+
+        // Otherwise, first flush buffer, and then write rest of bytes
+        if (pnwrite)
+        {
+            // Flush output buffer
+            _conn->write({pbase(), size_t(pnwrite)});
+            setp(_obuf, *(&_obuf + 1));
+        }
+
+        _conn->write({ptr, size_t(count)});
+
+        // Always return requested value. If there's any error, write() will just throw.
+        return count;
     }
 };
 
