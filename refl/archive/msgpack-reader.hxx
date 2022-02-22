@@ -28,6 +28,8 @@
 #include "detail/msgpack.hxx"
 
 namespace CPPHEADERS_NS_::archive::msgpack {
+CPPH_DECLARE_EXCEPTION(type_mismatch, error::reader_parse_failed);
+
 class reader : public archive::if_reader
 {
     union key_t
@@ -83,6 +85,13 @@ class reader : public archive::if_reader
         return static_cast<CastTo_>(*reinterpret_cast<ValTy_*>(buffer));
     }
 
+    template <typename ValTy_, typename CastTo_ = ValTy_>
+    CastTo_ _bump_n_bigE()
+    {
+        _buf->sbumpc();
+        return _get_n_bigE<ValTy_, CastTo_>();
+    }
+
     constexpr static typecode _do_offset(typecode value, int n)
     {
         return typecode((int)value + n);
@@ -96,13 +105,13 @@ class reader : public archive::if_reader
     {
         switch (_typecode(header))
         {
-            case Fix_: return (uint8_t)header & FixMask_;
-            case _do_offset(Base_, Ofst_): return _get_n_bigE<uint8_t>();
-            case _do_offset(Base_, Ofst_ + 1): return _get_n_bigE<uint16_t>();
-            case _do_offset(Base_, Ofst_ + 2): return _get_n_bigE<uint32_t>();
+            case Fix_: return _buf->sbumpc(), (uint8_t)header & FixMask_;
+            case _do_offset(Base_, Ofst_): return _bump_n_bigE<uint8_t>();
+            case _do_offset(Base_, Ofst_ + 1): return _bump_n_bigE<uint16_t>();
+            case _do_offset(Base_, Ofst_ + 2): return _bump_n_bigE<uint32_t>();
 
             default:
-                throw error::reader_parse_failed{this}.message("type error");
+                throw type_mismatch{this}.message("type error");
         }
     }
 
@@ -140,22 +149,23 @@ class reader : public archive::if_reader
         {
             case typecode::positive_fixint:
             case typecode::negative_fixint:
+                _buf->sbumpc();
                 return ValTy_(header);
 
-            case typecode::bool_false: return ValTy_(0);
-            case typecode::bool_true: return ValTy_(1);
+            case typecode::bool_false: return _buf->sbumpc(), ValTy_(0);
+            case typecode::bool_true: return _buf->sbumpc(), ValTy_(1);
 
-            case typecode::float32: return _get_n_bigE<float, ValTy_>();
-            case typecode::float64: return _get_n_bigE<double, ValTy_>();
+            case typecode::float32: return _bump_n_bigE<float, ValTy_>();
+            case typecode::float64: return _bump_n_bigE<double, ValTy_>();
 
-            case typecode::uint8: return _get_n_bigE<uint8_t, ValTy_>();
-            case typecode::uint16: return _get_n_bigE<uint16_t, ValTy_>();
-            case typecode::uint32: return _get_n_bigE<uint32_t, ValTy_>();
-            case typecode::uint64: return _get_n_bigE<uint64_t, ValTy_>();
-            case typecode::int8: return _get_n_bigE<int8_t, ValTy_>();
-            case typecode::int16: return _get_n_bigE<int16_t, ValTy_>();
-            case typecode::int32: return _get_n_bigE<int32_t, ValTy_>();
-            case typecode::int64: return _get_n_bigE<int64_t, ValTy_>();
+            case typecode::uint8: return _bump_n_bigE<uint8_t, ValTy_>();
+            case typecode::uint16: return _bump_n_bigE<uint16_t, ValTy_>();
+            case typecode::uint32: return _bump_n_bigE<uint32_t, ValTy_>();
+            case typecode::uint64: return _bump_n_bigE<uint64_t, ValTy_>();
+            case typecode::int8: return _bump_n_bigE<int8_t, ValTy_>();
+            case typecode::int16: return _bump_n_bigE<int16_t, ValTy_>();
+            case typecode::int32: return _bump_n_bigE<int32_t, ValTy_>();
+            case typecode::int64: return _bump_n_bigE<int64_t, ValTy_>();
 
             case typecode::fixstr:
             case typecode::str8:
@@ -164,7 +174,7 @@ class reader : public archive::if_reader
                 return ValTy_(_parse_number(header));
 
             default:
-                throw error::reader_parse_failed{(if_reader*)this}
+                throw type_mismatch{(if_reader*)this}
                         .message("number type expected: %02x", header);
         }
     }
@@ -173,15 +183,15 @@ class reader : public archive::if_reader
     if_reader& read(nullptr_t) override
     {
         // skip single item
-        _step_context();
         _skip_once();
+        _step_context();
         return *this;
     }
 
     if_reader& read(bool& v) override
     {
+        v = _read_number<bool>(_verify_eof(_buf->sgetc()));
         _step_context();
-        v = _read_number<bool>(_verify_eof(_buf->sbumpc()));
         return *this;
     }
 
@@ -189,8 +199,8 @@ class reader : public archive::if_reader
     template <typename T_>
     if_reader& _quick_get_num(T_& ref)
     {
+        ref = _read_number<T_>(_verify_eof(_buf->sgetc()));
         _step_context();
-        ref = _read_number<T_>(_verify_eof(_buf->sbumpc()));
         return *this;
     }
 
@@ -208,10 +218,10 @@ class reader : public archive::if_reader
 
     if_reader& read(std::string& v) override
     {
-        _step_context();
-
-        auto header     = _verify_eof(_buf->sbumpc());
+        auto header     = _verify_eof(_buf->sgetc());
         uint32_t buflen = _read_elem_count_str(header);
+
+        _step_context();
 
         v.resize(buflen);
         _buf->sgetn(v.data(), v.size());
@@ -230,11 +240,11 @@ class reader : public archive::if_reader
     context_key begin_object() override
     {
         _verify_not_key_type();
-        _step_context();
 
-        auto header = _verify_eof(_buf->sbumpc());
+        auto header = _verify_eof(_buf->sgetc());
         auto n_elem = _read_elem_count_map(header);
 
+        _step_context();
         return _new_scope(scope_t::type_object, n_elem)->ctxkey.data;
     }
 
@@ -249,11 +259,11 @@ class reader : public archive::if_reader
     size_t begin_binary() override
     {
         _verify_not_key_type();
-        _step_context();
 
-        auto header     = _verify_eof(_buf->sbumpc());
+        auto header     = _verify_eof(_buf->sgetc());
         uint32_t buflen = _read_elem_count_bin(header);
 
+        _step_context();
         _new_scope(scope_t::type_binary, buflen);
         return buflen;
     }
@@ -274,7 +284,7 @@ class reader : public archive::if_reader
     {
         // consume rest of bytes
         auto scope = _verify_scope(scope_t::type_binary);
-        while (scope->elems_left--) { _buf->sbumpc(); }
+        _discard_n_bytes(scope->elems_left);
 
         _scope.pop_back();
     }
@@ -282,11 +292,11 @@ class reader : public archive::if_reader
     context_key begin_array() override
     {
         _verify_not_key_type();
-        _step_context();
 
-        auto header     = _verify_eof(_buf->sbumpc());
+        auto header     = _verify_eof(_buf->sgetc());
         uint32_t n_elem = _read_elem_count_array(header);
 
+        _step_context();
         return _new_scope(scope_t::type_array, n_elem)->ctxkey.data;
     }
 
@@ -373,7 +383,6 @@ class reader : public archive::if_reader
             case typecode::int16:
             case typecode::int32:
             case typecode::int64:
-                _buf->sbumpc();
                 _read_number<uint64_t>(header);
                 break;
 
@@ -381,14 +390,13 @@ class reader : public archive::if_reader
             case typecode::str8:
             case typecode::str16:
             case typecode::str32:
-                // 1 for header, bumpc
-                skip_bytes = 1 + _read_elem_count<typecode::str8, 0, typecode::fixstr, 31>(header);
+                skip_bytes = _read_elem_count<typecode::str8, 0, typecode::fixstr, 31>(header);
                 break;
 
             case typecode::bin8:
             case typecode::bin16:
             case typecode::bin32:
-                skip_bytes = 1 + _read_elem_count<typecode::bin8>(header) + 1;
+                skip_bytes = _read_elem_count<typecode::bin8>(header);
                 break;
 
             case typecode::fixarray:
@@ -416,14 +424,14 @@ class reader : public archive::if_reader
             case typecode::ext8:
             case typecode::ext16:
             case typecode::ext32:
-                skip_bytes = 1 + 1 + _read_elem_count<typecode::ext8>(header);
+                skip_bytes = _read_elem_count<typecode::ext8>(header) + 1;  // 1 for ext
                 break;
 
             case typecode::error:
                 throw error::reader_parse_failed{this}.message("unsupported format: %02x", header);
         }
 
-        while (skip_bytes--) { _buf->sbumpc(); }
+        _discard_n_bytes(skip_bytes);
     }
 
     void _verify_end(scope_t::type_t type, context_key key)
@@ -508,6 +516,18 @@ class reader : public archive::if_reader
                     .message("invalid scope type: was %d - %d expected", scope->type, t);
 
         return scope;
+    }
+
+    void _discard_n_bytes(size_t bytes)
+    {
+        char buf[256];
+        for (size_t to_read; bytes > 0; bytes -= to_read)
+        {
+            to_read = std::min(sizeof buf, bytes);
+
+            if (_buf->sgetn(buf, to_read) != to_read)
+                throw error::reader_read_stream_error{this}.message("unexpected EOF");
+        }
     }
 
    private:
