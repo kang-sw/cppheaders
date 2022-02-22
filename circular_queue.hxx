@@ -133,11 +133,7 @@ class circular_queue
             : _capacity(capacity + 1), _data(capacity ? std::make_unique<chunk_t[]>(_capacity) : nullptr) {}
 
     circular_queue(const circular_queue& op) noexcept(is_safe_ctor) { *this = op; }
-
-    circular_queue(circular_queue&& op) noexcept
-    {
-        *this = std::move(op);
-    }
+    circular_queue(circular_queue&& op) noexcept { *this = std::move(op); }
 
     circular_queue& operator=(circular_queue&& op) noexcept
     {
@@ -406,7 +402,7 @@ class circular_queue
     }
 
    private:
-    size_t _capacity;
+    size_t _capacity = {};
     std::unique_ptr<chunk_t[]> _data;
     size_t _head = {};
     size_t _tail = {};

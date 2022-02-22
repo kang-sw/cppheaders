@@ -188,15 +188,19 @@ auto erase_if(Range_&& range, Pred_&& pred)
 }
 
 template <typename Range_, typename Pred_>
-void erase_if_each(Range_&& map, Pred_&& pred)
+size_t erase_if_each(Range_&& map, Pred_&& pred)
 {
+    size_t n_erased = 0;
+
     for (auto it = map.begin(); it != map.end();)
     {
         if (pred(*it))
-            it = map.erase(it);
+            it = map.erase(it), ++n_erased;
         else
             ++it;
     }
+
+    return n_erased;
 }
 
 template <typename Set_, typename Key_>
