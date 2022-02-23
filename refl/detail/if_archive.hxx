@@ -84,12 +84,10 @@ struct reader_exception : archive_exception
     explicit reader_exception(if_reader const* rd) : reader((if_reader*)rd) {}
 };
 
-CPPH_DECLARE_EXCEPTION(reader_finished_sequence, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_invalid_context, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_parse_failed, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_read_stream_error, reader_exception);
-
-CPPH_DECLARE_EXCEPTION(reader_assertion_failed, reader_exception);
+CPPH_DECLARE_EXCEPTION(reader_unexpected_end_of_file, reader_read_stream_error);
 
 struct reader_key_missing : reader_exception
 {

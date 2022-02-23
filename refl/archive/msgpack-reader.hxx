@@ -130,7 +130,7 @@ class reader : public archive::if_reader
             throw error::reader_parse_failed{this}.message("too big number");
 
         if (_buf->sgetn(buf, buflen) != buflen)
-            throw error::reader_read_stream_error{this}.message("invalid EOF");
+            throw error::reader_unexpected_end_of_file{this};
 
         buf[buflen] = '\0';
         char* tail;
@@ -274,7 +274,7 @@ class reader : public archive::if_reader
         auto n_read = std::min<uint32_t>(v.size(), scope->elems_left);
 
         if (_buf->sgetn(v.data(), n_read) != n_read)
-            throw error::reader_read_stream_error{this}.message("failed to read data");
+            throw error::reader_unexpected_end_of_file{this};
 
         scope->elems_left -= n_read;
         return n_read;
@@ -472,7 +472,7 @@ class reader : public archive::if_reader
     char _verify_eof(std::streambuf::traits_type::int_type value) const
     {
         if (value == std::streambuf::traits_type::eof())
-            throw error::reader_read_stream_error{this}.message("invalid end of file");
+            throw error::reader_unexpected_end_of_file{this};
 
         return char(value);
     }
@@ -526,7 +526,7 @@ class reader : public archive::if_reader
             to_read = std::min(sizeof buf, bytes);
 
             if (_buf->sgetn(buf, to_read) != to_read)
-                throw error::reader_read_stream_error{this}.message("unexpected EOF");
+                throw error::reader_unexpected_end_of_file{this};
         }
     }
 
