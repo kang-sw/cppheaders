@@ -32,6 +32,7 @@
 
 #include "../../../functional.hxx"
 #include "../../../helper/exception.hxx"
+#include "../../../memory/pool.hxx"
 #include "../../../thread/event_wait.hxx"
 #include "../../../thread/locked.hxx"
 #include "../../../timer.hxx"
@@ -64,134 +65,24 @@ class session;
 class context;
 
 /**
- * Defines service information
- */
-class service_info
-{
-   public:
-    class if_service_handler
-    {
-        size_t _n_params = 0;
-
-       public:
-        explicit if_service_handler(size_t n_params) noexcept : _n_params(n_params) {}
-
-        virtual ~if_service_handler() = 0;
-
-        //! invoke with given parameters.
-        //! @return error message if invocation failed
-        virtual void invoke(reader&) = 0;
-
-        //! retrive return value
-        virtual void retrieve(writer&) = 0;
-
-        //! number of parameters
-        size_t num_params() const noexcept { return _n_params; }
-    };
-
-    using handler_table_type = std::map<std::string, std::unique_ptr<if_service_handler>, std::less<>>;
-
-   private:
-    handler_table_type _handlers;
-
-   public:
-    /**
-     * Optimized version of serve(). it lets handler reuse return value buffer.
-     */
-    template <typename Str_, typename RetVal_, typename... Params_>
-    service_info& serve_2(Str_&& method_name, function<void(RetVal_*, Params_...)> handler)
-    {
-        struct service_handler : if_service_handler
-        {
-            using handler_type = decltype(handler);
-            using return_type  = std::conditional_t<std::is_void_v<RetVal_>, nullptr_t, RetVal_>;
-            using tuple_type   = std::tuple<Params_...>;
-
-           public:
-            handler_type _handler;
-            tuple_type _params;
-            return_type _rval;
-
-           public:
-            explicit service_handler(handler_type&& h) noexcept
-                    : if_service_handler(sizeof...(Params_)),
-                      _handler(std::move(h)) {}
-
-            void invoke(reader& reader) override
-            {
-                std::apply(
-                        [&](auto&... params) {
-                            ((reader >> params), ...);
-
-                            if constexpr (std::is_void_v<RetVal_>)
-                                _handler(nullptr, params...);
-                            else
-                                _handler(&_rval, params...);
-                        },
-                        _params);
-            }
-
-            void retrieve(writer& writer) override
-            {
-                if constexpr (std::is_void_v<RetVal_>)
-                    writer << nullptr;
-                else
-                    writer << _rval;
-            }
-        };
-
-        auto [it, is_new] = _handlers.try_emplace(
-                std::forward<Str_>(method_name),
-                std::make_unique<service_handler>(std::move(handler)));
-
-        if (not is_new)
-            throw std::logic_error{"Method name may not duplicate!"};
-
-        return *this;
-    }
-
-    /**
-     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
-     *  notify, return value of handler will silently be discarded regardless of its return
-     *  type.
-     *
-     * @tparam RetVal_ Must be declared as refl object.
-     * @tparam Params_ Must be declared as refl object.
-     * @param method_name Name of method to serve
-     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
-     */
-    template <typename Str_, typename RetVal_, typename... Params_>
-    service_info& serve(Str_&& method_name, function<RetVal_(Params_...)> handler)
-    {
-        this->serve_2(
-                std::forward<Str_>(method_name),
-                [_handler = std::move(handler)]  //
-                (RetVal_ * buffer, Params_ && ... args) mutable {
-                    if constexpr (std::is_void_v<RetVal_>)
-                        _handler(std::forward<Params_>(args)...);
-                    else
-                        *buffer = _handler(std::forward<Params_>(args)...);
-                });
-
-        return *this;
-    }
-
-   public:
-    auto const& _services_() const noexcept { return _handlers; }
-};
-
-/**
  * This is the only class that you have to inherit and implement details.
  *
  * Once connection is invalidated, any call to methods of this class should
  * throw \refitem{invalid_connection} to gently cleanup this session.
  */
-class connection_streambuf : std::streambuf
+class connection : public std::streambuf
 {
     detail::session* _owner = {};
+    std::string _peer;
 
    public:
-    ~connection_streambuf() override = 0;
+    connection(std::string peer) noexcept : _peer(std::move(peer)) {}
+    ~connection() override = 0;
+
+    /**
+     * Returns name of the peer
+     */
+    auto& peer() const noexcept { return _peer; }
 
     /**
      * Call on read new data
@@ -218,6 +109,122 @@ class connection_streambuf : std::streambuf
     void _init_(detail::session* sess) { _owner = sess, launch(); }
 };
 
+/**
+ * Defines service information
+ */
+class service_info
+{
+   public:
+    class if_service_handler
+    {
+        size_t _n_params = 0;
+
+       public:
+        explicit if_service_handler(size_t n_params) noexcept : _n_params(n_params) {}
+        virtual ~if_service_handler() = 0;
+
+        //! invoke with given parameters.
+        //! @return error message if invocation failed
+        virtual void invoke(connection const* context, reader&, writer*) = 0;
+
+        //! number of parameters
+        size_t num_params() const noexcept { return _n_params; }
+    };
+
+    using handler_table_type = std::map<std::string, std::unique_ptr<if_service_handler>, std::less<>>;
+
+   private:
+    handler_table_type _handlers;
+
+   public:
+    /**
+     * Optimized version of serve(). it lets handler reuse return value buffer.
+     */
+    template <typename Str_, typename RetVal_, typename... Params_>
+    service_info& serve_full(Str_&& method_name, function<void(connection const*, RetVal_*, Params_...)> handler)
+    {
+        struct service_handler : if_service_handler
+        {
+            using handler_type = decltype(handler);
+            using return_type  = std::conditional_t<std::is_void_v<RetVal_>, nullptr_t, RetVal_>;
+            using tuple_type   = std::tuple<Params_...>;
+
+           public:
+            handler_type _handler;
+            pool<tuple_type> _params;
+            pool<return_type> _rv_pool;
+
+           public:
+            explicit service_handler(handler_type&& h) noexcept
+                    : if_service_handler(sizeof...(Params_)),
+                      _handler(std::move(h)) {}
+
+            void invoke(connection const* context, reader& reader, writer* writer) override
+            {
+                std::apply(
+                        [&](auto&... params) {
+                            ((reader >> params), ...);
+
+                            pool_ptr<return_type> rval;
+                            if constexpr (std::is_void_v<RetVal_>)
+                            {
+                                _handler(context, nullptr, params...);
+                            }
+                            else
+                            {
+                                rval = _rv_pool.checkout();
+                                _handler(context, &*rval, params...);
+                            }
+
+                            if constexpr (std::is_void_v<RetVal_>)
+                                *writer << nullptr;
+                            else if (writer)
+                                *writer << &*rval;
+                        },
+                        *_params.checkout());
+            }
+        };
+
+        auto [it, is_new] = _handlers.try_emplace(
+                std::forward<Str_>(method_name),
+                std::make_unique<service_handler>(std::move(handler)));
+
+        if (not is_new)
+            throw std::logic_error{"Method name may not duplicate!"};
+
+        return *this;
+    }
+
+    /**
+     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
+     *  notify, return value of handler will silently be discarded regardless of its return
+     *  type.
+     *
+     * @tparam RetVal_ Must be declared as refl object.
+     * @tparam Params_ Must be declared as refl object.
+     * @param method_name Name of method to serve
+     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
+     */
+    template <typename Str_, typename RetVal_, typename... Params_>
+    service_info& serve(Str_&& method_name, function<RetVal_(Params_...)> handler)
+    {
+        this->serve_full(
+                std::forward<Str_>(method_name),
+                [_handler = std::move(handler)]  //
+                (connection const*, RetVal_* buffer, Params_&&... args) mutable {
+                    if constexpr (std::is_void_v<RetVal_>)
+                        _handler(std::forward<Params_>(args)...);
+                    else
+                        *buffer = _handler(std::forward<Params_>(args)...);
+                });
+
+        return *this;
+    }
+
+   public:
+    auto const& _services_() const noexcept { return _handlers; }
+};
+
 enum class rpc_status
 {
     okay    = 0,
@@ -235,14 +242,14 @@ enum class rpc_status
 
 namespace detail {
 #if 0  // TODO: is this necessary?
-class connection_streambuf : public std::streambuf
+class connection : public std::streambuf
 {
     if_connection* _conn;
     char _ibuf[CPPHEADERS_MSGPACK_RPC_STREAMBUF_BUFFERSIZE] = {};
     char _obuf[CPPHEADERS_MSGPACK_RPC_STREAMBUF_BUFFERSIZE] = {};
 
    public:
-    explicit connection_streambuf(if_connection* conn) : _conn{conn}
+    explicit connection(if_connection* conn) : _conn{conn}
     {
         setp(_obuf, *(&_obuf + 1));
     }
@@ -395,11 +402,11 @@ class session : public std::enable_shared_from_this<session>
     config _conf;
 
     // A session will automatically be expired if connection is destroyed.
-    std::unique_ptr<connection_streambuf> _conn;
+    std::unique_ptr<connection> _conn;
 
     // msgpack stream reader/writers
-    reader _reader{nullptr, 16};
-    writer _writer{nullptr, 16};
+    reader _reader{&*_conn, 16};
+    writer _writer{&*_conn, 16};
 
     // Writing operation is protected.
     // - When reply to RPC
@@ -422,7 +429,7 @@ class session : public std::enable_shared_from_this<session>
     std::atomic_bool _pending_kill = false;
 
    public:
-    session(config const& conf, std::unique_ptr<connection_streambuf> conn)
+    session(config const& conf, std::unique_ptr<connection> conn)
             : _conf(conf), _conn(std::move(conn)) {}
 
    public:
@@ -606,40 +613,31 @@ class session : public std::enable_shared_from_this<session>
         if (auto pair = find_ptr(_get_services(), _method_name_buf))
         {
             auto return_null = [&] { _writer << nullptr; };
-            auto reply =
-                    [&](auto&& a, auto&& bn) {
-                        std::lock_guard lc{_write_lock};
-                        _writer.array_push(4);
-                        {
-                            _writer << rpc_type::reply;
-                            _writer << msgid;
-                            _writer << a;
-                            bn();
-                        }
-                        _writer.array_pop();
-                        _writer.flush();
-                    };
 
             auto& srv = pair->second;
-            auto ctx  = _reader.begin_array();
+            auto ctx  = _reader.begin_array();  // begin reading params
+
+            _writer.array_push(4);
+            _writer << rpc_type::reply;
+            _writer << msgid;
 
             if (_reader.elem_left() < srv->num_params())
             {
                 // number of parameters are insufficient.
-                reply(to_string(rpc_status::invalid_parameter), return_null);
+                _writer << to_string(rpc_status::invalid_parameter);
+                _writer << nullptr;
             }
             else
             {
                 try
                 {
-                    srv->invoke(_reader);
-
-                    // send reply
-                    reply(nullptr, [&] { srv->retrieve(_writer); });
+                    _writer << nullptr;
+                    srv->invoke(&*_conn, _reader, &_writer);
                 }
                 catch (type_mismatch_exception&)
                 {
-                    reply(to_string(rpc_status::invalid_parameter), return_null);
+                    _writer << to_string(rpc_status::invalid_parameter);
+                    _writer << nullptr;
                 }
                 catch (archive::error::archive_exception&)
                 {
@@ -647,7 +645,10 @@ class session : public std::enable_shared_from_this<session>
                 }
             }
 
-            _reader.end_array(ctx);
+            _reader.end_array(ctx);  // end reading params
+
+            _writer.array_pop();
+            _writer.flush();
         }
         else
         {
@@ -673,7 +674,7 @@ class session : public std::enable_shared_from_this<session>
             {
                 try
                 {
-                    srv->invoke(_reader);
+                    srv->invoke(&*_conn, _reader, nullptr);
                 }
                 catch (type_mismatch_exception&)
                 {
@@ -725,7 +726,7 @@ class context
 
    private:
     // Defined services
-    service_info _service;
+    service_info const _service;
 
     // List of created sessions.
     std::set<session_ptr, std::owner_less<>> _session_sources;
@@ -870,7 +871,7 @@ class context
      * @return shared reference to
      */
     template <typename Conn_, typename... Args_,
-              typename = std::enable_if_t<std::is_base_of_v<connection_streambuf, Conn_>>>
+              typename = std::enable_if_t<std::is_base_of_v<connection, Conn_>>>
     void create_session(session_config const& conf, Args_&&... args)
     {
         // put created session reference to sessions_source and sessions both.
@@ -969,7 +970,7 @@ class context
 //
 namespace CPPHEADERS_NS_::msgpack::rpc {
 
-inline void connection_streambuf::notify() { _owner->wakeup(); }
+inline void connection::notify() { _owner->wakeup(); }
 
 namespace detail {
 
