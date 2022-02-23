@@ -165,6 +165,14 @@ class basic_resource_pool
             _pool.erase(it);
     }
 
+    //! Check if not any resource is currently checked out.
+    bool empty()
+    {
+        lock_guard _{_mut};
+
+        return _pool.size() == _free.size();
+    }
+
     basic_resource_pool()
     {
         _constructor = [this] {

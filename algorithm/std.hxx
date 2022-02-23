@@ -258,8 +258,18 @@ auto variance(Container_&& cont, Mult_ mult = std::multiplies<>{})
     return variance(std::begin(cont), std::end(cont), std::forward<Mult_>(mult));
 }
 
+struct owner_equal_t
+{
+    template <typename PtrA_, typename PtrB_>
+    bool operator()(PtrA_ const& a, PtrB_ const& b) const noexcept
+    {
+        return not a.owner_before(b) && not b.owner_before(a);
+    }
+};
+constexpr owner_equal_t owner_equal{};
+
 }  // namespace algorithm
-}  // namespace CPPHEADERS_NS_
+};  // namespace CPPHEADERS_NS_
 
 namespace std {
 inline namespace literals {
