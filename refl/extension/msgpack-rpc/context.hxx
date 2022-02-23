@@ -180,12 +180,12 @@ class service_info
     auto const& _services_() const noexcept { return _handlers; }
 };
 
-class if_connection : std::streambuf
+class connection_streambuf : std::streambuf
 {
     detail::session* _owner = {};
 
    public:
-    virtual ~if_connection() = 0;
+    ~connection_streambuf() override = 0;
 
     /**
      * Call on read new data
@@ -389,7 +389,7 @@ class session : public std::enable_shared_from_this<session>
     config _conf;
 
     // A session will automatically be expired if connection is destroyed.
-    std::unique_ptr<if_connection> _conn;
+    std::unique_ptr<connection_streambuf> _conn;
 
     // msgpack stream reader/writers
     reader _reader{nullptr, 16};
@@ -416,7 +416,7 @@ class session : public std::enable_shared_from_this<session>
     std::atomic_bool _pending_kill = false;
 
    public:
-    session(config const& conf, std::unique_ptr<if_connection> conn)
+    session(config const& conf, std::unique_ptr<connection_streambuf> conn)
             : _conf(conf), _conn(std::move(conn)) {}
 
    public:
@@ -847,7 +847,7 @@ class context
      * @return shared reference to
      */
     template <typename Conn_, typename... Args_,
-              typename = std::enable_if_t<std::is_base_of_v<if_connection, Conn_>>>
+              typename = std::enable_if_t<std::is_base_of_v<connection_streambuf, Conn_>>>
     void create_session(session_config const& conf, Args_&&... args)
     {
         // put created session reference to sessions_source and sessions both.
@@ -946,7 +946,7 @@ class context
 //
 namespace CPPHEADERS_NS_::msgpack::rpc {
 
-inline void if_connection::notify() { _owner->wakeup(); }
+inline void connection_streambuf::notify() { _owner->wakeup(); }
 
 namespace detail {
 
