@@ -180,7 +180,7 @@ class service_info
     auto const& _services_() const noexcept { return _handlers; }
 };
 
-class if_connection
+class if_connection : std::streambuf
 {
     detail::session* _owner = {};
 
@@ -193,28 +193,11 @@ class if_connection
     void notify();
 
     /**
-     * Initialize this connection.
+     * Start communication. Before this call, call to notify() cause crash.
      *
-     * Calling wakeup() is unsafe before this function call.
-     *
-     * @throw invalid_connection on connection invalidated during initialize
+     * @throw invalid_connection on connection invalidated during launch
      */
-    virtual void initialize() = 0;
-
-    /**
-     * Recv n bytes from buffer. Waits infinitely until read any data
-     *
-     * @return Actual bytes that was successfully read.
-     * @throw invalid_connection on connection invalidated
-     */
-    virtual size_t read(array_view<void> buffer) = 0;
-
-    /**
-     * Write n bytes to buffer
-     *
-     * @throw invalid_connection on connection invalidated
-     */
-    virtual void write(array_view<void const> payload) = 0;
+    virtual void launch() = 0;
 
     /**
      * Called when session disconnected by parsing error or something else.
@@ -226,7 +209,7 @@ class if_connection
     virtual void reconnect() = 0;
 
    public:
-    void _init_(detail::session* sess) { _owner = sess, initialize(); }
+    void _init_(detail::session* sess) { _owner = sess, launch(); }
 };
 
 enum class rpc_status
@@ -245,6 +228,7 @@ enum class rpc_status
 };
 
 namespace detail {
+#if 0  // TODO: is this necessary?
 class connection_streambuf : public std::streambuf
 {
     if_connection* _conn;
@@ -258,16 +242,16 @@ class connection_streambuf : public std::streambuf
     }
 
    protected:
+    int sync() override
+    {
+        _flush();
+        return 0;
+    }
+
     int_type overflow(int_type int_type) override
     {
-        _conn->write({pbase(), size_t(pptr() - pbase())});
-
-        setp(_obuf, *(&_obuf + 1));
-
-        _obuf[0] = traits_type::to_char_type(int_type);
-        this->pbump(1);
-
-        return int_type;
+        _flush();
+        return sputc(traits_type::to_char_type(int_type));
     }
 
     int_type underflow() override
@@ -329,7 +313,15 @@ class connection_streambuf : public std::streambuf
         // Always return requested value. If there's any error, write() will just throw.
         return count;
     }
+
+   private:
+    void _flush()
+    {
+        _conn->write({pbase(), size_t(pptr() - pbase())});
+        setp(_obuf, *(&_obuf + 1));
+    }
 };
+#endif
 
 enum class rpc_type
 {
@@ -397,12 +389,11 @@ class session : public std::enable_shared_from_this<session>
     config _conf;
 
     // A session will automatically be expired if connection is destroyed.
-    std::shared_ptr<if_connection> _conn;
+    std::unique_ptr<if_connection> _conn;
 
     // msgpack stream reader/writers
-    detail::connection_streambuf _buffer{&*_conn};
-    reader _reader{&_buffer, 16};
-    writer _writer{&_buffer, 16};
+    reader _reader{nullptr, 16};
+    writer _writer{nullptr, 16};
 
     // Writing operation is protected.
     // - When reply to RPC
@@ -425,7 +416,7 @@ class session : public std::enable_shared_from_this<session>
     std::atomic_bool _pending_kill = false;
 
    public:
-    session(config const& conf, std::shared_ptr<if_connection> conn)
+    session(config const& conf, std::unique_ptr<if_connection> conn)
             : _conf(conf), _conn(std::move(conn)) {}
 
    public:
@@ -469,7 +460,6 @@ class session : public std::enable_shared_from_this<session>
                 _writer.array_pop();
             }
             _writer.array_pop();
-
             _writer.flush();
         }
 
@@ -589,7 +579,6 @@ class session : public std::enable_shared_from_this<session>
         }
         catch (invalid_connection&)
         {
-            _conn.reset();
             _erase_self();
         }
     }
@@ -618,6 +607,7 @@ class session : public std::enable_shared_from_this<session>
                             bn();
                         }
                         _writer.array_pop();
+                        _writer.flush();
                     };
 
             auto& srv = pair->second;
@@ -861,7 +851,7 @@ class context
     void create_session(session_config const& conf, Args_&&... args)
     {
         // put created session reference to sessions_source and sessions both.
-        auto connection = std::make_shared<Conn_>(std::forward<Args_>(args)...);
+        auto connection = std::make_unique<Conn_>(std::forward<Args_>(args)...);
         auto session    = std::make_shared<detail::session>(conf, std::move(connection));
 
         // notify session creation, for rpc requests which is waiting for
@@ -965,7 +955,7 @@ inline void session::wakeup()
     // do nothing if not waiting.
     if (not _waiting.exchange(false)) { return; }
 
-    _owner->dispatch(bind_front(&session::_wakeup_func, this));
+    _owner->dispatch(bind_front_weak(weak_from_this(), &session::_wakeup_func, this));
 }
 
 inline service_info::handler_table_type const& session::_get_services() const
@@ -975,6 +965,8 @@ inline service_info::handler_table_type const& session::_get_services() const
 
 inline void session::_erase_self()
 {
+    _conn.reset();
+
     _owner->_session_notify.critical_section(
             [this] {
                 _pending_kill = true;
