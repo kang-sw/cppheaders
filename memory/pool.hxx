@@ -25,6 +25,7 @@
 #pragma once
 #include <list>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 #include "../functional.hxx"
@@ -178,6 +179,11 @@ class basic_resource_pool
         _constructor = [this] {
             _pool.emplace_front();
         };
+    }
+
+    ~basic_resource_pool()
+    {
+        while (not empty()) { std::this_thread::yield(); }
     }
 
     template <typename... Args_>
