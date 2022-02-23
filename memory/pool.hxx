@@ -183,7 +183,11 @@ class basic_resource_pool
 
     ~basic_resource_pool()
     {
-        while (not empty()) { std::this_thread::yield(); }
+        // TODO: way to detect deadlock? (e.g. from destruction order in same thread ...)
+
+        // Yield for long time, since if following empty() call returns true, it normally
+        //  indicates async process is running from another thread,
+        while (not empty()) { std::this_thread::sleep_for(std::chrono::milliseconds(1)); }
     }
 
     template <typename... Args_>
