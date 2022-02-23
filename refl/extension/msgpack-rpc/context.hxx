@@ -180,6 +180,12 @@ class service_info
     auto const& _services_() const noexcept { return _handlers; }
 };
 
+/**
+ * This is the only class that you have to inherit and implement details.
+ *
+ * Once connection is invalidated, any call to methods of this class should
+ * throw \refitem{invalid_connection} to gently cleanup this session.
+ */
 class connection_streambuf : std::streambuf
 {
     detail::session* _owner = {};
@@ -581,6 +587,10 @@ class session : public std::enable_shared_from_this<session>
         {
             _erase_self();
         }
+        catch (archive::error::archive_exception&)
+        {
+            _erase_self();
+        }
     }
 
     void _handle_request()
@@ -778,9 +788,14 @@ class context
             _checkin(std::move(session));
             return result;
         }
-        catch (invalid_connection& e)
+        catch (invalid_connection&)
         {
             // do nothing, session will be disposed automatically by disposing pointer.
+            return rpc_status::dead_peer;
+        }
+        catch (archive::error::archive_exception&)
+        {
+            // same as above.
             return rpc_status::dead_peer;
         }
     }
@@ -804,6 +819,10 @@ class context
         catch (invalid_connection& e)
         {
             // do nothing, session will be disposed automatically by disposing pointer.
+        }
+        catch (archive::error::archive_exception&)
+        {
+            // same as above.
         }
     }
 
@@ -833,6 +852,10 @@ class context
             catch (invalid_connection&)
             {
                 ;  // do nothing, let it disposed
+            }
+            catch (archive::error::archive_exception&)
+            {
+                ;  // same as above.
             }
         }
     }
