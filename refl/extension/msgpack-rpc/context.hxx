@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #pragma once
-#include <list>
+#include <deque>
 #include <map>
 #include <set>
 #include <utility>
@@ -730,7 +730,7 @@ class context
 
     // List of created sessions.
     std::set<session_ptr, std::owner_less<>> _session_sources;
-    std::list<session_wptr> _sessions;
+    std::deque<session_wptr> _sessions;
 
     thread::event_wait _session_notify;
     dispatch_function _dispatch;
@@ -900,16 +900,16 @@ class context
         session_ptr session = {};
         auto predicate =
                 [&] {
-                    // If there's no sessions active ...
                     for (; not _sessions.empty();)
                     {
+                        // Everytime _checkout() is called, difference session will be selected.
                         auto ptr = std::move(_sessions.front());
                         _sessions.pop_front();
 
                         if ((session = _impl_checkout(ptr)) == nullptr)
                             continue;  // dispose wptr
 
-                        // push weak pointer back for round-robin load balancing
+                        // push weak pointer back for load balancing between active sessions
                         _sessions.push_back(ptr);
 
                         return true;
