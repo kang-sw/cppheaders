@@ -52,6 +52,17 @@ if (TARGET nlohmann::json)
     )
 endif ()
 
+if (TARGET perfkit::asio)
+    message("[${PROJECT_NAME}]: perfkit::asio found. linking dependency ...")
+
+    target_link_libraries(
+            ${PROJECT_NAME}
+
+            PRIVATE
+            perfkit::asio
+    )
+endif ()
+
 if (MSVC)
     add_compile_options(/utf-8)
 else ()
