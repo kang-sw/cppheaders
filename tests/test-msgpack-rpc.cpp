@@ -24,6 +24,9 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
+#include <csignal>
+#include <future>
+#include <iostream>
 #include <thread>
 
 #include <asio/ip/tcp.hpp>
@@ -115,10 +118,16 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     using namespace msgpack::rpc::asio;
 
     using asio::ip::tcp;
+    static std::mutex _mtx_cout;
 
     function<void(msgpack::rpc::if_connection const*, int*, int)> fn;
     fn = [](auto ptr, int* rv, int val) {
-        WARN("Peer [" << ptr->peer() << "]: " << val);
+        {
+            std::lock_guard _lc_{_mtx_cout};
+            printf("Peer [%s]: %d\n", ptr->peer().c_str(), val);
+            fflush(stdout);
+        }
+
         *rv = val * val;
     };
 
@@ -146,33 +155,91 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     auto hsession = create_session(*ctx, std::move(client));
     WARN("Client: Session created");
 
-    SECTION("Basic disconnection")
-    {
-        ioc.restart();
-        ioc.run_for(1s);
-        REQUIRE(ctx->session_count() == 2);
+    if (0)
+        SECTION("Basic disconnection")
+        {
+            ioc.restart();
+            ioc.run_for(200ms);
+            REQUIRE(ctx->session_count() == 2);
 
-        ctx->erase_session(hsession);
+            ctx->erase_session(hsession);
 
-        ioc.restart();
-        ioc.run_for(1s);
+            ioc.restart();
+            ioc.run_for(200ms);
 
-        CHECK(not hsession);
-    }
+            CHECK(not hsession);
+        }
 
     ioc.restart();
-    std::thread worker_ioc{[&ioc] { ioc.run(); }};
 
     SECTION("Basic RPC")
     {
-        for (int i = 0; i < 10; ++i)
+        std::thread worker_ioc{[&ioc] { ioc.run(); }};
+
+        for (int i = 0; i < 256; ++i)
         {
             int rv = -1;
             ctx->rpc(&rv, "hello", i);
             REQUIRE(rv == i * i);
         }
+
+        ioc.stop();
+        worker_ioc.join();
     }
 
-    ioc.stop();
-    worker_ioc.join();
+    SECTION("Multithreaded")
+    {
+        std::vector<std::thread> threads;
+        std::vector<std::future<bool>> futures;
+        for (auto idx : counter(std::thread::hardware_concurrency()))
+            threads.emplace_back([&ioc] { ioc.run(); });
+
+        SECTION("Notify")
+        {
+            for (int i = 0; i < 256; ++i)
+            {
+                {
+                    std::lock_guard _lc_{_mtx_cout};
+                    printf("Notify %d\n", i);
+                    fflush(stdout);
+                }
+                ctx->notify("hello", i);
+            }
+        }
+
+        SECTION("RPC")
+        {
+            std::atomic_int max = 256;
+
+            for (int i = 0, end = max; i < end; ++i)
+            {
+                futures.emplace_back(
+                        std::async([&, i] {
+                            auto order = max.load();
+                            {
+                                std::lock_guard _lc_{_mtx_cout};
+                                printf("RPC %d (%d)\n", i, end - order);
+                                fflush(stdout);
+                            }
+
+                            int rv      = -1;
+                            auto result = ctx->rpc(&rv, "hello", i);
+                            assert(result == msgpack::rpc::rpc_status::okay);
+
+                            {
+                                std::lock_guard _lc_{_mtx_cout};
+                                printf("RPC %d -> %d (%d~%d/%d)\n", i, rv, end - order, end - --max, end);
+                                fflush(stdout);
+                            }
+                            return rv == i * i;
+                        }));
+            }
+        }
+
+        bool result = true;
+        for (auto& e : futures) { result &= e.get(); }
+
+        ioc.stop();
+        for (auto& th : threads) { th.join(); }
+    }
 }

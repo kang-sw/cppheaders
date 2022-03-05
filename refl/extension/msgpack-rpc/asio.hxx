@@ -183,7 +183,7 @@ auto create_session(context& rpc, Socket_&& socket, session_config const& config
             detail::basic_socket_connection<
                     typename Socket_::protocol_type>>(
             config,
-            std::move(socket));
+            std::forward<Socket_>(socket));
 }
 
 }  // namespace CPPHEADERS_NS_::msgpack::rpc::asio

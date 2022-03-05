@@ -439,7 +439,12 @@ class reader : public archive::if_reader
         // check if given context key exists in scopes
         for (auto it = _scope.rbegin(), end = _scope.rend(); it != end; ++it)
             if (it->ctxkey.data.value == key.value)
-                return;
+            {
+                if (it->type == type)
+                    return;
+                else
+                    throw error::reader_invalid_context{this}.message("type mismatch with context!");
+            }
 
         throw error::reader_invalid_context{this}.message("too early scope end call!");
     }

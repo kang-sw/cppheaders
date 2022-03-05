@@ -144,7 +144,7 @@ class service_info
 
         //! invoke with given parameters.
         //! @return error message if invocation failed
-        virtual void invoke(if_connection const* context, reader&, writer*) = 0;
+        virtual void invoke(if_connection const* context, reader&, void (*)(void*, refl::object_const_view_t), void*) = 0;
 
         //! number of parameters
         size_t num_params() const noexcept { return _n_params; }
@@ -178,7 +178,11 @@ class service_info
                     : if_service_handler(sizeof...(Params_)),
                       _handler(std::move(h)) {}
 
-            void invoke(if_connection const* context, reader& reader, writer* writer) override
+            void invoke(
+                    if_connection const* context,
+                    reader& reader,
+                    void (*fn_write)(void*, refl::object_const_view_t),
+                    void* uobj) override
             {
                 std::apply(
                         [&](auto&... params) {
@@ -196,9 +200,9 @@ class service_info
                             }
 
                             if constexpr (std::is_void_v<RetVal_>)
-                                *writer << nullptr;
-                            else if (writer)
-                                *writer << *rval;
+                                fn_write(uobj, refl::object_const_view_t{nullptr});
+                            else if (fn_write)
+                                fn_write(uobj, refl::object_const_view_t{*rval});
                         },
                         *_params.checkout());
             }
@@ -374,6 +378,7 @@ inline std::string_view to_string(rpc_status s)
             {rpc_status::internal_error, "ERROR_INTERNAL"},
             {rpc_status::invalid_parameter, "ERROR_INVALID_PARAMETER"},
             {rpc_status::invalid_return_type, "ERROR_INVALID_RETURN_TYPE"},
+            {rpc_status::method_not_exist, "ERROR_METHOD_NOT_EXIST"},
     };
 
     auto p = find_ptr(etos, s);
@@ -390,6 +395,7 @@ inline auto from_string(std::string_view s)
             {"ERROR_INTERNAL", rpc_status::internal_error},
             {"ERROR_INVALID_PARAMETER", rpc_status::invalid_parameter},
             {"ERROR_INVALID_RETURN_TYPE", rpc_status::invalid_return_type},
+            {"ERROR_METHOD_NOT_EXIST", rpc_status::method_not_exist},
     };
 
     auto p = find_ptr(stoe, s);
@@ -451,6 +457,9 @@ class session : public std::enable_shared_from_this<session>
     // Check if pending kill
     std::atomic_bool _pending_kill = false;
 
+    // write refcount
+    volatile int _refcnt = 0;
+
    public:
     session(context* owner, config const& conf, std::unique_ptr<if_connection> conn)
             : _owner(owner), _conf(conf), _conn(std::move(conn))
@@ -471,13 +480,11 @@ class session : public std::enable_shared_from_this<session>
             msgid   = ++_msgid_gen;
             request = _requests.try_emplace(msgid).first;
 
-            std::atomic_bool ready = false;
-
             // This will be invoked when return value from remote is ready, and will directly
             //  deserialize the result into provided argument.
             request->second.promise =
-                    [&](reader* rd) mutable {
-                        if constexpr (std::is_same_v<RetVal_, void>)
+                    [&result](reader* rd) {
+                        if (result == nullptr)
                             *rd >> nullptr;  // skip
                         else
                             *rd >> *result;
@@ -575,51 +582,12 @@ class session : public std::enable_shared_from_this<session>
             {
                 case rpc_type::request: _handle_request(); break;
                 case rpc_type::notify: _handle_notify(); break;
+                case rpc_type::reply: _handle_reply(); break;
 
-                case rpc_type::reply:
-                {
-                    int msgid = -1;
-                    _reader >> msgid;
-
-                    //  1. find corresponding reply to msgid
-                    //  2. fill promise with value or exception
-                    auto lc{std::lock_guard{_rpc_lock}};
-                    if (auto preq = find_ptr(_requests, msgid))
-                    {
-                        if (_reader.is_null_next())  // no error
-                        {
-                            _reader >> nullptr;
-
-                            try
-                            {
-                                preq->second.promise(&_reader);
-                                preq->second.status = rpc_status::okay;
-                            }
-                            catch (std::exception& e)
-                            {
-                                // on failed to parse result, refresh connection
-                                preq->second.status = rpc_status::internal_error;
-                                throw detail::rpc_handler_fatal_state{};
-                            }
-                        }
-                        else
-                        {
-                            std::string errmsg;
-                            _reader >> errmsg;
-                            _reader >> nullptr;  // skip payload
-
-                            preq->second.status = from_string(errmsg);
-                        }
-
-                        // Wake up all waiting candidates.
-                        _rpc_notify.notify_all();
-                    }
-
-                    break;
-                }
+                default: throw invalid_connection{};
             }
 
-            _reader.end_object(key);
+            _reader.end_array(key);
 
             // waiting for next input.
             _waiting.store(true, std::memory_order_release);
@@ -639,6 +607,52 @@ class session : public std::enable_shared_from_this<session>
         }
     }
 
+    void _handle_reply()
+    {
+        int msgid = -1;
+        _reader >> msgid;
+
+        //  1. find corresponding reply to msgid
+        //  2. fill promise with value or exception
+        lock_guard _rpc_lock_{_rpc_lock};
+        if (auto preq = find_ptr(_requests, msgid))
+        {
+            rpc_status next_status;
+
+            if (_reader.is_null_next())  // no error
+            {
+                _reader >> nullptr;
+
+                try
+                {
+                    preq->second.promise(&_reader);
+                    next_status = rpc_status::okay;
+                }
+                catch (std::exception& e)
+                {
+                    // on failed to parse result, refresh connection
+                    next_status = rpc_status::internal_error;
+                    throw detail::rpc_handler_fatal_state{};
+                }
+            }
+            else
+            {
+                std::string errmsg;
+                _reader >> errmsg;
+                _reader >> nullptr;  // skip payload
+
+                next_status = from_string(errmsg);
+            }
+
+            // Wake up all waiting candidates.
+            _rpc_notify.notify_all([&] { preq->second.status = next_status; });
+        }
+        else
+        {
+            assert(preq == nullptr);
+        }
+    }
+
     void _handle_request()
     {
         //  1. read msgid
@@ -651,32 +665,63 @@ class session : public std::enable_shared_from_this<session>
 
         if (auto pair = find_ptr(_get_services(), _method_name_buf))
         {
-            auto return_null = [&] { _writer << nullptr; };
-
             auto& srv = pair->second;
             auto ctx  = _reader.begin_array();  // begin reading params
-
-            _writer.array_push(4);
-            _writer << rpc_type::reply;
-            _writer << msgid;
 
             if (_reader.elem_left() < srv->num_params())
             {
                 // number of parameters are insufficient.
-                _writer << to_string(rpc_status::invalid_parameter);
-                _writer << nullptr;
+                lock_guard _wr_lock_{_write_lock};
+
+                _writer.array_push(4);
+                _writer << rpc_type::reply
+                        << msgid
+                        << to_string(rpc_status::invalid_parameter)
+                        << nullptr;
+                _writer.array_pop();
+                _writer.flush();
             }
             else
             {
                 try
                 {
-                    _writer << nullptr;
-                    srv->invoke(&*_conn, _reader, &_writer);
+                    struct uobj_t
+                    {
+                        session* self;
+                        int msgid;
+                    } uobj{this, msgid};
+
+                    srv->invoke(
+                            &*_conn, _reader,
+                            [](void* pvself, refl::object_const_view_t data) {
+                                auto self  = ((uobj_t*)pvself)->self;
+                                auto msgid = ((uobj_t*)pvself)->msgid;
+
+                                lock_guard _wr_lock_{self->_write_lock};
+                                auto writer = &self->_writer;
+                                writer->array_push(4);
+
+                                *writer << rpc_type::reply
+                                        << msgid
+                                        << nullptr
+                                        << data;
+
+                                writer->array_pop();
+                                writer->flush();
+                            },
+                            &uobj);
                 }
                 catch (type_mismatch_exception&)
                 {
-                    _writer << to_string(rpc_status::invalid_parameter);
-                    _writer << nullptr;
+                    lock_guard _wr_lock_{_write_lock};
+
+                    _writer.array_push(4);
+                    _writer << rpc_type::reply
+                            << msgid
+                            << to_string(rpc_status::invalid_parameter)
+                            << nullptr;
+                    _writer.array_pop();
+                    _writer.flush();
                 }
                 catch (archive::error::archive_exception&)
                 {
@@ -685,19 +730,17 @@ class session : public std::enable_shared_from_this<session>
             }
 
             _reader.end_array(ctx);  // end reading params
-
-            _writer.array_pop();
-            _writer.flush();
         }
         else
         {
             _reader >> nullptr;
 
+            lock_guard _wr_lock_{_write_lock};
             _writer.array_push(4);
-            _writer << rpc_type::reply;
-            _writer << msgid;
-            _writer << to_string(rpc_status::method_not_exist);
-            _writer << nullptr;
+            _writer << rpc_type::reply
+                    << msgid
+                    << to_string(rpc_status::method_not_exist)
+                    << nullptr;
             _writer.array_pop();
 
             _writer.flush();
@@ -710,7 +753,6 @@ class session : public std::enable_shared_from_this<session>
         //  2. invoke handler
 
         int msgid = {};
-        _reader >> msgid;
         _reader >> _method_name_buf;
 
         if (auto pair = find_ptr(_get_services(), _method_name_buf))
@@ -722,7 +764,7 @@ class session : public std::enable_shared_from_this<session>
             {
                 try
                 {
-                    srv->invoke(&*_conn, _reader, nullptr);
+                    srv->invoke(&*_conn, _reader, nullptr, nullptr);
                 }
                 catch (type_mismatch_exception&)
                 {
@@ -1005,6 +1047,8 @@ class context
         {  // if given session is never occupied by any other context ..
             session = *source;
             _session_sources.erase(source);
+
+            assert(session->_refcnt == 0);
         }
         else if ((session = ptr.lock()) == nullptr)
         {
@@ -1013,6 +1057,7 @@ class context
             ;
         }
 
+        if (session) { ++session->_refcnt; }
         return session;
     }
 
@@ -1020,8 +1065,10 @@ class context
     {
         _session_notify.critical_section(
                 [&] {
-                    // if this isn't unique reference, just dispose.
-                    if (ptr.use_count() > 1) { return; }
+                    // If there's any other writing instance who checked out this session,
+                    //  just mandate it the responsibility to return source back.
+                    if (--ptr->_refcnt > 0) { return; }
+                    assert(0 == ptr->_refcnt);
 
                     // if pointer is pending kill, do not return this to sources buffer.
                     // which will dispose given session, which was given by move operation.
