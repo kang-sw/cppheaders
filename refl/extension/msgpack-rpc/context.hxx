@@ -70,14 +70,22 @@ class context;
  * Once connection is invalidated, any call to methods of this class should
  * throw \refitem{invalid_connection} to gently cleanup this session.
  */
-class connection : public std::streambuf
+class if_connection
 {
-    detail::session* _owner = {};
+    std::weak_ptr<detail::session> _owner = {};
     std::string _peer;
 
    public:
-    connection(std::string peer) noexcept : _peer(std::move(peer)) {}
-    ~connection() override = 0;
+    virtual ~if_connection() = default;
+
+    /**
+     * Initialize connection
+     *
+     * @param peer
+     * @param buf
+     */
+    explicit if_connection(std::string peer) noexcept
+            : _peer(std::move(peer)) { _peer.shrink_to_fit(); }
 
     /**
      * Returns name of the peer
@@ -85,9 +93,24 @@ class connection : public std::streambuf
     auto& peer() const noexcept { return _peer; }
 
     /**
-     * Call on read new data
+     * Returns internal streambuf
      */
-    void notify();
+    virtual std::streambuf* rdbuf() = 0;
+
+    /**
+     * If this is called, start waiting for data asynchronously.
+     */
+    virtual void begin_wait() = 0;
+
+    /**
+     * On waiting state, asynchronous data input notification should call this function.
+     */
+    void notify_receive();
+
+    /**
+     * On disconnection occurred ..
+     */
+    void notify_disconnect();
 
     /**
      * Start communication. Before this call, call to notify() cause crash.
@@ -97,16 +120,12 @@ class connection : public std::streambuf
     virtual void launch() = 0;
 
     /**
-     * Called when session disconnected by parsing error or something else.
-     *
-     * Lets internal connection to refresh its connection.
-     *
-     * e.g. Notify connection manager to reconnect this session.
+     * Get owner weak pointer
      */
-    virtual void reconnect() = 0;
+    auto owner() const { return _owner; }
 
    public:
-    void _init_(detail::session* sess) { _owner = sess, launch(); }
+    void _init_(std::weak_ptr<detail::session> sess) { _owner = sess, launch(), begin_wait(); }
 };
 
 /**
@@ -121,17 +140,17 @@ class service_info
 
        public:
         explicit if_service_handler(size_t n_params) noexcept : _n_params(n_params) {}
-        virtual ~if_service_handler() = 0;
+        virtual ~if_service_handler() = default;
 
         //! invoke with given parameters.
         //! @return error message if invocation failed
-        virtual void invoke(connection const* context, reader&, writer*) = 0;
+        virtual void invoke(if_connection const* context, reader&, writer*) = 0;
 
         //! number of parameters
         size_t num_params() const noexcept { return _n_params; }
     };
 
-    using handler_table_type = std::map<std::string, std::unique_ptr<if_service_handler>, std::less<>>;
+    using handler_table_type = std::map<std::string, std::shared_ptr<if_service_handler>, std::less<>>;
 
    private:
     handler_table_type _handlers;
@@ -140,8 +159,8 @@ class service_info
     /**
      * Optimized version of serve(). it lets handler reuse return value buffer.
      */
-    template <typename Str_, typename RetVal_, typename... Params_>
-    service_info& serve_full(Str_&& method_name, function<void(connection const*, RetVal_*, Params_...)> handler)
+    template <typename RetVal_, typename... Params_>
+    service_info& serve_full(std::string method_name, function<void(if_connection const*, RetVal_*, Params_...)> handler)
     {
         struct service_handler : if_service_handler
         {
@@ -159,7 +178,7 @@ class service_info
                     : if_service_handler(sizeof...(Params_)),
                       _handler(std::move(h)) {}
 
-            void invoke(connection const* context, reader& reader, writer* writer) override
+            void invoke(if_connection const* context, reader& reader, writer* writer) override
             {
                 std::apply(
                         [&](auto&... params) {
@@ -179,15 +198,15 @@ class service_info
                             if constexpr (std::is_void_v<RetVal_>)
                                 *writer << nullptr;
                             else if (writer)
-                                *writer << &*rval;
+                                *writer << *rval;
                         },
                         *_params.checkout());
             }
         };
 
         auto [it, is_new] = _handlers.try_emplace(
-                std::forward<Str_>(method_name),
-                std::make_unique<service_handler>(std::move(handler)));
+                std::move(method_name),
+                std::make_shared<service_handler>(std::move(handler)));
 
         if (not is_new)
             throw std::logic_error{"Method name may not duplicate!"};
@@ -211,7 +230,7 @@ class service_info
         this->serve_full(
                 std::forward<Str_>(method_name),
                 [_handler = std::move(handler)]  //
-                (connection const*, RetVal_* buffer, Params_&&... args) mutable {
+                (if_connection const*, RetVal_* buffer, Params_&&... args) mutable {
                     if constexpr (std::is_void_v<RetVal_>)
                         _handler(std::forward<Params_>(args)...);
                     else
@@ -236,6 +255,8 @@ enum class rpc_status
     internal_error      = -2,
     invalid_parameter   = -3,
     invalid_return_type = -4,
+
+    method_not_exist = -5,
 
     dead_peer = -100,
 };
@@ -398,15 +419,17 @@ class session : public std::enable_shared_from_this<session>
     };
 
    private:
+    friend class rpc::context;
+
     context* _owner = {};
     config _conf;
 
     // A session will automatically be expired if connection is destroyed.
-    std::unique_ptr<connection> _conn;
+    std::unique_ptr<if_connection> _conn;
 
     // msgpack stream reader/writers
-    reader _reader{&*_conn, 16};
-    writer _writer{&*_conn, 16};
+    reader _reader{_conn->rdbuf(), 16};
+    writer _writer{_conn->rdbuf(), 16};
 
     // Writing operation is protected.
     // - When reply to RPC
@@ -429,8 +452,11 @@ class session : public std::enable_shared_from_this<session>
     std::atomic_bool _pending_kill = false;
 
    public:
-    session(config const& conf, std::unique_ptr<connection> conn)
-            : _conf(conf), _conn(std::move(conn)) {}
+    session(context* owner, config const& conf, std::unique_ptr<if_connection> conn)
+            : _owner(owner), _conf(conf), _conn(std::move(conn))
+    {
+        if (_conf.timeout.count() == 0) { _conf.timeout = decltype(_conf.timeout)::max(); }
+    }
 
    public:
     template <typename RetVal_, typename... Params_>
@@ -515,11 +541,23 @@ class session : public std::enable_shared_from_this<session>
     }
 
     void wakeup();
+    void dispose_self()
+    {
+        _erase_self();
+    }
 
     auto lock_write() { return std::unique_lock{_write_lock}; }
     auto try_lock_write() { return std::unique_lock{_write_lock, std::try_to_lock}; }
 
-    bool pending_kill() const noexcept { return _pending_kill; }
+    bool pending_kill() const noexcept { return _pending_kill.load(std::memory_order_acquire); }
+
+    void _start_()
+    {
+        // As weak_from_this cannot be called inside of constructor,
+        //  initialization of each sessions must be called explicitly.
+        _waiting = true;
+        _conn->_init_(weak_from_this());
+    }
 
    private:
     void _wakeup_func()
@@ -529,7 +567,7 @@ class session : public std::enable_shared_from_this<session>
             // Always entered by single thread.
 
             // Assume data is ready to be read.
-            auto key = _reader.begin_object();
+            auto key = _reader.begin_array();
 
             rpc_type type;
 
@@ -555,6 +593,7 @@ class session : public std::enable_shared_from_this<session>
                             try
                             {
                                 preq->second.promise(&_reader);
+                                preq->second.status = rpc_status::okay;
                             }
                             catch (std::exception& e)
                             {
@@ -583,12 +622,12 @@ class session : public std::enable_shared_from_this<session>
             _reader.end_object(key);
 
             // waiting for next input.
-            _waiting = true;
+            _waiting.store(true, std::memory_order_release);
+            _conn->begin_wait();
         }
         catch (detail::rpc_handler_fatal_state&)
         {
-            // If internal state irreversible, connection will be refreshed.
-            _refresh();
+            _erase_self();
         }
         catch (invalid_connection&)
         {
@@ -653,6 +692,15 @@ class session : public std::enable_shared_from_this<session>
         else
         {
             _reader >> nullptr;
+
+            _writer.array_push(4);
+            _writer << rpc_type::reply;
+            _writer << msgid;
+            _writer << to_string(rpc_status::method_not_exist);
+            _writer << nullptr;
+            _writer.array_pop();
+
+            _writer.flush();
         }
     }
 
@@ -701,14 +749,6 @@ class session : public std::enable_shared_from_this<session>
     service_info::handler_table_type const& _get_services() const;
 
     void _erase_self();
-
-    void _refresh()
-    {
-        _writer.clear();
-        _reader.clear();
-        _waiting = true;
-        _conn->reconnect();
-    }
 };
 }  // namespace detail
 
@@ -725,6 +765,9 @@ class context
     using dispatch_function = function<void(function<void()>)>;
 
    private:
+    // Event dispatcher. Default behavior is invoking in-place.
+    dispatch_function _dispatch;
+
     // Defined services
     service_info const _service;
 
@@ -732,8 +775,7 @@ class context
     std::set<session_ptr, std::owner_less<>> _session_sources;
     std::deque<session_wptr> _sessions;
 
-    thread::event_wait _session_notify;
-    dispatch_function _dispatch;
+    mutable thread::event_wait _session_notify;
 
    public:
     std::chrono::milliseconds global_timeout{60'000};
@@ -742,8 +784,13 @@ class context
     /**
      * Create new context, with appropriate dispatcher function.
      */
-    explicit context(dispatch_function dispatcher = [](auto&& fn) { fn(); })
-            : _dispatch(std::move(dispatcher)) {}
+    explicit context(
+            service_info service         = {},
+            dispatch_function dispatcher = [](auto&& fn) { fn(); })
+            : _dispatch(std::move(dispatcher)),
+              _service(std::move(service))
+    {
+    }
 
     /**
      * Copying/Moving object address is not permitted, as sessions
@@ -752,19 +799,6 @@ class context
     context& operator=(context&&) noexcept = delete;
     context(context const&)                = delete;
     context(context&&) noexcept            = delete;
-
-    /**
-     * Create new context with given service information.
-     * Once service is registered, it becomes read-only.
-     *
-     * @param service
-     */
-    explicit context(service_info service) noexcept : _service(std::move(service)) {}
-
-    /**
-     * If context is created without service information,
-     */
-    context() noexcept = default;
 
     /**
      * Call RPC function. Will be load-balanced automatically.
@@ -861,6 +895,18 @@ class context
         }
     }
 
+   public:
+    struct session_handle
+    {
+        friend class context;
+
+       private:
+        session_wptr _ref;
+
+       public:
+        operator bool() const noexcept { return not _ref.expired(); }
+    };
+
     /**
      * Create new session with given connection type.
      * Lifecycle of connection must be managed outside of class boundary.
@@ -871,12 +917,18 @@ class context
      * @return shared reference to
      */
     template <typename Conn_, typename... Args_,
-              typename = std::enable_if_t<std::is_base_of_v<connection, Conn_>>>
-    void create_session(session_config const& conf, Args_&&... args)
+              typename = std::enable_if_t<std::is_base_of_v<if_connection, Conn_>>>
+    session_handle create_session(session_config const& conf, Args_&&... args)
     {
         // put created session reference to sessions_source and sessions both.
         auto connection = std::make_unique<Conn_>(std::forward<Args_>(args)...);
-        auto session    = std::make_shared<detail::session>(conf, std::move(connection));
+        auto session    = std::make_shared<detail::session>(this, conf, std::move(connection));
+
+        session_handle handle;
+        handle._ref = session;
+
+        // Initialize explicitly
+        session->_start_();
 
         // notify session creation, for rpc requests which is waiting for
         //  any valid session.
@@ -885,14 +937,32 @@ class context
                     _sessions.push_back(session);
                     _session_sources.emplace(std::move(session));
                 });
+
+        return handle;
+    }
+
+    /**
+     * Remove session with given handle.
+     */
+    bool erase_session(session_handle handle)
+    {
+        return _erase_session(std::move(handle._ref));
+    }
+
+    /**
+     * Get number of active sessions
+     */
+    size_t session_count() const
+    {
+        size_t n;
+        _session_notify.critical_section([&] { n = _sessions.size(); });
+        return n;
     }
 
    protected:
     void dispatch(function<void()> message) { _dispatch(std::move(message)); }
 
    private:
-    void _dispose_session(detail::session* ptr) {}
-
     session_ptr _checkout(bool wait = true)
     {
         using namespace std::chrono_literals;
@@ -961,6 +1031,24 @@ class context
                     _session_sources.insert(std::move(ptr));
                 });
     }
+
+    bool _erase_session(session_wptr wptr)
+    {
+        if (auto ptr = wptr.lock())
+            ptr->_pending_kill.store(true, std::memory_order_release);
+        else
+            return false;  // handle already disposed.
+
+        _session_notify.critical_section(
+                [this, wp = wptr] {
+                    auto iter = _session_sources.find(wp);
+                    if (_session_sources.end() == iter) { return; }
+
+                    _session_sources.erase(iter);
+                });
+
+        return true;
+    }
 };
 
 }  // namespace CPPHEADERS_NS_::msgpack::rpc
@@ -970,16 +1058,28 @@ class context
 //
 namespace CPPHEADERS_NS_::msgpack::rpc {
 
-inline void connection::notify() { _owner->wakeup(); }
+inline void if_connection::notify_receive()
+{
+    if (auto owner = _owner.lock())
+        owner->wakeup();
+}
+
+void if_connection::notify_disconnect()
+{
+    if (auto owner = _owner.lock())
+        owner->dispose_self();
+}
 
 namespace detail {
-
 inline void session::wakeup()
 {
-    // do nothing if not waiting.
-    if (not _waiting.exchange(false)) { return; }
+    if (_pending_kill.load(std::memory_order_acquire)) { return; }
 
-    _owner->dispatch(bind_front_weak(weak_from_this(), &session::_wakeup_func, this));
+    // do nothing if not waiting.
+    if (not _waiting.exchange(false))
+        assert(false && "Notification received when it's not waiting for new data ..");
+    else
+        _owner->dispatch(bind_front_weak(weak_from_this(), &session::_wakeup_func, this));
 }
 
 inline service_info::handler_table_type const& session::_get_services() const
@@ -989,20 +1089,7 @@ inline service_info::handler_table_type const& session::_get_services() const
 
 inline void session::_erase_self()
 {
-    _conn.reset();
-
-    _owner->_session_notify.critical_section(
-            [this] {
-                _pending_kill = true;
-                auto wp       = weak_from_this();
-
-                // If any other write request is alive, let it dispose this.
-                if (wp.use_count() != 0) { return; }
-
-                // Otherwise, dispose this
-                auto iter = _owner->_session_sources.find(wp);
-                _owner->_session_sources.erase(iter);
-            });
+    _owner->_erase_session(weak_from_this());
 }
 
 }  // namespace detail
