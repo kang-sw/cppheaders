@@ -165,9 +165,12 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
 
     SECTION("Basic RPC")
     {
-        int rv = 0;
-        ctx->rpc(&rv, "hello", 3);
-        REQUIRE(rv == 9);
+        for (int i = 0; i < 10; ++i)
+        {
+            int rv = -1;
+            ctx->rpc(&rv, "hello", i);
+            REQUIRE(rv == i * i);
+        }
     }
 
     ioc.stop();

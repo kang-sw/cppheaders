@@ -100,10 +100,9 @@ class basic_socket_connection : public if_connection
         std::string buf;
         buf.reserve(128);
 
-        asio::ip::tcp::endpoint ept;
-        buf += ept.address().to_string();
+        buf += ep.address().to_string();
         buf += ':';
-        buf += std::to_string(ept.port());
+        buf += std::to_string(ep.port());
 
         return buf;
     }
