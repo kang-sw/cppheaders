@@ -15,7 +15,6 @@ add_executable(
         test-archive.cpp
         test-archive-2.cpp
         test-container.cpp
-        test-msgpack-rpc.cpp
 )
 
 
@@ -60,6 +59,13 @@ if (TARGET perfkit::asio)
 
             PRIVATE
             perfkit::asio
+    )
+
+    target_sources(
+            ${PROJECT_NAME}
+
+            PRIVATE
+            test-msgpack-rpc.cpp
     )
 endif ()
 
