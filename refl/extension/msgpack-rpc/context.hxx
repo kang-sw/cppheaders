@@ -90,7 +90,7 @@ class if_connection
     /**
      * Returns name of the peer
      */
-    auto& peer() const noexcept { return _peer; }
+    std::string const& peer() const noexcept { return _peer; }
 
     /**
      * Returns internal streambuf
@@ -129,6 +129,16 @@ class if_connection
 };
 
 /**
+ * Information of created session.
+ */
+struct session_profile
+{
+    std::string peer_name;
+};
+
+using session_profile_view = session_profile const&;
+
+/**
  * Defines service information
  */
 class service_info
@@ -144,7 +154,7 @@ class service_info
 
         //! invoke with given parameters.
         //! @return error message if invocation failed
-        virtual void invoke(if_connection const* context, reader&, void (*)(void*, refl::object_const_view_t), void*) = 0;
+        virtual void invoke(session_profile const&, reader&, void (*)(void*, refl::object_const_view_t), void*) = 0;
 
         //! number of parameters
         size_t num_params() const noexcept { return _n_params; }
@@ -157,10 +167,10 @@ class service_info
 
    public:
     /**
-     * Optimized version of serve(). it lets handler reuse return value buffer.
+     * Original signature of serve()
      */
     template <typename RetVal_, typename... Params_>
-    service_info& serve_full(std::string method_name, function<void(if_connection const*, RetVal_*, Params_...)> handler)
+    service_info& serve_full(std::string method_name, function<void(session_profile const&, RetVal_*, Params_...)> handler)
     {
         struct service_handler : if_service_handler
         {
@@ -179,7 +189,7 @@ class service_info
                       _handler(std::move(h)) {}
 
             void invoke(
-                    if_connection const* context,
+                    session_profile const& session,
                     reader& reader,
                     void (*fn_write)(void*, refl::object_const_view_t),
                     void* uobj) override
@@ -191,18 +201,15 @@ class service_info
                             pool_ptr<return_type> rval;
                             if constexpr (std::is_void_v<RetVal_>)
                             {
-                                _handler(context, nullptr, params...);
+                                _handler(session, nullptr, params...);
+                                fn_write(uobj, refl::object_const_view_t{nullptr});
                             }
                             else
                             {
                                 rval = _rv_pool.checkout();
-                                _handler(context, &*rval, params...);
+                                _handler(session, &*rval, params...);
+                                if (fn_write) { fn_write(uobj, refl::object_const_view_t{*rval}); }
                             }
-
-                            if constexpr (std::is_void_v<RetVal_>)
-                                fn_write(uobj, refl::object_const_view_t{nullptr});
-                            else if (fn_write)
-                                fn_write(uobj, refl::object_const_view_t{*rval});
                         },
                         *_params.checkout());
             }
@@ -228,13 +235,13 @@ class service_info
      * @param method_name Name of method to serve
      * @param handler RPC handler. Uses cpph::function to accept move-only signatures
      */
-    template <typename Str_, typename RetVal_, typename... Params_>
-    service_info& serve(Str_&& method_name, function<RetVal_(Params_...)> handler)
+    template <typename RetVal_, typename... Params_>
+    service_info& serve(std::string method_name, function<RetVal_(Params_...)> handler)
     {
         this->serve_full(
-                std::forward<Str_>(method_name),
+                std::move(method_name),
                 [_handler = std::move(handler)]  //
-                (if_connection const*, RetVal_* buffer, Params_&&... args) mutable {
+                (auto&&, RetVal_* buffer, Params_&&... args) mutable {
                     if constexpr (std::is_void_v<RetVal_>)
                         _handler(std::forward<Params_>(args)...);
                     else
@@ -433,6 +440,9 @@ class session : public std::enable_shared_from_this<session>
     // A session will automatically be expired if connection is destroyed.
     std::unique_ptr<if_connection> _conn;
 
+    // Profile for this session
+    session_profile _profile;
+
     // msgpack stream reader/writers
     reader _reader{_conn->rdbuf(), 16};
     writer _writer{_conn->rdbuf(), 16};
@@ -441,7 +451,7 @@ class session : public std::enable_shared_from_this<session>
     // - When reply to RPC
     // - When send rpc request
     spinlock _write_lock;
-    volatile int _msgid_gen = 0;
+    int _msgid_gen = 0;
     std::string _method_name_buf;
 
     // Check function is waiting for awake.
@@ -457,13 +467,16 @@ class session : public std::enable_shared_from_this<session>
     std::atomic_bool _pending_kill = false;
 
     // write refcount
-    volatile int _refcnt = 0;
+    int _refcnt = 0;
 
    public:
     session(context* owner, config const& conf, std::unique_ptr<if_connection> conn)
             : _owner(owner), _conf(conf), _conn(std::move(conn))
     {
         if (_conf.timeout.count() == 0) { _conf.timeout = decltype(_conf.timeout)::max(); }
+
+        // Fill profile info
+        _profile.peer_name = _conn->peer();
     }
 
    public:
@@ -666,8 +679,6 @@ class session : public std::enable_shared_from_this<session>
         _reader >> msgid;
         _reader >> _method_name_buf;
 
-        printf("msgid[recv_]: %s / %d (1)\n", _conn->peer().c_str(), msgid);
-
         if (auto pair = find_ptr(_get_services(), _method_name_buf))
         {
             auto& srv = pair->second;
@@ -697,7 +708,7 @@ class session : public std::enable_shared_from_this<session>
                     } uobj{this, msgid};
 
                     srv->invoke(
-                            &*_conn, _reader,
+                            _profile, _reader,
                             [](void* pvself, refl::object_const_view_t data) {
                                 auto self  = ((uobj_t*)pvself)->self;
                                 auto msgid = ((uobj_t*)pvself)->msgid;
@@ -715,6 +726,8 @@ class session : public std::enable_shared_from_this<session>
                                 writer->flush();
                             },
                             &uobj);
+
+                    printf("msgid[recv_]: %s / %d (1)\n", _conn->peer().c_str(), msgid);
                 }
                 catch (type_mismatch_exception&)
                 {
@@ -769,7 +782,7 @@ class session : public std::enable_shared_from_this<session>
             {
                 try
                 {
-                    srv->invoke(&*_conn, _reader, nullptr, nullptr);
+                    srv->invoke(_profile, _reader, nullptr, nullptr);
                 }
                 catch (type_mismatch_exception&)
                 {
@@ -800,6 +813,12 @@ class session : public std::enable_shared_from_this<session>
 }  // namespace detail
 
 using session_config = detail::session::config;
+
+class if_context_event_handler
+{
+   public:
+    void on_new_session(session_profile);
+};
 
 class context
 {

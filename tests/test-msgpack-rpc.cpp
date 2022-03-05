@@ -120,11 +120,11 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     using asio::ip::tcp;
     static std::mutex _mtx_cout;
 
-    function<void(msgpack::rpc::if_connection const*, int*, int)> fn;
-    fn = [](auto ptr, int* rv, int val) {
+    function<void(msgpack::rpc::session_profile_view, int*, int)> fn;
+    fn = [](auto&& profile, int* rv, int val) {
         {
             std::lock_guard _lc_{_mtx_cout};
-            printf("Peer [%s]: %d\n", ptr->peer().c_str(), val);
+            printf("Peer [%s]: %d\n", profile.peer_name.c_str(), val);
             fflush(stdout);
         }
 
@@ -241,6 +241,9 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                             return rv == i * i;
                         }));
             }
+
+            std::this_thread::sleep_for(100ms);
+
             bool result = true;
             for (auto& e : futures) { result &= e.get(); }
 

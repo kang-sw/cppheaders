@@ -51,6 +51,69 @@ create_rpc_context(IoContext_& exec, service_info service = {})
 
 namespace detail {
 template <typename Protocol_>
+class transient_socket_streambuf : public std::streambuf
+{
+   public:
+    using socket_type = typename Protocol_::socket;
+
+   private:
+    socket_type _socket;
+
+    char _wbuf[2048];
+    char _rbuf[2048];
+
+   public:
+    explicit transient_socket_streambuf(socket_type socket) : _socket(std::move(socket))
+    {
+        setp(_wbuf, *(&_wbuf + 1));
+        setg(_rbuf, _rbuf, _rbuf);
+    }
+
+    auto& socket() { return _socket; }
+
+   protected:
+    int_type overflow(int_type type) override
+    {
+        try
+        {
+            for (auto nready = pptr() - pbase(); nready > 0;)
+                nready -= _socket.send(asio::buffer(pbase(), nready));
+
+            setp(_wbuf, *(&_wbuf + 1));
+
+            if (traits_type::not_eof(type))
+                return sputc(traits_type::to_char_type(type));
+            else
+                return 0;
+        }
+        catch (asio::system_error& ec)
+        {
+            return traits_type::eof();
+        }
+    }
+
+    int_type underflow() override
+    {
+        try
+        {
+            auto navail = _socket.receive(asio::buffer(_rbuf));
+            setg(_rbuf, _rbuf, _rbuf + navail);
+
+            return traits_type::to_int_type(_rbuf[0]);
+        }
+        catch (asio::system_error& ec)
+        {
+            return traits_type::eof();
+        }
+    }
+
+    int sync() override
+    {
+        return overflow(traits_type::eof());
+    }
+};
+
+template <typename Protocol_>
 class basic_socket_connection : public if_connection
 {
    public:
@@ -58,7 +121,7 @@ class basic_socket_connection : public if_connection
     using streambuf = asio::basic_socket_streambuf<Protocol_>;
 
    private:
-    streambuf _buf;
+    transient_socket_streambuf<Protocol_> _buf;
 
    public:
     explicit basic_socket_connection(socket sock)
@@ -77,16 +140,21 @@ class basic_socket_connection : public if_connection
         return &_buf;
     }
 
+    std::atomic_int _wait_counter = 0;
+
     void begin_wait() override
     {
         auto fn = bind_front_weak(
                 owner(),
                 [this](asio::error_code const& ec) {
                     if (ec) { this->notify_disconnect(); }
+
+                    printf("%s-data arrive! %d\n", peer().c_str(), _wait_counter.load());
                     this->notify_receive();
                 });
 
-        _buf.async_wait(socket::wait_read, std::move(fn));
+        printf("%s-now waiting ... %d\n", peer().c_str(), ++_wait_counter);
+        _buf.socket().async_wait(socket::wait_read, std::move(fn));
     }
 
     void launch() override
