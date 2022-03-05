@@ -55,7 +55,7 @@ class basic_resource_pool
 
         handle_type& operator=(handle_type&& r) noexcept
         {
-            ~handle_type();
+            this->~handle_type();
             _assign(std::move(r));
             return *this;
         }
