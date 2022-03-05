@@ -172,27 +172,16 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
 
     ioc.restart();
 
-    SECTION("Basic RPC")
-    {
-        std::thread worker_ioc{[&ioc] { ioc.run(); }};
-
-        for (int i = 0; i < 256; ++i)
-        {
-            int rv = -1;
-            ctx->rpc(&rv, "hello", i);
-            REQUIRE(rv == i * i);
-        }
-
-        ioc.stop();
-        worker_ioc.join();
-    }
-
     SECTION("Multithreaded")
     {
         std::vector<std::thread> threads;
-        std::vector<std::future<bool>> futures;
-        for (auto idx : counter(std::thread::hardware_concurrency()))
-            threads.emplace_back([&ioc] { ioc.run(); });
+
+        threads.emplace_back([&ioc] { ioc.run(); });
+        auto dup_ioc =
+                [&] {
+                    for (auto e : counter(std::thread::hardware_concurrency() - 1))
+                        threads.emplace_back([&ioc] { ioc.run(); });
+                };
 
         SECTION("Notify")
         {
@@ -203,18 +192,36 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                     printf("Notify %d\n", i);
                     fflush(stdout);
                 }
-                ctx->notify("hello", i);
+
+                ioc.post([&] { ctx->notify("hello", i); });
+            }
+
+            std::this_thread::sleep_for(1s);
+        }
+
+        SECTION("Single Writer")
+        {
+            dup_ioc();
+
+            for (int i = 0; i < 256; ++i)
+            {
+                int rv = -1;
+                ctx->rpc(&rv, "hello", i);
+                REQUIRE(rv == i * i);
             }
         }
 
-        SECTION("RPC")
+        SECTION("Multiple Writer")
         {
-            std::atomic_int max = 256;
+            std::atomic_int max = 64;
+            std::vector<std::future<bool>> futures;
+
+            dup_ioc();
 
             for (int i = 0, end = max; i < end; ++i)
             {
                 futures.emplace_back(
-                        std::async([&, i] {
+                        std::async(std::launch::async, [&, i] {
                             auto order = max.load();
                             {
                                 std::lock_guard _lc_{_mtx_cout};
@@ -234,10 +241,11 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                             return rv == i * i;
                         }));
             }
-        }
+            bool result = true;
+            for (auto& e : futures) { result &= e.get(); }
 
-        bool result = true;
-        for (auto& e : futures) { result &= e.get(); }
+            REQUIRE(result);
+        }
 
         ioc.stop();
         for (auto& th : threads) { th.join(); }

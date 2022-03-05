@@ -79,14 +79,14 @@ class basic_socket_connection : public if_connection
 
     void begin_wait() override
     {
-        _buf.async_wait(
-                socket::wait_read,
-                bind_front_weak(
-                        owner(),
-                        [this](asio::error_code const& ec) {
-                            if (ec) { this->notify_disconnect(); }
-                            this->notify_receive();
-                        }));
+        auto fn = bind_front_weak(
+                owner(),
+                [this](asio::error_code const& ec) {
+                    if (ec) { this->notify_disconnect(); }
+                    this->notify_receive();
+                });
+
+        _buf.async_wait(socket::wait_read, std::move(fn));
     }
 
     void launch() override

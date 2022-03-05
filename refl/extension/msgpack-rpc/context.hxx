@@ -449,7 +449,6 @@ class session : public std::enable_shared_from_this<session>
 
     // RPC reply table. Old ones may set timeout exceptions
     std::map<int, request_info> _requests;
-    spinlock _rpc_lock;
 
     // Recv event wait
     thread::event_wait _rpc_notify;
@@ -475,10 +474,13 @@ class session : public std::enable_shared_from_this<session>
         int msgid;
 
         // create reply slot
-        {
-            lock_guard lc{_rpc_lock};
-            msgid   = ++_msgid_gen;
-            request = _requests.try_emplace(msgid).first;
+        _rpc_notify.critical_section([&] {
+            msgid     = ++_msgid_gen;
+            auto pair = _requests.try_emplace(msgid);
+            request   = pair.first;
+            assert(pair.second);  // message id should never duplicate
+
+            printf("msgid[send_]: %s / %d (0)\n", _conn->peer().c_str(), msgid);
 
             // This will be invoked when return value from remote is ready, and will directly
             //  deserialize the result into provided argument.
@@ -489,7 +491,7 @@ class session : public std::enable_shared_from_this<session>
                         else
                             *rd >> *result;
                     };
-        }
+        });
 
         // send message
         {
@@ -521,10 +523,9 @@ class session : public std::enable_shared_from_this<session>
         // timeout
         auto errc = request->second.status;
 
-        {
-            lock_guard lc{_rpc_lock};
+        _rpc_notify.critical_section([&] {
             _requests.erase(request);
-        }
+        });
 
         return ready ? errc : rpc_status::timeout;
     }
@@ -569,10 +570,9 @@ class session : public std::enable_shared_from_this<session>
    private:
     void _wakeup_func()
     {
+        // NOTE: This function guaranteed to not be re-entered multiple times on single session
         try
         {
-            // Always entered by single thread.
-
             // Assume data is ready to be read.
             auto key = _reader.begin_array();
 
@@ -612,45 +612,48 @@ class session : public std::enable_shared_from_this<session>
         int msgid = -1;
         _reader >> msgid;
 
+        printf("msgid[reply]: %s / %d (2)\n", _conn->peer().c_str(), msgid);
+
         //  1. find corresponding reply to msgid
         //  2. fill promise with value or exception
-        lock_guard _rpc_lock_{_rpc_lock};
-        if (auto preq = find_ptr(_requests, msgid))
-        {
-            rpc_status next_status;
-
-            if (_reader.is_null_next())  // no error
+        _rpc_notify.notify_all([&] {
+            if (auto preq = find_ptr(_requests, msgid))
             {
-                _reader >> nullptr;
+                rpc_status next_status;
 
-                try
+                if (_reader.is_null_next())  // no error
                 {
-                    preq->second.promise(&_reader);
-                    next_status = rpc_status::okay;
+                    _reader >> nullptr;
+
+                    try
+                    {
+                        preq->second.promise(&_reader);
+                        next_status = rpc_status::okay;
+                    }
+                    catch (std::exception& e)
+                    {
+                        // on failed to parse result, refresh connection
+                        next_status = rpc_status::internal_error;
+                        throw detail::rpc_handler_fatal_state{};
+                    }
                 }
-                catch (std::exception& e)
+                else
                 {
-                    // on failed to parse result, refresh connection
-                    next_status = rpc_status::internal_error;
-                    throw detail::rpc_handler_fatal_state{};
+                    std::string errmsg;
+                    _reader >> errmsg;
+                    _reader >> nullptr;  // skip payload
+
+                    next_status = from_string(errmsg);
                 }
+
+                // Wake up all waiting candidates.
+                preq->second.status = next_status;
             }
             else
             {
-                std::string errmsg;
-                _reader >> errmsg;
-                _reader >> nullptr;  // skip payload
-
-                next_status = from_string(errmsg);
+                assert(preq == nullptr);
             }
-
-            // Wake up all waiting candidates.
-            _rpc_notify.notify_all([&] { preq->second.status = next_status; });
-        }
-        else
-        {
-            assert(preq == nullptr);
-        }
+        });
     }
 
     void _handle_request()
@@ -662,6 +665,8 @@ class session : public std::enable_shared_from_this<session>
         int msgid = {};
         _reader >> msgid;
         _reader >> _method_name_buf;
+
+        printf("msgid[recv_]: %s / %d (1)\n", _conn->peer().c_str(), msgid);
 
         if (auto pair = find_ptr(_get_services(), _method_name_buf))
         {
@@ -820,7 +825,7 @@ class context
     mutable thread::event_wait _session_notify;
 
    public:
-    std::chrono::milliseconds global_timeout{60'000};
+    std::chrono::milliseconds global_timeout{6'000'000};
 
    public:
     /**
@@ -1012,9 +1017,10 @@ class context
         session_ptr session = {};
         auto predicate =
                 [&] {
-                    for (; not _sessions.empty();)
+                    int max_cycle = _sessions.size();
+                    for (; not _sessions.empty() && max_cycle > 0; --max_cycle)
                     {
-                        // Everytime _checkout() is called, difference session will be selected.
+                        // Everytime _checkout() is called, different session will be selected.
                         auto ptr = std::move(_sessions.front());
                         _sessions.pop_front();
 
@@ -1023,6 +1029,15 @@ class context
 
                         // push weak pointer back for load balancing between active sessions
                         _sessions.push_back(ptr);
+
+                        // Only 2 concurrent request can be accepted per session.
+                        if (session && session->_refcnt > 2)
+                        {
+                            --session->_refcnt;
+                            session = nullptr;
+
+                            continue;
+                        }
 
                         return true;
                     }
@@ -1063,7 +1078,7 @@ class context
 
     void _checkin(session_ptr&& ptr)
     {
-        _session_notify.critical_section(
+        _session_notify.notify_one(
                 [&] {
                     // If there's any other writing instance who checked out this session,
                     //  just mandate it the responsibility to return source back.
