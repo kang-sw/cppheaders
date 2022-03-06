@@ -250,9 +250,8 @@ class reader : public archive::if_reader
 
     void end_object(context_key key) override
     {
-        _verify_end(scope_t::type_object, key);
-
-        _break_scope_until(key);
+        auto nbrk = _calc_num_break_scope(scope_t::type_object, key);
+        while (nbrk--) { _break_scope(); }
     }
 
     size_t begin_binary() override
@@ -301,9 +300,8 @@ class reader : public archive::if_reader
 
     void end_array(context_key key) override
     {
-        _verify_end(scope_t::type_array, key);
-
-        _break_scope_until(key);
+        auto nbrk = _calc_num_break_scope(scope_t::type_array, key);
+        while (nbrk--) { _break_scope(); }
     }
 
     void read_key_next() override
@@ -352,21 +350,6 @@ class reader : public archive::if_reader
     }
 
    private:
-    void _break_scope_until(context_key key)
-    {
-        auto it_context = std::find_if(
-                _scope.rbegin(), _scope.rend(),
-                [&](decltype(*_scope.rbegin()) elem) {
-                    return elem.ctxkey.data.value == key.value;
-                });
-
-        if (it_context == _scope.rend())
-            throw error::reader_invalid_context{this}.message("context %lld may be already disposed!", key.value);
-
-        for (auto nbrk = it_context - _scope.rbegin() + 1; nbrk--;)
-            _break_scope();
-    }
-
     void _break_scope()
     {
         for (auto scope = &_scope_ref(); scope->elems_left > 0; --scope->elems_left)
@@ -448,14 +431,14 @@ class reader : public archive::if_reader
         _discard_n_bytes(skip_bytes);
     }
 
-    void _verify_end(scope_t::type_t type, context_key key)
+    size_t _calc_num_break_scope(scope_t::type_t type, context_key key)
     {
         // check if given context key exists in scopes
         for (auto it = _scope.rbegin(), end = _scope.rend(); it != end; ++it)
             if (it->ctxkey.data.value == key.value)
             {
                 if (it->type == type)
-                    return;
+                    return it - _scope.rbegin() + 1;
                 else
                     throw error::reader_invalid_context{this}.message("type mismatch with context!");
             }
