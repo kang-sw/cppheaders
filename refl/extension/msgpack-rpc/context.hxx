@@ -139,6 +139,19 @@ struct session_profile
 using session_profile_view = session_profile const&;
 
 /**
+ * Event monitor
+ */
+class if_context_monitor
+{
+   public:
+    //! Exception must not propagate!
+    virtual void on_new_session(session_profile const&) noexcept {}
+
+    //! Exception must not propagate!
+    virtual void on_dispose_session(session_profile const&) noexcept {}
+};
+
+/**
  * Defines service information
  */
 class service_info
@@ -469,14 +482,27 @@ class session : public std::enable_shared_from_this<session>
     // write refcount
     int _refcnt = 0;
 
+    std::weak_ptr<if_context_monitor> _monitor;
+
    public:
-    session(context* owner, config const& conf, std::unique_ptr<if_connection> conn)
-            : _owner(owner), _conf(conf), _conn(std::move(conn))
+    session(context* owner,
+            config const& conf,
+            std::unique_ptr<if_connection> conn,
+            std::weak_ptr<if_context_monitor> wmonitor) noexcept
+            : _owner(owner), _conf(conf), _conn(std::move(conn)), _monitor(std::move(wmonitor))
     {
         if (_conf.timeout.count() == 0) { _conf.timeout = decltype(_conf.timeout)::max(); }
 
         // Fill profile info
         _profile.peer_name = _conn->peer();
+
+        // Notify creation to monitor
+        if (auto monitor = _monitor.lock()) { monitor->on_new_session(_profile); }
+    }
+
+    ~session() noexcept
+    {
+        if (auto monitor = _monitor.lock()) { monitor->on_dispose_session(_profile); }
     }
 
    public:
@@ -808,12 +834,6 @@ class session : public std::enable_shared_from_this<session>
 
 using session_config = detail::session::config;
 
-class if_context_event_handler
-{
-   public:
-    void on_new_session(session_profile);
-};
-
 class context
 {
     friend class detail::session;
@@ -837,6 +857,9 @@ class context
 
     mutable thread::event_wait _session_notify;
 
+    //! Context monitor
+    std::weak_ptr<if_context_monitor> _monitor;
+
    public:
     std::chrono::milliseconds global_timeout{6'000'000};
 
@@ -845,10 +868,12 @@ class context
      * Create new context, with appropriate dispatcher function.
      */
     explicit context(
-            service_info service         = {},
-            dispatch_function dispatcher = [](auto&& fn) { fn(); })
+            service_info service                      = {},
+            dispatch_function dispatcher              = [](auto&& fn) { fn(); },
+            std::weak_ptr<if_context_monitor> monitor = {})
             : _dispatch(std::move(dispatcher)),
-              _service(std::move(service))
+              _service(std::move(service)),
+              _monitor(monitor)
     {
     }
 
@@ -982,7 +1007,7 @@ class context
     {
         // put created session reference to sessions_source and sessions both.
         auto connection = std::make_unique<Conn_>(std::forward<Args_>(args)...);
-        auto session    = std::make_shared<detail::session>(this, conf, std::move(connection));
+        auto session    = std::make_shared<detail::session>(this, conf, std::move(connection), _monitor);
 
         session_handle handle;
         handle._ref = session;

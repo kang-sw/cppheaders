@@ -111,12 +111,64 @@ TEST_CASE("Retrieve throw exceptions", "[archive]")
     archive::msgpack::writer writer{&sbuf};
     archive::msgpack::reader reader{&sbuf};
 
-    SECTION("In most tolerant case")
+    SECTION("Tolerant")
     {
-        SECTION("child to base")
+        SECTION("Child to base")
         {
             writer << child_object{};
 
+            base_object target;
+            REQUIRE_NOTHROW(reader >> target);
+        }
+
+        SECTION("Base to child")
+        {
+            writer << base_object{};
+
+            child_object child;
+            REQUIRE_NOTHROW(reader >> child);
+        }
+    }
+
+    SECTION("No Missing")
+    {
+        reader.allow_missing_argument = false;
+
+        SECTION("Child to base")
+        {
+            writer << child_object{};
+
+            base_object target;
+            REQUIRE_NOTHROW(reader >> target);
+        }
+
+        SECTION("Base to child")
+        {
+            writer << base_object{};
+
+            child_object child;
+            REQUIRE_THROWS_AS(reader >> child, refl::error::missing_entity);
+        }
+    }
+
+    SECTION("No Unknown")
+    {
+        reader.allow_unknown_argument = false;
+
+        SECTION("Child to base")
+        {
+            writer << child_object{};
+
+            base_object target;
+            REQUIRE_THROWS_AS(reader >> target, refl::error::unkown_entity);
+        }
+
+        SECTION("Base to child")
+        {
+            writer << base_object{};
+
+            child_object child;
+            REQUIRE_NOTHROW(reader >> child);
         }
     }
 }
