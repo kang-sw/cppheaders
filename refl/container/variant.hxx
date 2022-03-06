@@ -74,7 +74,7 @@ auto get_metadata(type_tag<std::variant<Args_...>>)
         }
 
        protected:
-        void archive(archive::if_writer* strm, const variant_type& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_archive(archive::if_writer* strm, const variant_type& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             strm->array_push(2);
             *strm << data.index();
@@ -82,7 +82,7 @@ auto get_metadata(type_tag<std::variant<Args_...>>)
             strm->array_pop();
         }
 
-        void restore(archive::if_reader* strm, variant_type* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_restore(archive::if_reader* strm, variant_type* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             auto key   = strm->begin_array();
             auto index = ~size_t{};

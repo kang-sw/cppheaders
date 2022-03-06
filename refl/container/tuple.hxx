@@ -49,13 +49,13 @@ auto get_tuple_descriptor(type_tag<std::tuple<Args_...>>)
         }
 
        protected:
-        void archive(archive::if_writer* strm, const std::tuple<Args_...>& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_archive(archive::if_writer* strm, const std::tuple<Args_...>& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             strm->array_push(sizeof...(Args_));
             std::apply([strm](auto const&... args) { ((*strm << args), ...); }, data);
             strm->array_pop();
         }
-        void restore(archive::if_reader* strm, std::tuple<Args_...>* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_restore(archive::if_reader* strm, std::tuple<Args_...>* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             auto key = strm->begin_array();
             std::apply([strm](auto&... args) { ((*strm >> args), ...); }, *pvdata);
@@ -82,7 +82,7 @@ INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::pair>::value
             return entity_type::tuple;
         }
 
-        void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             strm->array_push(2);
             *strm << pvdata.first;
@@ -90,7 +90,7 @@ INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::pair>::value
             strm->array_pop();
         }
 
-        void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             auto key = strm->begin_array();
             *strm >> pvdata->first;

@@ -90,7 +90,7 @@ INTERNAL_CPPH_define_(
             return entity_type::invalid;
         }
 
-        void archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             if constexpr (std::is_enum_v<ValTy_>)
             {
@@ -102,7 +102,7 @@ INTERNAL_CPPH_define_(
             }
         }
 
-        void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             if constexpr (std::is_enum_v<ValTy_>)
             {
@@ -136,7 +136,7 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
         {
             return get_object_metadata<ElemTy_>();
         }
-        void archive(archive::if_writer* strm,
+        void impl_archive(archive::if_writer* strm,
                      ElemTy_ const& data,
                      object_metadata_t desc,
                      optional_property_metadata) const override
@@ -150,7 +150,7 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             std::for_each(begin, end, [&](auto&& elem) { *strm << elem; });
             strm->array_pop();
         }
-        void restore(archive::if_reader* strm,
+        void impl_restore(archive::if_reader* strm,
                      ElemTy_* data,
                      object_metadata_t desc,
                      optional_property_metadata) const override
@@ -200,7 +200,7 @@ auto get_list_like_descriptor() -> object_metadata_t
         {
             return get_object_metadata<value_type>();
         }
-        void archive(archive::if_writer* strm,
+        void impl_archive(archive::if_writer* strm,
                      const Container_& data,
                      object_metadata_t desc,
                      optional_property_metadata) const override
@@ -214,7 +214,7 @@ auto get_list_like_descriptor() -> object_metadata_t
             }
             strm->array_pop();
         }
-        void restore(archive::if_reader* strm,
+        void impl_restore(archive::if_reader* strm,
                      Container_* container,
                      object_metadata_t desc,
                      optional_property_metadata) const override
@@ -282,7 +282,7 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
         }
 
        protected:
-        void archive(archive::if_writer* strm, const Map_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_archive(archive::if_writer* strm, const Map_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             strm->object_push(data.size());
             for (auto& [k, v] : data)
@@ -294,7 +294,7 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
             strm->object_pop();
         }
 
-        void restore(archive::if_reader* strm, Map_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_restore(archive::if_reader* strm, Map_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             auto ctx = strm->begin_object();
             while (not strm->should_break(ctx))
@@ -345,7 +345,7 @@ INTERNAL_CPPH_define_(
         }
 
        protected:
-        void archive(archive::if_writer* strm, const ValTy_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_archive(archive::if_writer* strm, const ValTy_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             if (not data)
             {
@@ -356,7 +356,7 @@ INTERNAL_CPPH_define_(
             *strm << *data;
         }
 
-        void restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        void impl_restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             if (not *pvdata)
             {
@@ -373,7 +373,7 @@ INTERNAL_CPPH_define_(
             *strm >> **pvdata;
         }
 
-        requirement_status_tag status(const ValTy_* data) const noexcept override
+        requirement_status_tag impl_status(const ValTy_* data) const noexcept override
         {
             if (not data) { return requirement_status_tag::optional; }
 

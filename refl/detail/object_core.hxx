@@ -254,32 +254,32 @@ class templated_primitive_control : public if_primitive_control
    public:
     void archive(archive::if_writer* strm, const void* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const final
     {
-        archive(strm, *(const Ty_*)pvdata, desc_self, opt_as_property);
+        impl_archive(strm, *(const Ty_*)pvdata, desc_self, opt_as_property);
     }
     void restore(archive::if_reader* strm, void* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const final
     {
-        restore(strm, (Ty_*)pvdata, desc_self, opt_as_property);
+        impl_restore(strm, (Ty_*)pvdata, desc_self, opt_as_property);
     }
     requirement_status_tag status(void const* pvdata) const noexcept final
     {
-        return status((Ty_ const*)pvdata);
+        return impl_status((Ty_ const*)pvdata);
     }
 
    protected:
-    virtual void archive(
+    virtual void impl_archive(
             archive::if_writer* strm,
             const Ty_& data,
             object_metadata_t desc_self,
             optional_property_metadata opt_as_property) const = 0;
 
-    virtual void restore(
+    virtual void impl_restore(
             archive::if_reader* strm,
             Ty_* pvdata,
             object_metadata_t desc_self,
             optional_property_metadata opt_as_property) const = 0;
 
     virtual requirement_status_tag
-    status(const Ty_* data) const noexcept
+    impl_status(const Ty_* data) const noexcept
     {
         return requirement_status_tag::required;
     }

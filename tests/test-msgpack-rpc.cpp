@@ -120,11 +120,11 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     using asio::ip::tcp;
     static std::mutex _mtx_cout;
 
-    function<void(msgpack::rpc::session_profile_view, int*, int)> fn;
-    fn = [](auto&& profile, int* rv, int val) {
+    function<void(msgpack::rpc::session_profile_view, int*, int, std::string)> fn;
+    fn = [](auto&& profile, int* rv, int val, std::string arg2) {
         {
             std::lock_guard _lc_{_mtx_cout};
-            printf("Peer [%s]: %d\n", profile.peer_name.c_str(), val);
+            printf("Peer [%s]: %d, %s\n", profile.peer_name.c_str(), val, arg2.c_str());
             fflush(stdout);
         }
 
@@ -193,7 +193,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                     fflush(stdout);
                 }
 
-                ioc.post([&] { ctx->notify("hello", i); });
+                ioc.post([&] { ctx->notify("hello", i, "gaf"); });
             }
 
             std::this_thread::sleep_for(1s);
@@ -206,7 +206,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
             for (int i = 0; i < 256; ++i)
             {
                 int rv = -1;
-                ctx->rpc(&rv, "hello", i);
+                ctx->rpc(&rv, "hello", i, "vv32");
                 REQUIRE(rv == i * i);
             }
         }
@@ -230,7 +230,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                             }
 
                             int rv      = -1;
-                            auto result = ctx->rpc(&rv, "hello", i);
+                            auto result = ctx->rpc(&rv, "hello", i, "Gvb");
                             assert(result == msgpack::rpc::rpc_status::okay);
 
                             {

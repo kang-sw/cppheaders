@@ -47,7 +47,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
         {
             return refl::entity_type::binary;
         }
-        void archive(archive::if_writer* strm,
+        void impl_archive(archive::if_writer* strm,
                      const binary_type& pvdata,
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override
@@ -76,7 +76,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
             }
         }
 
-        void restore(archive::if_reader* strm,
+        void impl_restore(archive::if_reader* strm,
                      binary_type* data,
                      refl::object_metadata_t desc,
                      refl::optional_property_metadata prop) const override

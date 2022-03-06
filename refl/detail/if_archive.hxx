@@ -231,7 +231,11 @@ class if_writer : public if_archive_base
     virtual if_writer& write(double v) = 0;
 
     virtual if_writer& write(std::string_view v) = 0;
-    if_writer& write(std::string const& v) { return this->write(std::string_view{v}); }
+
+    if_writer& write(std::string const& v)
+    {
+        return this->write(std::string_view{v});
+    }
 
     if_writer& write(const_buffer_view v)
     {
@@ -239,6 +243,12 @@ class if_writer : public if_archive_base
         binary_write_some(v);
         binary_pop();
         return *this;
+    }
+
+    template <size_t N_>
+    if_writer& write(char const (&v)[N_])
+    {
+        return this->write(std::string_view(v));
     }
 
     //! Serialize arbitrary type
