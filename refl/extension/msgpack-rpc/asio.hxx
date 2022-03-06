@@ -34,8 +34,7 @@
 #include "../../__namespace__"
 #include "context.hxx"
 
-namespace CPPHEADERS_NS_::msgpack::rpc::asio {
-namespace asio = ::asio;
+namespace CPPHEADERS_NS_::msgpack::rpc::asio_ex {
 
 template <typename IoContext_>
 [[nodiscard]] auto
@@ -262,4 +261,4 @@ auto create_session(context& rpc, Socket_&& socket, session_config const& config
             std::forward<Socket_>(socket));
 }
 
-}  // namespace CPPHEADERS_NS_::msgpack::rpc::asio
+}  // namespace CPPHEADERS_NS_::msgpack::rpc::asio_e

@@ -115,7 +115,7 @@ TEST_CASE("Read socket zero receive", "[asio][.]")
 TEST_CASE("Tcp context", "[msgpack-rpc][.]")
 {
     using namespace asio;
-    using namespace msgpack::rpc::asio;
+    using namespace msgpack::rpc::asio_ex;
 
     using asio::ip::tcp;
     static std::mutex _mtx_cout;
@@ -317,4 +317,36 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
         for (auto& th : threads) { th.join(); }
         threads.clear();
     }
+}
+
+TEST_CASE("interop-server", "[msgpack-rpc][.]")
+{
+    using namespace asio;
+    using namespace msgpack::rpc;
+
+    using asio::ip::tcp;
+
+    io_context ioc;
+    tcp::acceptor acpt{ioc};
+    tcp::endpoint ep{ip::make_address("127.0.0.1"), 34561};
+
+    acpt.open(ep.protocol());
+    acpt.set_option(tcp::acceptor::reuse_address{true});
+    acpt.bind(ep);
+
+    service_info service;
+    auto stub_sum = create_signature<double(double, double)>("sum");
+    service(stub_sum,
+            [](session_profile const& profile, auto* r, auto a, auto b) {
+                printf("PEER %s: %f + %f\n", profile.peer_name.c_str(), a, b);
+                fflush(stdout);
+                *r = a + b;
+            });
+
+    context ctx{std::move(service)};
+
+    msgpack::rpc::session_config cfg;
+    asio_ex::open_acceptor(ctx, cfg, acpt);
+
+    ioc.run();
 }

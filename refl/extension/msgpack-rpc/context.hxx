@@ -730,7 +730,15 @@ class context
             std::weak_ptr<if_context_monitor> monitor = {})
             : _dispatch(std::move(dispatcher)),
               _service(std::move(service)),
-              _monitor(monitor)
+              _monitor(std::move(monitor))
+    {
+    }
+
+    context(service_info service, std::weak_ptr<if_context_monitor> monitor)
+            : context(
+                    std::move(service),
+                    [](auto&& fn) { fn(); },
+                    std::move(monitor))
     {
     }
 
