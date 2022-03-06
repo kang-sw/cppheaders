@@ -642,7 +642,7 @@ class session : public std::enable_shared_from_this<session>
                     catch (std::exception& e)
                     {
                         // on failed to parse result, refresh connection
-                        next_status = rpc_status::internal_error;
+                        preq->second.status = rpc_status::internal_error;
                         throw detail::rpc_handler_fatal_state{};
                     }
                 }

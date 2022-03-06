@@ -252,8 +252,7 @@ class reader : public archive::if_reader
     {
         _verify_end(scope_t::type_object, key);
 
-        while (not _scope.empty() && _scope.back().ctxkey.data.value == key.value)
-            _break_scope();
+        _break_scope_until(key);
     }
 
     size_t begin_binary() override
@@ -304,8 +303,7 @@ class reader : public archive::if_reader
     {
         _verify_end(scope_t::type_array, key);
 
-        while (not _scope.empty() && _scope.back().ctxkey.data.value == key.value)
-            _break_scope();
+        _break_scope_until(key);
     }
 
     void read_key_next() override
@@ -354,6 +352,21 @@ class reader : public archive::if_reader
     }
 
    private:
+    void _break_scope_until(context_key key)
+    {
+        auto it_context = std::find_if(
+                _scope.rbegin(), _scope.rend(),
+                [&](decltype(*_scope.rbegin()) elem) {
+                    return elem.ctxkey.data.value == key.value;
+                });
+
+        if (it_context == _scope.rend())
+            throw error::reader_invalid_context{this}.message("context %lld may be already disposed!", key.value);
+
+        for (auto nbrk = it_context - _scope.rbegin() + 1; nbrk--;)
+            _break_scope();
+    }
+
     void _break_scope()
     {
         for (auto scope = &_scope_ref(); scope->elems_left > 0; --scope->elems_left)
@@ -367,7 +380,7 @@ class reader : public archive::if_reader
         // intentionally uses getc instead of bumpc
         auto header         = _verify_eof(_buf->sgetc());
         uint32_t skip_bytes = 0;
-        switch (typecode(header))
+        switch (_typecode(header))
         {
             case typecode::positive_fixint:
             case typecode::negative_fixint:
@@ -427,6 +440,7 @@ class reader : public archive::if_reader
                 skip_bytes = _read_elem_count<typecode::ext8>(header) + 1;  // 1 for ext
                 break;
 
+            default:
             case typecode::error:
                 throw error::reader_parse_failed{this}.message("unsupported format: %02x", header);
         }
