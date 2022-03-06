@@ -464,7 +464,7 @@ class session : public std::enable_shared_from_this<session>
     // - When reply to RPC
     // - When send rpc request
     spinlock _write_lock;
-    int _msgid_gen = 0;
+    volatile int _msgid_gen = 0;
     std::string _method_name_buf;
 
     // Check function is waiting for awake.
@@ -480,7 +480,7 @@ class session : public std::enable_shared_from_this<session>
     std::atomic_bool _pending_kill = false;
 
     // write refcount
-    int _refcnt = 0;
+    volatile int _refcnt = 0;
 
     std::weak_ptr<if_context_monitor> _monitor;
 
@@ -491,7 +491,7 @@ class session : public std::enable_shared_from_this<session>
             std::weak_ptr<if_context_monitor> wmonitor) noexcept
             : _owner(owner), _conf(conf), _conn(std::move(conn)), _monitor(std::move(wmonitor))
     {
-        if (_conf.timeout.count() == 0) { _conf.timeout = decltype(_conf.timeout)::max(); }
+        if (_conf.timeout.count() == 0) { _conf.timeout = std::chrono::hours{2400}; }
 
         // Fill profile info
         _profile.peer_name = _conn->peer();
@@ -522,7 +522,7 @@ class session : public std::enable_shared_from_this<session>
             // This will be invoked when return value from remote is ready, and will directly
             //  deserialize the result into provided argument.
             request->second.promise =
-                    [&result](reader* rd) {
+                    [result](reader* rd) {
                         if (result == nullptr)
                             *rd >> nullptr;  // skip
                         else

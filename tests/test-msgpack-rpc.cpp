@@ -140,6 +140,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     tcp::acceptor acpt{ioc};
     tcp::endpoint ep{ip::make_address("127.0.0.1"), 34561};
     acpt.open(ep.protocol());
+    acpt.set_option(tcp::acceptor::reuse_address{true});
     acpt.bind(ep);
 
     msgpack::rpc::session_config cfg;
@@ -206,23 +207,24 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
 
             for (int i = 0; i < 256; ++i)
             {
-                int rv = -1;
-                ctx->rpc(&rv, "hello", i, "vv32");
-                REQUIRE(rv == i * i);
+                int rv   = -1;
+                auto res = ctx->rpc(&rv, "hello", i, "vv32");
+                CHECK(res == msgpack::rpc::rpc_status::okay);
+                CHECK(rv == i * i);
             }
 
             for (int i = 0; i < 256; ++i)
             {
                 int rv    = -1;
                 auto rslt = ctx->rpc(&rv, "hello", i);
-                REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
+                CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
 
             for (int i = 0; i < 256; ++i)
             {
                 int rv    = -1;
                 auto rslt = ctx->rpc(&rv, "hello", "fea", 3.21);
-                REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
+                CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
         }
 
@@ -267,5 +269,6 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
 
         ioc.stop();
         for (auto& th : threads) { th.join(); }
+        threads.clear();
     }
 }
