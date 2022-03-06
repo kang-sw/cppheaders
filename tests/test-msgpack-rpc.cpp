@@ -120,19 +120,28 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     using asio::ip::tcp;
     static std::mutex _mtx_cout;
 
-    function<void(msgpack::rpc::session_profile_view, int*, int, std::string)> fn;
-    fn = [](auto&& profile, int* rv, int val, std::string arg2) {
-        {
-            std::lock_guard _lc_{_mtx_cout};
-            printf("Peer [%s]: %d, %s\n", profile.peer_name.c_str(), val, arg2.c_str());
-            fflush(stdout);
-        }
+    function<void(msgpack::rpc::session_profile_view, int*, int, std::string)> fn =
+            [](auto&& profile, int* rv, int val, std::string arg2) {
+                {
+                    std::lock_guard _lc_{_mtx_cout};
+                    printf("Peer [%s]: %d, %s\n", profile.peer_name.c_str(), val, arg2.c_str());
+                    fflush(stdout);
+                }
 
-        *rv = val * val;
-    };
+                *rv = val * val;
+            };
+
+    function<int(bool)> fn2
+            = [](bool value) {
+                  if (value)
+                      return 264;
+                  else
+                      throw std::runtime_error{"Vlue!"};
+              };
 
     msgpack::rpc::service_info service;
-    service.serve_full("hello", std::move(fn));
+    service.serve2("hello", std::move(fn));
+    service.serve("except", std::move(fn2));
 
     io_context ioc;
     auto ctx = create_rpc_context(ioc, service);
@@ -226,6 +235,14 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                 auto rslt = ctx->rpc(&rv, "hello", "fea", 3.21);
                 CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
+        }
+
+        SECTION("Exceptions")
+        {
+            int rr = 0;
+            REQUIRE_THROWS(ctx->rpc(&rr, "except", false));
+            REQUIRE_NOTHROW(ctx->rpc(&rr, "except", true));
+            REQUIRE(rr == 264);
         }
 
         SECTION("Multiple Writer")

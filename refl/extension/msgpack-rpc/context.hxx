@@ -209,7 +209,7 @@ class service_info
      * Original signature of serve()
      */
     template <typename RetVal_, typename... Params_>
-    service_info& serve_full(std::string method_name, function<void(session_profile const&, RetVal_*, Params_...)> handler)
+    service_info& serve2(std::string method_name, function<void(session_profile const&, RetVal_*, Params_...)> handler)
     {
         struct service_handler : if_service_handler
         {
@@ -277,16 +277,42 @@ class service_info
     template <typename RetVal_, typename... Params_>
     service_info& serve(std::string method_name, function<RetVal_(Params_...)> handler)
     {
-        this->serve_full(
-                std::move(method_name),
+        function<void(session_profile const&, RetVal_*, Params_...)> fn =
                 [_handler = std::move(handler)]  //
                 (auto&&, RetVal_* buffer, Params_&&... args) mutable {
                     if constexpr (std::is_void_v<RetVal_>)
                         _handler(std::forward<Params_>(args)...);
                     else
                         *buffer = _handler(std::forward<Params_>(args)...);
-                });
+                };
 
+        this->serve2(std::move(method_name), std::move(fn));
+        return *this;
+    }
+
+    /**
+     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
+     *  notify, return value of handler will silently be discarded regardless of its return
+     *  type.
+     *
+     * @tparam RetVal_ Must be declared as refl object.
+     * @tparam Params_ Must be declared as refl object.
+     * @param method_name Name of method to serve
+     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
+     */
+    template <typename RetVal_, typename... Params_>
+    service_info& serve3(std::string method_name, function<void(RetVal_*, Params_...)> handler)
+    {
+        function<void(session_profile const&, RetVal_*, Params_...)> fn =
+                [_handler = std::move(handler)]  //
+                (auto&&, RetVal_* buffer, Params_&&... args) mutable {
+                    if constexpr (std::is_void_v<RetVal_>)
+                        _handler(buffer, std::forward<Params_>(args)...);
+                    else
+                        _handler(buffer, std::forward<Params_>(args)...);
+                };
+
+        this->serve2(std::move(method_name), std::move(fn));
         return *this;
     }
 
@@ -791,6 +817,10 @@ class session : public std::enable_shared_from_this<session>
                 {
                     throw detail::rpc_handler_fatal_state{};
                 }
+                catch (std::exception& ec)
+                {
+                    fn_reply(this, msgid, ec.what(), nullptr);
+                }
             }
 
             _reader.end_array(ctx);  // end reading params
@@ -929,16 +959,21 @@ class context
     template <typename RetVal_, typename... Params_>
     auto rpc(RetVal_* retval, std::string_view method, Params_&&... params) -> rpc_status
     {
+        auto session = _checkout();
+        if (not session) { return rpc_status::timeout; }
+
         try
         {
-            auto session = _checkout();
-            if (not session) { return rpc_status::timeout; }
-
             auto request = session->rpc_send(retval, method, std::forward<Params_>(params)...);
             auto result  = session->rpc_wait(request);
 
             _checkin(std::move(session));
             return result;
+        }
+        catch (remote_reply_exception& ec)
+        {
+            _checkin(std::move(session));
+            throw ec;
         }
         catch (invalid_connection&)
         {

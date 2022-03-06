@@ -268,6 +268,11 @@ class if_writer : public if_archive_base
         return this->write(std::string_view(v));
     }
 
+    if_writer& write(char const* v)
+    {
+        return this->write(std::string_view(v));
+    }
+
     //! Serialize arbitrary type
     template <typename Ty_>
     if_writer& write(Ty_ const& other);
