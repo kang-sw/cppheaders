@@ -42,6 +42,7 @@
 #include "../../archive/msgpack-writer.hxx"
 #include "../../detail/object_core.hxx"
 #include "../../detail/primitives.hxx"
+#include "service_info.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
 using namespace archive::msgpack;
@@ -154,16 +155,6 @@ class if_connection
 };
 
 /**
- * Information of created session.
- */
-struct session_profile
-{
-    std::string peer_name;
-};
-
-using session_profile_view = session_profile const&;
-
-/**
  * Event monitor
  */
 class if_context_monitor
@@ -176,149 +167,6 @@ class if_context_monitor
     virtual void on_dispose_session(session_profile const&) noexcept {}
 };
 
-/**
- * Defines service information
- */
-class service_info
-{
-   public:
-    class if_service_handler
-    {
-        size_t _n_params = 0;
-
-       public:
-        explicit if_service_handler(size_t n_params) noexcept : _n_params(n_params) {}
-        virtual ~if_service_handler() = default;
-
-        //! invoke with given parameters.
-        //! @return error message if invocation failed
-        //! @throw remote_handler_exception
-        virtual void invoke(session_profile const&, reader&, void (*)(void*, refl::object_const_view_t), void*) = 0;
-
-        //! number of parameters
-        size_t num_params() const noexcept { return _n_params; }
-    };
-
-    using handler_table_type = std::map<std::string, std::shared_ptr<if_service_handler>, std::less<>>;
-
-   private:
-    handler_table_type _handlers;
-
-   public:
-    /**
-     * Original signature of serve()
-     */
-    template <typename RetVal_, typename... Params_>
-    service_info& serve2(std::string method_name, function<void(session_profile const&, RetVal_*, Params_...)> handler)
-    {
-        struct service_handler : if_service_handler
-        {
-            using handler_type = decltype(handler);
-            using return_type  = std::conditional_t<std::is_void_v<RetVal_>, nullptr_t, RetVal_>;
-            using tuple_type   = std::tuple<Params_...>;
-
-           public:
-            handler_type _handler;
-            pool<tuple_type> _params;
-            pool<return_type> _rv_pool;
-
-           public:
-            explicit service_handler(handler_type&& h) noexcept
-                    : if_service_handler(sizeof...(Params_)),
-                      _handler(std::move(h)) {}
-
-            void invoke(
-                    session_profile const& session,
-                    reader& reader,
-                    void (*fn_write)(void*, refl::object_const_view_t),
-                    void* uobj) override
-            {
-                std::apply(
-                        [&](auto&... params) {
-                            ((reader >> params), ...);
-
-                            pool_ptr<return_type> rval;
-                            if constexpr (std::is_void_v<RetVal_>)
-                            {
-                                _handler(session, nullptr, params...);
-                                fn_write(uobj, refl::object_const_view_t{nullptr});
-                            }
-                            else
-                            {
-                                rval = _rv_pool.checkout();
-                                _handler(session, &*rval, params...);
-                                if (fn_write) { fn_write(uobj, refl::object_const_view_t{*rval}); }
-                            }
-                        },
-                        *_params.checkout());
-            }
-        };
-
-        auto [it, is_new] = _handlers.try_emplace(
-                std::move(method_name),
-                std::make_shared<service_handler>(std::move(handler)));
-
-        if (not is_new)
-            throw std::logic_error{"Method name may not duplicate!"};
-
-        return *this;
-    }
-
-    /**
-     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
-     *  notify, return value of handler will silently be discarded regardless of its return
-     *  type.
-     *
-     * @tparam RetVal_ Must be declared as refl object.
-     * @tparam Params_ Must be declared as refl object.
-     * @param method_name Name of method to serve
-     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
-     */
-    template <typename RetVal_, typename... Params_>
-    service_info& serve(std::string method_name, function<RetVal_(Params_...)> handler)
-    {
-        function<void(session_profile const&, RetVal_*, Params_...)> fn =
-                [_handler = std::move(handler)]  //
-                (auto&&, RetVal_* buffer, Params_&&... args) mutable {
-                    if constexpr (std::is_void_v<RetVal_>)
-                        _handler(std::forward<Params_>(args)...);
-                    else
-                        *buffer = _handler(std::forward<Params_>(args)...);
-                };
-
-        this->serve2(std::move(method_name), std::move(fn));
-        return *this;
-    }
-
-    /**
-     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
-     *  notify, return value of handler will silently be discarded regardless of its return
-     *  type.
-     *
-     * @tparam RetVal_ Must be declared as refl object.
-     * @tparam Params_ Must be declared as refl object.
-     * @param method_name Name of method to serve
-     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
-     */
-    template <typename RetVal_, typename... Params_>
-    service_info& serve3(std::string method_name, function<void(RetVal_*, Params_...)> handler)
-    {
-        function<void(session_profile const&, RetVal_*, Params_...)> fn =
-                [_handler = std::move(handler)]  //
-                (auto&&, RetVal_* buffer, Params_&&... args) mutable {
-                    if constexpr (std::is_void_v<RetVal_>)
-                        _handler(buffer, std::forward<Params_>(args)...);
-                    else
-                        _handler(buffer, std::forward<Params_>(args)...);
-                };
-
-        this->serve2(std::move(method_name), std::move(fn));
-        return *this;
-    }
-
-   public:
-    auto const& _services_() const noexcept { return _handlers; }
-};
 
 enum class rpc_status
 {
@@ -887,7 +735,6 @@ class session : public std::enable_shared_from_this<session>
     }
 
     service_info::handler_table_type const& _get_services() const;
-
     void _erase_self();
 };
 }  // namespace detail
