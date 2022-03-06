@@ -40,22 +40,19 @@ struct basic_exception : std::exception
     mutable std::string _message = {};
 
    public:
-    Ty_&& message(std::string_view content)
+    void message(std::string_view content)
     {
         _setmsg(content);
-        return std::move(*static_cast<Ty_*>(this));
     }
 
     template <typename Str_, typename Arg0_, typename... Args_>
-    Ty_&& message(Str_&& str, Arg0_&& arg0, Args_&&... args)
+    void message(Str_&& str, Arg0_&& arg0, Args_&&... args)
     {
         auto buflen = snprintf(nullptr, 0, str, arg0, args...);
         _message.resize(buflen + 1);
 
         snprintf(_message.data(), _message.size(), str, arg0, args...);
         _message.pop_back();  // remove null character
-
-        return std::move(*static_cast<Ty_*>(this));
     }
 
     /**

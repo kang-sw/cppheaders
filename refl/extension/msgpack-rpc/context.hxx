@@ -723,7 +723,7 @@ class session : public std::enable_shared_from_this<session>
                             },
                             &uobj);
                 }
-                catch (type_mismatch_exception&)
+                catch (type_mismatch_exception& ec)
                 {
                     lock_guard _wr_lock_{_write_lock};
 
@@ -735,7 +735,7 @@ class session : public std::enable_shared_from_this<session>
                     _writer.array_pop();
                     _writer.flush();
                 }
-                catch (archive::error::archive_exception&)
+                catch (archive::error::archive_exception& ec)
                 {
                     throw detail::rpc_handler_fatal_state{};
                 }

@@ -73,7 +73,13 @@ CPPH_DECLARE_EXCEPTION(archive_exception, basic_exception<archive_exception>);
 struct writer_exception : archive_exception
 {
     if_writer* writer;
-    explicit writer_exception(if_writer const* wr) : writer((if_writer*)wr) {}
+
+    template <typename... Args_>
+    explicit writer_exception(if_writer const* wr, char const* fmt = nullptr, Args_&&... args)
+            : writer((if_writer*)wr)
+    {
+        if (fmt) { message(fmt, args...); }
+    }
 };
 
 CPPH_DECLARE_EXCEPTION(writer_invalid_state, writer_exception);
@@ -81,7 +87,14 @@ CPPH_DECLARE_EXCEPTION(writer_invalid_state, writer_exception);
 struct reader_exception : archive_exception
 {
     if_reader* reader;
-    explicit reader_exception(if_reader const* rd) : reader((if_reader*)rd) {}
+
+    template <typename... Args_>
+    explicit reader_exception(
+            if_reader const* rd, char const* fmt = nullptr, Args_&&... args)
+            : reader((if_reader*)rd)
+    {
+        if (fmt) { message(fmt, args...); }
+    }
 };
 
 CPPH_DECLARE_EXCEPTION(reader_invalid_context, reader_exception);
@@ -163,13 +176,17 @@ class if_archive_base
     std::streambuf* _buf = {};
 
    public:
-    bool use_integer_key : 1;
+    bool use_integer_key        : 1;
+    bool allow_missing_argument : 1;
+    bool allow_unknown_argument : 1;
 
    public:
     virtual ~if_archive_base() = default;
     explicit if_archive_base(std::streambuf* buf) noexcept
             : _buf(buf),
-              use_integer_key(false)
+              use_integer_key(false),
+              allow_missing_argument(true),
+              allow_unknown_argument(true)
     {
     }
 

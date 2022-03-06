@@ -104,3 +104,19 @@ TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
         REQUIRE(content_1 == content_2);
     }
 }
+
+TEST_CASE("Retrieve throw exceptions", "[archive]")
+{
+    std::stringbuf sbuf;
+    archive::msgpack::writer writer{&sbuf};
+    archive::msgpack::reader reader{&sbuf};
+
+    SECTION("In most tolerant case")
+    {
+        SECTION("child to base")
+        {
+            writer << child_object{};
+
+        }
+    }
+}

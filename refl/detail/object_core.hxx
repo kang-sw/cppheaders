@@ -57,11 +57,21 @@ struct object_archive_exception : object_exception
         error = archive->dump_error();
         return std::move(*this);
     }
+
+    template <typename... Args_>
+    object_archive_exception(archive::if_archive_base* archive = nullptr,
+                             char const* fmt                   = nullptr,
+                             Args_&&... args)
+    {
+        if (archive) { set(archive); }
+        if (fmt) { message(fmt, args...); }
+    }
 };
 
 CPPH_DECLARE_EXCEPTION(invalid_read_state, object_archive_exception);
 CPPH_DECLARE_EXCEPTION(invalid_write_state, object_archive_exception);
 CPPH_DECLARE_EXCEPTION(missing_entity, object_archive_exception);
+CPPH_DECLARE_EXCEPTION(unkown_entity, object_archive_exception);
 
 CPPH_DECLARE_EXCEPTION(primitive, object_archive_exception);
 CPPH_DECLARE_EXCEPTION(binary_out_of_range, object_archive_exception);
@@ -588,12 +598,15 @@ class object_metadata
         else if (is_object())
         {
             if (not strm->is_object_next())
-                throw error::invalid_read_state{}
-                        .set(strm)
-                        .message("'object' expected");
+                throw error::invalid_read_state{strm, "'object' expected"};
 
             auto context_key           = strm->begin_object();
-            bool const use_integer_key = strm->use_integer_key;
+            bool const use_integer_key = strm->use_integer_key,
+                       allow_missing   = strm->allow_missing_argument,
+                       allow_unknown   = strm->allow_unknown_argument;
+
+            int integer_key            = -1;
+            int num_essential_retrived = 0;
 
             while (not strm->should_break(context_key))
             {
@@ -602,7 +615,6 @@ class object_metadata
 
                 if (use_integer_key)
                 {
-                    int integer_key;
                     *strm >> integer_key;
 
                     auto elem = find_ptr(_key_indices, integer_key);
@@ -622,7 +634,19 @@ class object_metadata
                 if (index == -1)
                 {
                     *strm >> nullptr;
-                    continue;
+
+                    if (allow_unknown)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        strm->end_object(context_key);
+                        throw error::unkown_entity{
+                                strm, "unkown key '%s'",
+                                (use_integer_key ? std::to_string(integer_key).c_str()
+                                                 : context->keybuf.c_str())};
+                    }
                 }
 
                 auto& prop      = _props.at(index);
@@ -630,10 +654,24 @@ class object_metadata
                 auto child_data = retrieve_self(data, prop);
                 assert(child_data);
 
+                if (not allow_missing && not child->is_optional())
+                    ++num_essential_retrived;
+
                 child->_restore_from(strm, child_data, context, opt_property);
             }
 
             strm->end_object(context_key);
+
+            if (not allow_missing)
+            {
+                // verify all arguments ready
+                auto pred_req    = [](decltype(_props[0]) e) { return not e.type->is_optional(); };
+                int num_required = count_if(_props, pred_req);
+
+                if (num_essential_retrived != num_required)
+                    throw error::missing_entity{strm, "%d elems missing [total:%d]",
+                                                num_required - num_essential_retrived, num_required};
+            }
         }
         else if (is_tuple())
         {
@@ -654,6 +692,9 @@ class object_metadata
                 auto child_data = retrieve_self(data, prop);
                 child->_restore_from(strm, child_data, context, &prop);
             }
+
+            if (not strm->allow_unknown_argument && strm->elem_left() > 0)
+                throw error::missing_entity{strm, "too many arguments!"};
 
             strm->end_array(context_key);
         }

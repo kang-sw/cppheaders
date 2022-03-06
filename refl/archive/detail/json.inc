@@ -306,7 +306,7 @@ struct reader::impl
         }
 
         if (scope->elem_left-- <= 0)
-            throw error::reader_invalid_context{self}.message("end of object");
+            throw error::reader_invalid_context{self, "end of object"};
 
         scope->is_key_next = false;
     }
@@ -366,7 +366,7 @@ if_reader& reader::read(bool& v)
     else if (tok == "false")
         v = false;
     else
-        throw error::reader_parse_failed{this}.message(tok);
+        throw error::reader_parse_failed{this};
 
     self->step_over();
     return *this;
@@ -381,7 +381,7 @@ if_reader& reader::read(int64_t& v)
     if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE)
     {
         auto r = std::from_chars(tok.data(), tok.data() + tok.size(), v);
-        if (r.ptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}.message(tok); }
+        if (r.ptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}; }
     }
     else
     {
@@ -402,7 +402,7 @@ if_reader& reader::read(double& v)
     {
         char* eptr = {};
         v          = strtod(tok.data(), &eptr);
-        if (eptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}.message(tok); }
+        if (eptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}; }
     }
     else
     {
@@ -440,7 +440,7 @@ size_t reader::begin_binary()
 
     auto binsize = (next->end - next->start);
     if (binsize & 1) { throw error::reader_parse_failed{this}; }
-    if (binsize & 0x3) { throw error::reader_parse_failed{this}.message("invalid base64 binary: %llu", binsize); }
+    if (binsize & 0x3) { throw error::reader_parse_failed{this, "invalid base64 binary: %llu", binsize}; }
 
     auto buffer = array_view<char>(self->string).subspan(next->start, binsize);
     self->base64_view.reset(buffer);
@@ -531,7 +531,7 @@ void reader::_validate()
     jsmn_init(&self->parser);
     auto n_tok = jsmn_parse(&self->parser, str->data(), str->size(), nullptr, 0);
 
-    if (n_tok <= 0) { throw error::reader_parse_failed{this}.message("jsmn error: %d", n_tok); }
+    if (n_tok <= 0) { throw error::reader_parse_failed{this, "jsmn error: %d", n_tok}; }
 
     jsmn_init(&self->parser);
     tok->resize(n_tok);

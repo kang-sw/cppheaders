@@ -136,7 +136,7 @@ class writer : public archive::if_writer
     {
         if (n >= (std::numeric_limits<uint32_t>::max)())
         {
-            throw archive::error::writer_out_of_range{this}.message("size exceeds 32bit range");
+            throw archive::error::writer_out_of_range{this, "size exceeds 32bit range"};
         }
     }
 

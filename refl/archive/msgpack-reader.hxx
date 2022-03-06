@@ -111,7 +111,7 @@ class reader : public archive::if_reader
             case _do_offset(Base_, Ofst_ + 2): return _bump_n_bigE<uint32_t>();
 
             default:
-                throw type_mismatch_exception{this}.message("type error");
+                throw type_mismatch_exception{this, "type error"};
         }
     }
 
@@ -127,7 +127,7 @@ class reader : public archive::if_reader
         char buflen = _read_elem_count_str(header);
 
         if (buflen >= sizeof buf)
-            throw error::reader_parse_failed{this}.message("too big number");
+            throw error::reader_parse_failed{this, "too big number"};
 
         if (_buf->sgetn(buf, buflen) != buflen)
             throw error::reader_unexpected_end_of_file{this};
@@ -137,7 +137,7 @@ class reader : public archive::if_reader
         auto value = strtod(buf, &tail);
 
         if (tail - buf != buflen)
-            throw error::reader_parse_failed{this}.message("given string is not a number");
+            throw error::reader_parse_failed{this, "given string is not a number"};
 
         return value;
     }
@@ -171,11 +171,11 @@ class reader : public archive::if_reader
             case typecode::str8:
             case typecode::str16:
             case typecode::str32:
-                return ValTy_(_parse_number(header));
+                // return ValTy_(_parse_number(header));
 
             default:
-                throw type_mismatch_exception{(if_reader*)this}
-                        .message("number type expected: %02x", header);
+                throw type_mismatch_exception{
+                        (if_reader*)this, "number type expected: %02x", header};
         }
     }
 
@@ -309,9 +309,9 @@ class reader : public archive::if_reader
         auto scope = _verify_scope(scope_t::type_object);
 
         if (scope->elems_left & 1)
-            throw error::reader_invalid_context{this}.message("not a valid order for key!");
+            throw error::reader_invalid_context{this, "not a valid order for key!"};
         if (scope->reading_key)
-            throw error::reader_invalid_context{this}.message("duplicated call for read_key_next()");
+            throw error::reader_invalid_context{this, "duplicated call for read_key_next()"};
 
         scope->reading_key = true;
     }
@@ -425,7 +425,7 @@ class reader : public archive::if_reader
 
             default:
             case typecode::error:
-                throw error::reader_parse_failed{this}.message("unsupported format: %02x", header);
+                throw error::reader_parse_failed{this, "unsupported format: %02x", header};
         }
 
         _discard_n_bytes(skip_bytes);
@@ -440,10 +440,10 @@ class reader : public archive::if_reader
                 if (it->type == type)
                     return it - _scope.rbegin() + 1;
                 else
-                    throw error::reader_invalid_context{this}.message("type mismatch with context!");
+                    throw error::reader_invalid_context{this, "type mismatch with context!"};
             }
 
-        throw error::reader_invalid_context{this}.message("too early scope end call!");
+        throw error::reader_invalid_context{this, "too early scope end call!"};
     }
 
     scope_t* _new_scope(scope_t::type_t ty, uint32_t n_elems)
@@ -466,9 +466,9 @@ class reader : public archive::if_reader
         if (scope.type != scope_t::type_object) { return; }
 
         if ((scope.elems_left & 1) == 0)
-            throw error::reader_invalid_context{this}.message("context is in key order");
+            throw error::reader_invalid_context{this, "context is in key order"};
         if (scope.reading_key)
-            throw error::reader_invalid_context{this}.message("reading_key is set");
+            throw error::reader_invalid_context{this, "reading_key is set"};
     }
 
     char _verify_eof(std::streambuf::traits_type::int_type value) const
@@ -485,25 +485,25 @@ class reader : public archive::if_reader
 
         auto scope = &_scope.back();
         if (scope->type == scope_t::type_binary)
-            throw error::reader_invalid_context{this}.message("binary can not have any subobject!");
+            throw error::reader_invalid_context{this, "binary can not have any subobject!"};
 
         if (scope->type == scope_t::type_object && not(scope->elems_left & 1))
         {
             if (not scope->reading_key)
-                throw error::reader_invalid_context{this}.message("read_key_next is not called!");
+                throw error::reader_invalid_context{this, "read_key_next is not called!"};
             else
                 scope->reading_key = false;
         }
 
         if (scope->elems_left-- == 0)
-            throw error::reader_invalid_context{this}.message("all elements read");
+            throw error::reader_invalid_context{this, "all elements read"};
     }
 
     scope_t const& _scope_ref() const
     {
         auto size = _scope.size();
         if (size == 0)
-            throw error::reader_invalid_context{(if_reader*)this}.message("not in any valid scope!");
+            throw error::reader_invalid_context{(if_reader*)this, "not in any valid scope!"};
 
         return _scope[size - 1];
     }
@@ -514,8 +514,8 @@ class reader : public archive::if_reader
     {
         auto scope = &_scope_ref();
         if (scope->type != t)
-            throw error::reader_invalid_context{this}
-                    .message("invalid scope type: was %d - %d expected", scope->type, t);
+            throw error::reader_invalid_context{
+                    this, "invalid scope type: was %d - %d expected", scope->type, t};
 
         return scope;
     }
@@ -559,7 +559,7 @@ class reader : public archive::if_reader
             case 0b0111: return typecode::positive_fixint;
 
             default:
-                throw error::reader_parse_failed{this}.message("invalid typecode %d", v);
+                throw error::reader_parse_failed{this, "invalid typecode %d", v};
         }
     }
 };

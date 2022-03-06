@@ -107,8 +107,7 @@ class write_context_helper
         auto elem = &_scopes.back();
 
         if (not elem->is_key_next())
-            throw error::writer_invalid_state{self}
-                    .message("Object key expected");
+            throw error::writer_invalid_state{self, "Object key expected"};
 
         bool comma_required = elem->size++ > 0;
         elem->key_ready     = true;
@@ -154,7 +153,7 @@ class write_context_helper
         {
             // after writing a value, context stay invalid until next call to write_next_key
             // invalid state can be known from key_ready field.
-            throw error::writer_invalid_state{self}.message("write_key_next() is not called!");
+            throw error::writer_invalid_state{self, "write_key_next() is not called!"};
         }
     }
 
@@ -231,7 +230,7 @@ class write_context_helper
     void _assert_scope_not_empty()
     {
         if (_scopes.empty())
-            throw error::writer_invalid_state{self}.message("object must not be empty!");
+            throw error::writer_invalid_state{self, "object must not be empty!"};
     }
 
     void _assert_value_context()
@@ -239,14 +238,14 @@ class write_context_helper
         if (_scopes.empty()) { return; }
 
         if (_scopes.back().is_key_current())
-            throw error::writer_invalid_state{self}.message("value expected!");
+            throw error::writer_invalid_state{self, "value expected!"};
     }
 
     void _assert_scope_size_valid(scoped_context_t* scope)
     {
         if (scope->size > scope->capacity)
-            throw error::writer_out_of_range{self}.message(
-                    "invalid size %lld (max %lld)", scope->size, scope->capacity);
+            throw error::writer_out_of_range{
+                    self, "invalid size %lld (max %lld)", scope->size, scope->capacity};
     }
 
     void _assert_top_scope_finished(scope_type t)
@@ -256,8 +255,8 @@ class write_context_helper
         _assert_scope_size_valid(elem);
 
         if (elem->size < elem->capacity)
-            throw error::writer_invalid_state{self}.message(
-                    "only %lld out of %lld elements filled!", elem->size, elem->capacity);
+            throw error::writer_invalid_state{
+                    self, "only %lld out of %lld elements filled!", elem->size, elem->capacity};
     }
 
     bool _write_value_next()

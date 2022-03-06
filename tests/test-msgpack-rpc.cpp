@@ -195,7 +195,6 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                     }
                     ctx->notify("hello", i, "fdas");
                 });
-                std::this_thread::sleep_for(1ms);
             }
 
             std::this_thread::sleep_for(1s);
@@ -216,6 +215,13 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
             {
                 int rv    = -1;
                 auto rslt = ctx->rpc(&rv, "hello", i);
+                REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
+            }
+
+            for (int i = 0; i < 256; ++i)
+            {
+                int rv    = -1;
+                auto rslt = ctx->rpc(&rv, "hello", "fea", 3.21);
                 REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
         }
