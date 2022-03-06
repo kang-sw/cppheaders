@@ -55,7 +55,7 @@ class circular_queue
 
    public:
     template <bool Constant_ = true, bool Reverse_ = false>
-    class iterator
+    class _iterator
     {
        public:
         using owner_type        = std::conditional_t<Constant_, circular_queue const, circular_queue>;
@@ -67,9 +67,9 @@ class circular_queue
         using iterator_category = std::random_access_iterator_tag;
 
        public:
-        iterator() noexcept                = default;
-        iterator(const iterator&) noexcept = default;
-        iterator& operator=(const iterator&) noexcept = default;
+        _iterator() noexcept                 = default;
+        _iterator(const _iterator&) noexcept = default;
+        _iterator& operator=(const _iterator&) noexcept = default;
 
         reference operator*() const
         {
@@ -85,10 +85,10 @@ class circular_queue
 
         pointer operator->() const { return &*(*this); }
 
-        bool operator==(iterator const& op) const noexcept { return _head == op._head; }
-        bool operator!=(iterator const& op) const noexcept { return _head != op._head; }
-        bool operator<(iterator const& op) const noexcept { return _idx() < op._idx(); }
-        bool operator<=(iterator const& op) const noexcept { return !(op < *this); }
+        bool operator==(_iterator const& op) const noexcept { return _head == op._head; }
+        bool operator!=(_iterator const& op) const noexcept { return _head != op._head; }
+        bool operator<(_iterator const& op) const noexcept { return _idx() < op._idx(); }
+        bool operator<=(_iterator const& op) const noexcept { return !(op < *this); }
 
         auto& operator[](difference_type idx) const noexcept { return *(*this + idx); }
 
@@ -109,24 +109,30 @@ class circular_queue
         auto& operator-=(ptrdiff_t i) noexcept { return _head = _owner->_jmp(_head, -i), *this; }
         auto& operator+=(ptrdiff_t i) noexcept { return _head = _owner->_jmp(_head, i), *this; }
 
-        auto operator-(iterator const& op) const noexcept { return static_cast<ptrdiff_t>(_idx() - op._idx()); }
+        auto operator-(_iterator const& op) const noexcept { return static_cast<ptrdiff_t>(_idx() - op._idx()); }
 
-        friend auto operator+(iterator it, ptrdiff_t i) { return it += i; }
-        friend auto operator+(ptrdiff_t i, iterator it) { return it += i; }
-        friend auto operator-(iterator it, ptrdiff_t i) { return it -= i; }
-        friend auto operator-(ptrdiff_t i, iterator it) { return it -= i; }
+        friend auto operator+(_iterator it, ptrdiff_t i) { return it += i; }
+        friend auto operator+(ptrdiff_t i, _iterator it) { return it += i; }
+        friend auto operator-(_iterator it, ptrdiff_t i) { return it -= i; }
+        friend auto operator-(ptrdiff_t i, _iterator it) { return it -= i; }
 
        private:
         size_t _idx() const noexcept { return _owner->_idx_linear(_head); }
 
        private:
-        iterator(owner_type* o, size_t h)
+        _iterator(owner_type* o, size_t h)
                 : _owner(o), _head(h) {}
         friend class circular_queue;
 
         owner_type* _owner;
         size_t _head;
     };
+
+   public:
+    using iterator               = _iterator<false, false>;
+    using const_iterator         = _iterator<true, false>;
+    using reverse_iterator       = _iterator<false, true>;
+    using const_reverse_iterator = _iterator<true, true>;
 
    public:
     explicit circular_queue(size_t capacity) noexcept
@@ -272,19 +278,19 @@ class circular_queue
         return _head >= _tail ? _head - _tail : _head + _cap() - _tail;
     }
 
-    auto cbegin() const noexcept { return iterator<true>(this, _tail); }
-    auto cend() const noexcept { return iterator<true>(this, _head); }
+    auto cbegin() const noexcept { return const_iterator(this, _tail); }
+    auto cend() const noexcept { return const_iterator(this, _head); }
     auto begin() const noexcept { return cbegin(); }
     auto end() const noexcept { return cend(); }
-    auto begin() noexcept { return iterator<false>(this, _tail); }
-    auto end() noexcept { return iterator<false>(this, _head); }
+    auto begin() noexcept { return iterator(this, _tail); }
+    auto end() noexcept { return iterator(this, _head); }
 
-    auto crbegin() const noexcept { return iterator<true, true>(this, _tail); }
-    auto crend() const noexcept { return iterator<true, true>(this, _head); }
+    auto crbegin() const noexcept { return const_reverse_iterator(this, _tail); }
+    auto crend() const noexcept { return const_reverse_iterator(this, _head); }
     auto rbegin() const noexcept { return cbegin(); }
     auto rend() const noexcept { return cend(); }
-    auto rbegin() noexcept { return iterator<false, true>(this, _tail); }
-    auto rend() noexcept { return iterator<false, true>(this, _head); }
+    auto rbegin() noexcept { return reverse_iterator(this, _tail); }
+    auto rend() noexcept { return reverse_iterator(this, _head); }
 
     constexpr size_t capacity() const noexcept { return _capacity - 1; }
     bool empty() const noexcept { return _head == _tail; }
@@ -335,6 +341,35 @@ class circular_queue
         }
     }
 
+    /**
+     * Append given range to buffer. Only trivial types are allowed
+     */
+    template <typename Iter_>
+    void rotate_append(Iter_ begin, Iter_ end)
+    {
+        auto total = std::distance(begin, end);
+
+        // If number of elements exceeds
+        if (capacity() < total)
+        {
+            auto margin = total - capacity();
+            std::advance(begin, margin);
+
+            total = capacity();
+        }
+
+        // Reserve space
+        if (auto space = capacity() - size(); space < total)
+        {
+            auto required_space{total - space};
+            _tail = _jmp(_tail, required_space);
+        }
+
+        // Copy contents to buffer
+        while (total--)
+            _at(std::exchange(_head, _next(_head))) = *(begin++);
+    }
+
     ~circular_queue() noexcept(is_safe_dtor) { clear(); }
 
    private:
@@ -342,10 +377,8 @@ class circular_queue
 
     size_t _reserve()
     {
-        if (is_full()) { throw std::bad_array_new_length(); }
-        auto retval = _head;
-        _head       = _next(_head);
-        return retval;
+        assert(not is_full());
+        return std::exchange(_head, _next(_head));
     }
 
     size_t _next(size_t current) const noexcept
