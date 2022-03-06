@@ -1017,8 +1017,8 @@ class object_metadata
             return *this;
         }
 
-        template <typename MemVar_>
-        auto& _property_3(MemVar_ Class_::*mem_ptr, std::string name, int name_key = -1)
+        template <typename KeyStr_, typename MemVar_>
+        auto& _property_3(MemVar_ Class_::*mem_ptr, KeyStr_&& name, int name_key = -1)
         {
             return property(mem_ptr, std::move(name), -1);
         }

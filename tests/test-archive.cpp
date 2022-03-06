@@ -336,7 +336,7 @@ TEST_CASE("archive", "[.]")
 //
 //     return factory.create();
 // }
-CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, (), (a, "hello", 3), (b), (c), (f), (t), (r), (e), (ff));
+CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, (), (a, "hello", 3), (b, 4), (c), (f), (t), (r), (e), (ff));
 CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, (), a, b, c, f, t, r, e, ff);
 
 struct bintest
