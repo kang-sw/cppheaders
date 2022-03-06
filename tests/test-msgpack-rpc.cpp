@@ -187,13 +187,15 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
         {
             for (int i = 0; i < 256; ++i)
             {
-                {
-                    std::lock_guard _lc_{_mtx_cout};
-                    printf("Notify %d\n", i);
-                    fflush(stdout);
-                }
-
-                ioc.post([&] { ctx->notify("hello", i, "gaf"); });
+                ioc.post([&ctx, i] {
+                    {
+                        std::lock_guard _lc_{_mtx_cout};
+                        printf("Notify %d\n", i);
+                        fflush(stdout);
+                    }
+                    ctx->notify("hello", i, "fdas");
+                });
+                std::this_thread::sleep_for(1ms);
             }
 
             std::this_thread::sleep_for(1s);
@@ -208,6 +210,13 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                 int rv = -1;
                 ctx->rpc(&rv, "hello", i, "vv32");
                 REQUIRE(rv == i * i);
+            }
+
+            for (int i = 0; i < 256; ++i)
+            {
+                int rv    = -1;
+                auto rslt = ctx->rpc(&rv, "hello", i);
+                REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
         }
 
