@@ -117,7 +117,7 @@ class service_info
                             if constexpr (std::is_void_v<RetVal_>)
                             {
                                 _handler(session, nullptr, params...);
-                                fn_write(uobj, refl::object_const_view_t{nullptr});
+                                if (fn_write) { fn_write(uobj, refl::object_const_view_t{nullptr}); }
                             }
                             else
                             {
@@ -193,7 +193,7 @@ class service_info
     }
 
     template <size_t N_, typename Ret_, typename... Params_, typename Callable_>
-    service_info& serve(
+    service_info& operator()(
             signature_t<N_, Ret_, std::tuple<Params_...>> const& stub,
             Callable_&& service)
     {
@@ -214,14 +214,14 @@ class service_info
     auto const& _services_() const noexcept { return _handlers; }
 };
 
-//inline void pewpew()
+// inline void pewpew()
 //{
-//    static auto const stub = create_signature<bool(int, double)>("absc");
-//    service_info t;
+//     static auto const stub = create_signature<bool(int, double)>("absc");
+//     service_info t;
 //
-//    t.serve(stub, [](int, double) -> bool { return false; });
-//    t.serve(stub, [](bool*, int, double) {});
-//    t.serve(stub, [](auto&&, bool*, int, double) {});
-//}
+//     t(stub, [](int, double) -> bool { return false; });
+//     t(stub, [](bool*, int, double) {});
+//     t(stub, [](auto&&, bool*, int, double) {});
+// }
 
 }  // namespace CPPHEADERS_NS_::msgpack::rpc

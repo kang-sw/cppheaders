@@ -32,7 +32,6 @@
 #include <utility>
 
 #include "../../../functional.hxx"
-#include "../../../helper/exception.hxx"
 #include "../../../memory/pool.hxx"
 #include "../../../thread/event_wait.hxx"
 #include "../../../thread/locked.hxx"
@@ -42,47 +41,12 @@
 #include "../../archive/msgpack-writer.hxx"
 #include "../../detail/object_core.hxx"
 #include "../../detail/primitives.hxx"
+#include "defs.hxx"
+#include "errors.hxx"
 #include "service_info.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
 using namespace archive::msgpack;
-
-#ifndef CPPHEADERS_MSGPACK_RPC_STREAMBUF_BUFFERSIZE
-#    define CPPHEADERS_MSGPACK_RPC_STREAMBUF_BUFFERSIZE 384  // some magic number
-#endif
-
-CPPH_DECLARE_EXCEPTION(exception, std::exception);
-CPPH_DECLARE_EXCEPTION(invalid_connection, exception);
-
-//! Exception propagated to RPC client.
-CPPH_DECLARE_EXCEPTION(remote_reply_exception, std::runtime_error);
-
-//!
-class remote_handler_exception : public std::runtime_error
-{
-    std::any _body;
-    refl::object_const_view_t _view;
-
-   public:
-    template <typename ArgTy_,
-              typename = std::enable_if_t<
-                      not std::is_same_v<std::decay_t<ArgTy_>, remote_handler_exception>>>
-    explicit remote_handler_exception(ArgTy_&& other)
-    {
-        using value_type = std::decay_t<ArgTy_>;
-        _body            = std::make_any<value_type>(std::forward<ArgTy_>(other));
-        auto& ref        = std::any_cast<value_type&>(_body);
-        _view            = refl::object_const_view_t{ref};
-    }
-
-    refl::object_const_view_t view() const { return _view; }
-};
-
-namespace detail {
-CPPH_DECLARE_EXCEPTION(rpc_handler_error, exception);
-CPPH_DECLARE_EXCEPTION(rpc_handler_missing_parameter, rpc_handler_error);
-CPPH_DECLARE_EXCEPTION(rpc_handler_fatal_state, rpc_handler_error);
-}  // namespace detail
 
 namespace detail {
 class session;
@@ -165,24 +129,6 @@ class if_context_monitor
 
     //! Exception must not propagate!
     virtual void on_dispose_session(session_profile const&) noexcept {}
-};
-
-
-enum class rpc_status
-{
-    okay    = 0,
-    waiting = 1,
-
-    timeout = -10,
-
-    unknown_error       = -1,
-    internal_error      = -2,
-    invalid_parameter   = -3,
-    invalid_return_type = -4,
-
-    method_not_exist = -5,
-
-    dead_peer = -100,
 };
 
 namespace detail {
@@ -280,13 +226,6 @@ class connection : public std::streambuf
     }
 };
 #endif
-
-enum class rpc_type
-{
-    request = 0,
-    reply   = 1,
-    notify  = 2,
-};
 
 inline std::string_view to_string(rpc_status s)
 {
@@ -407,8 +346,8 @@ class session : public std::enable_shared_from_this<session>
     }
 
    public:
-    template <typename RetVal_, typename... Params_>
-    auto rpc_send(RetVal_* result, std::string_view method, Params_&&... params)
+    template <typename RetPtr_, typename... Params_>
+    auto rpc_send(RetPtr_ result, std::string_view method, Params_&&... params)
     {
         decltype(_requests)::iterator request;
         int msgid;
@@ -424,10 +363,21 @@ class session : public std::enable_shared_from_this<session>
             //  deserialize the result into provided argument.
             request->second.promise =
                     [result](reader* rd) {
-                        if (result == nullptr)
-                            *rd >> nullptr;  // skip
+                        if constexpr (std::is_null_pointer_v<RetPtr_>)
+                        {
+                            *rd >> nullptr;
+                        }
+                        else if constexpr (std::is_void_v<std::remove_pointer_t<RetPtr_>>)
+                        {
+                            *rd >> nullptr;
+                        }
                         else
-                            *rd >> *result;
+                        {
+                            if (result == nullptr)
+                                *rd >> nullptr;  // skip
+                            else
+                                *rd >> *result;
+                        }
                     };
         });
 
@@ -804,7 +754,7 @@ class context
      * @throw remote_reply_exception
      */
     template <typename RetVal_, typename... Params_>
-    auto rpc(RetVal_* retval, std::string_view method, Params_&&... params) -> rpc_status
+    auto rpc(RetVal_ retval, std::string_view method, Params_&&... params) -> rpc_status
     {
         auto session = _checkout();
         if (not session) { return rpc_status::timeout; }
