@@ -171,7 +171,7 @@ class basic_socket_connection : public if_connection
     }
 
    private:
-    static std::string peer_string(typename socket::endpoint_type& ep)
+    static std::string peer_string(typename socket::endpoint_type const& ep)
     {
         std::string buf;
         buf.reserve(128);
@@ -212,7 +212,7 @@ auto open_acceptor(
         explicit _accept_function(context& ctx, session_config const& cfg, acceptor_type& acpt, strand_type strand2)
                 : _acceptor(&acpt),
                   _ctx(&ctx),
-                  _body(std::make_shared<decltype(_body)::element_type>(
+                  _body(std::make_shared<typename decltype(_body)::element_type>(
                           socket_type(acpt.get_executor()),
                           std::move(strand2),
                           cfg))
