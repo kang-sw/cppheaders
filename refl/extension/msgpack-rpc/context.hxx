@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #pragma once
+#include <any>
 #include <deque>
 #include <map>
 #include <set>
@@ -51,6 +52,30 @@ using namespace archive::msgpack;
 
 CPPH_DECLARE_EXCEPTION(exception, std::exception);
 CPPH_DECLARE_EXCEPTION(invalid_connection, exception);
+
+//! Exception propagated to RPC client.
+CPPH_DECLARE_EXCEPTION(remote_reply_exception, std::runtime_error);
+
+//!
+class remote_handler_exception : public std::runtime_error
+{
+    std::any _body;
+    refl::object_const_view_t _view;
+
+   public:
+    template <typename ArgTy_,
+              typename = std::enable_if_t<
+                      not std::is_same_v<std::decay_t<ArgTy_>, remote_handler_exception>>>
+    explicit remote_handler_exception(ArgTy_&& other)
+    {
+        using value_type = std::decay_t<ArgTy_>;
+        _body            = std::make_any<value_type>(std::forward<ArgTy_>(other));
+        auto& ref        = std::any_cast<value_type&>(_body);
+        _view            = refl::object_const_view_t{ref};
+    }
+
+    refl::object_const_view_t view() const { return _view; }
+};
 
 namespace detail {
 CPPH_DECLARE_EXCEPTION(rpc_handler_error, exception);
@@ -167,6 +192,7 @@ class service_info
 
         //! invoke with given parameters.
         //! @return error message if invocation failed
+        //! @throw remote_handler_exception
         virtual void invoke(session_profile const&, reader&, void (*)(void*, refl::object_const_view_t), void*) = 0;
 
         //! number of parameters
@@ -441,6 +467,7 @@ class session : public std::enable_shared_from_this<session>
     struct request_info
     {
         function<void(reader*)> promise;
+        std::exception_ptr except;
         volatile rpc_status status = rpc_status::waiting;
     };
 
@@ -558,11 +585,15 @@ class session : public std::enable_shared_from_this<session>
         auto ready   = _rpc_notify.wait_for(_conf.timeout, wait_fn);
 
         // timeout
-        auto errc = request->second.status;
+        auto errc   = request->second.status;
+        auto except = std::move(request->second.except);
 
         _rpc_notify.critical_section([&] {
             _requests.erase(request);
         });
+
+        if (errc == rpc_status::unknown_error && except)
+            std::rethrow_exception(except);
 
         return ready ? errc : rpc_status::timeout;
     }
@@ -674,11 +705,15 @@ class session : public std::enable_shared_from_this<session>
                 }
                 else
                 {
+                    // TODO: Extract 'errmsg' as object and dump to string!
                     std::string errmsg;
                     _reader >> errmsg;
                     _reader >> nullptr;  // skip payload
 
                     next_status = from_string(errmsg);
+
+                    if (next_status == rpc_status::unknown_error)
+                        preq->second.except = std::make_exception_ptr(remote_reply_exception{errmsg});
                 }
 
                 // Wake up all waiting candidates.
@@ -701,6 +736,19 @@ class session : public std::enable_shared_from_this<session>
         _reader >> msgid;
         _reader >> _method_name_buf;
 
+        static const auto fn_reply
+                = [](decltype(this) self, int msgid, auto&& err, auto&& result) {
+                      lock_guard _lc_{self->_write_lock};
+
+                      self->_writer.array_push(4);
+                      self->_writer << rpc_type::reply
+                                    << msgid
+                                    << err
+                                    << result;
+                      self->_writer.array_pop();
+                      self->_writer.flush();
+                  };
+
         if (auto pair = find_ptr(_get_services(), _method_name_buf))
         {
             auto& srv = pair->second;
@@ -709,15 +757,7 @@ class session : public std::enable_shared_from_this<session>
             if (_reader.elem_left() < srv->num_params())
             {
                 // number of parameters are insufficient.
-                lock_guard _wr_lock_{_write_lock};
-
-                _writer.array_push(4);
-                _writer << rpc_type::reply
-                        << msgid
-                        << to_string(rpc_status::invalid_parameter)
-                        << nullptr;
-                _writer.array_pop();
-                _writer.flush();
+                fn_reply(this, msgid, to_string(rpc_status::invalid_parameter), nullptr);
             }
             else
             {
@@ -735,31 +775,17 @@ class session : public std::enable_shared_from_this<session>
                                 auto self  = ((uobj_t*)pvself)->self;
                                 auto msgid = ((uobj_t*)pvself)->msgid;
 
-                                lock_guard _wr_lock_{self->_write_lock};
-                                auto writer = &self->_writer;
-                                writer->array_push(4);
-
-                                *writer << rpc_type::reply
-                                        << msgid
-                                        << nullptr
-                                        << data;
-
-                                writer->array_pop();
-                                writer->flush();
+                                fn_reply(self, msgid, nullptr, data);
                             },
                             &uobj);
                 }
+                catch (remote_handler_exception& ec)
+                {
+                    fn_reply(this, msgid, ec.view(), nullptr);
+                }
                 catch (type_mismatch_exception& ec)
                 {
-                    lock_guard _wr_lock_{_write_lock};
-
-                    _writer.array_push(4);
-                    _writer << rpc_type::reply
-                            << msgid
-                            << to_string(rpc_status::invalid_parameter)
-                            << nullptr;
-                    _writer.array_pop();
-                    _writer.flush();
+                    fn_reply(this, msgid, to_string(rpc_status::invalid_parameter), nullptr);
                 }
                 catch (archive::error::archive_exception& ec)
                 {
@@ -803,6 +829,10 @@ class session : public std::enable_shared_from_this<session>
                 try
                 {
                     srv->invoke(_profile, _reader, nullptr, nullptr);
+                }
+                catch (remote_handler_exception&)
+                {
+                    ;  // On handler error, do nothing as this is notifying handler.
                 }
                 catch (type_mismatch_exception&)
                 {
@@ -893,6 +923,8 @@ class context
      * @param retval receive output to this memory
      * @param params
      * @return
+     *
+     * @throw remote_reply_exception
      */
     template <typename RetVal_, typename... Params_>
     auto rpc(RetVal_* retval, std::string_view method, Params_&&... params) -> rpc_status
