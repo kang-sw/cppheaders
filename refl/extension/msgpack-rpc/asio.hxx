@@ -111,6 +111,13 @@ class transient_socket_streambuf : public std::streambuf
     {
         return overflow(traits_type::eof());
     }
+
+    std::streamsize showmanyc() override
+    {
+        asio::socket_base::bytes_readable navail{true};
+        _socket.io_control(navail);
+        return navail.get();
+    }
 };
 
 template <typename Protocol_>
@@ -149,12 +156,13 @@ class basic_socket_connection : public if_connection
                 [this](asio::error_code const& ec) {
                     if (ec) { this->notify_disconnect(); }
 
-                    printf("%s-data arrive! %d\n", peer().c_str(), _wait_counter.load());
                     this->notify_receive();
                 });
 
-        printf("%s-now waiting ... %d\n", peer().c_str(), ++_wait_counter);
-        _buf.socket().async_wait(socket::wait_read, std::move(fn));
+        if (_buf.in_avail())
+            this->notify_receive();
+        else
+            _buf.socket().async_wait(socket::wait_read, std::move(fn));
     }
 
     void launch() override

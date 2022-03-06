@@ -493,8 +493,6 @@ class session : public std::enable_shared_from_this<session>
             request   = pair.first;
             assert(pair.second);  // message id should never duplicate
 
-            printf("msgid[send_]: %s / %d (0)\n", _conn->peer().c_str(), msgid);
-
             // This will be invoked when return value from remote is ready, and will directly
             //  deserialize the result into provided argument.
             request->second.promise =
@@ -625,8 +623,6 @@ class session : public std::enable_shared_from_this<session>
         int msgid = -1;
         _reader >> msgid;
 
-        printf("msgid[reply]: %s / %d (2)\n", _conn->peer().c_str(), msgid);
-
         //  1. find corresponding reply to msgid
         //  2. fill promise with value or exception
         _rpc_notify.notify_all([&] {
@@ -726,8 +722,6 @@ class session : public std::enable_shared_from_this<session>
                                 writer->flush();
                             },
                             &uobj);
-
-                    printf("msgid[recv_]: %s / %d (1)\n", _conn->peer().c_str(), msgid);
                 }
                 catch (type_mismatch_exception&)
                 {
