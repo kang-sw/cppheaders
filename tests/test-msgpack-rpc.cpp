@@ -149,7 +149,8 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     service(stub_noti, [] { printf("noti!\n"); });
 
     io_context ioc;
-    auto ctx = create_rpc_context(ioc, service);
+    msgpack::rpc::context context{service};
+    auto ctx = &context;
 
     tcp::acceptor acpt{ioc};
     tcp::endpoint ep{ip::make_address("127.0.0.1"), 34561};

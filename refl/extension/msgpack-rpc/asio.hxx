@@ -36,18 +36,6 @@
 
 namespace CPPHEADERS_NS_::msgpack::rpc::asio_ex {
 
-template <typename IoContext_>
-[[nodiscard]] auto
-create_rpc_context(IoContext_& exec, service_info service = {})
-        -> std::unique_ptr<context>
-{
-    auto fn_dispatch = [&exec](function<void()>&& fn) {
-        asio::dispatch(exec, std::move(fn));
-    };
-
-    return std::make_unique<context>(std::move(service), std::move(fn_dispatch));
-}
-
 namespace detail {
 template <typename Protocol_>
 class transient_socket_streambuf : public std::streambuf
@@ -186,6 +174,8 @@ class basic_socket_connection : public if_connection
 
 /**
  * Start acceptor instance
+ *
+ * Acceptor should be bound to address before passed to this function.
  */
 template <typename Protocol_, typename Exec_>
 auto open_acceptor(
@@ -250,15 +240,19 @@ auto open_acceptor(
     _accept_function{ctx, configs, acceptor, std::move(strand)}.async_accept();
 }
 
+/**
+ * Create session from existing socket.
+ *
+ * @return
+ */
 template <typename Socket_,
           typename = std::enable_if_t<std::is_base_of_v<asio::socket_base, Socket_>>>
 auto create_session(context& rpc, Socket_&& socket, session_config const& config = {})
 {
-    return rpc.create_session<
-            detail::basic_socket_connection<
-                    typename Socket_::protocol_type>>(
+    using connection_type = detail::basic_socket_connection<typename Socket_::protocol_type>;
+    return rpc.create_session<connection_type>(
             config,
             std::forward<Socket_>(socket));
 }
 
-}  // namespace CPPHEADERS_NS_::msgpack::rpc::asio_e
+}  // namespace CPPHEADERS_NS_::msgpack::rpc::asio_ex
