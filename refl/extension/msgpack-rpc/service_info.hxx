@@ -26,8 +26,6 @@
  ******************************************************************************/
 
 #pragma once
-#include <any>
-#include <deque>
 #include <map>
 #include <set>
 #include <utility>
@@ -39,6 +37,7 @@
 #include "../../archive/msgpack-reader.hxx"
 #include "../../archive/msgpack-writer.hxx"
 #include "../../detail/object_core.hxx"
+#include "stub.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
 using namespace archive::msgpack;
@@ -136,8 +135,34 @@ class service_info
                 std::make_shared<service_handler>(std::move(handler)));
 
         if (not is_new)
-            throw std::logic_error{"Method name may not duplicate!"};
+            throw std::logic_error{"Method name must not duplicate!"};
 
+        return *this;
+    }
+
+    /**
+     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
+     *  notify, return value of handler will silently be discarded regardless of its return
+     *  type.
+     *
+     * @tparam RetVal_ Must be declared as refl object.
+     * @tparam Params_ Must be declared as refl object.
+     * @param method_name Name of method to serve
+     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
+     */
+    template <typename RetVal_, typename... Params_>
+    service_info& serve1(std::string method_name, function<void(RetVal_*, Params_...)> handler)
+    {
+        function<void(session_profile const&, RetVal_*, Params_...)> fn =
+                [_handler = std::move(handler)]  //
+                (auto&&, RetVal_* buffer, Params_&&... args) mutable {
+                    if constexpr (std::is_void_v<RetVal_>)
+                        _handler(buffer, std::forward<Params_>(args)...);
+                    else
+                        _handler(buffer, std::forward<Params_>(args)...);
+                };
+
+        this->serve2(std::move(method_name), std::move(fn));
         return *this;
     }
 
@@ -167,33 +192,36 @@ class service_info
         return *this;
     }
 
-    /**
-     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
-     *  notify, return value of handler will silently be discarded regardless of its return
-     *  type.
-     *
-     * @tparam RetVal_ Must be declared as refl object.
-     * @tparam Params_ Must be declared as refl object.
-     * @param method_name Name of method to serve
-     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
-     */
-    template <typename RetVal_, typename... Params_>
-    service_info& serve3(std::string method_name, function<void(RetVal_*, Params_...)> handler)
+    template <size_t N_, typename Ret_, typename... Params_, typename Callable_>
+    service_info& serve(
+            signature_t<N_, Ret_, std::tuple<Params_...>> const& stub,
+            Callable_&& service)
     {
-        function<void(session_profile const&, RetVal_*, Params_...)> fn =
-                [_handler = std::move(handler)]  //
-                (auto&&, RetVal_* buffer, Params_&&... args) mutable {
-                    if constexpr (std::is_void_v<RetVal_>)
-                        _handler(buffer, std::forward<Params_>(args)...);
-                    else
-                        _handler(buffer, std::forward<Params_>(args)...);
-                };
+        using stub_t     = std::decay_t<decltype(stub)>;
+        using callable_t = std::decay_t<decltype(service)>;
 
-        this->serve2(std::move(method_name), std::move(fn));
-        return *this;
+        std::string name{stub.name()};
+
+        if constexpr (std::is_constructible_v<typename stub_t::serve_signature, callable_t>)
+            return serve(name, typename stub_t::serve_signature{std::forward<Callable_>(service)});
+        if constexpr (std::is_constructible_v<typename stub_t::serve_signature_1, callable_t>)
+            return serve1(name, typename stub_t::serve_signature_1{std::forward<Callable_>(service)});
+        if constexpr (std::is_constructible_v<typename stub_t::serve_signature_2, callable_t>)
+            return serve2(name, typename stub_t::serve_signature_2{std::forward<Callable_>(service)});
     }
 
    public:
     auto const& _services_() const noexcept { return _handlers; }
 };
+
+//inline void pewpew()
+//{
+//    static auto const stub = create_signature<bool(int, double)>("absc");
+//    service_info t;
+//
+//    t.serve(stub, [](int, double) -> bool { return false; });
+//    t.serve(stub, [](bool*, int, double) {});
+//    t.serve(stub, [](auto&&, bool*, int, double) {});
+//}
+
 }  // namespace CPPHEADERS_NS_::msgpack::rpc

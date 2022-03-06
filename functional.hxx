@@ -150,7 +150,9 @@ class function<Ret_(Args_...)>
             typename = std::enable_if_t<
                     not std::is_same_v<
                             function,
-                            std::remove_cv_t<std::remove_reference_t<Callable_>>>>>
+                            std::remove_cv_t<std::remove_reference_t<Callable_>>>>,
+            typename = std::enable_if_t<
+                    std::is_invocable_r_v<Ret_, Callable_, Args_...>>>
     function& operator=(Callable_&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable_>)
     {
         _destroy();
@@ -170,7 +172,9 @@ class function<Ret_(Args_...)>
             typename = std::enable_if_t<
                     not std::is_same_v<
                             function,
-                            std::remove_cv_t<std::remove_reference_t<Callable_>>>>>
+                            std::remove_cv_t<std::remove_reference_t<Callable_>>>>,
+            typename = std::enable_if_t<
+                    std::is_invocable_r_v<Ret_, Callable_, Args_...>>>
     function(Callable_&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable_>)
     {
         _assign_function(std::forward<Callable_>(fn));
