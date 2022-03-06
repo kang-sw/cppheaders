@@ -91,7 +91,7 @@ class service_info
         {
             using handler_type = decltype(handler);
             using return_type  = std::conditional_t<std::is_void_v<RetVal_>, nullptr_t, RetVal_>;
-            using tuple_type   = std::tuple<Params_...>;
+            using tuple_type   = std::tuple<std::decay_t<Params_>...>;
 
            public:
             handler_type _handler;
