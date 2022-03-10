@@ -101,9 +101,7 @@ class reader : public archive::if_reader
     void end_object(context_key key) override;
     void end_array(context_key key) override;
     void read_key_next() override;
-    bool is_null_next() const override;
-    bool is_object_next() const override;
-    bool is_array_next() const override;
+    entity_type type_next() const override;
 
    private:
     void _validate();

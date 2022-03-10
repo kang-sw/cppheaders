@@ -502,12 +502,6 @@ void reader::read_key_next()
     top.is_key_next = true;
 }
 
-bool reader::is_null_next() const
-{
-    auto next = self->next();
-    return next->type == JSMN_PRIMITIVE && self->tokstr(*next) == "null"sv;
-}
-
 void reader::reset()
 {
     self->pos_next = ~size_t{};
@@ -541,14 +535,35 @@ void reader::_validate()
     self->pos_next = 0;  // Ready to start parsing
 }
 
-bool reader::is_object_next() const
+entity_type reader::type_next() const
 {
-    return self->next()->type == JSMN_OBJECT;
-}
+    auto next = self->next();
 
-bool reader::is_array_next() const
-{
-    return self->next()->type == JSMN_ARRAY;
+    switch (next->type)
+    {
+        case JSMN_STRING:
+            return entity_type::string;
+
+        case JSMN_PRIMITIVE:
+        {
+            auto tok = self->tokstr(*next);
+            if (tok == "null"sv) { return entity_type::null; }
+            if (tok[0] == 't' || tok[0] == 'f') { return entity_type::boolean; }
+
+            auto has_dot = tok.find_first_of('.') == std::string::npos;
+            return has_dot ? entity_type::floating_point : entity_type::integer;
+        }
+
+        case JSMN_ARRAY:
+            return entity_type::array;
+
+        case JSMN_OBJECT:
+            return entity_type::object;
+
+        default:
+        case JSMN_UNDEFINED:
+            throw error::reader_invalid_context{this, "jsmn error: invalid next type"};
+    }
 }
 
 reader::~reader() = default;

@@ -316,36 +316,57 @@ class reader : public archive::if_reader
         scope->reading_key = true;
     }
 
-    bool is_null_next() const override
+    entity_type type_next() const override
     {
-        return _typecode(_verify_eof(_buf->sgetc())) == typecode::nil;
-    }
-
-    bool is_object_next() const override
-    {
-        switch (_typecode(_verify_eof(_buf->sgetc())))
+        auto header = _verify_eof(_buf->sgetc());
+        switch (_typecode(header))
         {
-            case typecode::fixmap:
-            case typecode::map16:
-            case typecode::map32:
-                return true;
+            case typecode::float32:
+            case typecode::float64:
+                return entity_type::floating_point;
 
-            default:
-                return false;
-        }
-    }
+            case typecode::positive_fixint:
+            case typecode::negative_fixint:
+            case typecode::uint8:
+            case typecode::uint16:
+            case typecode::uint32:
+            case typecode::uint64:
+            case typecode::int8:
+            case typecode::int16:
+            case typecode::int32:
+            case typecode::int64:
+                return entity_type::integer;
 
-    bool is_array_next() const override
-    {
-        switch (_typecode(_verify_eof(_buf->sgetc())))
-        {
+            case typecode::bool_false:
+            case typecode::bool_true:
+                return entity_type::boolean;
+
+            case typecode::fixstr:
+            case typecode::str8:
+            case typecode::str16:
+            case typecode::str32:
+                return entity_type::string;
+
+            case typecode::bin8:
+            case typecode::bin16:
+            case typecode::bin32:
+                return entity_type::binary;
+
             case typecode::fixarray:
             case typecode::array16:
             case typecode::array32:
-                return true;
+                return entity_type::array;
+
+            case typecode::fixmap:
+            case typecode::map16:
+            case typecode::map32:
+                return entity_type::dictionary;
+
+            case typecode::nil:
+                return entity_type::null;
 
             default:
-                return false;
+                throw error::reader_parse_failed{this, "unsupported format: %02x", header};
         }
     }
 

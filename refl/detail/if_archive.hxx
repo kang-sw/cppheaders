@@ -392,12 +392,54 @@ class if_reader : public if_archive_base
     //! Assert key on next read
     virtual void read_key_next() = 0;
 
+    //! Get next type
+    virtual entity_type type_next() const = 0;
+
     //! check if next statement is null
-    virtual bool is_null_next() const = 0;
+    bool is_null_next() const
+    {
+        return type_next() == entity_type::null;
+    };
 
     //! type getters
-    virtual bool is_object_next() const = 0;
-    virtual bool is_array_next() const  = 0;
+    bool is_object_next() const
+    {
+        switch (type_next())
+        {
+            case entity_type::object:
+            case entity_type::dictionary:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    bool is_array_next() const
+    {
+        switch (type_next())
+        {
+            case entity_type::array:
+            case entity_type::tuple:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    bool is_number_next() const
+    {
+        switch (type_next())
+        {
+            case entity_type::integer:
+            case entity_type::floating_point:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    bool is_boolean_next() const { return type_next() == entity_type::boolean; }
+    bool is_string_next() const { return type_next() == entity_type::string; }
 };
 
 template <typename Any_>
