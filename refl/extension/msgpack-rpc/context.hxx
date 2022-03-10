@@ -110,6 +110,16 @@ class if_connection
     virtual void launch() = 0;
 
     /**
+     * Force disconnect
+     */
+    virtual void disconnect() {}
+
+    /**
+     * Set timeout
+     */
+    virtual void set_timeout(std::chrono::microseconds) {}
+
+    /**
      * Get owner weak pointer
      */
     auto owner() const { return _owner; }
@@ -308,7 +318,7 @@ class session : public std::enable_shared_from_this<session>
     std::string _method_name_buf;
 
     // Check function is waiting for awake.
-    std::atomic_bool _waiting;
+    std::atomic_bool _waiting{false};
 
     // RPC reply table. Old ones may set timeout exceptions
     std::map<int, request_info> _requests;
@@ -335,6 +345,7 @@ class session : public std::enable_shared_from_this<session>
 
         // Fill profile info
         _profile.peer_name = _conn->peer();
+        _conn->set_timeout(conf.timeout);
 
         // Notify creation to monitor
         if (auto monitor = _monitor.lock()) { monitor->on_new_session(_profile); }
@@ -1009,9 +1020,14 @@ class context
     bool _erase_session(session_wptr wptr)
     {
         if (auto ptr = wptr.lock())
+        {
+            ptr->_conn->disconnect();
             ptr->_pending_kill.store(true, std::memory_order_release);
+        }
         else
+        {
             return false;  // handle already disposed.
+        }
 
         _session_notify.critical_section(
                 [this, wp = wptr] {

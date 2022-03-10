@@ -157,6 +157,17 @@ class basic_socket_connection : public if_connection
         ;  // There's nothing to do explicitly on launch.
     }
 
+    void disconnect() override
+    {
+        _buf.socket().close();
+    }
+
+    void set_timeout(std::chrono::microseconds microseconds) override
+    {
+        using option_timeout = asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO>;
+        _buf.socket().set_option(option_timeout(microseconds.count() / 1000));
+    }
+
    private:
     static std::string peer_string(typename socket::endpoint_type const& ep)
     {
