@@ -192,22 +192,49 @@ class service_info
         return *this;
     }
 
-    template <size_t N_, typename Ret_, typename... Params_, typename Callable_>
-    service_info& operator()(
+    //    template <size_t N_, typename Ret_, typename... Params_, typename Callable_>
+    //    service_info& operator()(
+    //            signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
+    //            Callable_&& service)
+    //    {
+    //        using iface_t    = std::decay_t<decltype(iface)>;
+    //        using callable_t = std::decay_t<decltype(service)>;
+    //
+    //        std::string name{iface.name()};
+    //
+    //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature, callable_t>)
+    //            return serve(name, typename iface_t::serve_signature{std::forward<Callable_>(service)});
+    //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_1, callable_t>)
+    //            return serve1(name, typename iface_t::serve_signature_1{std::forward<Callable_>(service)});
+    //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_2, callable_t>)
+    //            return serve2(name, typename iface_t::serve_signature_2{std::forward<Callable_>(service)});
+    //    }
+
+    template <size_t N_, typename Ret_, typename... Params_,
+              typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
+    service_info& serve(
             signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-            Callable_&& service)
+            typename Signature_::serve_signature_2 func)
     {
-        using iface_t     = std::decay_t<decltype(iface)>;
-        using callable_t = std::decay_t<decltype(service)>;
+        return serve2(std::string(iface.name()), std::move(func));
+    }
 
-        std::string name{iface.name()};
+    template <size_t N_, typename Ret_, typename... Params_,
+              typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
+    service_info& serve(
+            signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
+            typename Signature_::serve_signature_1 func)
+    {
+        return serve1(std::string(iface.name()), std::move(func));
+    }
 
-        if constexpr (std::is_constructible_v<typename iface_t::serve_signature, callable_t>)
-            return serve(name, typename iface_t::serve_signature{std::forward<Callable_>(service)});
-        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_1, callable_t>)
-            return serve1(name, typename iface_t::serve_signature_1{std::forward<Callable_>(service)});
-        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_2, callable_t>)
-            return serve2(name, typename iface_t::serve_signature_2{std::forward<Callable_>(service)});
+    template <size_t N_, typename Ret_, typename... Params_,
+              typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
+    service_info& serve(
+            signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
+            typename Signature_::serve_signature func)
+    {
+        return serve(std::string(iface.name()), std::move(func));
     }
 
    public:

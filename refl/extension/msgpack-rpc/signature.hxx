@@ -24,6 +24,7 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
+#pragma once
 #include <array>
 #include <tuple>
 

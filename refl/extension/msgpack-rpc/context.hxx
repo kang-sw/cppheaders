@@ -1036,7 +1036,7 @@ inline void if_connection::notify_receive()
         owner->wakeup();
 }
 
-void if_connection::notify_disconnect()
+inline void if_connection::notify_disconnect()
 {
     if (auto owner = _owner.lock())
         owner->dispose_self();
