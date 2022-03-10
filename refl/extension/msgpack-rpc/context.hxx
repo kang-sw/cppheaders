@@ -713,6 +713,7 @@ class context
     std::deque<session_wptr> _sessions;
 
     mutable thread::event_wait _session_notify;
+    pool<std::vector<session_ptr>> _notify_pool;
 
     //! Context monitor
     std::weak_ptr<if_context_monitor> _monitor;
@@ -824,17 +825,18 @@ class context
     template <typename... Params_>
     void notify_all(std::string_view method, Params_&&... params)
     {
-        std::vector<session_ptr> all;
+        auto all = _notify_pool.checkout();
+        all->clear();
 
         _session_notify.critical_section(
                 [&] {
-                    all.reserve(_sessions.size());
+                    all->reserve(_sessions.size());
 
                     for (auto& wp : _sessions)
-                        if (auto sp = _impl_checkout(wp)) { all.emplace_back(std::move(sp)); }
+                        if (auto sp = _impl_checkout(wp)) { all->emplace_back(std::move(sp)); }
                 });
 
-        for (auto& sp : all)
+        for (auto& sp : *all)
         {
             try
             {
@@ -843,7 +845,7 @@ class context
             }
             catch (invalid_connection&)
             {
-                ;  // do nothing, let it disposed
+                ;  // do nothing, let it be disposed
             }
             catch (archive::error::archive_exception&)
             {
