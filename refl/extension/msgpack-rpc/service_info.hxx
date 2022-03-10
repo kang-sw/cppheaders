@@ -37,7 +37,7 @@
 #include "../../archive/msgpack-reader.hxx"
 #include "../../archive/msgpack-writer.hxx"
 #include "../../detail/object_core.hxx"
-#include "stub.hxx"
+#include "signature.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
 using namespace archive::msgpack;
@@ -194,20 +194,20 @@ class service_info
 
     template <size_t N_, typename Ret_, typename... Params_, typename Callable_>
     service_info& operator()(
-            signature_t<N_, Ret_, std::tuple<Params_...>> const& stub,
+            signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
             Callable_&& service)
     {
-        using stub_t     = std::decay_t<decltype(stub)>;
+        using iface_t     = std::decay_t<decltype(iface)>;
         using callable_t = std::decay_t<decltype(service)>;
 
-        std::string name{stub.name()};
+        std::string name{iface.name()};
 
-        if constexpr (std::is_constructible_v<typename stub_t::serve_signature, callable_t>)
-            return serve(name, typename stub_t::serve_signature{std::forward<Callable_>(service)});
-        if constexpr (std::is_constructible_v<typename stub_t::serve_signature_1, callable_t>)
-            return serve1(name, typename stub_t::serve_signature_1{std::forward<Callable_>(service)});
-        if constexpr (std::is_constructible_v<typename stub_t::serve_signature_2, callable_t>)
-            return serve2(name, typename stub_t::serve_signature_2{std::forward<Callable_>(service)});
+        if constexpr (std::is_constructible_v<typename iface_t::serve_signature, callable_t>)
+            return serve(name, typename iface_t::serve_signature{std::forward<Callable_>(service)});
+        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_1, callable_t>)
+            return serve1(name, typename iface_t::serve_signature_1{std::forward<Callable_>(service)});
+        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_2, callable_t>)
+            return serve2(name, typename iface_t::serve_signature_2{std::forward<Callable_>(service)});
     }
 
    public:

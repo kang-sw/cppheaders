@@ -133,7 +133,4 @@ constexpr auto create_signature(char const (&name)[N_])
 
     return signature_t<N_, return_type, parameter_type>{name};
 }
-
-static auto const _sample_stub = create_signature<void(int)>("hell!");
-
 }  // namespace CPPHEADERS_NS_::msgpack::rpc
