@@ -78,26 +78,26 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
     template <class RpcContext_>
     struct invoke_proxy_t
     {
-        signature_t* const _host;
+        signature_t const* const _host;
         RpcContext_* const _rpc;
 
        public:
-        rpc_status rpc(return_type* ret, Params_ const&... args)
+        rpc_status rpc(return_type* ret, Params_ const&... args) const
         {
             return _rpc->rpc(ret, _host->name(), args...);
         }
 
-        void notify(Params_ const&... args)
+        void notify(Params_ const&... args) const
         {
             _rpc->notify(_host->name(), args...);
         }
 
-        void notify_all(Params_ const&... args)
+        void notify_all(Params_ const&... args) const
         {
             _rpc->notify_all(_host->name(), args...);
         }
 
-        return_type operator()(Params_ const&... args)
+        return_type operator()(Params_ const&... args) const
         {
             rpc_status result;
 
@@ -119,9 +119,9 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
     };
 
     template <class RpcContext_>
-    invoke_proxy_t<RpcContext_> operator()(RpcContext_& rpc)
+    auto operator()(RpcContext_& rpc) const
     {
-        return {this, &rpc};
+        return invoke_proxy_t<RpcContext_>{this, &rpc};
     }
 };
 
