@@ -929,6 +929,17 @@ class context
         return n;
     }
 
+    void disconnect_all()
+    {
+        _session_notify.critical_section(
+                [&] {
+                    for (auto& wp : _sessions)
+                        _erase_session(wp);
+
+                    _sessions.clear();
+                });
+    }
+
    protected:
     void dispatch(function<void()> message) { _dispatch(std::move(message)); }
 
