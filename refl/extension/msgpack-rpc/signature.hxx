@@ -59,9 +59,9 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
    public:
     using return_type       = RetVal_;
     using rpc_signature     = function<void(RetVal_*, Params_...)>;
-    using serve_signature   = function<RetVal_(Params_...)>;
-    using serve_signature_1 = function<void(RetVal_*, Params_...)>;
-    using serve_signature_2 = function<void(session_profile const&, RetVal_*, Params_...)>;
+    using serve_signature   = function<RetVal_(Params_&...)>;
+    using serve_signature_1 = function<void(RetVal_*, Params_&...)>;
+    using serve_signature_2 = function<void(session_profile const&, RetVal_*, Params_&...)>;
 
    private:
     char _method_name[N_]{};
