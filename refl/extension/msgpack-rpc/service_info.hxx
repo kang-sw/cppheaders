@@ -155,11 +155,11 @@ class service_info
     {
         function<void(session_profile const&, RetVal_*, Params_...)> fn =
                 [_handler = std::move(handler)]  //
-                (auto&&, RetVal_* buffer, Params_&&... args) mutable {
+                (auto&&, RetVal_* buffer, auto&&... args) mutable {
                     if constexpr (std::is_void_v<RetVal_>)
-                        _handler(buffer, std::forward<Params_>(args)...);
+                        _handler(buffer, std::forward<decltype(args)>(args)...);
                     else
-                        _handler(buffer, std::forward<Params_>(args)...);
+                        _handler(buffer, std::forward<decltype(args)>(args)...);
                 };
 
         this->serve2(std::move(method_name), std::move(fn));
@@ -181,11 +181,11 @@ class service_info
     {
         function<void(session_profile const&, RetVal_*, Params_...)> fn =
                 [_handler = std::move(handler)]  //
-                (auto&&, RetVal_* buffer, Params_&&... args) mutable {
+                (auto&&, RetVal_* buffer, auto&&... args) mutable {
                     if constexpr (std::is_void_v<RetVal_>)
-                        _handler(std::forward<Params_>(args)...);
+                        _handler(std::forward<decltype(args)>(args)...);
                     else
-                        *buffer = _handler(std::forward<Params_>(args)...);
+                        *buffer = _handler(std::forward<decltype(args)>(args)...);
                 };
 
         this->serve2(std::move(method_name), std::move(fn));
