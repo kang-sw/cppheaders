@@ -72,6 +72,10 @@
 #define CPPH_FINALLY(Callable) \
     [[maybe_unused]] auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = CPPHEADERS_NS_::cleanup(Callable)
 
+#define CPPH_CALL_ON_EXIT(Expr) \
+    [[maybe_unused]] auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = CPPHEADERS_NS_::cleanup([&] { Expr; })
+
+/* "template_utils.hxx" ***************************************************************************/
 #define CPPH_SFINAE_EXPR(Name, TParam, ...)                                  \
     template <typename TParam, class = void>                                 \
     struct Name : std::false_type                                            \
