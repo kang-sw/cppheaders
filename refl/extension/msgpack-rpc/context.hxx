@@ -849,7 +849,12 @@ class context
                 });
 
         for (auto& wp : clone)
+        {
+            using namespace std::literals;
+
             _erase_session(wp);
+            while (not wp.expired()) { std::this_thread::sleep_for(1ms); }
+        }
     }
 
    protected:

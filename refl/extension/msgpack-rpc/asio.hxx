@@ -172,7 +172,7 @@ class basic_socket_connection : public if_connection
 
     void disconnect() override
     {
-        _buf.socket().close();
+        _buf.socket() = socket{_buf.socket().get_executor()};
     }
 
     void set_timeout(std::chrono::microseconds microseconds) override
