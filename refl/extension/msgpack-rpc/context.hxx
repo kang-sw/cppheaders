@@ -203,6 +203,7 @@ class session : public std::enable_shared_from_this<session>
    private:
     friend class rpc::context;
 
+    std::weak_ptr<nullptr_t> _owner_fence;
     context* _owner = {};
     config _conf;
 
@@ -385,13 +386,7 @@ class session : public std::enable_shared_from_this<session>
 
     bool pending_kill() const noexcept { return _pending_kill.load(std::memory_order_acquire); }
 
-    void _start_()
-    {
-        // As weak_from_this cannot be called inside of constructor,
-        //  initialization of each sessions must be called explicitly.
-        _waiting = true;
-        _conn->_init_(weak_from_this());
-    }
+    void _start_();
 
    private:
     void _wakeup_func()
@@ -635,6 +630,8 @@ struct rpc_wait_handle
     operator bool() const noexcept { return !!_ptr; }
     operator rpc_status() const noexcept { return _ec; }
 
+    auto errc() const noexcept { return _ec; }
+
     rpc_wait_handle() noexcept                  = default;
     rpc_wait_handle(rpc_wait_handle&&) noexcept = default;
     rpc_wait_handle& operator=(rpc_wait_handle&&) noexcept = default;
@@ -666,6 +663,9 @@ class context
 
     //! Context monitor
     std::weak_ptr<if_context_monitor> _monitor;
+
+    // Lifetime guard
+    std::shared_ptr<nullptr_t> _fence = std::make_shared<nullptr_t>();
 
    public:
     std::chrono::milliseconds global_timeout{6'000'000};
@@ -954,9 +954,7 @@ class context
         for (auto& wp : clone)
         {
             using namespace std::literals;
-
             _erase_session(wp);
-            while (not wp.expired()) { std::this_thread::sleep_for(1ms); }
         }
     }
 
@@ -1114,7 +1112,17 @@ inline service_info::handler_table_type const& session::_get_services() const
 
 inline void session::_erase_self()
 {
-    _owner->_erase_session(weak_from_this());
+    if (auto _lc_ = _owner_fence.lock())
+        _owner->_erase_session(weak_from_this());
+}
+
+inline void session::_start_()
+{
+    // As weak_from_this cannot be called inside of constructor,
+    //  initialization of each sessions must be called explicitly.
+    _waiting     = true;
+    _owner_fence = _owner->_fence;
+    _conn->_init_(weak_from_this());
 }
 
 }  // namespace detail
