@@ -668,6 +668,11 @@ class context
     context(context const&)                = delete;
     context(context&&) noexcept            = delete;
 
+    ~context() noexcept
+    {
+        disconnect_all();
+    }
+
     /**
      * Call RPC function. Will be load-balanced automatically.
      *
