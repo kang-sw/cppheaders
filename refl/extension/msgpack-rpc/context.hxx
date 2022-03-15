@@ -702,7 +702,11 @@ class context
 
     ~context() noexcept
     {
+        std::weak_ptr anchor{_fence};
         disconnect_all();
+
+        _fence.reset();
+        while (not anchor.expired()) { std::this_thread::yield(); }
     }
 
     /**
