@@ -1030,8 +1030,13 @@ class context
             ;
         }
 
-        if (session->pending_kill()) { session = {}; }
-        if (session) { ++session->_refcnt; }
+        if (session)
+        {
+            if (session->pending_kill())
+                session = {};
+            else
+                ++session->_refcnt;
+        }
 
         return session;
     }
