@@ -241,6 +241,9 @@ class session : public std::enable_shared_from_this<session>
     std::weak_ptr<if_context_monitor> _monitor;
 
    public:
+    using request_handle_type = decltype(_requests)::iterator;
+
+   public:
     session(context* owner,
             config const& conf,
             std::unique_ptr<if_connection> conn,
@@ -319,11 +322,12 @@ class session : public std::enable_shared_from_this<session>
         return request;
     }
 
-    auto rpc_wait(decltype(_requests)::iterator request)
+    auto rpc_wait(request_handle_type request,
+                  std::chrono::microseconds timeout)
     {
         // wait for reply
         auto wait_fn = [&] { return request->second.status != rpc_status::waiting; };
-        auto ready   = _rpc_notify.wait_for(_conf.timeout, wait_fn);
+        if (not _rpc_notify.wait_for(timeout, wait_fn)) { return rpc_status::timeout; }
 
         // timeout
         auto errc   = request->second.status;
@@ -336,7 +340,14 @@ class session : public std::enable_shared_from_this<session>
         if (errc == rpc_status::unknown_error && except)
             std::rethrow_exception(except);
 
-        return ready ? errc : rpc_status::timeout;
+        return errc;
+    }
+
+    auto rpc_abort(request_handle_type request)
+    {
+        _rpc_notify.critical_section([&] {
+            _requests.erase(request);
+        });
     }
 
     template <typename... Params_>
@@ -360,6 +371,12 @@ class session : public std::enable_shared_from_this<session>
     void wakeup();
     void dispose_self()
     {
+        _rpc_notify.notify_all(
+                [&] {
+                    for (auto& pair : _requests)
+                        pair.second.status = rpc_status::dead_peer;
+                });
+
         _erase_self();
     }
 
@@ -608,6 +625,21 @@ class session : public std::enable_shared_from_this<session>
 
 using session_config = detail::session::config;
 
+struct rpc_wait_handle
+{
+    std::shared_ptr<detail::session> _ptr;
+
+    detail::session::request_handle_type _req;
+    rpc_status _ec = rpc_status::okay;
+
+    operator bool() const noexcept { return !!_ptr; }
+    operator rpc_status() const noexcept { return _ec; }
+
+    rpc_wait_handle() noexcept                  = default;
+    rpc_wait_handle(rpc_wait_handle&&) noexcept = default;
+    rpc_wait_handle& operator=(rpc_wait_handle&&) noexcept = default;
+};
+
 class context
 {
     friend class detail::session;
@@ -684,8 +716,8 @@ class context
      *
      * @throw remote_reply_exception
      */
-    template <typename RetVal_, typename... Params_>
-    auto rpc(RetVal_ retval, std::string_view method, Params_&&... params) -> rpc_status
+    template <typename RetPtr_, typename... Params_>
+    auto rpc(RetPtr_ retval, std::string_view method, Params_&&... params) -> rpc_status
     {
         auto session = _checkout();
         if (not session) { return rpc_status::timeout; }
@@ -693,7 +725,8 @@ class context
         try
         {
             auto request = session->rpc_send(retval, method, std::forward<Params_>(params)...);
-            auto result  = session->rpc_wait(request);
+            auto result  = session->rpc_wait(request, global_timeout);
+            if (result == rpc_status::timeout) { session->rpc_abort(request); }
 
             _checkin(std::move(session));
             return result;
@@ -713,6 +746,76 @@ class context
             // same as above.
             return rpc_status::dead_peer;
         }
+    }
+
+    template <typename RetPtr_, typename... Params_>
+    auto rpc_async(RetPtr_ retval, std::string_view method, Params_&&... params) -> rpc_wait_handle
+    {
+        rpc_wait_handle handle;
+        auto session = _checkout();
+        if (not session) { return handle._ec = rpc_status::timeout, std::move(handle); }
+
+        try
+        {
+            handle._req = session->rpc_send(retval, method, std::forward<Params_>(params)...);
+            handle._ptr = std::move(session);
+            handle._ec  = rpc_status::okay;
+        }
+        catch (invalid_connection&)
+        {
+            // do nothing, session will be disposed automatically by disposing pointer.
+            handle._ec = rpc_status::dead_peer;
+        }
+        catch (archive::error::archive_exception&)
+        {
+            // same as above.
+            handle._ec = rpc_status::dead_peer;
+        }
+
+        return handle;
+    }
+
+    template <typename Duration_>
+    auto rpc_wait(rpc_wait_handle* h, Duration_&& wait_for)
+    {
+        auto session = std::move(h->_ptr);
+        try
+        {
+            using std::chrono::duration_cast;
+            using std::chrono::microseconds;
+            auto time_to_wait = duration_cast<microseconds>(wait_for);
+
+            auto result = session->rpc_wait(h->_req, time_to_wait);
+            if (result == rpc_status::timeout)
+            {
+                h->_ptr = std::move(session);
+                return result;
+            }
+
+            _checkin(std::move(session));
+            return result;
+        }
+        catch (remote_reply_exception& ec)
+        {
+            _checkin(std::move(session));
+            throw ec;
+        }
+        catch (invalid_connection&)
+        {
+            // do nothing, session will be disposed automatically by disposing pointer.
+            return rpc_status::dead_peer;
+        }
+        catch (archive::error::archive_exception&)
+        {
+            // same as above.
+            return rpc_status::dead_peer;
+        }
+    }
+
+    void rpc_abort(rpc_wait_handle h)
+    {
+        h._ptr->rpc_abort(h._req);
+        _checkin(std::move(h._ptr));
     }
 
     /**
@@ -893,6 +996,8 @@ class context
                         return true;
                     }
 
+                    if (_sessions.empty()) { return true; }
+
                     return false;
                 };
 
@@ -923,7 +1028,9 @@ class context
             ;
         }
 
+        if (session->pending_kill()) { session = {}; }
         if (session) { ++session->_refcnt; }
+
         return session;
     }
 
