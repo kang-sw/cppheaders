@@ -172,7 +172,7 @@ class basic_socket_connection : public if_connection
 
     void disconnect() override
     {
-        _buf.socket() = socket{_buf.socket().get_executor()};
+        _buf.socket().close();
     }
 
     void set_timeout(std::chrono::microseconds microseconds) override
@@ -233,7 +233,7 @@ auto open_acceptor(
 
         void operator()(asio::error_code ec)
         {
-            if (ec) { throw asio::system_error{ec}; }  // propagate error to executor
+            if (ec) { return; }  // propagate error to executor
 
             auto& [_sock, _strand, _cfg] = *_body;
 

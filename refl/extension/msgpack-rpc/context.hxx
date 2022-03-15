@@ -1058,8 +1058,10 @@ class context
     {
         if (auto ptr = wptr.lock())
         {
-            ptr->_conn->disconnect();
-            ptr->_pending_kill.store(true, std::memory_order_release);
+            if (not ptr->_pending_kill.exchange(true))
+            {
+                ptr->_conn->disconnect();
+            }
         }
         else
         {
