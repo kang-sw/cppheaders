@@ -45,12 +45,14 @@ class transient_socket_streambuf : public std::streambuf
 
    private:
     socket_type _socket;
+    std::chrono::microseconds _timeout = {};
 
     char _wbuf[2048];
     char _rbuf[2048];
 
    public:
-    explicit transient_socket_streambuf(socket_type socket) : _socket(std::move(socket))
+    explicit transient_socket_streambuf(socket_type socket)
+            : _socket(std::move(socket))
     {
         setp(_wbuf, *(&_wbuf + 1));
         setg(_rbuf, _rbuf, _rbuf);
@@ -101,9 +103,20 @@ class transient_socket_streambuf : public std::streambuf
 
     std::streamsize showmanyc() override
     {
+        return _showmanyc_impl();
+    }
+
+    size_t _showmanyc_impl()
+    {
         asio::socket_base::bytes_readable navail{true};
         _socket.io_control(navail);
         return navail.get();
+    }
+
+   public:
+    void set_timeout(std::chrono::microseconds microseconds)
+    {
+        _timeout = microseconds;
     }
 };
 
@@ -164,8 +177,7 @@ class basic_socket_connection : public if_connection
 
     void set_timeout(std::chrono::microseconds microseconds) override
     {
-        using option_timeout = asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO>;
-        _buf.socket().set_option(option_timeout(microseconds.count() / 1000));
+        _buf.set_timeout(microseconds);
     }
 
    private:

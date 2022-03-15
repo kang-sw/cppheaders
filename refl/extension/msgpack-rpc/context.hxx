@@ -251,7 +251,7 @@ class session : public std::enable_shared_from_this<session>
 
         // Fill profile info
         _profile.peer_name = _conn->peer();
-        _conn->set_timeout(conf.timeout);
+        _conn->set_timeout(_conf.timeout);
 
         // Notify creation to monitor
         if (auto monitor = _monitor.lock()) { monitor->on_new_session(_profile); }
@@ -842,13 +842,14 @@ class context
 
     void disconnect_all()
     {
+        decltype(_sessions) clone;
         _session_notify.critical_section(
                 [&] {
-                    for (auto& wp : _sessions)
-                        _erase_session(wp);
-
-                    _sessions.clear();
+                    std::swap(clone, _sessions);
                 });
+
+        for (auto& wp : clone)
+            _erase_session(wp);
     }
 
    protected:
