@@ -26,6 +26,7 @@
 
 #pragma once
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 #include "__namespace__"
