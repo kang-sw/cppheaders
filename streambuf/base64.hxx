@@ -36,8 +36,7 @@ class basic_b64 : public std::streambuf
 {
     std::streambuf* _src;
 
-    enum
-    {
+    enum {
         n_write_words = WriteWords_,
         n_read_words  = ReadWords_,
 
@@ -74,8 +73,7 @@ class basic_b64 : public std::streambuf
    protected:
     int_type overflow(int_type ch) override
     {
-        if constexpr (n_write_words > 0)
-        {
+        if constexpr (n_write_words > 0) {
             if (_n_obuf() != 0) { _write_word(); }
 
             setp(_o().data(), _o().data() + _o().size());
@@ -84,17 +82,14 @@ class basic_b64 : public std::streambuf
             _o()[0] = ch;
 
             return traits_type::to_int_type(ch);
-        }
-        else
-        {
+        } else {
             return traits_type::eof();
         }
     }
 
     int_type underflow() override
     {
-        if constexpr (n_read_words > 0)
-        {
+        if constexpr (n_read_words > 0) {
             char buf[base64::encoded_size(n_read_bytes)];
             auto n_read = _src->sgetn(buf, sizeof buf);
 
@@ -106,9 +101,7 @@ class basic_b64 : public std::streambuf
 
             setg(_i().data(), _i().data(), _i().data() + n_decoded);
             return traits_type::to_int_type(_i()[0]);
-        }
-        else
-        {
+        } else {
             return traits_type::eof();
         }
     }
@@ -118,8 +111,7 @@ class basic_b64 : public std::streambuf
         if (not _src) { throw std::runtime_error{"source buffer not set"}; }
 
         if constexpr (n_write_words > 0)
-            if (_n_obuf() > 0)
-            {
+            if (_n_obuf() > 0) {
                 _write_word();
                 setp(_o().data(), _o().data() + _o().size());
             }
@@ -135,8 +127,7 @@ class basic_b64 : public std::streambuf
 
     void _write_word()
     {
-        if constexpr (n_write_words > 0)
-        {
+        if constexpr (n_write_words > 0) {
             char encoded[base64::encoded_size(n_write_bytes)];
 
             auto n_obuf    = _n_obuf();

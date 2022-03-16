@@ -60,8 +60,7 @@ class nlohmann_json_manip_t : public templated_primitive_control<nlohmann::json>
     {
         // TODO
 
-        for (auto& [key, value] : data.items())
-        {
+        for (auto& [key, value] : data.items()) {
         }
     }
 

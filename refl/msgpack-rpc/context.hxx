@@ -287,24 +287,15 @@ class session : public std::enable_shared_from_this<session>
             request->second.completion_handler =
                     [result, handler = std::forward<CompletionToken_>(handler)]  //
                     (reader * rd, std::exception const* except) mutable {
-                        if (except)
-                        {
+                        if (except) {
                             handler(except);
-                        }
-                        else
-                        {
-                            try
-                            {
-                                if constexpr (std::is_null_pointer_v<RetPtr_>)
-                                {
+                        } else {
+                            try {
+                                if constexpr (std::is_null_pointer_v<RetPtr_>) {
                                     *rd >> nullptr;
-                                }
-                                else if constexpr (std::is_void_v<std::remove_pointer_t<RetPtr_>>)
-                                {
+                                } else if constexpr (std::is_void_v<std::remove_pointer_t<RetPtr_>>) {
                                     *rd >> nullptr;
-                                }
-                                else
-                                {
+                                } else {
                                     if (result == nullptr)
                                         *rd >> nullptr;  // skip
                                     else
@@ -312,14 +303,10 @@ class session : public std::enable_shared_from_this<session>
                                 }
 
                                 handler((std::exception const*)nullptr);
-                            }
-                            catch (type_mismatch_exception& e)
-                            {
+                            } catch (type_mismatch_exception& e) {
                                 rpc_error exception{rpc_status::invalid_return_type};
                                 handler(&exception);
-                            }
-                            catch (std::exception& e)
-                            {
+                            } catch (std::exception& e) {
                                 handler(&e);
                                 throw detail::rpc_handler_fatal_state{};
                             }
@@ -360,16 +347,14 @@ class session : public std::enable_shared_from_this<session>
         bool found = false;
         decltype(request_info::completion_handler) handler;
         _rpc_notify.critical_section([&] {
-            if (auto iter = _requests.find(msgid); iter != _requests.end())
-            {
+            if (auto iter = _requests.find(msgid); iter != _requests.end()) {
                 found   = true;
                 handler = std::move(iter->second.completion_handler);
                 _requests.erase(iter);
             }
         });
 
-        if (found)
-        {
+        if (found) {
             rpc_error error{rpc_status::aborted};
             handler(nullptr, &error);
         }
@@ -457,8 +442,7 @@ class session : public std::enable_shared_from_this<session>
         _rpc_notify.notify_all(
                 [&] {
                     rpc_error error{rpc_status::aborted};
-                    for (auto& [msgid, elem] : _requests)
-                    {
+                    for (auto& [msgid, elem] : _requests) {
                     }
                 });
 
@@ -476,15 +460,13 @@ class session : public std::enable_shared_from_this<session>
     void _wakeup_func()
     {
         // NOTE: This function guaranteed to not be re-entered multiple times on single session
-        try
-        {
+        try {
             // Assume data is ready to be read.
             auto key = _reader.begin_array();
 
             rpc_type type;
 
-            switch (_reader >> type, type)
-            {
+            switch (_reader >> type, type) {
                 case rpc_type::request: _handle_request(); break;
                 case rpc_type::notify: _handle_notify(); break;
                 case rpc_type::reply: _handle_reply(); break;
@@ -497,17 +479,11 @@ class session : public std::enable_shared_from_this<session>
             // waiting for next input.
             _waiting.store(true, std::memory_order_release);
             _conn->begin_wait();
-        }
-        catch (detail::rpc_handler_fatal_state&)
-        {
+        } catch (detail::rpc_handler_fatal_state&) {
             _erase_self();
-        }
-        catch (invalid_connection&)
-        {
+        } catch (invalid_connection&) {
             _erase_self();
-        }
-        catch (archive::error::archive_exception&)
-        {
+        } catch (archive::error::archive_exception&) {
             _erase_self();
         }
     }
@@ -536,21 +512,16 @@ class session : public std::enable_shared_from_this<session>
         {
             _reader >> nullptr;
             iter->second.completion_handler(&_reader, nullptr);
-        }
-        else
-        {
+        } else {
             // TODO: Extract 'errmsg' as object and dump to string!
             std::string errmsg;
             _reader >> errmsg;
             _reader >> nullptr;  // skip payload
 
-            if (auto errc = from_string(errmsg); rpc_status::unknown_error == errc)
-            {
+            if (auto errc = from_string(errmsg); rpc_status::unknown_error == errc) {
                 remote_reply_exception exception{errmsg};
                 iter->second.completion_handler(nullptr, &exception);
-            }
-            else
-            {
+            } else {
                 rpc_error exception{errc};
                 iter->second.completion_handler(nullptr, &exception);
             }
@@ -584,20 +555,15 @@ class session : public std::enable_shared_from_this<session>
                       self->_writer.flush();
                   };
 
-        if (auto pair = find_ptr(_get_services(), _method_name_buf))
-        {
+        if (auto pair = find_ptr(_get_services(), _method_name_buf)) {
             auto& srv = pair->second;
             auto ctx  = _reader.begin_array();  // begin reading params
 
-            if (_reader.elem_left() < srv->num_params())
-            {
+            if (_reader.elem_left() < srv->num_params()) {
                 // number of parameters are insufficient.
                 fn_reply(this, msgid, to_string(rpc_status::invalid_parameter), nullptr);
-            }
-            else
-            {
-                try
-                {
+            } else {
+                try {
                     struct uobj_t
                     {
                         session* self;
@@ -613,29 +579,19 @@ class session : public std::enable_shared_from_this<session>
                                 fn_reply(self, msgid, nullptr, data);
                             },
                             &uobj);
-                }
-                catch (remote_handler_exception& ec)
-                {
+                } catch (remote_handler_exception& ec) {
                     fn_reply(this, msgid, ec.view(), nullptr);
-                }
-                catch (type_mismatch_exception& ec)
-                {
+                } catch (type_mismatch_exception& ec) {
                     fn_reply(this, msgid, to_string(rpc_status::invalid_parameter), nullptr);
-                }
-                catch (archive::error::archive_exception& ec)
-                {
+                } catch (archive::error::archive_exception& ec) {
                     throw detail::rpc_handler_fatal_state{};
-                }
-                catch (std::exception& ec)
-                {
+                } catch (std::exception& ec) {
                     fn_reply(this, msgid, ec.what(), nullptr);
                 }
             }
 
             _reader.end_array(ctx);  // end reading params
-        }
-        else
-        {
+        } else {
             _reader >> nullptr;
 
             lock_guard _wr_lock_{_write_lock};
@@ -658,39 +614,26 @@ class session : public std::enable_shared_from_this<session>
         int msgid = {};
         _reader >> _method_name_buf;
 
-        if (auto pair = find_ptr(_get_services(), _method_name_buf))
-        {
+        if (auto pair = find_ptr(_get_services(), _method_name_buf)) {
             auto& srv = pair->second;
             auto ctx  = _reader.begin_array();
 
-            if (_reader.elem_left() >= srv->num_params())
-            {
-                try
-                {
+            if (_reader.elem_left() >= srv->num_params()) {
+                try {
                     srv->invoke(_profile, _reader, nullptr, nullptr);
-                }
-                catch (remote_handler_exception&)
-                {
+                } catch (remote_handler_exception&) {
                     ;  // On handler error, do nothing as this is notifying handler.
-                }
-                catch (type_mismatch_exception&)
-                {
+                } catch (type_mismatch_exception&) {
                     ;
-                }
-                catch (archive::error::archive_exception&)
-                {
+                } catch (archive::error::archive_exception&) {
                     throw detail::rpc_handler_fatal_state{};
                 }
-            }
-            else
-            {
+            } else {
                 ;  // errnous situation ... as this is notify, just ignore.
             }
 
             _reader.end_array(ctx);
-        }
-        else
-        {
+        } else {
             _reader >> nullptr;
         }
     }
@@ -785,8 +728,7 @@ class context
             CompletionToken_&& handler,
             Params_&&... params) -> async_rpc_result::type
     {
-        try
-        {
+        try {
             auto handler_impl =
                     [this, session,
                      handler = std::forward<CompletionToken_>(handler)]  //
@@ -801,14 +743,10 @@ class context
                     std::forward<Params_>(params)...);
 
             return async_rpc_result::type{msgid};
-        }
-        catch (invalid_connection&)
-        {
+        } catch (invalid_connection&) {
             // As this connection is invalidated during writing, try find another session.
             return async_rpc_result::invalid_connection;
-        }
-        catch (archive::error::archive_exception&)
-        {
+        } catch (archive::error::archive_exception&) {
             // Archive exception is possibly raised when caller(parameter) is invalid.
             // In this case, abort execution of this function.
             _checkin(std::move(session));
@@ -828,11 +766,9 @@ class context
         // Basically, iterate until succeeds.
         request_handle result;
 
-        for (;;)
-        {
+        for (;;) {
             auto session = _checkout();
-            if (not session)
-            {
+            if (not session) {
                 result._msgid = async_rpc_result::no_active_connection;
                 break;
             }
@@ -843,8 +779,7 @@ class context
                     std::forward<CompletionToken_>(handler),
                     std::forward<Params_>(params)...);
 
-            if (msgid != async_rpc_result::invalid_connection)
-            {
+            if (msgid != async_rpc_result::invalid_connection) {
                 result._msgid = msgid;
                 break;
             }
@@ -873,8 +808,7 @@ class context
         volatile rpc_status status = rpc_status::unknown_error;
         std::exception_ptr user_except;
 
-        for (;;)
-        {
+        for (;;) {
             auto session = _checkout();
             if (not session) { return rpc_status::timeout; }
 
@@ -893,8 +827,7 @@ class context
                     std::move(fn_on_complete),
                     std::forward<Params_>(params)...);
 
-            if (msgid > 0)
-            {
+            if (msgid > 0) {
                 // Wait until RPC invocation finished
                 if (not session->wait_rpc(msgid, timeout))
                     return session->abort_rpc(msgid), rpc_status::timeout;
@@ -907,13 +840,9 @@ class context
                         if (retval && status == rpc_status::okay) { (void)*retval; }
 
                 return status;
-            }
-            else if (msgid == async_rpc_result::invalid_connection)
-            {
+            } else if (msgid == async_rpc_result::invalid_connection) {
                 continue;  // find other session
-            }
-            else
-            {
+            } else {
                 return rpc_status::internal_error;
             }
         }
@@ -933,8 +862,7 @@ class context
     template <typename... Params_>
     void notify(std::string_view method, Params_&&... params)
     {
-        try
-        {
+        try {
             using namespace std::chrono_literals;
 
             auto session = _checkout(false);
@@ -942,13 +870,9 @@ class context
 
             session->notify(method, std::forward<Params_>(params)...);
             _checkin(std::move(session));
-        }
-        catch (invalid_connection& e)
-        {
+        } catch (invalid_connection& e) {
             // do nothing, session will be disposed automatically by disposing pointer.
-        }
-        catch (archive::error::archive_exception&)
-        {
+        } catch (archive::error::archive_exception&) {
             // same as above.
         }
     }
@@ -970,19 +894,13 @@ class context
                         if (auto sp = _impl_checkout(wp)) { all->emplace_back(std::move(sp)); }
                 });
 
-        for (auto& sp : *all)
-        {
-            try
-            {
+        for (auto& sp : *all) {
+            try {
                 sp->notify(method, std::forward<Params_>(params)...);
                 _checkin(std::move(sp));
-            }
-            catch (invalid_connection&)
-            {
+            } catch (invalid_connection&) {
                 ;  // do nothing, let it be disposed
-            }
-            catch (archive::error::archive_exception&)
-            {
+            } catch (archive::error::archive_exception&) {
                 ;  // same as above.
             }
         }
@@ -1060,8 +978,7 @@ class context
                     std::swap(clone, _sessions);
                 });
 
-        for (auto& wp : clone)
-        {
+        for (auto& wp : clone) {
             using namespace std::literals;
             _erase_session(wp);
         }
@@ -1079,8 +996,7 @@ class context
         auto predicate =
                 [&] {
                     int max_cycle = _sessions.size();
-                    for (; not _sessions.empty() && max_cycle > 0; --max_cycle)
-                    {
+                    for (; not _sessions.empty() && max_cycle > 0; --max_cycle) {
                         // Everytime _checkout() is called, different session will be selected.
                         auto ptr = std::move(_sessions.front());
                         _sessions.pop_front();
@@ -1092,8 +1008,7 @@ class context
                         _sessions.push_back(ptr);
 
                         // Only 2 concurrent request can be accepted per session.
-                        if (session && session->_refcnt > 2)
-                        {
+                        if (session && session->_refcnt > 2) {
                             --session->_refcnt;
                             session = nullptr;
 
@@ -1121,22 +1036,18 @@ class context
         session_ptr session = {};
 
         auto source = _session_sources.find(ptr);
-        if (source != _session_sources.end())
-        {  // if given session is never occupied by any other context ..
+        if (source != _session_sources.end()) {  // if given session is never occupied by any other context ..
             session = *source;
             _session_sources.erase(source);
 
             assert(session->_refcnt == 0);
-        }
-        else if ((session = ptr.lock()) == nullptr)
-        {
+        } else if ((session = ptr.lock()) == nullptr) {
             // given session seems expired ...
             // do nothing, as given pointer already removed from sessions ...
             ;
         }
 
-        if (session)
-        {
+        if (session) {
             if (session->pending_kill())
                 session = {};
             else
@@ -1166,15 +1077,11 @@ class context
 
     bool _erase_session(session_wptr wptr)
     {
-        if (auto ptr = wptr.lock())
-        {
-            if (not ptr->_pending_kill.exchange(true))
-            {
+        if (auto ptr = wptr.lock()) {
+            if (not ptr->_pending_kill.exchange(true)) {
                 ptr->_conn->disconnect();
             }
-        }
-        else
-        {
+        } else {
             return false;  // handle already disposed.
         }
 

@@ -44,8 +44,7 @@ class reader : public archive::if_reader
 
     struct scope_t
     {
-        enum type_t
-        {
+        enum type_t {
             type_object,
             type_array,
             type_binary
@@ -103,8 +102,7 @@ class reader : public archive::if_reader
               typename = std::enable_if_t<sizeof(HeaderChar_) == 1>>
     uint32_t _read_elem_count(HeaderChar_ header)
     {
-        switch (_typecode(header))
-        {
+        switch (_typecode(header)) {
             case Fix_: return _buf->sbumpc(), (uint8_t)header & FixMask_;
             case _do_offset(Base_, Ofst_): return _bump_n_bigE<uint8_t>();
             case _do_offset(Base_, Ofst_ + 1): return _bump_n_bigE<uint16_t>();
@@ -145,8 +143,7 @@ class reader : public archive::if_reader
     template <typename ValTy_>
     auto _read_number(char header)
     {
-        switch (_typecode(header))
-        {
+        switch (_typecode(header)) {
             case typecode::positive_fixint:
             case typecode::negative_fixint:
                 _buf->sbumpc();
@@ -319,8 +316,7 @@ class reader : public archive::if_reader
     entity_type type_next() const override
     {
         auto header = _verify_eof(_buf->sgetc());
-        switch (_typecode(header))
-        {
+        switch (_typecode(header)) {
             case typecode::float32:
             case typecode::float64:
                 return entity_type::floating_point;
@@ -384,8 +380,7 @@ class reader : public archive::if_reader
         // intentionally uses getc instead of bumpc
         auto header         = _verify_eof(_buf->sgetc());
         uint32_t skip_bytes = 0;
-        switch (_typecode(header))
-        {
+        switch (_typecode(header)) {
             case typecode::positive_fixint:
             case typecode::negative_fixint:
             case typecode::bool_false:
@@ -456,8 +451,7 @@ class reader : public archive::if_reader
     {
         // check if given context key exists in scopes
         for (auto it = _scope.rbegin(), end = _scope.rend(); it != end; ++it)
-            if (it->ctxkey.data.value == key.value)
-            {
+            if (it->ctxkey.data.value == key.value) {
                 if (it->type == type)
                     return it - _scope.rbegin() + 1;
                 else
@@ -508,8 +502,7 @@ class reader : public archive::if_reader
         if (scope->type == scope_t::type_binary)
             throw error::reader_invalid_context{this, "binary can not have any subobject!"};
 
-        if (scope->type == scope_t::type_object && not(scope->elems_left & 1))
-        {
+        if (scope->type == scope_t::type_object && not(scope->elems_left & 1)) {
             if (not scope->reading_key)
                 throw error::reader_invalid_context{this, "read_key_next is not called!"};
             else
@@ -544,8 +537,7 @@ class reader : public archive::if_reader
     void _discard_n_bytes(size_t bytes)
     {
         char buf[256];
-        for (size_t to_read; bytes > 0; bytes -= to_read)
-        {
+        for (size_t to_read; bytes > 0; bytes -= to_read) {
             to_read = std::min(sizeof buf, bytes);
 
             if (_buf->sgetn(buf, to_read) != to_read)
@@ -556,8 +548,7 @@ class reader : public archive::if_reader
    private:
     typecode _typecode(char v) const
     {
-        switch ((v & 0xf0) >> 4)
-        {
+        switch ((v & 0xf0) >> 4) {
             case 0b1100:
             case 0b1101: return typecode(v);
 

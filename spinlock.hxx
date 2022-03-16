@@ -41,16 +41,13 @@ struct spinlock
 
     void lock() noexcept
     {
-        for (;;)
-        {
+        for (;;) {
             // Optimistically assume the lock is free on the first try
-            if (!lock_.exchange(true, std::memory_order_acquire))
-            {
+            if (!lock_.exchange(true, std::memory_order_acquire)) {
                 return;
             }
             // Wait for lock to be released without generating cache misses
-            while (lock_.load(std::memory_order_relaxed))
-            {
+            while (lock_.load(std::memory_order_relaxed)) {
                 // Issue X86 PAUSE or ARM YIELD instruction to reduce contention between
                 // hyper-threads
                 std::this_thread::yield();

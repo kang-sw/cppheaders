@@ -47,14 +47,12 @@ bool wait_pointer_unique(Pointer_&& ptr, Dur_&& duration)
 
     if (not ptr) { return true; }
 
-    do
-    {
+    do {
         if (ptr.use_count() == 1)
             return true;
 
         std::this_thread::yield();
-    }
-    while (now() < until);
+    } while (now() < until);
 
     return false;
 }

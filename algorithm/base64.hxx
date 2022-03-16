@@ -95,8 +95,7 @@ constexpr frame_t encode_single_frame(bytes_t const* bytes) noexcept
     return _encode_single_frame(b);
 }
 
-enum class bytes_length
-{
+enum class bytes_length {
     _1 = 1,
     _2 = 2
 };
@@ -119,8 +118,7 @@ constexpr uint32_t _decode_single(frame_t frame) noexcept
     uint32_t b     = 0;
     bool has_error = false;
 
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
         b += int(tb_decode[frame[i]]) << ((3 - i) * 6);
         has_error |= tb_decode[frame[i]] >= uint8_t{128};
     }
@@ -145,8 +143,7 @@ constexpr int decode_last_frame(frame_t frame, bytes_t* bytes) noexcept
     auto success = value != ~uint32_t{};
     auto len     = (3 - (frame[3] == '=') - (frame[2] == '='));
 
-    for (size_t i = 0; i < len; ++i)
-    {
+    for (size_t i = 0; i < len; ++i) {
         (*bytes)[i] = ((value >> (i * 8)) & 0xff);
     }
 
@@ -173,8 +170,7 @@ constexpr void encode_bytes(void const* data, size_t len, OutIt_ out) noexcept
 {
     auto src = (detail::bytes_t const*)data;
 
-    for (; len >= 3; len -= 3, ++src)
-    {
+    for (; len >= 3; len -= 3, ++src) {
         auto encoded = detail::encode_single_frame(src);
         *(out++)     = encoded[0];
         *(out++)     = encoded[1];
@@ -182,8 +178,7 @@ constexpr void encode_bytes(void const* data, size_t len, OutIt_ out) noexcept
         *(out++)     = encoded[3];
     }
 
-    if (len > 0)
-    {
+    if (len > 0) {
         auto encoded = detail::encode_single_frame_with_padding(
                 src->data(), (detail::bytes_length)len);
 
@@ -221,8 +216,7 @@ constexpr bool decode_bytes(char const* data, size_t size, OutIt_ out)
 
     bool has_error = false;
 
-    for (; it < end_1; ++it)
-    {
+    for (; it < end_1; ++it) {
         has_error |= detail::decode_single_frame(*it, &decoded);
         *(out++) = decoded[0];
         *(out++) = decoded[1];

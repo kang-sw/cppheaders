@@ -114,13 +114,10 @@ class service_info
                             ((reader >> params), ...);
 
                             pool_ptr<return_type> rval;
-                            if constexpr (std::is_void_v<RetVal_>)
-                            {
+                            if constexpr (std::is_void_v<RetVal_>) {
                                 _handler(session, nullptr, params...);
                                 if (fn_write) { fn_write(uobj, refl::object_const_view_t{nullptr}); }
-                            }
-                            else
-                            {
+                            } else {
                                 rval = _rv_pool.checkout();
                                 _handler(session, &*rval, params...);
                                 if (fn_write) { fn_write(uobj, refl::object_const_view_t{*rval}); }

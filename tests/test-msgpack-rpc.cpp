@@ -201,8 +201,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
 
         SECTION("Notify")
         {
-            for (int i = 0; i < 32; ++i)
-            {
+            for (int i = 0; i < 32; ++i) {
                 ioc.post([&ctx, i] {
                     {
                         std::lock_guard _lc_{_mtx_cout};
@@ -213,8 +212,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                 });
             }
 
-            for (int i = 0; i < 32; ++i)
-            {
+            for (int i = 0; i < 32; ++i) {
                 ioc.post([&ctx, i] {
                     {
                         std::lock_guard _lc_{_mtx_cout};
@@ -232,31 +230,27 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
         {
             dup_ioc();
 
-            for (int i = 0; i < 256; ++i)
-            {
+            for (int i = 0; i < 256; ++i) {
                 int rv   = -1;
                 auto res = ctx->rpc(&rv, "hello", i, "vv32");
                 CHECK(res == msgpack::rpc::rpc_status::okay);
                 CHECK(rv == i * i);
             }
 
-            for (int i = 0; i < 256; ++i)
-            {
+            for (int i = 0; i < 256; ++i) {
                 int rv    = -1;
                 auto rslt = ctx->rpc(&rv, "hello", i);
                 ctx->rpc(nullptr, "hello", i);
                 CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
 
-            for (int i = 0; i < 256; ++i)
-            {
+            for (int i = 0; i < 256; ++i) {
                 int rv    = -1;
                 auto rslt = ctx->rpc(&rv, "hello", "fea", 3.21);
                 CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
 
-            for (int i = 0; i < 16; ++i)
-            {
+            for (int i = 0; i < 16; ++i) {
                 auto rslt = stub_print(*ctx).rpc(nullptr, "hello!");
                 CHECK(rslt == msgpack::rpc::rpc_status::okay);
             }
@@ -277,8 +271,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
 
             dup_ioc();
 
-            for (int i = 0, end = max; i < end; ++i)
-            {
+            for (int i = 0, end = max; i < end; ++i) {
                 futures.emplace_back(
                         std::async(std::launch::async, [&, i] {
                             auto order = max.load();

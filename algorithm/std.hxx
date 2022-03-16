@@ -192,8 +192,7 @@ size_t erase_if_each(Range_&& map, Pred_&& pred)
 {
     size_t n_erased = 0;
 
-    for (auto it = map.begin(); it != map.end();)
-    {
+    for (auto it = map.begin(); it != map.end();) {
         if (pred(*it))
             it = map.erase(it), ++n_erased;
         else
@@ -208,12 +207,9 @@ auto find_ptr(Set_&& set, Key_ const& key)
         -> decltype(&*set.find(key))
 {
     auto it = set.find(key);
-    if (it == set.end())
-    {
+    if (it == set.end()) {
         return nullptr;
-    }
-    else
-    {
+    } else {
         return &*it;
     }
 }

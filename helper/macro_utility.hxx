@@ -35,8 +35,7 @@ template <const auto& s>
 constexpr size_t _count_words() noexcept
 {
     size_t n = 1;
-    for (int i = 0; i < std::size(s); ++i)
-    {
+    for (int i = 0; i < std::size(s); ++i) {
         auto c = s[i];
         n += c == ',';
     }
@@ -57,8 +56,7 @@ constexpr std::pair<size_t, size_t>
 _words_boundary(size_t n) noexcept
 {
     size_t begin = 0;
-    for (int i = 0; i < std::size(s); ++i)
-    {
+    for (int i = 0; i < std::size(s); ++i) {
         auto c = s[i];
         if (n == 0)
             break;
@@ -67,8 +65,7 @@ _words_boundary(size_t n) noexcept
         ++begin;
     }
 
-    for (size_t i = begin; i < std::size(s); ++i)
-    {
+    for (size_t i = begin; i < std::size(s); ++i) {
         auto c = s[i];
         if (_is_word_char(c))
             break;
@@ -77,8 +74,7 @@ _words_boundary(size_t n) noexcept
     }
 
     size_t end = begin + 1;
-    for (size_t i = end; i < std::size(s); ++i, ++end)
-    {
+    for (size_t i = end; i < std::size(s); ++i, ++end) {
         auto c = s[i];
         if (not _is_word_char(c))
             break;
@@ -93,8 +89,7 @@ constexpr auto break_VA_ARGS() noexcept
     constexpr auto n_words = _count_words<str>();
     auto result            = std::array<std::string_view, n_words>{};
 
-    for (size_t i = 0; i < result.size(); ++i)
-    {
+    for (size_t i = 0; i < result.size(); ++i) {
         auto [begin, end] = _words_boundary<str>(i);
         result[i]         = std::string_view{str + begin, end - begin};
     }
@@ -138,14 +133,11 @@ constexpr void visit_with_key(
 constexpr auto from_json_visitor = [](auto&& r) {
     return [&](auto&& key, auto&& var) {
         constexpr bool is_optional = is_optional_v<decltype(var)>;
-        if constexpr (is_optional)
-        {
+        if constexpr (is_optional) {
             auto it = r.find(key);
             if (it != r.end())
                 ((not var.has_value() && (var.emplace(), 0)), it->get_to(*var));
-        }
-        else
-        {
+        } else {
             r.at(key).get_to(var);
         }
     };

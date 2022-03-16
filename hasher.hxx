@@ -49,8 +49,7 @@ constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base = FNV_OFFSET_BA
 template <typename It_>
 constexpr inline uint64_t fnv1a_64(It_ begin, It_&& end, uint64_t base = FNV_OFFSET_BASE)
 {
-    for (; begin != end; ++begin)
-    {
+    for (; begin != end; ++begin) {
         if constexpr (sizeof(*begin) == 1)
             base = fnv1a_byte(*begin, base);
         else
@@ -65,16 +64,11 @@ using _is_range_t = decltype(std::begin(std::declval<T>()));
 template <typename Ty_>
 constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base)
 {
-    if constexpr (type_traits::is_detected_v<_is_range_t, Ty_>)
-    {
+    if constexpr (type_traits::is_detected_v<_is_range_t, Ty_>) {
         return fnv1a_64(std::begin(val), std::end(val), base);
-    }
-    else if constexpr (std::is_trivial_v<Ty_>)
-    {
+    } else if constexpr (std::is_trivial_v<Ty_>) {
         return fnv1a_64((char const*)(&val), (char const*)(&val + 1), base);
-    }
-    else
-    {
+    } else {
         val.GENERATE_STATIC_ASSERT();
     }
 }

@@ -69,16 +69,14 @@ class deque : Alloc_  // zero_size optimization
     using size_type       = size_t;
     using difference_type = ptrdiff_t;
 
-    enum : size_t
-    {
+    enum : size_t {
         block_size = BlockSize_
     };
 
    private:
     using _block_type = std::array<Ty_, block_size>;
 
-    enum
-    {
+    enum {
         _ct_df_trive = std::is_trivially_default_constructible_v<value_type>,
         _cp_triv     = std::is_trivially_copyable_v<value_type>,
         _dt_triv     = std::is_trivially_destructible_v<value_type>,
@@ -152,8 +150,7 @@ class deque : Alloc_  // zero_size optimization
    private:
     void _reserve_back(size_t n)
     {
-        if (_space_head() < n)
-        {
+        if (_space_head() < n) {
         }
     }
 

@@ -80,8 +80,7 @@ TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
     using writer = typename TestType::first_type;
     using reader = typename TestType::second_type;
 
-    for (int intkey = 0; intkey < 2; ++intkey)
-    {
+    for (int intkey = 0; intkey < 2; ++intkey) {
         std::stringstream sstrm;
 
         writer wr{sstrm.rdbuf()};

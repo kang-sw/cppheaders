@@ -91,8 +91,7 @@ class matrix
     template <typename Other_>
     explicit constexpr matrix(array_view<Other_> values) noexcept : value()
     {
-        for (int i = 0; i < length; ++i)
-        {
+        for (int i = 0; i < length; ++i) {
             value[i] = values[i];
         }
     }
@@ -173,8 +172,7 @@ class matrix
 
     explicit operator value_type() const noexcept
     {
-        if constexpr (length == 1)
-        {
+        if constexpr (length == 1) {
             return value[0];
         }
     }
@@ -535,12 +533,10 @@ class matrix
     friend std::ostream& operator<<(std::ostream& os, matrix const& matx)
     {
         os << '[';
-        for (int i = 0; i < num_rows; ++i)
-        {
+        for (int i = 0; i < num_rows; ++i) {
             if (i > 0) { os << ','; }
             os << '[';
-            for (int j = 0; j < num_cols; ++j)
-            {
+            for (int j = 0; j < num_cols; ++j) {
                 if (j > 0) { os << ','; }
                 os << matx(i, j);
             }
@@ -599,8 +595,7 @@ class matrix
         auto s = *this;
         auto c = 0;
 
-        for (; c < Col_;)
-        {
+        for (; c < Col_;) {
             auto r = c;
             for (; r < Row_ && s(r, c) == 0; ++r)
                 ;  // find non-zero leading coefficient
@@ -608,8 +603,7 @@ class matrix
             if (r == Row_)
                 continue;  // there's no non-zero leading coefficient
 
-            if (r != c)
-            {  // switch rows
+            if (r != c) {  // switch rows
                 s._swap_row(r, c);
                 R._swap_row(r, c);  // apply same on R
                 r = c;              // back to current cell
@@ -621,8 +615,7 @@ class matrix
                 R._scale_row(r, divider);
             }
 
-            for (int r0 = 0; r0 < Row_; ++r0)
-            {
+            for (int r0 = 0; r0 < Row_; ++r0) {
                 if (r0 == r) { continue; }
 
                 auto scale = -s(r0, c);

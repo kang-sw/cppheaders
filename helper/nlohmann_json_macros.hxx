@@ -29,40 +29,40 @@
 #if __has_include("nlohmann/json.hpp")
 #    include <nlohmann/json.hpp>
 
-#    define INTERNAL_CPPHDRS_NLOHMANN_JSON_REGISTER(CLASSNAME, ...)          \
-        void                                                                 \
-        from_json(nlohmann::json const& r)                                   \
-        {                                                                    \
-            namespace _ns = CPPHEADERS_NS_::macro_utils;               \
-                                                                             \
-            _ns::visit_with_key(                                             \
-                    INTERNAL_CPPH_BRK_TOKENS_ACCESS_ARRAY(), \
-                    _ns::from_json_visitor(r),                               \
-                    __VA_ARGS__);                                            \
-        }                                                                    \
-                                                                             \
-        friend void                                                          \
-        from_json(nlohmann::json const& r, CLASSNAME& to)                    \
-        {                                                                    \
-            to.from_json(r);                                                 \
-        }                                                                    \
-                                                                             \
-        void                                                                 \
-        to_json(nlohmann::json& r) const noexcept                            \
-        {                                                                    \
-            namespace _ns = CPPHEADERS_NS_::macro_utils;               \
-                                                                             \
-            r = nlohmann::json::object();                                    \
-            CPPHEADERS_NS_::macro_utils::visit_with_key(               \
-                    INTERNAL_CPPH_BRK_TOKENS_ACCESS_ARRAY(), \
-                    _ns::to_json_visitor(r),                                 \
-                    __VA_ARGS__);                                            \
-        }                                                                    \
-                                                                             \
-        friend void                                                          \
-        to_json(nlohmann::json& r, CLASSNAME const& to) noexcept             \
-        {                                                                    \
-            to.to_json(r);                                                   \
+#    define INTERNAL_CPPHDRS_NLOHMANN_JSON_REGISTER(CLASSNAME, ...) \
+        void                                                        \
+        from_json(nlohmann::json const& r)                          \
+        {                                                           \
+            namespace _ns = CPPHEADERS_NS_::macro_utils;            \
+                                                                    \
+            _ns::visit_with_key(                                    \
+                    INTERNAL_CPPH_BRK_TOKENS_ACCESS_ARRAY(),        \
+                    _ns::from_json_visitor(r),                      \
+                    __VA_ARGS__);                                   \
+        }                                                           \
+                                                                    \
+        friend void                                                 \
+        from_json(nlohmann::json const& r, CLASSNAME& to)           \
+        {                                                           \
+            to.from_json(r);                                        \
+        }                                                           \
+                                                                    \
+        void                                                        \
+        to_json(nlohmann::json& r) const noexcept                   \
+        {                                                           \
+            namespace _ns = CPPHEADERS_NS_::macro_utils;            \
+                                                                    \
+            r = nlohmann::json::object();                           \
+            CPPHEADERS_NS_::macro_utils::visit_with_key(            \
+                    INTERNAL_CPPH_BRK_TOKENS_ACCESS_ARRAY(),        \
+                    _ns::to_json_visitor(r),                        \
+                    __VA_ARGS__);                                   \
+        }                                                           \
+                                                                    \
+        friend void                                                 \
+        to_json(nlohmann::json& r, CLASSNAME const& to) noexcept    \
+        {                                                           \
+            to.to_json(r);                                          \
         }
 
 #else

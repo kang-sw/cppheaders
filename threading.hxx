@@ -32,8 +32,7 @@ namespace CPPHEADERS_NS_ {
 template <typename Mutex_>
 struct lock_guard
 {
-    enum
-    {
+    enum {
         nothrow_lockable   = noexcept(std::declval<Mutex_>().lock()),
         nothrow_unlockable = noexcept(std::declval<Mutex_>().unlock())
     };

@@ -91,25 +91,19 @@ class function<Ret_(Args_...)>
             callable_type _body;
         };
 
-        if constexpr (sizeof(_callable_impl_t) <= sizeof _sbo_buf)
-        {  // allocate on heap
+        if constexpr (sizeof(_callable_impl_t) <= sizeof _sbo_buf) {  // allocate on heap
             _callable = new (_sbob()) _callable_impl_t{std::forward<Callable_>(fn)};
-        }
-        else
-        {  // apply SBO
+        } else {  // apply SBO
             _callable = new _callable_impl_t{std::forward<Callable_>(fn)};
         }
     }
 
     void _move_from(function&& rhs) noexcept
     {
-        if (not rhs.is_sbo())
-        {
+        if (not rhs.is_sbo()) {
             _callable     = rhs._callable;
             rhs._callable = nullptr;
-        }
-        else
-        {
+        } else {
             _callable = (_callable_t*)_sbob();
             rhs._callable->move(_sbob());
             rhs._destroy();
@@ -278,15 +272,12 @@ auto bind_front_weak(Ptr_&& ref, Callable_&& callable, Captures_&&... captures)
                         std::move(captured),
                         std::forward_as_tuple(std::forward<decltype(args)>(args)...));
 
-                if (auto anchor = wptr.lock(); anchor)
-                {
+                if (auto anchor = wptr.lock(); anchor) {
                     if constexpr (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
                         std::apply(fn, tuple);
                     else
                         return std::apply(fn, tuple);
-                }
-                else
-                {
+                } else {
                     if constexpr (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
                         ;
                     else

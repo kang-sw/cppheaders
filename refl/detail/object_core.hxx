@@ -188,8 +188,7 @@ struct property_metadata
 /**
  *
  */
-enum class requirement_status_tag
-{
+enum class requirement_status_tag {
     required = 0,
     optional = 1,
 
@@ -491,17 +490,12 @@ class object_metadata
         // 2. recursively call _archive_to on them.
         // 3. if 'this' is object, first add key on archive before recurse.
 
-        if (is_primitive())
-        {
+        if (is_primitive()) {
             _primitive->archive(strm, data, this, opt_property);
-        }
-        else
-        {
-            if (is_object())
-            {
+        } else {
+            if (is_object()) {
                 size_t num_filled = 0;
-                for (auto& [key, index] : _keys)
-                {
+                for (auto& [key, index] : _keys) {
                     auto& prop = _props.at(index);
 
                     auto child      = prop.type;
@@ -509,8 +503,7 @@ class object_metadata
                     assert(child_data);
 
                     if (auto status = child->requirement_status(child_data);
-                        status != requirement_status_tag::optional_empty)
-                    {
+                        status != requirement_status_tag::optional_empty) {
                         ++num_filled;
                     }
                 }
@@ -526,12 +519,9 @@ class object_metadata
                               assert(child_data);
 
                               if (auto status = child->requirement_status(child_data);
-                                  status == requirement_status_tag::optional_empty)
-                              {
+                                  status == requirement_status_tag::optional_empty) {
                                   return;  // skip empty optional property
-                              }
-                              else
-                              {
+                              } else {
                                   strm->write_key_next();
                                   *strm << key;
 
@@ -547,31 +537,23 @@ class object_metadata
                         do_write(key, index);
 
                 strm->object_pop();
-            }
-            else if (is_tuple())
-            {
+            } else if (is_tuple()) {
                 strm->array_push(_props.size());
-                for (auto& prop : _props)
-                {
+                for (auto& prop : _props) {
                     auto child      = prop.type;
                     auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
                     if (auto status = child->requirement_status(child_data);
-                        status == requirement_status_tag::optional_empty)
-                    {
+                        status == requirement_status_tag::optional_empty) {
                         // archive empty argument as null.
                         *strm << nullptr;
-                    }
-                    else
-                    {
+                    } else {
                         child->_archive_to(strm, child_data, &prop);
                     }
                 }
                 strm->array_pop();
-            }
-            else
-            {
+            } else {
                 assert(("Invalid code path", false));
             }
         }
@@ -592,12 +574,9 @@ class object_metadata
         // 3. if 'this' is object, first retrieve key from archive before recurse.
         //    if target property is optional, ignore missing key
 
-        if (is_primitive())
-        {
+        if (is_primitive()) {
             _primitive->restore(strm, data, this, opt_property);
-        }
-        else if (is_object())
-        {
+        } else if (is_object()) {
             if (not strm->is_object_next())
                 throw error::invalid_read_state{strm, "'object' expected"};
 
@@ -609,20 +588,16 @@ class object_metadata
             int integer_key            = -1;
             int num_essential_retrived = 0;
 
-            while (not strm->should_break(context_key))
-            {
+            while (not strm->should_break(context_key)) {
                 int index = -1;
                 strm->read_key_next();
 
-                if (use_integer_key)
-                {
+                if (use_integer_key) {
                     *strm >> integer_key;
 
                     auto elem = find_ptr(_key_indices, integer_key);
                     if (elem) { index = elem->second; }
-                }
-                else
-                {
+                } else {
                     // retrive key, and find it from my properties list
                     auto& keybuf = context->keybuf;
                     *strm >> keybuf;
@@ -632,16 +607,12 @@ class object_metadata
                 }
 
                 // simply ignore unexpected keys
-                if (index == -1)
-                {
+                if (index == -1) {
                     *strm >> nullptr;
 
-                    if (allow_unknown)
-                    {
+                    if (allow_unknown) {
                         continue;
-                    }
-                    else
-                    {
+                    } else {
                         strm->end_object(context_key);
                         throw error::unkown_entity{
                                 strm, "unkown key '%s'",
@@ -663,8 +634,7 @@ class object_metadata
 
             strm->end_object(context_key);
 
-            if (not allow_missing)
-            {
+            if (not allow_missing) {
                 // verify all arguments ready
                 auto pred_req    = [](decltype(_props[0]) e) { return not e.type->is_optional(); };
                 int num_required = count_if(_props, pred_req);
@@ -673,17 +643,13 @@ class object_metadata
                     throw error::missing_entity{strm, "%d elems missing [total:%d]",
                                                 num_required - num_essential_retrived, num_required};
             }
-        }
-        else if (is_tuple())
-        {
+        } else if (is_tuple()) {
             auto context_key = strm->begin_array();
 
             // tuple is always in fixed-order
-            for (auto& prop : _props)
-            {
+            for (auto& prop : _props) {
                 auto child = prop.type;
-                if (child->is_optional() && strm->is_null_next())
-                {
+                if (child->is_optional() && strm->is_null_next()) {
                     // do nothing
                     nullptr_t nul{};
                     *strm >> nul;
@@ -698,9 +664,7 @@ class object_metadata
                 throw error::missing_entity{strm, "too many arguments!"};
 
             strm->end_array(context_key);
-        }
-        else
-        {
+        } else {
             assert(("Invalid code path", false));
         }
     }
@@ -800,20 +764,17 @@ class object_metadata
 #ifndef NDEBUG
             size_t object_end = 0;
 #endif
-            for (auto& prop : generated._props)
-            {
+            for (auto& prop : generated._props) {
                 lookup->emplace_back(std::make_pair(prop.offset, prop.index_self));
                 prop._owner_type = result.get();
 
-                if (is_object)
-                {
+                if (is_object) {
                     if (not key_table->try_emplace(prop.name, prop.index_self).second)
                         throw std::logic_error{"key must be unique!"};
 
                     if (prop.name_key_self == 0)
                         throw std::logic_error{"name key must be larger than 0!"};
-                    if (prop.name_key_self > 0)
-                    {
+                    if (prop.name_key_self > 0) {
                         used_name_keys.push_back(prop.name_key_self);
                         push_heap(used_name_keys, std::greater<>{});
                     }
@@ -825,8 +786,7 @@ class object_metadata
             }
 
             // assign name_key table
-            if (is_object)
-            {
+            if (is_object) {
                 if (adjacent_find(used_name_keys) != used_name_keys.end())
                     throw std::logic_error("duplicated name key assignment found!");
 
@@ -835,14 +795,11 @@ class object_metadata
 
                 size_t idx_table    = 0;
                 int generated_index = 1;
-                for (auto& prop : generated._props)
-                {
+                for (auto& prop : generated._props) {
                     // autogenerate unassigned ones
-                    if (prop.name_key_self < 0)
-                    {
+                    if (prop.name_key_self < 0) {
                         // skip all already pre-assigned indices
-                        while (not used_name_keys.empty() && used_name_keys.front() <= generated_index)
-                        {
+                        while (not used_name_keys.empty() && used_name_keys.front() <= generated_index) {
                             generated_index = used_name_keys.front() + 1;
 
                             pop_heap(used_name_keys, std::greater<>{});
@@ -974,8 +931,7 @@ class object_metadata
             if (not meta->is_object()) { throw std::logic_error{"Non-object cannot be derived"}; }
             // TODO: add metadata for representing base object itself, for dynamic usage?
 
-            for (auto prop : meta->_props)
-            {
+            for (auto prop : meta->_props) {
                 prop.offset += base_offset;
                 add_property(std::string{prop.name}, prop);
             }
@@ -1165,8 +1121,7 @@ object_const_view_t::object_const_view_t(const Ty_& p) noexcept : data((object_d
 namespace std {
 inline std::string to_string(CPPHEADERS_NS_::refl::entity_type t)
 {
-    switch (t)
-    {
+    switch (t) {
         case CPPHEADERS_NS_::refl::entity_type::invalid: return "invalid";
         case CPPHEADERS_NS_::refl::entity_type::null: return "null";
         case CPPHEADERS_NS_::refl::entity_type::boolean: return "boolean";

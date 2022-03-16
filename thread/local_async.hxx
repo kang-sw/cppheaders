@@ -40,8 +40,7 @@ namespace CPPHEADERS_NS_::thread {
 
 struct future_error : std::exception
 {
-    enum class code
-    {
+    enum class code {
         invalid_future,
         invalid_promise_request,
     };
@@ -50,8 +49,7 @@ struct future_error : std::exception
     explicit future_error(code ec) : ec(ec) {}
 };
 
-enum class future_state
-{
+enum class future_state {
     empty,
     busy,
     ready,
@@ -73,8 +71,7 @@ class local_promise
        public:
         ~future()
         {
-            if(_get_state() == future_state::busy)
-            {
+            if (_get_state() == future_state::busy) {
                 get();
             }
         }
@@ -135,8 +132,7 @@ class local_promise
 
         void _verify_valid() const
         {
-            switch (_get_state())
-            {
+            switch (_get_state()) {
                 case future_state::busy:
                 case future_state::ready:
                     break;

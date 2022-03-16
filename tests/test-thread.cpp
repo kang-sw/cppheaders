@@ -25,7 +25,6 @@
 #include <future>
 
 #include "catch.hpp"
-
 #include "thread/local_async.hxx"
 
 using namespace std::literals;
@@ -65,17 +64,12 @@ TEST_CASE("works well?", "[thread.local_async]")
 
         work.join();
 
-        try
-        {
+        try {
             fut.get();
             FAIL("Exception not thrown");
-        }
-        catch (std::runtime_error&)
-        {
+        } catch (std::runtime_error&) {
             // OK.
-        }
-        catch (std::exception& e)
-        {
+        } catch (std::exception& e) {
             FAIL("Wrong exception thrown: " << e.what());
         }
     }
@@ -84,17 +78,12 @@ TEST_CASE("works well?", "[thread.local_async]")
         std::thread work{[promise = std::move(promise)] {}};
 
         work.join();
-        try
-        {
+        try {
             fut.get();
             FAIL("Exception not thrown");
-        }
-        catch (cpph::thread::future_error&)
-        {
+        } catch (cpph::thread::future_error&) {
             // OK.
-        }
-        catch (std::exception& e)
-        {
+        } catch (std::exception& e) {
             FAIL("Wrong exception thrown: " << e.what());
         }
     }

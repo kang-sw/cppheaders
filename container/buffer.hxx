@@ -73,8 +73,7 @@ class buffer
     {
         if (_size == new_size) { return; }
 
-        if (new_size == 0)
-        {
+        if (new_size == 0) {
             _try_release();
             return;
         }
@@ -94,12 +93,9 @@ class buffer
    private:
     void _copy_from(const buffer& other)
     {
-        if (other.empty())
-        {
+        if (other.empty()) {
             _try_release();
-        }
-        else
-        {
+        } else {
             resize(other._size);
             memcpy(_buffer, other._buffer, _size * sizeof(value_type));
         }

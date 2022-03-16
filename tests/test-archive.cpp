@@ -40,8 +40,7 @@
 
 using namespace cpph;
 
-enum class my_enum
-{
+enum class my_enum {
     test1,
     test2,
     test3

@@ -131,8 +131,7 @@ class basic_resource_pool
         handle_type r;
         r._owner = this;
 
-        if (not _free.empty())
-        {
+        if (not _free.empty()) {
             r._ref = _free.back();
             _free.pop_back();
             return r;

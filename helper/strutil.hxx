@@ -35,11 +35,9 @@ void _escape_ch(Char_ ch, OutIt_&& out)
 {
     if (ch < 0 || std::isprint(ch) && ch != '\'' && ch != '\"' && ch != '\\' && ch != '\?')
         *out = ch;
-    else
-    {
+    else {
         *out++ = '\\';
-        switch (ch)
-        {
+        switch (ch) {
             case '\a': *out++ = ('a'); break;
             case '\b': *out++ = ('b'); break;
             case '\f': *out++ = ('f'); break;
@@ -51,8 +49,7 @@ void _escape_ch(Char_ ch, OutIt_&& out)
             case '\'': *out++ = ('\''); break;
             case '\"': *out++ = ('\"'); break;
             case '\?': *out++ = ('\?'); break;
-            default:
-            {
+            default: {
                 uint32_t cc;
 
                 if constexpr (sizeof ch == 1)
@@ -63,24 +60,19 @@ void _escape_ch(Char_ ch, OutIt_&& out)
                     cc = uint32_t(ch);
 
                 constexpr auto table = "0123456789abcdef";
-                if (cc < 256)
-                {
+                if (cc < 256) {
                     *out++ = 'x';
 
                     *out++ = table[(cc & 0xf0) >> 4];
                     *out++ = table[(cc & 0x0f) >> 0];
-                }
-                else if (cc < 65535)
-                {
+                } else if (cc < 65535) {
                     *out++ = 'u';
 
                     *out++ = table[(cc & 0xf000) >> 12];
                     *out++ = table[(cc & 0x0f00) >> 8];
                     *out++ = table[(cc & 0x00f0) >> 4];
                     *out++ = table[(cc & 0x000f) >> 0];
-                }
-                else
-                {
+                } else {
                     throw;  // error
                 }
             }
@@ -105,18 +97,13 @@ inline int hexval(char hi, char lo)
 template <typename InputIt_, typename OutIt_>
 void unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
 {
-    for (auto it = begin; it != end;)
-    {
+    for (auto it = begin; it != end;) {
         char ch = *it++;
-        if (ch != '\\')
-        {
+        if (ch != '\\') {
             *out++ = ch;
-        }
-        else
-        {
+        } else {
             if (it == end) { return; }
-            switch (ch = *it++)
-            {
+            switch (ch = *it++) {
                 case 'a': *out++ = '\a'; break;
                 case 'b': *out++ = '\b'; break;
                 case 'f': *out++ = '\f'; break;
@@ -129,8 +116,7 @@ void unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
                 case '"': *out++ = '\"'; break;
                 case '?': *out++ = '\?'; break;
 
-                case 'u':
-                {
+                case 'u': {
                     if (it == end) { return; }
                     char hi = *it++;
                     if (it == end) { return; }
@@ -140,8 +126,7 @@ void unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
                     [[fallthrough]];
                 }
 
-                case 'x':
-                {
+                case 'x': {
                     if (it == end) { return; }
                     char hi = *it++;
                     if (it == end) { return; }

@@ -47,8 +47,7 @@ class circular_queue
    public:
     using value_type = Ty_;
 
-    enum
-    {
+    enum {
         is_safe_ctor = std::is_nothrow_constructible_v<value_type>,
         is_safe_dtor = std::is_nothrow_destructible_v<value_type>,
     };
@@ -73,12 +72,9 @@ class circular_queue
 
         reference operator*() const
         {
-            if constexpr (Reverse_)
-            {
+            if constexpr (Reverse_) {
                 return _owner->_r_at(_head);
-            }
-            else
-            {
+            } else {
                 return _owner->_at(_head);
             }
         }
@@ -164,13 +160,11 @@ class circular_queue
 
     void reserve_shrink(size_t new_cap) noexcept(is_safe_ctor)
     {
-        if (new_cap == capacity())
-        {
+        if (new_cap == capacity()) {
             return;
         }
 
-        if (new_cap == 0)
-        {
+        if (new_cap == 0) {
             clear(), _data.reset(), _capacity = 1;
             return;
         }
@@ -180,8 +174,7 @@ class circular_queue
         // move available objects
         circular_queue next{new_cap};
 
-        if (n_copy > 0)
-        {
+        if (n_copy > 0) {
             std::move(begin(), begin() + n_copy, std::back_inserter(next));
 
             // destroies unmoved objects
@@ -258,15 +251,11 @@ class circular_queue
     {
         assert(n <= size());
 
-        if constexpr (std::is_trivially_destructible_v<Ty_> && std::is_trivially_copyable_v<Ty_>)
-        {
+        if constexpr (std::is_trivially_destructible_v<Ty_> && std::is_trivially_copyable_v<Ty_>) {
             std::copy(begin(), begin() + n, oit);
             _tail = _jmp(_tail, n);
-        }
-        else
-        {
-            while (n--)
-            {
+        } else {
+            while (n--) {
                 *oit++ = std::move(front());
                 pop();
             }
@@ -317,12 +306,9 @@ class circular_queue
 
     void clear() noexcept(is_safe_dtor)
     {
-        if constexpr (std::is_trivially_destructible_v<Ty_>)
-        {
+        if constexpr (std::is_trivially_destructible_v<Ty_>) {
             _tail = _head;
-        }
-        else
-        {
+        } else {
             while (!empty()) { pop(); }
         }
     }
@@ -330,12 +316,9 @@ class circular_queue
     template <typename Fn_>
     void flat(Fn_&& fn)
     {
-        if (_tail < _head)
-        {
+        if (_tail < _head) {
             fn(&_at(_tail), &_at(_head));
-        }
-        else if (_head < _tail)
-        {
+        } else if (_head < _tail) {
             fn(&_at(_tail), &_at(_capacity));
             fn(&_at(0), &_at(_head));
         }
@@ -350,8 +333,7 @@ class circular_queue
         auto total = std::distance(begin, end);
 
         // If number of elements exceeds
-        if (capacity() < total)
-        {
+        if (capacity() < total) {
             auto margin = total - capacity();
             std::advance(begin, margin);
 
@@ -359,8 +341,7 @@ class circular_queue
         }
 
         // Reserve space
-        if (auto space = capacity() - size(); space < total)
-        {
+        if (auto space = capacity() - size(); space < total) {
             auto required_space{total - space};
             _tail = _jmp(_tail, required_space);
         }

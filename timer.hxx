@@ -58,8 +58,7 @@ class basic_poll_timer
     bool check() noexcept
     {
         auto now = clock_type::now();
-        if (now > _tp)
-        {
+        if (now > _tp) {
             _latest_dt = now - (_tp - _interval);
             _tp += _interval;
 
@@ -67,9 +66,7 @@ class basic_poll_timer
                 _tp = now;  // prevent burst
 
             return true;
-        }
-        else
-        {
+        } else {
             return false;
         }
     }
@@ -78,15 +75,12 @@ class basic_poll_timer
     bool check_sparse() noexcept
     {
         auto now = clock_type::now();
-        if (now > _tp)
-        {
+        if (now > _tp) {
             _latest_dt = now - (_tp - _interval);
             _tp        = now + _interval;
 
             return true;
-        }
-        else
-        {
+        } else {
             return false;
         }
     }

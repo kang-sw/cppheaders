@@ -47,8 +47,7 @@ class _array_reinterpret_accessor
     auto& as(size_t offset = 0) const
     {
         using value_type = typename Array_::value_type;
-        enum
-        {
+        enum {
             is_const = std::is_const_v<value_type>
         };
 
@@ -182,8 +181,9 @@ class array_view<void> : public array_view<char>
    public:
     array_view() noexcept = default;
 
-    template <typename Container_, typename = std::enable_if_t<is_binary_compatible_v<
-                                    typename std::remove_reference_t<Container_>::value_type>>>
+    template <typename Container_,
+              typename = std::enable_if_t<is_binary_compatible_v<
+                      typename std::remove_reference_t<Container_>::value_type>>>
     explicit array_view(Container_&& other) noexcept
             : array_view<char>(reinterpret_cast<char*>(std::data(other)),
                                std::size(other) * sizeof(*std::data(other)))
@@ -197,8 +197,9 @@ class array_view<void> : public array_view<char>
     {
     }
 
-    template <typename Container_, typename = std::enable_if_t<is_binary_compatible_v<
-                                    typename std::remove_reference_t<Container_>::value_type>>>
+    template <typename Container_,
+              typename = std::enable_if_t<is_binary_compatible_v<
+                      typename std::remove_reference_t<Container_>::value_type>>>
     array_view& operator=(Container_&& other) noexcept
     {
         array_view<char>::operator=(
@@ -215,23 +216,26 @@ class array_view<void const> : public array_view<char const>
    public:
     array_view() noexcept = default;
 
-    template <typename Container_, typename = std::enable_if_t<is_binary_compatible_v<
-                                    typename std::remove_reference_t<Container_>::value_type>>>
+    template <typename Container_,
+              typename = std::enable_if_t<is_binary_compatible_v<
+                      typename std::remove_reference_t<Container_>::value_type>>>
     explicit array_view(Container_&& other) noexcept
             : array_view<char const>(reinterpret_cast<char const*>(std::data(other)),
                                      std::size(other) * sizeof(*std::data(other)))
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<Ty_>>>
+    template <typename Ty_,
+              typename = std::enable_if_t<is_binary_compatible_v<Ty_>>>
     array_view(Ty_ const* data, size_t size) noexcept
             : array_view<char const>(reinterpret_cast<char const*>(data),
                                      sizeof(Ty_) * size)
     {
     }
 
-    template <typename Container_, typename = std::enable_if_t<is_binary_compatible_v<
-                                    typename std::remove_reference_t<Container_>::value_type>>>
+    template <typename Container_,
+              typename = std::enable_if_t<is_binary_compatible_v<
+                      typename std::remove_reference_t<Container_>::value_type>>>
     array_view& operator=(Container_&& other) noexcept
 
     {

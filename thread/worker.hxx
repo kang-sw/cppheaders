@@ -46,8 +46,7 @@ class worker
         _worker = std::thread{
                 [this](Starter_&& starter, Fn_&& fn, Args_&&... inner_args) {
                     starter();
-                    while (_active)
-                    {
+                    while (_active) {
                         fn(std::forward<Args_>(inner_args)...);
                     }
                 },

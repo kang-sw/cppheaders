@@ -74,8 +74,7 @@ struct basic_exception : std::exception
    private:
     void _setmsg(std::string_view content) const
     {
-        if (_message.empty())
-        {
+        if (_message.empty()) {
             _message = "error (";
             _message += typeid(*this).name();
             _message += "): ";

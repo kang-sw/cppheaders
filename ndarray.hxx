@@ -44,8 +44,7 @@ class ndarray
     using const_reference = typename std::vector<Ty_>::const_reference;
     using size_type       = size_t;
     using dimension_type  = std::array<size_type, Dim_>;
-    enum : size_t
-    {
+    enum : size_t {
         dimension = Dim_
     };
 
@@ -53,20 +52,15 @@ class ndarray
     template <size_type D_, bool Check_ = false, typename T_, typename... Args_>
     size_type _reduce_index(T_ idx, Args_... args) const
     {
-        if constexpr (Check_)
-        {
-            if (idx >= dim_[D_])
-            {
+        if constexpr (Check_) {
+            if (idx >= dim_[D_]) {
                 throw std::invalid_argument("array index out of range");
             }
         }
 
-        if constexpr (sizeof...(Args_))
-        {
+        if constexpr (sizeof...(Args_)) {
             return idx * steps_[D_] + _reduce_index<D_ + 1, Check_>(args...);
-        }
-        else
-        {
+        } else {
             return idx;
         }
     }
@@ -87,8 +81,7 @@ class ndarray
         auto it_dim_end = dim_.begin();
         auto it_step    = steps_.end() - 1;
 
-        for (size_t step = 1;; --it_step)
-        {
+        for (size_t step = 1;; --it_step) {
             step *= *it_dim;
             *it_step = step;
 

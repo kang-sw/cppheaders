@@ -56,18 +56,13 @@ class writer : public archive::if_writer
     // for str, bin, ext
     void _apsize_1(typecode code, uint32_t size)
     {
-        if (size & 0xffff0000)
-        {
+        if (size & 0xffff0000) {
             _apoff(code, 2);
             _putbin<uint32_t>(size);
-        }
-        else if (size & 0xff00)
-        {
+        } else if (size & 0xff00) {
             _apoff(code, 1);
             _putbin<uint16_t>(size);
-        }
-        else
-        {
+        } else {
             _apoff(code, 0);
             _putbin<uint8_t>(size);
         }
@@ -90,8 +85,7 @@ class writer : public archive::if_writer
     {
         _ctx.write_next();
 
-        if (value >= 0)
-        {
+        if (value >= 0) {
             if (value < 0x80)
                 _apm<7>(typecode::positive_fixint, value);
             else if (value < 0x8000)
@@ -100,9 +94,7 @@ class writer : public archive::if_writer
                 _ap(typecode::int32), _putbin<int32_t>(value);
             else
                 _ap(typecode::int64), _putbin<int64_t>(value);
-        }
-        else
-        {
+        } else {
             if (value >= -32)
                 _apm<5>(typecode::negative_fixint, value);
             else if (value >= -0x8000)
@@ -134,8 +126,7 @@ class writer : public archive::if_writer
 
     void _assert_32bitsize(size_t n)
     {
-        if (n >= (std::numeric_limits<uint32_t>::max)())
-        {
+        if (n >= (std::numeric_limits<uint32_t>::max)()) {
             throw archive::error::writer_out_of_range{this, "size exceeds 32bit range"};
         }
     }

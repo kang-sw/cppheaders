@@ -43,12 +43,9 @@ auto _can_de_deref(...) -> std::false_type;
 template <typename Arg_>
 auto& _deref_arg(Arg_&& s)
 {
-    if constexpr (decltype(_can_de_deref<Arg_>(0))::value)
-    {
+    if constexpr (decltype(_can_de_deref<Arg_>(0))::value) {
         return *s;
-    }
-    else
-    {
+    } else {
         return s;
     }
 }
@@ -74,18 +71,14 @@ class _zip_iterator
     template <size_t N_ = 0>
     bool _compare_strict(_zip_iterator const& op, bool previous) const
     {
-        if constexpr (N_ < sizeof...(Args_))
-        {
+        if constexpr (N_ < sizeof...(Args_)) {
             auto result = std::get<N_>(op.pack_) == std::get<N_>(pack_);
-            if (result != previous)
-            {
+            if (result != previous) {
                 throw std::invalid_argument("packed tuples has difference lengths");
             }
 
             return _compare_strict<N_ + 1>(op, result);
-        }
-        else
-        {
+        } else {
             return previous;
         }
     }

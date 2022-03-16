@@ -64,17 +64,14 @@ if_writer& writer::write(int64_t v)
     char buf[32];
     auto r = std::to_chars(buf, buf + sizeof buf, v);
 
-    if (d.is_key)
-    {
+    if (d.is_key) {
         _buf->sputc('"');
         _buf->sputn(buf, r.ptr - buf);
         _buf->sputc('"');
 
         _buf->sputc(':');
         if (indent >= 0) { _buf->sputc(' '); }
-    }
-    else
-    {
+    } else {
         _buf->sputn(buf, r.ptr - buf);
     }
 
@@ -102,8 +99,7 @@ if_writer& writer::write(std::string_view v)
     strutil::escape(v.begin(), v.end(), inserter);
     _buf->sputc('"');
 
-    if (d.is_key)
-    {
+    if (d.is_key) {
         _buf->sputc(':');
         if (indent >= 0) { _buf->sputc(' '); }
     }
@@ -220,8 +216,7 @@ void writer::_brk_indent()
 
 namespace CPPHEADERS_NS_::archive::json {
 
-enum class reader_scope_type
-{
+enum class reader_scope_type {
     invalid,
     array,
     object
@@ -293,15 +288,12 @@ struct reader::impl
 
         if (scope->is_key_next && ntok->type != JSMN_STRING) { throw error::reader_invalid_context{self}; }
 
-        if (ntok->type == JSMN_OBJECT || ntok->type == JSMN_ARRAY)
-        {
+        if (ntok->type == JSMN_OBJECT || ntok->type == JSMN_ARRAY) {
             auto it = std::lower_bound(
                     tokens.begin() + pos_next, tokens.end(), ntok->end,
                     [](jsmntok_t const& t, int e) { return t.start < e; });
             pos_next = it - tokens.begin();
-        }
-        else
-        {
+        } else {
             ++pos_next;
         }
 
@@ -327,12 +319,9 @@ struct reader::impl
         pos_next = it - tokens.begin();
         scopes.pop_back();
 
-        if (scopes.empty())
-        {
+        if (scopes.empty()) {
             pos_next = ~size_t{};
-        }
-        else
-        {
+        } else {
             scope = &scopes.back();
             --scope->elem_left;
             scope->is_key_next = false;
@@ -378,13 +367,10 @@ if_reader& reader::read(int64_t& v)
 
     auto next = self->next();
     auto tok  = self->tokstr(*next);
-    if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE)
-    {
+    if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE) {
         auto r = std::from_chars(tok.data(), tok.data() + tok.size(), v);
         if (r.ptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}; }
-    }
-    else
-    {
+    } else {
         throw error::reader_parse_failed{this};
     }
 
@@ -398,14 +384,11 @@ if_reader& reader::read(double& v)
 
     auto next = self->next();
     auto tok  = self->tokstr(*next);
-    if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE)
-    {
+    if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE) {
         char* eptr = {};
         v          = strtod(tok.data(), &eptr);
         if (eptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}; }
-    }
-    else
-    {
+    } else {
         throw error::reader_parse_failed{this};
     }
 
@@ -539,13 +522,11 @@ entity_type reader::type_next() const
 {
     auto next = self->next();
 
-    switch (next->type)
-    {
+    switch (next->type) {
         case JSMN_STRING:
             return entity_type::string;
 
-        case JSMN_PRIMITIVE:
-        {
+        case JSMN_PRIMITIVE: {
             auto tok = self->tokstr(*next);
             if (tok == "null"sv) { return entity_type::null; }
             if (tok[0] == 't' || tok[0] == 'f') { return entity_type::boolean; }

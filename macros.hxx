@@ -49,14 +49,11 @@
                                                                                           \
         if constexpr (std::is_same_v<void,                                                \
                                      decltype(this->Function(                             \
-                                             std::forward<decltype(args)>(args)...))>)    \
-        {                                                                                 \
+                                             std::forward<decltype(args)>(args)...))>) {  \
             if (not self)                                                                 \
                 return;                                                                   \
             this->Function(std::forward<decltype(args)>(args)...);                        \
-        }                                                                                 \
-        else                                                                              \
-        {                                                                                 \
+        } else {                                                                          \
             if (not self)                                                                 \
                 return decltype(this->Function(std::forward<decltype(args)>(args)...)){}; \
             return this->Function(std::forward<decltype(args)>(args)...);                 \

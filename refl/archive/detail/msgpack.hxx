@@ -26,8 +26,7 @@
 #include "../../../__namespace__"
 
 namespace CPPHEADERS_NS_::archive::msgpack {
-enum class typecode : uint8_t
-{
+enum class typecode : uint8_t {
     positive_fixint = 0b0'0000000,
     negative_fixint = 0b111'00000,
 

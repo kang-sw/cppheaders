@@ -183,13 +183,10 @@ class sorted_vector
         else if (hint + 1 != _vector.end() && not(key < (hint + 1)->first))
             wrong_hint = true;
 
-        if (wrong_hint)
-        {
+        if (wrong_hint) {
             return try_emplace_hint(
                     std::forward<Key_>(key), std::forward<Args_>(args)...);
-        }
-        else
-        {
+        } else {
             auto it = _vector.insert(
                     hint, value_type{
                                   std::forward<Key_>(key),

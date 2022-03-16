@@ -44,8 +44,7 @@ class static_vector
     using const_iterator = const_pointer;
 
    private:
-    enum
-    {
+    enum {
         _nt_dtor         = std::is_nothrow_destructible_v<Ty_>,
         _nt_move         = not std::is_move_assignable_v<Ty_> || std::is_nothrow_move_assignable_v<Ty_>,
         _nt_copy         = not std::is_copy_assignable_v<Ty_> || std::is_nothrow_move_assignable_v<Ty_>,
@@ -105,20 +104,15 @@ class static_vector
         _verify_iterator_range(begin, end);
         auto to_end = to_begin + (end - begin);
 
-        if (begin > to_begin)
-        {
-            while (--end, --to_end != to_begin - 1)
-            {
+        if (begin > to_begin) {
+            while (--end, --to_end != to_begin - 1) {
                 _construct_at(to_end, std::move(*end));
                 _destruct_at(end);
             }
-        }
-        else
-        {
+        } else {
             _verify_space(to_begin - begin);
 
-            for (; begin != end; ++begin, ++to_begin)
-            {
+            for (; begin != end; ++begin, ++to_begin) {
                 _construct_at(to_begin, std::move(*begin));
                 _destruct_at(begin);
             }
@@ -226,8 +220,7 @@ class static_vector
     {
         if (new_size < _size)
             erase(begin() + new_size, end());
-        else if (_size < new_size)
-        {
+        else if (_size < new_size) {
             _verify_space(new_size - _size);
             while (_size < new_size)
                 _construct_at(_ptr + _size++, t);

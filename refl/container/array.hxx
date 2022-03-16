@@ -41,7 +41,6 @@ template <typename Ty_, size_t N_>
 constexpr bool is_stl_array_v<std::array<Ty_, N_>> = true;
 }  // namespace detail
 
-
 INTERNAL_CPPH_define_(ValTy_, detail::is_stl_array_v<ValTy_>)
 {
     return detail::fixed_size_descriptor<typename ValTy_::value_type>(

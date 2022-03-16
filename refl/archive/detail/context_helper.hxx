@@ -37,8 +37,7 @@ namespace CPPHEADERS_NS_::archive::detail {
 
 class write_context_helper
 {
-    enum class scope_type : int8_t
-    {
+    enum class scope_type : int8_t {
         invalid,
         object,
         array,
@@ -130,27 +129,20 @@ class write_context_helper
         if (_scopes.empty()) { return {false, false, false}; }
         auto elem = &_scopes.back();
 
-        if (elem->type != scope_type::object)
-        {
+        if (elem->type != scope_type::object) {
             return {false, _write_value_next(), true};
         }
 
-        if (elem->is_key_current())
-        {
-            if (elem->key_ready)
-            {
+        if (elem->is_key_current()) {
+            if (elem->key_ready) {
                 // it's valid to write a key
                 elem->key_ready = false;
                 return {true, elem->size > 2, true};
-            }
-            else
-            {
+            } else {
                 _write_value_next();
                 return {false, false, false};
             }
-        }
-        else
-        {
+        } else {
             // after writing a value, context stay invalid until next call to write_next_key
             // invalid state can be known from key_ready field.
             throw error::writer_invalid_state{self, "write_key_next() is not called!"};

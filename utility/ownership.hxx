@@ -54,8 +54,7 @@ class ownership
    public:
     void reset() noexcept(std::is_nothrow_destructible_v<Ty_>)
     {
-        if (has_value())
-        {
+        if (has_value()) {
             (*_value).~Ty_();
             _value = nullptr;
         }
@@ -97,18 +96,12 @@ class ownership
 
     ownership& operator=(ownership&& other) noexcept(std::is_nothrow_move_constructible_v<Ty_>)
     {
-        if (not other)
-        {
+        if (not other) {
             reset();
-        }
-        else
-        {
-            if (has_value())
-            {
+        } else {
+            if (has_value()) {
                 value() = std::move(other.value());
-            }
-            else
-            {
+            } else {
                 _construct(std::move(other.value()));
             }
 
@@ -121,12 +114,9 @@ class ownership
     ownership& operator=(Ty_&& other) noexcept(
             std::is_nothrow_move_constructible_v<Ty_>&& std::is_nothrow_move_assignable_v<Ty_>)
     {
-        if (has_value())
-        {
+        if (has_value()) {
             *_value = std::move(other);
-        }
-        else
-        {
+        } else {
             _construct(std::move(other));
         }
 
@@ -136,8 +126,7 @@ class ownership
     ownership(ownership&& other) noexcept(
             std::is_nothrow_move_constructible_v<Ty_>&& std::is_nothrow_destructible_v<Ty_>)
     {
-        if (other)
-        {
+        if (other) {
             _construct(std::move(other.value()));
             other.reset();
         }

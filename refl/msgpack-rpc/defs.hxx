@@ -36,8 +36,7 @@ namespace detail {
 class session;
 }
 
-enum class rpc_status
-{
+enum class rpc_status {
     okay    = 0,
     waiting = 1,
 
@@ -54,16 +53,14 @@ enum class rpc_status
     dead_peer = -100,
 };
 
-enum class rpc_type
-{
+enum class rpc_type {
     request = 0,
     reply   = 1,
     notify  = 2,
 };
 
 namespace async_rpc_result {
-enum type : int
-{
+enum type : int {
     invalid = 0,
     error   = -1,
 

@@ -92,24 +92,18 @@ INTERNAL_CPPH_define_(
 
         void impl_archive(archive::if_writer* strm, const ValTy_& pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
-            if constexpr (std::is_enum_v<ValTy_>)
-            {
+            if constexpr (std::is_enum_v<ValTy_>) {
                 *strm << (std::underlying_type_t<ValTy_>)pvdata;
-            }
-            else
-            {
+            } else {
                 *strm << pvdata;
             }
         }
 
         void impl_restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
-            if constexpr (std::is_enum_v<ValTy_>)
-            {
+            if constexpr (std::is_enum_v<ValTy_>) {
                 *strm >> *(std::underlying_type_t<ValTy_>*)pvdata;
-            }
-            else
-            {
+            } else {
                 *strm >> *pvdata;
             }
         }
@@ -137,9 +131,9 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             return get_object_metadata<ElemTy_>();
         }
         void impl_archive(archive::if_writer* strm,
-                     ElemTy_ const& data,
-                     object_metadata_t desc,
-                     optional_property_metadata) const override
+                          ElemTy_ const& data,
+                          object_metadata_t desc,
+                          optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
@@ -151,9 +145,9 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             strm->array_pop();
         }
         void impl_restore(archive::if_reader* strm,
-                     ElemTy_* data,
-                     object_metadata_t desc,
-                     optional_property_metadata) const override
+                          ElemTy_* data,
+                          object_metadata_t desc,
+                          optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
@@ -201,9 +195,9 @@ auto get_list_like_descriptor() -> object_metadata_t
             return get_object_metadata<value_type>();
         }
         void impl_archive(archive::if_writer* strm,
-                     const Container_& data,
-                     object_metadata_t desc,
-                     optional_property_metadata) const override
+                          const Container_& data,
+                          object_metadata_t desc,
+                          optional_property_metadata) const override
         {
             auto container = &data;
 
@@ -215,9 +209,9 @@ auto get_list_like_descriptor() -> object_metadata_t
             strm->array_pop();
         }
         void impl_restore(archive::if_reader* strm,
-                     Container_* container,
-                     object_metadata_t desc,
-                     optional_property_metadata) const override
+                          Container_* container,
+                          object_metadata_t desc,
+                          optional_property_metadata) const override
         {
             container->clear();
             auto key = strm->begin_array();
@@ -227,8 +221,7 @@ auto get_list_like_descriptor() -> object_metadata_t
                 if (auto n = strm->elem_left(); n != ~size_t{})
                     container->reserve(n);
 
-            while (not strm->should_break(key))
-            {
+            while (not strm->should_break(key)) {
                 if constexpr (has_emplace_back<Container_>)  // maybe vector, list, deque ...
                     *strm >> container->emplace_back();
                 else if constexpr (has_emplace_front<Container_>)  // maybe forward_list
@@ -285,8 +278,7 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
         void impl_archive(archive::if_writer* strm, const Map_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             strm->object_push(data.size());
-            for (auto& [k, v] : data)
-            {
+            for (auto& [k, v] : data) {
                 strm->write_key_next();
                 *strm << k;
                 *strm << v;
@@ -297,8 +289,7 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
         void impl_restore(archive::if_reader* strm, Map_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             auto ctx = strm->begin_object();
-            while (not strm->should_break(ctx))
-            {
+            while (not strm->should_break(ctx)) {
                 std::pair<key_type, mapped_type> kv;
 
                 strm->read_key_next();
@@ -347,8 +338,7 @@ INTERNAL_CPPH_define_(
        protected:
         void impl_archive(archive::if_writer* strm, const ValTy_& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
-            if (not data)
-            {
+            if (not data) {
                 *strm << nullptr;
                 return;
             }
@@ -358,8 +348,7 @@ INTERNAL_CPPH_define_(
 
         void impl_restore(archive::if_reader* strm, ValTy_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
-            if (not *pvdata)
-            {
+            if (not *pvdata) {
                 if constexpr (is_optional)
                     (*pvdata).emplace();
                 else if constexpr (is_unique_ptr)

@@ -54,22 +54,17 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
         {
             auto data = &pvdata;
 
-            if constexpr (not binary_type::is_container)
-            {
+            if constexpr (not binary_type::is_container) {
                 *strm << const_buffer_view{data, 1};
-            }
-            else if constexpr (binary_type::is_contiguous)  // list, set, etc ...
+            } else if constexpr (binary_type::is_contiguous)  // list, set, etc ...
             {
                 *strm << const_buffer_view{*data};
-            }
-            else
-            {
+            } else {
                 using value_type = typename Container_::value_type;
                 auto total_size  = sizeof(value_type) * std::size(*data);
 
                 strm->binary_push(total_size);
-                for (auto& elem : *data)
-                {
+                for (auto& elem : *data) {
                     strm->binary_write_some(const_buffer_view{&elem, 1});
                 }
                 strm->binary_pop();
@@ -84,12 +79,9 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
             auto chunk_size             = strm->begin_binary();
             [[maybe_unused]] auto clean = cleanup([&] { strm->end_binary(); });
 
-            if constexpr (not binary_type::is_container)
-            {
+            if constexpr (not binary_type::is_container) {
                 strm->binary_read_some(mutable_buffer_view{data, 1});
-            }
-            else
-            {
+            } else {
                 using value_type = typename Container_::value_type;
 
                 auto elem_count_verified =
@@ -100,19 +92,15 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                             return chunk_size / sizeof(value_type);
                         };
 
-                if constexpr (binary_type::is_contiguous)
-                {
-                    if (chunk_size != ~size_t{})
-                    {
-                        if constexpr (refl::has_resize<Container_>)
-                        {
+                if constexpr (binary_type::is_contiguous) {
+                    if (chunk_size != ~size_t{}) {
+                        if constexpr (refl::has_resize<Container_>) {
                             // If it's dynamic, read all.
                             data->resize(elem_count_verified());
                         }
 
                         strm->binary_read_some({std::data(*data), std::size(*data)});
-                    }
-                    else  // if chunk size is not specified ...
+                    } else  // if chunk size is not specified ...
                     {
                         if constexpr (refl::has_emplace_back<Container_>)
                             data->clear();
@@ -120,8 +108,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                         value_type elem_buf;
                         value_type* elem;
 
-                        for (size_t idx = 0;; ++idx)
-                        {
+                        for (size_t idx = 0;; ++idx) {
                             if constexpr (refl::has_emplace_back<Container_>)
                                 elem = &elem_buf;
                             else if (idx < std::size(*data))
@@ -131,40 +118,30 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
 
                             auto n = strm->binary_read_some(mutable_buffer_view{elem, 1});
 
-                            if (n == sizeof *elem)
-                            {
+                            if (n == sizeof *elem) {
                                 if constexpr (refl::has_emplace_back<Container_>)
                                     data->emplace_back(std::move(*elem));
-                            }
-                            else if (n == 0)
-                            {
+                            } else if (n == 0) {
                                 if constexpr (refl::has_emplace_back<Container_>)
                                     break;
                                 else
                                     throw refl::error::primitive{strm, "missing data"};
-                            }
-                            else if (n != sizeof(value_type))
-                            {
+                            } else if (n != sizeof(value_type)) {
                                 throw refl::error::primitive{strm, "binary data alignment mismatch"};
                             }
                         }
                     }
-                }
-                else
-                {
-                    if (chunk_size != ~size_t{})
-                    {
+                } else {
+                    if (chunk_size != ~size_t{}) {
                         auto elemsize = elem_count_verified();
 
-                        if constexpr (refl::has_reserve_v<Container_>)
-                        {
+                        if constexpr (refl::has_reserve_v<Container_>) {
                             data->reserve(elemsize);
                         }
 
                         data->clear();
                         value_type* mutable_data = {};
-                        for (auto idx : perfkit::count(elemsize))
-                        {
+                        for (auto idx : perfkit::count(elemsize)) {
                             if constexpr (refl::has_emplace_back<Container_>)  // maybe vector, list, deque ...
                                 mutable_data = &data->emplace_back();
                             else if constexpr (refl::has_emplace_front<Container_>)  // maybe forward_list
@@ -176,14 +153,12 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
 
                             strm->binary_read_some({mutable_data, 1});
                         }
-                    }
-                    else  // chunk size not specified
+                    } else  // chunk size not specified
                     {
                         data->clear();
                         value_type chunk;
 
-                        for (;;)
-                        {
+                        for (;;) {
                             auto n = strm->binary_read_some({&chunk, 1});
 
                             if (n == 0)

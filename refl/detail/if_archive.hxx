@@ -41,8 +41,7 @@ namespace CPPHEADERS_NS_::archive {
 /**
  * List of available property formats
  */
-enum class entity_type : uint16_t
-{
+enum class entity_type : uint16_t {
     invalid,
 
     object,
@@ -404,8 +403,7 @@ class if_reader : public if_archive_base
     //! type getters
     bool is_object_next() const
     {
-        switch (type_next())
-        {
+        switch (type_next()) {
             case entity_type::object:
             case entity_type::dictionary:
                 return true;
@@ -416,8 +414,7 @@ class if_reader : public if_archive_base
 
     bool is_array_next() const
     {
-        switch (type_next())
-        {
+        switch (type_next()) {
             case entity_type::array:
             case entity_type::tuple:
                 return true;
@@ -428,8 +425,7 @@ class if_reader : public if_archive_base
 
     bool is_number_next() const
     {
-        switch (type_next())
-        {
+        switch (type_next()) {
             case entity_type::integer:
             case entity_type::floating_point:
                 return true;

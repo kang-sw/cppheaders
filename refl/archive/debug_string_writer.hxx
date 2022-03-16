@@ -30,8 +30,7 @@ namespace CPPHEADERS_NS_::archive {
 
 class debug_string_writer : public if_writer
 {
-    enum class context_state
-    {
+    enum class context_state {
         empty,
         object_key,
         object_value,
@@ -74,8 +73,7 @@ class debug_string_writer : public if_writer
 
     void _pre_write()
     {
-        switch (_state())
-        {
+        switch (_state()) {
             case context_state::empty:
                 throw error::writer_invalid_state(this, "write when empty!");
 
@@ -104,8 +102,7 @@ class debug_string_writer : public if_writer
 
     void _post_write()
     {
-        switch (_state())
-        {
+        switch (_state()) {
             case context_state::object_key:
                 _state(context_state::object_value);
                 write_str(": ");
@@ -178,8 +175,7 @@ class debug_string_writer : public if_writer
     {
         char charset[] = "0123456789ABCDEF";
 
-        for (auto ch : v)
-        {
+        for (auto ch : v) {
             _buf->sputc('x');
             _buf->sputc(charset[(ch & 0xf0) >> 4]);
             _buf->sputc(charset[(ch & 0x0f) >> 0]);
@@ -229,8 +225,7 @@ class debug_string_writer : public if_writer
         _id_stack.pop_back();
         _state_stack.pop_back();
 
-        if (not was_empty)
-        {
+        if (not was_empty) {
             write_str("\n");
             _indent();
         }
@@ -270,8 +265,7 @@ class debug_string_writer : public if_writer
         _id_stack.pop_back();
         _state_stack.pop_back();
 
-        if (not was_empty)
-        {
+        if (not was_empty) {
             write_str("\n");
             _indent();
         }

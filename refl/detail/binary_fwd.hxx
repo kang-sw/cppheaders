@@ -54,8 +54,7 @@ class binary<
    public:
     using Container_::Container_;
 
-    enum
-    {
+    enum {
         is_container  = true,
         is_contiguous = false
     };
@@ -71,8 +70,7 @@ class binary<Container_,
    public:
     using Container_::Container_;
 
-    enum
-    {
+    enum {
         is_container  = true,
         is_contiguous = true
     };
@@ -84,8 +82,7 @@ class binary<ValTy_, std::enable_if_t<is_binary_compatible_v<ValTy_>>> : ValTy_
    public:
     using ValTy_::ValTy_;
 
-    enum
-    {
+    enum {
         is_container = false,
     };
 };

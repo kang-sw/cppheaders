@@ -191,8 +191,7 @@ class iota_counter
             : min_(min),
               max_(max)
     {
-        if (min_ > max_)
-        {
+        if (min_ > max_) {
             std::swap(min_, max_);
         }
     }
@@ -201,8 +200,7 @@ class iota_counter
             : min_(Ty_{}),
               max_(max)
     {
-        if (min_ > max_)
-        {
+        if (min_ > max_) {
             std::swap(min_, max_);
         }
     }
@@ -227,8 +225,7 @@ template <typename Ty_, size_t Dim_>
 class _counter
 {
    public:
-    enum
-    {
+    enum {
         num_dimension = Dim_
     };
 
@@ -253,14 +250,10 @@ class _counter
     template <size_t N_ = Dim_ - 1>
     constexpr void incr()
     {
-        if constexpr (N_ == size_t(-1))
-        {
+        if constexpr (N_ == size_t(-1)) {
             current = max;
-        }
-        else
-        {
-            if (++current[N_] == max[N_])
-            {
+        } else {
+            if (++current[N_] == max[N_]) {
                 current[N_] = value_type{};
                 incr<N_ - 1>();
             }
@@ -365,8 +358,7 @@ constexpr auto counter(std::array<SizeTy_, Dim_> const& idx)
 {
     _count_index<SizeTy_, Dim_> counter{};
     bool has_zero = false;
-    for (size_t i = 0; i < Dim_; ++i)
-    {
+    for (size_t i = 0; i < Dim_; ++i) {
         counter.max[i] = idx[i];
         has_zero       = has_zero || idx[i] == 0;
     }

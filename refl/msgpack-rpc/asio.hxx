@@ -63,8 +63,7 @@ class transient_socket_streambuf : public std::streambuf
    protected:
     int_type overflow(int_type type) override
     {
-        try
-        {
+        try {
             for (auto nready = pptr() - pbase(); nready > 0;)
                 nready -= _socket.send(asio::buffer(pbase(), nready));
 
@@ -74,24 +73,19 @@ class transient_socket_streambuf : public std::streambuf
                 return sputc(traits_type::to_char_type(type));
             else
                 return 0;
-        }
-        catch (asio::system_error& ec)
-        {
+        } catch (asio::system_error& ec) {
             return traits_type::eof();
         }
     }
 
     int_type underflow() override
     {
-        try
-        {
+        try {
             auto navail = _socket.receive(asio::buffer(_rbuf));
             setg(_rbuf, _rbuf, _rbuf + navail);
 
             return traits_type::to_int_type(_rbuf[0]);
-        }
-        catch (asio::system_error& ec)
-        {
+        } catch (asio::system_error& ec) {
             return traits_type::eof();
         }
     }

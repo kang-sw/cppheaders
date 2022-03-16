@@ -39,8 +39,7 @@
 namespace CPPHEADERS_NS_ {
 using event_key = basic_key<class LABEL_delegate_key>;
 
-enum class event_control
-{
+enum class event_control {
     ok      = 0,
     expire  = 1,
     consume = 2,
@@ -51,13 +50,11 @@ inline event_control operator|(event_control a, event_control b)
     return (event_control)(int(a) | int(b));
 }
 
-enum
-{
+enum {
     DELEGATE_BITS = 61
 };
 
-enum class event_priority : uint64_t
-{
+enum class event_priority : uint64_t {
     last      = 0,
     very_low  = 1ull << DELEGATE_BITS,
     low       = 2ull << DELEGATE_BITS,
@@ -146,20 +143,15 @@ class basic_event
     {
         lock_guard lock{_mtx};
 
-        if (_dirty)
-        {
+        if (_dirty) {
             _dirty = false;
             std::sort(_events.begin(), _events.end());
         }
 
-        for (auto it = _events.begin(); it != _events.end();)
-        {
-            if (not it->id)
-            {
+        for (auto it = _events.begin(); it != _events.end();) {
+            if (not it->id) {
                 _events.erase(it++);
-            }
-            else
-            {
+            } else {
                 lock.unlock();
                 auto invoke_result = (int)it->function(std::forward<Args_>(args)...);
                 lock.lock();
@@ -187,27 +179,20 @@ class basic_event
 
         _dirty |= evt->priority != 0;
 
-        if constexpr (std::is_invocable_r_v<event_control, Callable_, Args_...>)
-        {
+        if constexpr (std::is_invocable_r_v<event_control, Callable_, Args_...>) {
             evt->function = (std::forward<Callable_>(fn));
-        }
-        else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>)
-        {
+        } else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>) {
             evt->function =
                     [_fn = std::forward<Callable_>(fn)](auto&&... args) mutable {
                         return _fn(args...) ? event_control::ok
                                             : event_control::expire;
                     };
-        }
-        else if constexpr (std::is_invocable_v<Callable_, Args_...>)
-        {
+        } else if constexpr (std::is_invocable_v<Callable_, Args_...>) {
             evt->function =
                     [_fn = std::forward<Callable_>(fn)](auto&&... args) mutable {
                         return _fn(args...), event_control::ok;
                     };
-        }
-        else
-        {
+        } else {
             evt->function =
                     [_fn = std::forward<Callable_>(fn)](auto&&...) mutable {
                         return _fn(), event_control::ok;

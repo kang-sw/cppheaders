@@ -24,13 +24,13 @@
 
 #include <vector>
 
-#include "catch.hpp"
 #include <memory/queue_allocator.hxx>
+
+#include "catch.hpp"
 
 TEST_CASE("overall", "[queue_allocator]")
 {
-    enum
-    {
+    enum {
         BUFLEN = 1024
     };
 
@@ -51,8 +51,7 @@ TEST_CASE("overall", "[queue_allocator]")
     int reader   = 0;
 
     // allocate half
-    for (size_t i = 0; i < BUFLEN / 8 / 2; ++i)
-    {
+    for (size_t i = 0; i < BUFLEN / 8 / 2; ++i) {
         INFO(""
              << "buffer size: " << buffer.size() << "\n"
              << "iteration: " << i << "\n"
@@ -67,8 +66,7 @@ TEST_CASE("overall", "[queue_allocator]")
 
     // deallocate half of half
     auto first_size = buffer.size();
-    for (size_t i = 0; i < BUFLEN / 8 / 2 / 2; ++i)
-    {
+    for (size_t i = 0; i < BUFLEN / 8 / 2 / 2; ++i) {
         CHECK(*(int*)buffer.front() == reader++);
 
         buffer.deallcoate(buffer.front());
@@ -77,16 +75,14 @@ TEST_CASE("overall", "[queue_allocator]")
 
     // again, insert.
     first_size = buffer.size();
-    for (size_t i = 0; i < BUFLEN / 8 / 2 / 2; ++i)
-    {
+    for (size_t i = 0; i < BUFLEN / 8 / 2 / 2; ++i) {
         int* ptr = (int*)buffer.allocate(8);
         *ptr     = inserter++;
         REQUIRE(buffer.size() == first_size + i + 1);
     }
 
     first_size = buffer.size();
-    for (size_t i = 0; i < BUFLEN / 8 / 2; ++i)
-    {
+    for (size_t i = 0; i < BUFLEN / 8 / 2; ++i) {
         CHECK(*(int*)buffer.front() == reader++);
 
         buffer.deallcoate(buffer.front());
