@@ -260,11 +260,6 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                 auto rslt = stub_print(*ctx).rpc(nullptr, "hello!");
                 CHECK(rslt == msgpack::rpc::rpc_status::okay);
             }
-
-            for (int i = 0; i < 16; ++i)
-            {
-                REQUIRE_NOTHROW(stub_noti(*ctx)());
-            }
         }
 
         SECTION("Exceptions")

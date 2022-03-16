@@ -38,19 +38,7 @@ CPPH_DECLARE_EXCEPTION(exception, std::exception);
 CPPH_DECLARE_EXCEPTION(invalid_connection, exception);
 
 //! Exception propagated to RPC client.
-CPPH_DECLARE_EXCEPTION(remote_exception, std::runtime_error);
-CPPH_DECLARE_EXCEPTION(remote_reply_exception, remote_exception);
-
-struct remote_invoke_exception : remote_exception
-{
-    rpc_status error_code;
-
-    explicit remote_invoke_exception(rpc_status errc)
-            : remote_exception("remote invocation failed: " + std::to_string(int(errc))),
-              error_code(errc)
-    {
-    }
-};
+CPPH_DECLARE_EXCEPTION(remote_reply_exception, std::runtime_error);
 
 //!
 class remote_handler_exception : public std::exception

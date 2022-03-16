@@ -96,6 +96,31 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
                     args...);
         }
 
+        template <typename CompletionContext_>
+        auto async_rpc(Params_ const&... args, CompletionContext_&& complete_handler) const
+        {
+            return _rpc->async_rpc(
+                    nullptr, _host->name(),
+                    std::forward<CompletionContext_>(complete_handler),
+                    args...);
+        }
+
+        auto async_rpc(Params_ const&... args) const
+        {
+            return _rpc->async_rpc(
+                    nullptr, _host->name(),
+                    [](auto) {},
+                    args...);
+        }
+
+        auto async_rpc(return_type* ret, Params_ const&... args) const
+        {
+            return _rpc->async_rpc(
+                    ret, _host->name(),
+                    [](auto) {},
+                    args...);
+        }
+
         void notify(Params_ const&... args) const
         {
             _rpc->notify(_host->name(), args...);
@@ -104,26 +129,6 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
         void notify_all(Params_ const&... args) const
         {
             _rpc->notify_all(_host->name(), args...);
-        }
-
-        return_type operator()(Params_ const&... args) const
-        {
-            rpc_status result;
-
-            if constexpr (std::is_void_v<return_type>)
-            {
-                result = _rpc->rpc(nullptr, _host->name(), args...);
-                if (result != rpc_status::okay) { throw remote_invoke_exception(result); }
-            }
-            else
-            {
-                return_type retval;
-
-                result = _rpc->rpc(&retval, _host->name(), args...);
-                if (result != rpc_status::okay) { throw remote_invoke_exception(result); }
-
-                return retval;
-            }
         }
     };
 

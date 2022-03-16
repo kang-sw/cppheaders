@@ -41,6 +41,7 @@
 #include "../../archive/msgpack-writer.hxx"
 #include "../../detail/object_core.hxx"
 #include "../../detail/primitives.hxx"
+#include "request_handle.hxx"
 #include "defs.hxx"
 #include "errors.hxx"
 #include "service_info.hxx"
@@ -310,7 +311,7 @@ class session : public std::enable_shared_from_this<session>
                                         *rd >> *result;
                                 }
 
-                                handler(nullptr);
+                                handler((std::exception const*)nullptr);
                             }
                             catch (type_mismatch_exception& e)
                             {
@@ -701,18 +702,6 @@ class session : public std::enable_shared_from_this<session>
 
 using session_config = detail::session::config;
 
-namespace async_rpc_result {
-enum type : int
-{
-    invalid = 0,
-    error   = -1,
-
-    no_active_connection = -10,
-    invalid_parameters   = -11,
-    invalid_connection   = -12,
-};
-}
-
 class context
 {
     friend class detail::session;
@@ -828,49 +817,16 @@ class context
     }
 
    public:
-    class rpc_handle
-    {
-        friend class context;
-        session_wptr _wp;
-        int _msgid = 0;
-
-       public:
-        operator bool() const noexcept { return _msgid > 0 && not _wp.expired(); }
-        auto errc() const noexcept { return async_rpc_result::type{_msgid}; }
-
-        template <typename Duration_>
-        auto wait(Duration_&& duration) const noexcept
-        {
-            assert(_msgid > 0);
-
-            if (auto session = _wp.lock())
-                return session->wait_rpc(_msgid, duration);
-            else
-                return false;
-        }
-
-        auto abort()
-        {
-            auto msgid = std::exchange(_msgid, 0);
-            assert(msgid > 0);
-
-            if (auto session = _wp.lock())
-                return session->abort_rpc(msgid);
-            else
-                return false;
-        }
-    };
-
     template <typename RetPtr_,
               typename CompletionToken_,
               typename... Params_>
     auto async_rpc(RetPtr_ retval,
                    std::string_view method,
                    CompletionToken_&& handler,
-                   Params_&&... params) -> rpc_handle
+                   Params_&&... params) -> request_handle
     {
         // Basically, iterate until succeeds.
-        rpc_handle result;
+        request_handle result;
 
         for (;;)
         {
@@ -893,6 +849,8 @@ class context
                 break;
             }
         }
+
+        return result;
     }
 
     /**

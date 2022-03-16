@@ -25,9 +25,16 @@
  ******************************************************************************/
 
 #pragma once
+#include <memory>
+
 #include "../../__namespace__"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
+class context;
+
+namespace detail {
+class session;
+}
 
 enum class rpc_status
 {
@@ -54,4 +61,15 @@ enum class rpc_type
     notify  = 2,
 };
 
+namespace async_rpc_result {
+enum type : int
+{
+    invalid = 0,
+    error   = -1,
+
+    no_active_connection = -10,
+    invalid_parameters   = -11,
+    invalid_connection   = -12,
+};
+}
 }  // namespace CPPHEADERS_NS_::msgpack::rpc
