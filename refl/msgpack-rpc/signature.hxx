@@ -87,6 +87,12 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
             return _rpc->rpc(ret, _host->name(), args...);
         }
 
+        template <typename Duration_>
+        rpc_status rpc(return_type* ret, Params_ const&... args, Duration_&& timeout) const
+        {
+            return _rpc->rpc(ret, _host->name(), timeout, args...);
+        }
+
         template <typename CompletionContext_>
         auto async_rpc(return_type* ret, Params_ const&... args, CompletionContext_&& complete_handler) const
         {

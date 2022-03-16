@@ -41,9 +41,9 @@
 #include "../archive/msgpack-writer.hxx"
 #include "../detail/object_core.hxx"
 #include "../detail/primitives.hxx"
-#include "request_handle.hxx"
 #include "defs.hxx"
 #include "errors.hxx"
+#include "request_handle.hxx"
 #include "service_info.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
