@@ -210,7 +210,7 @@ class basic_event
         return add(
                 [wptr     = std::move(wptr),
                  callable = std::forward<Callable_>(callable)](
-                        Args_... args)
+                        Args_... args) mutable
                         -> event_control {
                     auto anchor = wptr.lock();  // Prevent anchor to be destroyed during function call
                     if (not anchor) { return event_control::expire; }

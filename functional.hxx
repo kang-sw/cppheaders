@@ -244,7 +244,7 @@ auto bind_front(Callable_&& callable, Captures_&&... captures)
     return
             [fn       = std::forward<Callable_>(callable),
              captured = std::make_tuple(std::forward<Captures_>(captures)...)](
-                    auto&&... args) {
+                    auto&&... args) mutable {
                 auto tuple = std::tuple_cat(
                         std::move(captured),
                         std::forward_as_tuple(std::forward<decltype(args)>(args)...));
@@ -267,7 +267,7 @@ auto bind_front_weak(Ptr_&& ref, Callable_&& callable, Captures_&&... captures)
             [wptr     = std::weak_ptr{std::forward<Ptr_>(ref)},
              fn       = std::forward<Callable_>(callable),
              captured = std::make_tuple(std::forward<Captures_>(captures)...)](
-                    auto&&... args) {
+                    auto&&... args) mutable {
                 auto tuple = std::tuple_cat(
                         std::move(captured),
                         std::forward_as_tuple(std::forward<decltype(args)>(args)...));
