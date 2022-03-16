@@ -261,9 +261,6 @@ class session : public std::enable_shared_from_this<session>
         // Fill profile info
         _profile.peer_name = _conn->peer();
         _conn->set_timeout(_conf.timeout);
-
-        // Notify creation to monitor
-        if (auto monitor = _monitor.lock()) { monitor->on_new_session(_profile); }
     }
 
     ~session() noexcept
@@ -952,9 +949,11 @@ class context
         _session_notify.notify_all(
                 [&] {
                     _sessions.push_back(session);
-                    _session_sources.emplace(std::move(session));
+                    _session_sources.emplace(session);
                 });
 
+        // Notify creation to monitor
+        if (auto monitor = _monitor.lock()) { monitor->on_new_session(session->_profile); }
         return handle;
     }
 
