@@ -30,13 +30,13 @@
 #include <set>
 #include <utility>
 
-#include "../../../functional.hxx"
-#include "../../../helper/exception.hxx"
-#include "../../../memory/pool.hxx"
-#include "../../__namespace__"
-#include "../../archive/msgpack-reader.hxx"
-#include "../../archive/msgpack-writer.hxx"
-#include "../../detail/object_core.hxx"
+#include "../../functional.hxx"
+#include "../../helper/exception.hxx"
+#include "../../memory/pool.hxx"
+#include "../__namespace__"
+#include "../archive/msgpack-reader.hxx"
+#include "../archive/msgpack-writer.hxx"
+#include "../detail/object_core.hxx"
 #include "signature.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {

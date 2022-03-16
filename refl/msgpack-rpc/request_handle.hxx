@@ -26,7 +26,7 @@
 #include <cassert>
 #include <memory>
 
-#include "../../__namespace__"
+#include "../__namespace__"
 #include "defs.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {

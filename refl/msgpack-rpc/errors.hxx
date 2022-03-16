@@ -29,8 +29,8 @@
 #include <map>
 #include <string>
 
-#include "../../../helper/exception.hxx"
-#include "../../__namespace__"
+#include "../../helper/exception.hxx"
+#include "../__namespace__"
 #include "defs.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {

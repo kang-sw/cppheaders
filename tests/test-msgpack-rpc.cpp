@@ -34,8 +34,8 @@
 #include <asio/steady_timer.hpp>
 
 #include "catch.hpp"
-#include "refl/extension/msgpack-rpc.hxx"
-#include "refl/extension/msgpack-rpc/asio.hxx"
+#include "refl/msgpack-rpc/asio.hxx"
+#include "refl/msgpack-rpc/context.hxx"
 #include "refl/object.hxx"
 
 using namespace std::literals;

@@ -27,7 +27,7 @@
 #pragma once
 #include <memory>
 
-#include "../../__namespace__"
+#include "../__namespace__"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
 class context;

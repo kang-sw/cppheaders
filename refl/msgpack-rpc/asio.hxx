@@ -31,7 +31,7 @@
 #include <asio/ip/basic_endpoint.hpp>
 #include <asio/strand.hpp>
 
-#include "../../__namespace__"
+#include "../__namespace__"
 #include "context.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc::asio_ex {

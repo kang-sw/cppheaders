@@ -28,7 +28,7 @@
 #include <array>
 #include <tuple>
 
-#include "../../__namespace__"
+#include "../__namespace__"
 #include "errors.hxx"
 
 namespace CPPHEADERS_NS_::msgpack::rpc {
