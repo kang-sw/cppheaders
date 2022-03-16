@@ -87,9 +87,13 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
             return _rpc->rpc(ret, _host->name(), args...);
         }
 
-        auto async_rpc(return_type* ret, Params_ const&... args) const
+        template <typename CompletionContext_>
+        auto async_rpc(return_type* ret, Params_ const&... args, CompletionContext_&& complete_handler) const
         {
-            return _rpc->async_rpc(ret, _host->name(), args...);
+            return _rpc->async_rpc(
+                    ret, _host->name(),
+                    std::forward<CompletionContext_>(complete_handler),
+                    args...);
         }
 
         void notify(Params_ const&... args) const

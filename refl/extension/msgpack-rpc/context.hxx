@@ -354,19 +354,26 @@ class session : public std::enable_shared_from_this<session>
         return _rpc_notify.wait_for(duration, predicate);
     }
 
-    void abort_rpc(int msgid)
+    bool abort_rpc(int msgid)
     {
+        bool found = false;
         decltype(request_info::completion_handler) handler;
         _rpc_notify.critical_section([&] {
             if (auto iter = _requests.find(msgid); iter != _requests.end())
             {
+                found   = true;
                 handler = std::move(iter->second.completion_handler);
                 _requests.erase(iter);
             }
         });
 
-        rpc_error error{rpc_status::aborted};
-        handler(nullptr, &error);
+        if (found)
+        {
+            rpc_error error{rpc_status::aborted};
+            handler(nullptr, &error);
+        }
+
+        return found;
     }
 
     //    template <typename RetPtr_, typename... Params_>
@@ -697,9 +704,12 @@ using session_config = detail::session::config;
 namespace async_rpc_result {
 enum type : int
 {
-    no_active_connection = -1,
-    invalid_parameters   = -2,
-    invalid_connection   = -3,
+    invalid = 0,
+    error   = -1,
+
+    no_active_connection = -10,
+    invalid_parameters   = -11,
+    invalid_connection   = -12,
 };
 }
 
@@ -818,20 +828,60 @@ class context
     }
 
    public:
+    class rpc_handle
+    {
+        friend class context;
+        session_wptr _wp;
+        int _msgid = 0;
+
+       public:
+        operator bool() const noexcept { return _msgid > 0 && not _wp.expired(); }
+        auto errc() const noexcept { return async_rpc_result::type{_msgid}; }
+
+        template <typename Duration_>
+        auto wait(Duration_&& duration) const noexcept
+        {
+            assert(_msgid > 0);
+
+            if (auto session = _wp.lock())
+                return session->wait_rpc(_msgid, duration);
+            else
+                return false;
+        }
+
+        auto abort()
+        {
+            auto msgid = std::exchange(_msgid, 0);
+            assert(msgid > 0);
+
+            if (auto session = _wp.lock())
+                return session->abort_rpc(msgid);
+            else
+                return false;
+        }
+    };
+
     template <typename RetPtr_,
               typename CompletionToken_,
               typename... Params_>
     auto async_rpc(RetPtr_ retval,
                    std::string_view method,
                    CompletionToken_&& handler,
-                   Params_&&... params) -> async_rpc_result::type
+                   Params_&&... params) -> rpc_handle
     {
         // Basically, iterate until succeeds.
+        rpc_handle result;
+
         for (;;)
         {
             auto session = _checkout();
-            if (not session) { return async_rpc_result::no_active_connection; }
+            if (not session)
+            {
+                result._msgid = async_rpc_result::no_active_connection;
+                break;
+            }
 
+            result._wp = session;
             auto msgid = _async_rpc(
                     session, retval, method,
                     std::forward<CompletionToken_>(handler),
@@ -839,7 +889,8 @@ class context
 
             if (msgid != async_rpc_result::invalid_connection)
             {
-                return msgid;
+                result._msgid = msgid;
+                break;
             }
         }
     }
