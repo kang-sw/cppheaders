@@ -84,6 +84,11 @@ class if_connection
     std::string const& peer() const noexcept { return _peer; }
 
     /**
+     * Returns total number of written/read bytes.
+     */
+    virtual void totals(size_t* nwrite, size_t* nread) const = 0;
+
+    /**
      * Returns internal streambuf
      */
     virtual std::streambuf* rdbuf() = 0;
@@ -462,7 +467,8 @@ class session : public std::enable_shared_from_this<session>
         // NOTE: This function guaranteed to not be re-entered multiple times on single session
         try {
             // Assume data is ready to be read.
-            auto     key = _reader.begin_array();
+            auto key = _reader.begin_array();
+            _conn->totals(&_profile.total_write, &_profile.total_read);
 
             rpc_type type;
 

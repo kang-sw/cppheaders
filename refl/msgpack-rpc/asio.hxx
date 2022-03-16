@@ -50,6 +50,9 @@ class transient_socket_streambuf : public std::streambuf
     char                      _wbuf[2048];
     char                      _rbuf[2048];
 
+    size_t                    _nread  = 0;
+    size_t                    _nwrite = 0;
+
    public:
     explicit transient_socket_streambuf(socket_type socket)
             : _socket(std::move(socket))
@@ -64,8 +67,12 @@ class transient_socket_streambuf : public std::streambuf
     int_type overflow(int_type type) override
     {
         try {
-            for (auto nready = pptr() - pbase(); nready > 0;)
+            auto nready = pptr() - pbase();
+            _nwrite += nready;
+
+            while (nready > 0) {
                 nready -= _socket.send(asio::buffer(pbase(), nready));
+            }
 
             setp(_wbuf, *(&_wbuf + 1));
 
@@ -82,6 +89,8 @@ class transient_socket_streambuf : public std::streambuf
     {
         try {
             auto navail = _socket.receive(asio::buffer(_rbuf));
+            _nread += navail;
+
             setg(_rbuf, _rbuf, _rbuf + navail);
 
             return traits_type::to_int_type(_rbuf[0]);
@@ -111,6 +120,12 @@ class transient_socket_streambuf : public std::streambuf
     void set_timeout(std::chrono::microseconds microseconds)
     {
         _timeout = microseconds;
+    }
+
+    void nrw(size_t* nwrite, size_t* nread) const noexcept
+    {
+        *nwrite = _nwrite;
+        *nread  = _nread;
     }
 };
 
@@ -172,6 +187,11 @@ class basic_socket_connection : public if_connection
     void set_timeout(std::chrono::microseconds microseconds) override
     {
         _buf.set_timeout(microseconds);
+    }
+
+    void totals(size_t* nwrite, size_t* nread) const override
+    {
+        _buf.nrw(nwrite, nread);
     }
 
    private:

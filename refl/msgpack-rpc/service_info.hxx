@@ -48,6 +48,8 @@ using namespace archive::msgpack;
 struct session_profile
 {
     std::string peer_name;
+    size_t      total_read  = 0;
+    size_t      total_write = 0;
 };
 
 using session_profile_view = session_profile const&;
