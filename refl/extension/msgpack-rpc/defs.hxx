@@ -34,6 +34,7 @@ enum class rpc_status
     okay    = 0,
     waiting = 1,
 
+    aborted = -20,
     timeout = -10,
 
     unknown_error       = -1,

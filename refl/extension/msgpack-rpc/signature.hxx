@@ -87,9 +87,9 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
             return _rpc->rpc(ret, _host->name(), args...);
         }
 
-        auto rpc_async(return_type* ret, Params_ const&... args) const
+        auto async_rpc(return_type* ret, Params_ const&... args) const
         {
-            return _rpc->rpc_async(ret, _host->name(), args...);
+            return _rpc->async_rpc(ret, _host->name(), args...);
         }
 
         void notify(Params_ const&... args) const

@@ -141,13 +141,12 @@ class if_context_monitor
     virtual void on_dispose_session(session_profile const&) noexcept {}
 };
 
-namespace detail {
-
 inline std::string_view to_string(rpc_status s)
 {
     static std::map<rpc_status, std::string const, std::less<>> etos{
             {rpc_status::okay, "OKAY"},
             {rpc_status::waiting, "WAITING"},
+            {rpc_status::aborted, "ABORTED"},
             {rpc_status::timeout, "ERROR_TIMEOUT"},
             {rpc_status::unknown_error, "UNKNOWN"},
             {rpc_status::internal_error, "ERROR_INTERNAL"},
@@ -166,6 +165,7 @@ inline auto from_string(std::string_view s)
             {"OKAY", rpc_status::okay},
             {"WAITING", rpc_status::waiting},
             {"ERROR_TIMEOUT", rpc_status::timeout},
+            {"ABORTED", rpc_status::aborted},
             {"UNKOWN", rpc_status::unknown_error},
             {"ERROR_INTERNAL", rpc_status::internal_error},
             {"ERROR_INVALID_PARAMETER", rpc_status::invalid_parameter},
@@ -177,6 +177,7 @@ inline auto from_string(std::string_view s)
     return p ? p->second : rpc_status::unknown_error;
 }
 
+namespace detail {
 /**
  * Indicates single connection
  *
@@ -195,9 +196,7 @@ class session : public std::enable_shared_from_this<session>
    private:
     struct request_info
     {
-        function<void(reader*)> promise;
-        std::exception_ptr except;
-        volatile rpc_status status = rpc_status::waiting;
+        function<void(reader*, std::exception const*)> completion_handler;
     };
 
    private:
@@ -267,37 +266,62 @@ class session : public std::enable_shared_from_this<session>
     }
 
    public:
-    template <typename RetPtr_, typename... Params_>
-    auto rpc_send(RetPtr_ result, std::string_view method, Params_&&... params)
+    template <typename RetPtr_, typename... Params_,
+              typename CompletionToken_,
+              typename = std::enable_if_t<std::is_invocable_v<CompletionToken_, std::exception const*>>>
+    auto async_rpc(RetPtr_ result, std::string_view method, CompletionToken_&& handler, Params_&&... params)
     {
         decltype(_requests)::iterator request;
         int msgid;
 
         // create reply slot
         _rpc_notify.critical_section([&] {
-            msgid     = ++_msgid_gen;
+            msgid     = ++_msgid_gen < 0 ? (_msgid_gen = 1) : _msgid_gen;
             auto pair = _requests.try_emplace(msgid);
             request   = pair.first;
             assert(pair.second);  // message id should never duplicate
 
             // This will be invoked when return value from remote is ready, and will directly
             //  deserialize the result into provided argument.
-            request->second.promise =
-                    [result](reader* rd) {
-                        if constexpr (std::is_null_pointer_v<RetPtr_>)
+            request->second.completion_handler =
+                    [result, handler = std::forward<CompletionToken_>(handler)]  //
+                    (reader * rd, std::exception const* except) mutable {
+                        if (except)
                         {
-                            *rd >> nullptr;
-                        }
-                        else if constexpr (std::is_void_v<std::remove_pointer_t<RetPtr_>>)
-                        {
-                            *rd >> nullptr;
+                            handler(except);
                         }
                         else
                         {
-                            if (result == nullptr)
-                                *rd >> nullptr;  // skip
-                            else
-                                *rd >> *result;
+                            try
+                            {
+                                if constexpr (std::is_null_pointer_v<RetPtr_>)
+                                {
+                                    *rd >> nullptr;
+                                }
+                                else if constexpr (std::is_void_v<std::remove_pointer_t<RetPtr_>>)
+                                {
+                                    *rd >> nullptr;
+                                }
+                                else
+                                {
+                                    if (result == nullptr)
+                                        *rd >> nullptr;  // skip
+                                    else
+                                        *rd >> *result;
+                                }
+
+                                handler(nullptr);
+                            }
+                            catch (type_mismatch_exception& e)
+                            {
+                                rpc_error exception{rpc_status::invalid_return_type};
+                                handler(&exception);
+                            }
+                            catch (std::exception& e)
+                            {
+                                handler(&e);
+                                throw detail::rpc_handler_fatal_state{};
+                            }
                         }
                     };
         });
@@ -320,36 +344,86 @@ class session : public std::enable_shared_from_this<session>
             _writer.flush();
         }
 
-        return request;
+        return msgid;
     }
 
-    auto rpc_wait(request_handle_type request,
-                  std::chrono::microseconds timeout)
+    template <typename Duration_>
+    bool wait_rpc(int msgid, Duration_&& duration)
     {
-        // wait for reply
-        auto wait_fn = [&] { return request->second.status != rpc_status::waiting; };
-        if (not _rpc_notify.wait_for(timeout, wait_fn)) { return rpc_status::timeout; }
+        auto predicate = [&] { return not contains(_requests, msgid); };
+        return _rpc_notify.wait_for(duration, predicate);
+    }
 
-        // timeout
-        auto errc   = request->second.status;
-        auto except = std::move(request->second.except);
-
+    void abort_rpc(int msgid)
+    {
+        decltype(request_info::completion_handler) handler;
         _rpc_notify.critical_section([&] {
-            _requests.erase(request);
+            if (auto iter = _requests.find(msgid); iter != _requests.end())
+            {
+                handler = std::move(iter->second.completion_handler);
+                _requests.erase(iter);
+            }
         });
 
-        if (errc == rpc_status::unknown_error && except)
-            std::rethrow_exception(except);
-
-        return errc;
+        rpc_error error{rpc_status::aborted};
+        handler(nullptr, &error);
     }
 
-    auto rpc_abort(request_handle_type request)
-    {
-        _rpc_notify.critical_section([&] {
-            _requests.erase(request);
-        });
-    }
+    //    template <typename RetPtr_, typename... Params_>
+    //    auto rpc_send(RetPtr_ result, std::string_view method, Params_&&... params)
+    //    {
+    //        decltype(_requests)::iterator request;
+    //        int msgid;
+    //
+    //        // create reply slot
+    //        _rpc_notify.critical_section([&] {
+    //            msgid     = ++_msgid_gen;
+    //            auto pair = _requests.try_emplace(msgid);
+    //            request   = pair.first;
+    //            assert(pair.second);  // message id should never duplicate
+    //
+    //            // This will be invoked when return value from remote is ready, and will directly
+    //            //  deserialize the result into provided argument.
+    //            request->second.promise =
+    //                    [result](reader* rd) {
+    //                        if constexpr (std::is_null_pointer_v<RetPtr_>)
+    //                        {
+    //                            *rd >> nullptr;
+    //                        }
+    //                        else if constexpr (std::is_void_v<std::remove_pointer_t<RetPtr_>>)
+    //                        {
+    //                            *rd >> nullptr;
+    //                        }
+    //                        else
+    //                        {
+    //                            if (result == nullptr)
+    //                                *rd >> nullptr;  // skip
+    //                            else
+    //                                *rd >> *result;
+    //                        }
+    //                    };
+    //        });
+    //
+    //        // send message
+    //        {
+    //            lock_guard lc{_write_lock};
+    //
+    //            _writer.array_push(4);
+    //            {
+    //                _writer << rpc_type::request;
+    //                _writer << msgid;
+    //                _writer << method;
+    //
+    //                _writer.array_push(sizeof...(params));
+    //                ((_writer << std::forward<Params_>(params)), ...);
+    //                _writer.array_pop();
+    //            }
+    //            _writer.array_pop();
+    //            _writer.flush();
+    //        }
+    //
+    //        return request;
+    //    }
 
     template <typename... Params_>
     void notify(std::string_view method, Params_&&... params)
@@ -374,8 +448,10 @@ class session : public std::enable_shared_from_this<session>
     {
         _rpc_notify.notify_all(
                 [&] {
-                    for (auto& pair : _requests)
-                        pair.second.status = rpc_status::dead_peer;
+                    rpc_error error{rpc_status::aborted};
+                    for (auto& [msgid, elem] : _requests)
+                    {
+                    }
                 });
 
         _erase_self();
@@ -435,47 +511,45 @@ class session : public std::enable_shared_from_this<session>
 
         //  1. find corresponding reply to msgid
         //  2. fill promise with value or exception
-        _rpc_notify.notify_all([&] {
-            if (auto preq = find_ptr(_requests, msgid))
+        std::optional<decltype(_requests)::iterator> opt_iter;
+
+        _rpc_notify.critical_section([&] {
+            auto iter = _requests.find(msgid);
+            if (iter == _requests.end()) { return; }
+
+            opt_iter = iter;
+        });
+
+        // Expired message. Simply ignore.
+        if (not opt_iter) { return; }
+
+        auto iter = *opt_iter;
+        if (_reader.is_null_next())  // no error
+        {
+            _reader >> nullptr;
+            iter->second.completion_handler(&_reader, nullptr);
+        }
+        else
+        {
+            // TODO: Extract 'errmsg' as object and dump to string!
+            std::string errmsg;
+            _reader >> errmsg;
+            _reader >> nullptr;  // skip payload
+
+            if (auto errc = from_string(errmsg); rpc_status::unknown_error == errc)
             {
-                rpc_status next_status;
-
-                if (_reader.is_null_next())  // no error
-                {
-                    _reader >> nullptr;
-
-                    try
-                    {
-                        preq->second.promise(&_reader);
-                        next_status = rpc_status::okay;
-                    }
-                    catch (std::exception& e)
-                    {
-                        // on failed to parse result, refresh connection
-                        preq->second.status = rpc_status::internal_error;
-                        throw detail::rpc_handler_fatal_state{};
-                    }
-                }
-                else
-                {
-                    // TODO: Extract 'errmsg' as object and dump to string!
-                    std::string errmsg;
-                    _reader >> errmsg;
-                    _reader >> nullptr;  // skip payload
-
-                    next_status = from_string(errmsg);
-
-                    if (next_status == rpc_status::unknown_error)
-                        preq->second.except = std::make_exception_ptr(remote_reply_exception{errmsg});
-                }
-
-                // Wake up all waiting candidates.
-                preq->second.status = next_status;
+                remote_reply_exception exception{errmsg};
+                iter->second.completion_handler(nullptr, &exception);
             }
             else
             {
-                assert(preq == nullptr);
+                rpc_error exception{errc};
+                iter->second.completion_handler(nullptr, &exception);
             }
+        }
+
+        _rpc_notify.notify_all([&] {
+            _requests.erase(iter);
         });
     }
 
@@ -620,22 +694,14 @@ class session : public std::enable_shared_from_this<session>
 
 using session_config = detail::session::config;
 
-struct rpc_wait_handle
+namespace async_rpc_result {
+enum type : int
 {
-    std::shared_ptr<detail::session> _ptr;
-
-    detail::session::request_handle_type _req;
-    rpc_status _ec = rpc_status::okay;
-
-    operator bool() const noexcept { return !!_ptr; }
-    operator rpc_status() const noexcept { return _ec; }
-
-    auto errc() const noexcept { return _ec; }
-
-    rpc_wait_handle() noexcept                  = default;
-    rpc_wait_handle(rpc_wait_handle&&) noexcept = default;
-    rpc_wait_handle& operator=(rpc_wait_handle&&) noexcept = default;
+    no_active_connection = -1,
+    invalid_parameters   = -2,
+    invalid_connection   = -3,
 };
+}
 
 class context
 {
@@ -709,6 +775,75 @@ class context
         while (not anchor.expired()) { std::this_thread::yield(); }
     }
 
+   private:
+    template <typename RetPtr_,
+              typename CompletionToken_,
+              typename... Params_>
+    auto _async_rpc(
+            session_ptr& session,
+            RetPtr_ retval,
+            std::string_view method,
+            CompletionToken_&& handler,
+            Params_&&... params) -> async_rpc_result::type
+    {
+        try
+        {
+            auto handler_impl =
+                    [this, session,
+                     handler = std::forward<CompletionToken_>(handler)]  //
+                    (auto&& e) mutable {
+                        _checkin(std::move(session));
+                        handler(e);
+                    };
+
+            auto msgid = session->async_rpc(
+                    retval, method,
+                    std::move(handler_impl),
+                    std::forward<Params_>(params)...);
+
+            return async_rpc_result::type{msgid};
+        }
+        catch (invalid_connection&)
+        {
+            // As this connection is invalidated during writing, try find another session.
+            return async_rpc_result::invalid_connection;
+        }
+        catch (archive::error::archive_exception&)
+        {
+            // Archive exception is possibly raised when caller(parameter) is invalid.
+            // In this case, abort execution of this function.
+            _checkin(std::move(session));
+            return async_rpc_result::invalid_parameters;
+        }
+    }
+
+   public:
+    template <typename RetPtr_,
+              typename CompletionToken_,
+              typename... Params_>
+    auto async_rpc(RetPtr_ retval,
+                   std::string_view method,
+                   CompletionToken_&& handler,
+                   Params_&&... params) -> async_rpc_result::type
+    {
+        // Basically, iterate until succeeds.
+        for (;;)
+        {
+            auto session = _checkout();
+            if (not session) { return async_rpc_result::no_active_connection; }
+
+            auto msgid = _async_rpc(
+                    session, retval, method,
+                    std::forward<CompletionToken_>(handler),
+                    std::forward<Params_>(params)...);
+
+            if (msgid != async_rpc_result::invalid_connection)
+            {
+                return msgid;
+            }
+        }
+    }
+
     /**
      * Call RPC function. Will be load-balanced automatically.
      *
@@ -720,106 +855,67 @@ class context
      *
      * @throw remote_reply_exception
      */
-    template <typename RetPtr_, typename... Params_>
-    auto rpc(RetPtr_ retval, std::string_view method, Params_&&... params) -> rpc_status
+    template <typename RetPtr_, typename... Params_, class Rep_, class Ratio_>
+    auto rpc(RetPtr_ retval,
+             std::string_view method,
+             std::chrono::duration<Rep_, Ratio_> timeout,
+             Params_&&... params) -> rpc_status
     {
-        auto session = _checkout();
-        if (not session) { return rpc_status::timeout; }
+        volatile rpc_status status = rpc_status::unknown_error;
+        std::exception_ptr user_except;
 
-        try
+        for (;;)
         {
-            auto request = session->rpc_send(retval, method, std::forward<Params_>(params)...);
-            auto result  = session->rpc_wait(request, global_timeout);
-            if (result == rpc_status::timeout) { session->rpc_abort(request); }
+            auto session = _checkout();
+            if (not session) { return rpc_status::timeout; }
 
-            _checkin(std::move(session));
-            return result;
-        }
-        catch (remote_reply_exception& ec)
-        {
-            _checkin(std::move(session));
-            throw ec;
-        }
-        catch (invalid_connection&)
-        {
-            // do nothing, session will be disposed automatically by disposing pointer.
-            return rpc_status::dead_peer;
-        }
-        catch (archive::error::archive_exception&)
-        {
-            // same as above.
-            return rpc_status::dead_peer;
-        }
-    }
+            auto fn_on_complete =
+                    [&](std::exception const* e) {
+                        if (not e)
+                            status = rpc_status::okay;
+                        else if (auto p = dynamic_cast<rpc_error const*>(e))
+                            status = p->error_code;
+                        else if (auto p2 = dynamic_cast<remote_reply_exception const*>(e))
+                            user_except = std::make_exception_ptr(*p2);
+                    };
 
-    template <typename RetPtr_, typename... Params_>
-    auto rpc_async(RetPtr_ retval, std::string_view method, Params_&&... params) -> rpc_wait_handle
-    {
-        rpc_wait_handle handle;
-        auto session = _checkout();
-        if (not session) { return handle._ec = rpc_status::timeout, std::move(handle); }
+            int msgid = _async_rpc(
+                    session, retval, method,
+                    std::move(fn_on_complete),
+                    std::forward<Params_>(params)...);
 
-        try
-        {
-            handle._req = session->rpc_send(retval, method, std::forward<Params_>(params)...);
-            handle._ptr = std::move(session);
-            handle._ec  = rpc_status::okay;
-        }
-        catch (invalid_connection&)
-        {
-            // do nothing, session will be disposed automatically by disposing pointer.
-            handle._ec = rpc_status::dead_peer;
-        }
-        catch (archive::error::archive_exception&)
-        {
-            // same as above.
-            handle._ec = rpc_status::dead_peer;
-        }
-
-        return handle;
-    }
-
-    template <typename Duration_>
-    auto rpc_wait(rpc_wait_handle* h, Duration_&& wait_for)
-    {
-        auto session = std::move(h->_ptr);
-        try
-        {
-            using std::chrono::duration_cast;
-            using std::chrono::microseconds;
-            auto time_to_wait = duration_cast<microseconds>(wait_for);
-
-            auto result = session->rpc_wait(h->_req, time_to_wait);
-            if (result == rpc_status::timeout)
+            if (msgid > 0)
             {
-                h->_ptr = std::move(session);
-                return result;
-            }
+                // Wait until RPC invocation finished
+                if (not session->wait_rpc(msgid, timeout))
+                    return session->abort_rpc(msgid), rpc_status::timeout;
 
-            _checkin(std::move(session));
-            return result;
-        }
-        catch (remote_reply_exception& ec)
-        {
-            _checkin(std::move(session));
-            throw ec;
-        }
-        catch (invalid_connection&)
-        {
-            // do nothing, session will be disposed automatically by disposing pointer.
-            return rpc_status::dead_peer;
-        }
-        catch (archive::error::archive_exception&)
-        {
-            // same as above.
-            return rpc_status::dead_peer;
+                if (user_except)
+                    std::rethrow_exception(user_except);
+
+                if constexpr (std::is_pointer_v<RetPtr_>)
+                    if constexpr (not std::is_void_v<std::remove_pointer_t<RetPtr_>>)
+                        if (retval && status == rpc_status::okay) { (void)*retval; }
+
+                return status;
+            }
+            else if (msgid == async_rpc_result::invalid_connection)
+            {
+                continue;  // find other session
+            }
+            else
+            {
+                return rpc_status::internal_error;
+            }
         }
     }
 
-    void rpc_abort(rpc_wait_handle h)
+    template <typename RetPtr_, typename... Params_>
+    auto rpc(RetPtr_ retval,
+             std::string_view method,
+             Params_&&... params) -> rpc_status
     {
-        h._ptr->rpc_abort(h._req);
-        _checkin(std::move(h._ptr));
+        return rpc(retval, method, global_timeout, std::forward<Params_>(params)...);
     }
 
     /**

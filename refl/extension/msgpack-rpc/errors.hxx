@@ -26,6 +26,7 @@
 
 #pragma once
 #include <any>
+#include <map>
 #include <string>
 
 #include "../../../helper/exception.hxx"

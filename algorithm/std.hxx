@@ -218,6 +218,12 @@ auto find_ptr(Set_&& set, Key_ const& key)
     }
 }
 
+template <typename Set_, typename Key_>
+auto contains(Set_&& set, Key_ const& key)
+{
+    return !!find_ptr(std::forward<Set_>(set), std::forward<const Key_>(key));
+}
+
 template <typename Float_>
 auto range_alpha(Float_ value, Float_ v1, Float_ v2)
 {
