@@ -160,24 +160,24 @@ class ndarray
     }
 
     const_reference at(dimension_type const& i) const { return data_.at(_get_index(i)); }
-    reference at(dimension_type const& i) { return data_.at(_get_index(i)); }
+    reference       at(dimension_type const& i) { return data_.at(_get_index(i)); }
     const_reference operator[](dimension_type const& i) const noexcept { return data_[_get_index(i)]; }
-    reference operator[](dimension_type const& i) noexcept { return data_[_get_index(i)]; }
+    reference       operator[](dimension_type const& i) noexcept { return data_[_get_index(i)]; }
 
-    auto begin() noexcept { return data_.begin(); }
-    auto cbegin() const noexcept { return data_.cbegin(); }
-    auto end() noexcept { return data_.end(); }
-    auto cend() const noexcept { return data_.cend(); }
+    auto            begin() noexcept { return data_.begin(); }
+    auto            cbegin() const noexcept { return data_.cbegin(); }
+    auto            end() noexcept { return data_.end(); }
+    auto            cend() const noexcept { return data_.cend(); }
 
-    auto size() const noexcept { return data_.size(); }
-    auto dims() const noexcept { return dim_; }
-    auto shrink_to_fit() { data_.shrink_to_fit(); }
+    auto            size() const noexcept { return data_.size(); }
+    auto            dims() const noexcept { return dim_; }
+    auto            shrink_to_fit() { data_.shrink_to_fit(); }
 
-    auto data() const noexcept { return data_.data(); }
-    auto data() noexcept { return data_.data(); }
+    auto            data() const noexcept { return data_.data(); }
+    auto            data() noexcept { return data_.data(); }
 
-    auto& vector() noexcept { return data_; }
-    auto& vector() const noexcept { return data_; }
+    auto&           vector() noexcept { return data_; }
+    auto&           vector() const noexcept { return data_; }
 
     template <typename It_>
     void assign(It_ first, It_ last)
@@ -192,8 +192,8 @@ class ndarray
     bool operator!=(ndarray const& r) const noexcept { return !(*this == r); }
 
    private:
-    dimension_type dim_;
+    dimension_type                       dim_;
     std::array<size_type, dimension - 1> steps_;
-    std::vector<Ty_> data_;
+    std::vector<Ty_>                     data_;
 };  // namespace kangsw::inline containers
 }  // namespace CPPHEADERS_NS_

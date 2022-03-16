@@ -104,7 +104,7 @@ CPPH_DECLARE_EXCEPTION(reader_unexpected_end_of_file, reader_read_stream_error);
 struct reader_key_missing : reader_exception
 {
     explicit reader_key_missing(
-            if_reader* rd,
+            if_reader*         rd,
             const std::string& missing_key)
             : reader_exception(rd),
               missing_key(missing_key) {}
@@ -137,10 +137,10 @@ using stream_reader = function<int64_t(array_view<char> obuf)>;
 class error_info
 {
    public:
-    bool has_error = false;
+    bool        has_error = false;
 
-    int line   = 0;
-    int column = 0;
+    int         line      = 0;
+    int         column    = 0;
 
     std::string message;
 
@@ -171,7 +171,7 @@ class error_info
 class if_archive_base
 {
    protected:
-    error_info _err      = {};
+    error_info      _err = {};
     std::streambuf* _buf = {};
 
    public:
@@ -222,7 +222,7 @@ class if_writer : public if_archive_base
      */
     virtual void clear() { _err = {}; }
 
-    void flush() { _buf->pubsync(); }
+    void         flush() { _buf->pubsync(); }
 
    public:
     template <typename ValTy_>
@@ -244,11 +244,11 @@ class if_writer : public if_archive_base
     virtual if_writer& write(uint64_t v) { return this->write((int64_t)v); }
 
     virtual if_writer& write(float v) { return this->write((double)v); }
-    virtual if_writer& write(double v) = 0;
+    virtual if_writer& write(double v)           = 0;
 
     virtual if_writer& write(std::string_view v) = 0;
 
-    if_writer& write(std::string const& v)
+    if_writer&         write(std::string const& v)
     {
         return this->write(std::string_view{v});
     }
@@ -343,7 +343,7 @@ class if_reader : public if_archive_base
     virtual if_reader& read(uint64_t& v) { return this->read((int64_t&)v); }
 
     virtual if_reader& read(float& v) { return _upcast<double>(v); }
-    virtual if_reader& read(double& v) = 0;
+    virtual if_reader& read(double& v)      = 0;
 
     virtual if_reader& read(std::string& v) = 0;
 
@@ -363,7 +363,7 @@ class if_reader : public if_archive_base
 
     //! @return number of bytes actually read.
     virtual size_t binary_read_some(mutable_buffer_view v) = 0;
-    virtual void end_binary()                              = 0;
+    virtual void   end_binary()                            = 0;
 
     /**
      * to distinguish variable sized object's boundary.

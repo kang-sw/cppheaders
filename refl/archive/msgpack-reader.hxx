@@ -50,16 +50,16 @@ class reader : public archive::if_reader
             type_binary
         };
 
-        key_t ctxkey;
-        type_t type;
+        key_t    ctxkey;
+        type_t   type;
 
         uint32_t elems_left;
-        bool reading_key = false;
+        bool     reading_key = false;
     };
 
    private:
     std::vector<scope_t> _scope;
-    uint32_t _scope_key_gen = 0;
+    uint32_t             _scope_key_gen = 0;
 
    public:
     explicit reader(std::streambuf* buf, size_t reserved_depth = 0)
@@ -132,7 +132,7 @@ class reader : public archive::if_reader
 
         buf[buflen] = '\0';
         char* tail;
-        auto value = strtod(buf, &tail);
+        auto  value = strtod(buf, &tail);
 
         if (tail - buf != buflen)
             throw error::reader_parse_failed{this, "given string is not a number"};
@@ -215,7 +215,7 @@ class reader : public archive::if_reader
 
     if_reader& read(std::string& v) override
     {
-        auto header     = _verify_eof(_buf->sgetc());
+        auto     header = _verify_eof(_buf->sgetc());
         uint32_t buflen = _read_elem_count_str(header);
 
         _step_context();
@@ -228,7 +228,7 @@ class reader : public archive::if_reader
 
     size_t elem_left() const override { return _scope_ref().elems_left; }
 
-    bool should_break(const context_key& key) const override
+    bool   should_break(const context_key& key) const override
     {
         auto scope = &_scope.back();
         return key.value == scope->ctxkey.data.value && scope->elems_left == 0;
@@ -255,7 +255,7 @@ class reader : public archive::if_reader
     {
         _verify_not_key_type();
 
-        auto header     = _verify_eof(_buf->sgetc());
+        auto     header = _verify_eof(_buf->sgetc());
         uint32_t buflen = _read_elem_count_bin(header);
 
         _step_context();
@@ -288,7 +288,7 @@ class reader : public archive::if_reader
     {
         _verify_not_key_type();
 
-        auto header     = _verify_eof(_buf->sgetc());
+        auto     header = _verify_eof(_buf->sgetc());
         uint32_t n_elem = _read_elem_count_array(header);
 
         _step_context();
@@ -378,7 +378,7 @@ class reader : public archive::if_reader
     void _skip_once()
     {
         // intentionally uses getc instead of bumpc
-        auto header         = _verify_eof(_buf->sgetc());
+        auto     header     = _verify_eof(_buf->sgetc());
         uint32_t skip_bytes = 0;
         switch (_typecode(header)) {
             case typecode::positive_fixint:

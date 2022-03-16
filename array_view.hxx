@@ -95,21 +95,21 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
     {
     }
 
-    constexpr auto size() const noexcept { return _size; }
-    constexpr auto data() const noexcept { return _ptr; }
-    constexpr auto data() noexcept { return _ptr; }
+    constexpr auto  size() const noexcept { return _size; }
+    constexpr auto  data() const noexcept { return _ptr; }
+    constexpr auto  data() noexcept { return _ptr; }
 
-    constexpr auto begin() noexcept { return _ptr; }
-    constexpr auto begin() const noexcept { return _ptr; }
-    constexpr auto end() noexcept { return _ptr + _size; }
-    constexpr auto end() const noexcept { return _ptr + _size; }
+    constexpr auto  begin() noexcept { return _ptr; }
+    constexpr auto  begin() const noexcept { return _ptr; }
+    constexpr auto  end() noexcept { return _ptr + _size; }
+    constexpr auto  end() const noexcept { return _ptr + _size; }
 
     constexpr auto& front() const noexcept { return at(0); }
     constexpr auto& back() const noexcept { return at(_size - 1); }
 
-    constexpr auto empty() const noexcept { return size() == 0; }
+    constexpr auto  empty() const noexcept { return size() == 0; }
 
-    constexpr auto subspan(size_t offset, size_t n = ~size_t{}) const
+    constexpr auto  subspan(size_t offset, size_t n = ~size_t{}) const
     {
         if (offset == _size) { return array_view{_ptr, 0}; }
         _verify_idx(offset);
@@ -161,7 +161,7 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
     }
 
    private:
-    Ty_* _ptr;
+    Ty_*   _ptr;
     size_t _size;
 };
 

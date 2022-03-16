@@ -47,19 +47,19 @@
 #    define CPPH_REFL_DEFINE_TUPLE(ClassName, AttrOps, ...) \
         INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
-#    define INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(Qualify, AttrOps, FactoryType, Iterator, ...) \
-        CPPHEADERS_NS_::refl::object_metadata_ptr                                              \
-                Qualify                                                                        \
-                initialize_object_metadata()                                                   \
-        {                                                                                      \
-            using ClassName             = std::remove_pointer_t<decltype(this)>;               \
-            using self_t                = ClassName;                                           \
-            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>();      \
-                                                                                               \
-            _cpph_internal_factory INTERNAL_CPPH_REFL_UNWRAP AttrOps;                          \
-            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                              \
-                                                                                               \
-            return _cpph_internal_factory.create();                                            \
+#    define INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(Qualify, AttrOps, FactoryType, Iterator, ...)                                        \
+        CPPHEADERS_NS_::refl::object_metadata_ptr                                                                                     \
+                Qualify                                                                                                               \
+                initialize_object_metadata()                                                                                          \
+        {                                                                                                                             \
+            using ClassName                                                         = std::remove_pointer_t<decltype(this)>;          \
+            using self_t                                                            = ClassName;                                      \
+            auto                                             _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>(); \
+                                                                                                                                      \
+            _cpph_internal_factory INTERNAL_CPPH_REFL_UNWRAP AttrOps;                                                                 \
+            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                                                                     \
+                                                                                                                                      \
+            return _cpph_internal_factory.create();                                                                                   \
         }
 
 #    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_3(VarName, ...) \
@@ -73,18 +73,18 @@
 
 #    define INTERNAL_CPPH_REFL_UNWRAP(...) __VA_ARGS__
 
-#    define INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, FactoryType, Iterator, ...) \
-        CPPHEADERS_NS_::refl::object_metadata_ptr                                          \
-        initialize_object_metadata(                                                        \
-                CPPHEADERS_NS_::refl::type_tag<ClassName>)                                 \
-        {                                                                                  \
-            using self_t                = ClassName;                                       \
-            auto _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>();  \
-                                                                                           \
-            _cpph_internal_factory INTERNAL_CPPH_REFL_UNWRAP AttrOps;                      \
-            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                          \
-                                                                                           \
-            return _cpph_internal_factory.create();                                        \
+#    define INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, FactoryType, Iterator, ...)                                            \
+        CPPHEADERS_NS_::refl::object_metadata_ptr                                                                                     \
+        initialize_object_metadata(                                                                                                   \
+                CPPHEADERS_NS_::refl::type_tag<ClassName>)                                                                            \
+        {                                                                                                                             \
+            using self_t                                                            = ClassName;                                      \
+            auto                                             _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>(); \
+                                                                                                                                      \
+            _cpph_internal_factory INTERNAL_CPPH_REFL_UNWRAP AttrOps;                                                                 \
+            CPPH_FOR_EACH(Iterator, __VA_ARGS__);                                                                                     \
+                                                                                                                                      \
+            return _cpph_internal_factory.create();                                                                                   \
         }
 
 #endif

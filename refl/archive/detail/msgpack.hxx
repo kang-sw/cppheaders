@@ -30,17 +30,17 @@ enum class typecode : uint8_t {
     positive_fixint = 0b0'0000000,
     negative_fixint = 0b111'00000,
 
-    fixmap   = 0b1000'0000,
-    fixarray = 0b1001'0000,
-    fixstr   = 0b101'00000,
+    fixmap          = 0b1000'0000,
+    fixarray        = 0b1001'0000,
+    fixstr          = 0b101'00000,
 
-    error = 0xc1,
+    error           = 0xc1,
 
-    nil        = 0xc0,
-    bool_false = 0xc2,
-    bool_true  = 0xc3,
+    nil             = 0xc0,
+    bool_false      = 0xc2,
+    bool_true       = 0xc3,
 
-    bin8 = 0xc4,
+    bin8            = 0xc4,
     bin16,
     bin32,
 
@@ -66,14 +66,14 @@ enum class typecode : uint8_t {
     ext16,
     ext32,
 
-    str8  = 0xd9,
-    str16 = 0xda,
-    str32 = 0xdb,
+    str8    = 0xd9,
+    str16   = 0xda,
+    str32   = 0xdb,
 
     array16 = 0xdc,
     array32 = 0xdd,
 
-    map16 = 0xde,
-    map32 = 0xdf,
+    map16   = 0xde,
+    map32   = 0xdf,
 };
 }

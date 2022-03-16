@@ -128,9 +128,9 @@ class basic_poll_timer
     }
 
    private:
-    timepoint _tp       = {};
-    duration _interval  = {};
-    duration _latest_dt = {};
+    timepoint _tp        = {};
+    duration  _interval  = {};
+    duration  _latest_dt = {};
 };
 
 class stopwatch

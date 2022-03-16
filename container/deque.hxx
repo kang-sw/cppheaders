@@ -81,8 +81,8 @@ class deque : Alloc_  // zero_size optimization
         _cp_triv     = std::is_trivially_copyable_v<value_type>,
         _dt_triv     = std::is_trivially_destructible_v<value_type>,
 
-        _shift = detail::_nearlest_llog2(block_size),
-        _mask  = block_size - 1,
+        _shift       = detail::_nearlest_llog2(block_size),
+        _mask        = block_size - 1,
     };
 
    public:
@@ -106,8 +106,8 @@ class deque : Alloc_  // zero_size optimization
    private:
     std::vector<_block_type*> _buffers;
 
-    size_type _ofst;  // offset from first array element
-    size_type _size;
+    size_type                 _ofst;  // offset from first array element
+    size_type                 _size;
 
    public:
     auto empty() const noexcept { return _size == 0; }

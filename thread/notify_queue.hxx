@@ -75,7 +75,7 @@ class notify_queue
     template <typename Duration_>
     std::optional<Ty_> try_pop(Duration_ wait)
     {
-        _lc_t lc{_mtx};
+        _lc_t              lc{_mtx};
         std::optional<Ty_> value;
 
         if (_cvar.wait_for(lc, wait, CPPH_BIND(_not_empty))) {
@@ -93,9 +93,9 @@ class notify_queue
     }
 
    private:
-    std::deque<Ty_> _queue;
-    std::mutex _mtx;
-    volatile size_t _cap = ~size_t{};
+    std::deque<Ty_>         _queue;
+    std::mutex              _mtx;
+    volatile size_t         _cap = ~size_t{};
     std::condition_variable _cvar;
 };
 }  // namespace CPPHEADERS_NS_

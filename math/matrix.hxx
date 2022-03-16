@@ -60,15 +60,15 @@ class matrix
                          short_dim = Row_ < Col_ ? Row_ : Col_,
                          long_dim  = Row_ < Col_ ? Col_ : Row_;
 
-    using value_type      = Ty_;
-    using reference       = Ty_&;
-    using const_reference = Ty_ const&;
+    using value_type               = Ty_;
+    using reference                = Ty_&;
+    using const_reference          = Ty_ const&;
 
     template <size_t NR_, size_t NC_>
     using matx_type = matrix<value_type, NR_, NC_>;
 
     template <size_t Len_>
-    using vector_type = matrix<value_type, Len_, 1>;
+    using vector_type   = matrix<value_type, Len_, 1>;
 
     using row_type      = matx_type<1, num_cols>;
     using column_type   = matx_type<num_rows, 1>;
@@ -109,14 +109,14 @@ class matrix
         static_assert(sizeof...(args) + 1 == length);
         value[0] = v;
 
-        int n = 1;
+        int n    = 1;
         ((value[n++] = std::forward<Args_>(args)), ...);
     }
 
     constexpr matrix(matrix const&) = default;
     constexpr matrix& operator=(matrix const&) = default;
 
-    constexpr matrix& operator=(value_type const& v)
+    constexpr matrix& operator                 =(value_type const& v)
     {
         for (int i = 0; i < length; ++i)
             value[i] = v;
@@ -411,22 +411,22 @@ class matrix
     constexpr const_reference y() const noexcept { return _vec_at<1>(); }
     constexpr const_reference z() const noexcept { return _vec_at<2>(); }
     constexpr const_reference w() const noexcept { return _vec_at<3>(); }
-    constexpr reference x() noexcept { return _vec_at<0>(); }
-    constexpr reference y() noexcept { return _vec_at<1>(); }
-    constexpr reference z() noexcept { return _vec_at<2>(); }
-    constexpr reference w() noexcept { return _vec_at<3>(); }
+    constexpr reference       x() noexcept { return _vec_at<0>(); }
+    constexpr reference       y() noexcept { return _vec_at<1>(); }
+    constexpr reference       z() noexcept { return _vec_at<2>(); }
+    constexpr reference       w() noexcept { return _vec_at<3>(); }
 
     constexpr const_reference width() const noexcept { return _vec_at<0>(); }
     constexpr const_reference height() const noexcept { return _vec_at<1>(); }
-    constexpr reference width() noexcept { return _vec_at<0>(); }
-    constexpr reference height() noexcept { return _vec_at<1>(); }
+    constexpr reference       width() noexcept { return _vec_at<0>(); }
+    constexpr reference       height() noexcept { return _vec_at<1>(); }
 
     constexpr const_reference u() const noexcept { return _vec_at<0>(); }
     constexpr const_reference v() const noexcept { return _vec_at<1>(); }
-    constexpr reference u() noexcept { return _vec_at<0>(); }
-    constexpr reference v() noexcept { return _vec_at<1>(); }
+    constexpr reference       u() noexcept { return _vec_at<0>(); }
+    constexpr reference       v() noexcept { return _vec_at<1>(); }
 
-    constexpr value_type area() const noexcept { return width() * height(); }
+    constexpr value_type      area() const noexcept { return width() * height(); }
 
    private:
     // arithmetic operations
@@ -454,9 +454,9 @@ class matrix
         return matrix{*this}._unary([](auto&& v) { return -v; });
     }
 
-    constexpr matrix operator+() const noexcept { return *this; }
-    constexpr matrix operator+(matrix const& other) const noexcept { return matrix(*this) += other; }
-    constexpr matrix operator-(matrix const& other) const noexcept { return matrix(*this) -= other; }
+    constexpr matrix  operator+() const noexcept { return *this; }
+    constexpr matrix  operator+(matrix const& other) const noexcept { return matrix(*this) += other; }
+    constexpr matrix  operator-(matrix const& other) const noexcept { return matrix(*this) -= other; }
 
     constexpr matrix& operator+=(matrix const& other) noexcept { return _binary(std::plus<>{}, other); }
     constexpr matrix& operator-=(matrix const& other) noexcept { return _binary(std::minus<>{}, other); }
@@ -483,7 +483,7 @@ class matrix
         return true;
     }
 
-    constexpr bool operator!=(matrix const& other) const noexcept { return not(*this == other); }
+    constexpr bool     operator!=(matrix const& other) const noexcept { return not(*this == other); }
 
     constexpr explicit operator bool() const noexcept
     {

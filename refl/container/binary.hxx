@@ -47,9 +47,9 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
         {
             return refl::entity_type::binary;
         }
-        void impl_archive(archive::if_writer* strm,
-                          const binary_type& pvdata,
-                          refl::object_metadata_t desc,
+        void impl_archive(archive::if_writer*              strm,
+                          const binary_type&               pvdata,
+                          refl::object_metadata_t          desc,
                           refl::optional_property_metadata prop) const override
         {
             auto data = &pvdata;
@@ -71,13 +71,13 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
             }
         }
 
-        void impl_restore(archive::if_reader* strm,
-                          binary_type* data,
-                          refl::object_metadata_t desc,
+        void impl_restore(archive::if_reader*              strm,
+                          binary_type*                     data,
+                          refl::object_metadata_t          desc,
                           refl::optional_property_metadata prop) const override
         {
-            auto chunk_size             = strm->begin_binary();
-            [[maybe_unused]] auto clean = cleanup([&] { strm->end_binary(); });
+            auto                  chunk_size = strm->begin_binary();
+            [[maybe_unused]] auto clean      = cleanup([&] { strm->end_binary(); });
 
             if constexpr (not binary_type::is_container) {
                 strm->binary_read_some(mutable_buffer_view{data, 1});
@@ -105,7 +105,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                         if constexpr (refl::has_emplace_back<Container_>)
                             data->clear();
 
-                        value_type elem_buf;
+                        value_type  elem_buf;
                         value_type* elem;
 
                         for (size_t idx = 0;; ++idx) {

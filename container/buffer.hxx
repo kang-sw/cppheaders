@@ -45,8 +45,8 @@ class buffer
     using const_view_type = array_view<value_type const>;
 
    private:
-    pointer _buffer = nullptr;
-    size_type _size = 0;
+    pointer   _buffer = nullptr;
+    size_type _size   = 0;
 
    public:
     buffer() noexcept = default;
@@ -60,16 +60,16 @@ class buffer
     ~buffer() noexcept { _try_release(); }
 
    public:
-    view_type view() noexcept { return {_buffer, _size}; }
+    view_type       view() noexcept { return {_buffer, _size}; }
     const_view_type view() const noexcept { return {_buffer, _size}; }
-    pointer data() noexcept { return _buffer; }
-    const_pointer data() const noexcept { return _buffer; }
-    reference operator[](size_type n) noexcept { return _buffer[n]; }
+    pointer         data() noexcept { return _buffer; }
+    const_pointer   data() const noexcept { return _buffer; }
+    reference       operator[](size_type n) noexcept { return _buffer[n]; }
     const_reference operator[](size_type n) const noexcept { return _buffer[n]; }
-    size_type size() const noexcept { return _size; }
-    bool empty() const noexcept { return _size == 0; }
+    size_type       size() const noexcept { return _size; }
+    bool            empty() const noexcept { return _size == 0; }
 
-    void resize(size_type new_size)
+    void            resize(size_type new_size)
     {
         if (_size == new_size) { return; }
 
@@ -105,8 +105,8 @@ class buffer
     {
         _try_release();
 
-        _buffer = other._buffer;
-        _size   = other._size;
+        _buffer       = other._buffer;
+        _size         = other._size;
 
         other._buffer = {};
         other._size   = {};

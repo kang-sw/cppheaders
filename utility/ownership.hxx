@@ -68,15 +68,15 @@ class ownership
         return value();
     }
 
-    Ty_& operator*() { return _verify_access(), *_value; }
+    Ty_&       operator*() { return _verify_access(), *_value; }
 
     Ty_ const& operator*() const { return _verify_access(), *_value; }
 
-    Ty_* operator->() { return _verify_access(), _value; }
+    Ty_*       operator->() { return _verify_access(), _value; }
 
     Ty_ const* operator->() const { return _verify_access(), _value; }
 
-    Ty_& value() { return _verify_access(), *_value; }
+    Ty_&       value() { return _verify_access(), *_value; }
 
     Ty_ const& value_or(Ty_ const& alter) const noexcept
     {
@@ -86,13 +86,13 @@ class ownership
             return alter;
     }
 
-    Ty_* pointer() noexcept { return _value; }
+    Ty_*       pointer() noexcept { return _value; }
 
     Ty_ const* pointer() const noexcept { return _value; }
 
-    bool has_value() const noexcept { return _value; }
+    bool       has_value() const noexcept { return _value; }
 
-    operator bool() const noexcept { return has_value(); }
+               operator bool() const noexcept { return has_value(); }
 
     ownership& operator=(ownership&& other) noexcept(std::is_nothrow_move_constructible_v<Ty_>)
     {

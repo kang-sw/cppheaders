@@ -33,12 +33,12 @@ namespace CPPHEADERS_NS_::math {
 template <typename Ty_>
 matrix<Ty_, 3, 3> rodrigues(vector<Ty_, 3> v)
 {
-    using mat_t = matrix<Ty_, 3, 3>;
+    using mat_t       = matrix<Ty_, 3, 3>;
 
     auto O            = norm(v);
     auto [vx, vy, vz] = (v = v / O).value;
-    auto cosO         = std::cos(O);
-    auto sinO         = std::sin(O);
+    auto  cosO        = std::cos(O);
+    auto  sinO        = std::sin(O);
 
     mat_t V{0, -vz, vy, vz, 0, -vx, -vy, vx, 0};
     mat_t R = cosO * mat_t::eye() + sinO * V + (Ty_(1) - cosO) * v * v.t();

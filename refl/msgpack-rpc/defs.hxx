@@ -37,20 +37,20 @@ class session;
 }
 
 enum class rpc_status {
-    okay    = 0,
-    waiting = 1,
+    okay                = 0,
+    waiting             = 1,
 
-    aborted = -20,
-    timeout = -10,
+    aborted             = -20,
+    timeout             = -10,
 
     unknown_error       = -1,
     internal_error      = -2,
     invalid_parameter   = -3,
     invalid_return_type = -4,
 
-    method_not_exist = -5,
+    method_not_exist    = -5,
 
-    dead_peer = -100,
+    dead_peer           = -100,
 };
 
 enum class rpc_type {
@@ -61,8 +61,8 @@ enum class rpc_type {
 
 namespace async_rpc_result {
 enum type : int {
-    invalid = 0,
-    error   = -1,
+    invalid              = 0,
+    error                = -1,
 
     no_active_connection = -10,
     invalid_parameters   = -11,

@@ -88,7 +88,7 @@ class _zip_iterator
     {
         return _compare_strict(op, std::get<0>(op.pack_) == std::get<0>(pack_));
     }
-    bool operator!=(_zip_iterator const& op) const { return !(*this == op); }
+    bool           operator!=(_zip_iterator const& op) const { return !(*this == op); }
 
     _zip_iterator& operator++()
     {
@@ -140,12 +140,12 @@ class _zip_iterator
     friend _zip_iterator operator+(difference_type n, _zip_iterator c) { return c + n; }
     friend _zip_iterator operator-(difference_type n, _zip_iterator c) { return c - n; }
 
-    difference_type operator-(_zip_iterator o) const { return std::get<0>(pack_) - std::get<0>(o.pack_); }
+    difference_type      operator-(_zip_iterator o) const { return std::get<0>(pack_) - std::get<0>(o.pack_); }
 
-    bool operator<(_zip_iterator o) const { return std::get<0>(pack_) < std::get<0>(o.pack_); }
-    bool operator>(_zip_iterator o) const { return o < *this; }
+    bool                 operator<(_zip_iterator o) const { return std::get<0>(pack_) < std::get<0>(o.pack_); }
+    bool                 operator>(_zip_iterator o) const { return o < *this; }
 
-    reference operator[](difference_type n) const { return *(*this + n); }
+    reference            operator[](difference_type n) const { return *(*this + n); }
 
    public:
     tuple_type pack_;
@@ -188,8 +188,8 @@ inline namespace zipper {
 template <typename... Containers_>
 decltype(auto) zip(Containers_&&... containers)
 {
-    auto begin = std::make_tuple(std::begin(containers)...);
-    auto end   = std::make_tuple(std::end(containers)...);
+    auto                                                       begin = std::make_tuple(std::begin(containers)...);
+    auto                                                       end   = std::make_tuple(std::end(containers)...);
 
     _zip_impl::_zip_range<decltype(std::begin(containers))...> zips;
     zips.begin_ = begin;

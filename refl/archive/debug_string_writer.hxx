@@ -38,10 +38,10 @@ class debug_string_writer : public if_writer
     };
 
    private:
-    int _idgen           = 0;
-    bool _comma_required = false;
+    int                        _idgen          = 0;
+    bool                       _comma_required = false;
 
-    std::vector<int> _id_stack;
+    std::vector<int>           _id_stack;
     std::vector<context_state> _state_stack;
 
    private:

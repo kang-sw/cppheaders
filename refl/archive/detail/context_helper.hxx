@@ -46,13 +46,13 @@ class write_context_helper
 
     struct scoped_context_t
     {
-        scope_type type = scope_type::invalid;
-        bool key_ready  = false;
+        scope_type type      = scope_type::invalid;
+        bool       key_ready = false;
 
-        size_t size     = 0;
-        size_t capacity = 0;
+        size_t     size      = 0;
+        size_t     capacity  = 0;
 
-        bool is_key_next() const
+        bool       is_key_next() const
         {
             if (type == scope_type::object)
                 return not(size & 1);

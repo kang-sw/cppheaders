@@ -44,11 +44,11 @@ class transient_socket_streambuf : public std::streambuf
     using socket_type = typename Protocol_::socket;
 
    private:
-    socket_type _socket;
+    socket_type               _socket;
     std::chrono::microseconds _timeout = {};
 
-    char _wbuf[2048];
-    char _rbuf[2048];
+    char                      _wbuf[2048];
+    char                      _rbuf[2048];
 
    public:
     explicit transient_socket_streambuf(socket_type socket)
@@ -143,7 +143,7 @@ class basic_socket_connection : public if_connection
 
     std::atomic_int _wait_counter = 0;
 
-    void begin_wait() override
+    void            begin_wait() override
     {
         auto fn = bind_front_weak(
                 owner(),
@@ -196,10 +196,10 @@ class basic_socket_connection : public if_connection
  */
 template <typename Protocol_, typename Exec_>
 auto open_acceptor(
-        context& ctx,
-        session_config const& configs,
+        context&                                       ctx,
+        session_config const&                          configs,
         asio::basic_socket_acceptor<Protocol_, Exec_>& acceptor,
-        asio::strand<Exec_>* pstrand = nullptr)
+        asio::strand<Exec_>*                           pstrand = nullptr)
 {
     using strand_type   = asio::strand<Exec_>;
     using acceptor_type = std::remove_reference_t<decltype(acceptor)>;
@@ -208,7 +208,7 @@ auto open_acceptor(
     struct _accept_function
     {
         acceptor_type* _acceptor;
-        context* _ctx;
+        context*       _ctx;
 
         std::shared_ptr<std::tuple<socket_type,
                                    asio::strand<Exec_>,

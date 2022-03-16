@@ -115,8 +115,8 @@ constexpr frame_t encode_single_frame_with_padding(char const* bytes, bytes_leng
 
 constexpr uint32_t _decode_single(frame_t frame) noexcept
 {
-    uint32_t b     = 0;
-    bool has_error = false;
+    uint32_t b         = 0;
+    bool     has_error = false;
 
     for (int i = 0; i < 4; ++i) {
         b += int(tb_decode[frame[i]]) << ((3 - i) * 6);
@@ -211,10 +211,10 @@ constexpr bool decode_bytes(char const* data, size_t size, OutIt_ out)
         throw std::logic_error("data size must be multiplicand of 4!");
 
     detail::bytes_t decoded{};
-    auto it    = (detail::frame_t const*)data,
-         end_1 = (detail::frame_t const*)(data + size) - 1;
+    auto            it = (detail::frame_t const*)data,
+         end_1         = (detail::frame_t const*)(data + size) - 1;
 
-    bool has_error = false;
+    bool has_error     = false;
 
     for (; it < end_1; ++it) {
         has_error |= detail::decode_single_frame(*it, &decoded);

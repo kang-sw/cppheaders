@@ -60,7 +60,7 @@ struct lock_guard
             _ref.unlock();
     }
 
-    bool _locked = true;
+    bool    _locked = true;
     Mutex_& _ref;
 };
 

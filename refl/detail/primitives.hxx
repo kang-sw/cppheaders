@@ -131,8 +131,8 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             return get_object_metadata<ElemTy_>();
         }
         void impl_archive(archive::if_writer* strm,
-                          ElemTy_ const& data,
-                          object_metadata_t desc,
+                          ElemTy_ const&      data,
+                          object_metadata_t   desc,
                           optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
@@ -145,14 +145,14 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
             strm->array_pop();
         }
         void impl_restore(archive::if_reader* strm,
-                          ElemTy_* data,
-                          object_metadata_t desc,
+                          ElemTy_*            data,
+                          object_metadata_t   desc,
                           optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
-            auto n_elem = desc->extent() / sizeof(ElemTy_);
-            auto begin  = data;
-            auto end    = begin + n_elem;
+            auto n_elem  = desc->extent() / sizeof(ElemTy_);
+            auto begin   = data;
+            auto end     = begin + n_elem;
 
             auto context = strm->begin_array();
             std::for_each(begin, end, [&](auto&& elem) { *strm >> elem; });
@@ -195,8 +195,8 @@ auto get_list_like_descriptor() -> object_metadata_t
             return get_object_metadata<value_type>();
         }
         void impl_archive(archive::if_writer* strm,
-                          const Container_& data,
-                          object_metadata_t desc,
+                          const Container_&   data,
+                          object_metadata_t   desc,
                           optional_property_metadata) const override
         {
             auto container = &data;
@@ -209,8 +209,8 @@ auto get_list_like_descriptor() -> object_metadata_t
             strm->array_pop();
         }
         void impl_restore(archive::if_reader* strm,
-                          Container_* container,
-                          object_metadata_t desc,
+                          Container_*         container,
+                          object_metadata_t   desc,
                           optional_property_metadata) const override
         {
             container->clear();
@@ -237,7 +237,7 @@ auto get_list_like_descriptor() -> object_metadata_t
     } manip;
 
     constexpr auto extent = sizeof(Container_);
-    static auto desc      = object_metadata::primitive_factory::define(extent, &manip);
+    static auto    desc   = object_metadata::primitive_factory::define(extent, &manip);
     return &*desc;
 }
 

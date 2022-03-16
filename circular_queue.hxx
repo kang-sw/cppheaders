@@ -70,7 +70,7 @@ class circular_queue
         _iterator(const _iterator&) noexcept = default;
         _iterator& operator=(const _iterator&) noexcept = default;
 
-        reference operator*() const
+        reference  operator*() const
         {
             if constexpr (Reverse_) {
                 return _owner->_r_at(_head);
@@ -81,17 +81,17 @@ class circular_queue
 
         pointer operator->() const { return &*(*this); }
 
-        bool operator==(_iterator const& op) const noexcept { return _head == op._head; }
-        bool operator!=(_iterator const& op) const noexcept { return _head != op._head; }
-        bool operator<(_iterator const& op) const noexcept { return _idx() < op._idx(); }
-        bool operator<=(_iterator const& op) const noexcept { return !(op < *this); }
+        bool    operator==(_iterator const& op) const noexcept { return _head == op._head; }
+        bool    operator!=(_iterator const& op) const noexcept { return _head != op._head; }
+        bool    operator<(_iterator const& op) const noexcept { return _idx() < op._idx(); }
+        bool    operator<=(_iterator const& op) const noexcept { return !(op < *this); }
 
-        auto& operator[](difference_type idx) const noexcept { return *(*this + idx); }
+        auto&   operator[](difference_type idx) const noexcept { return *(*this + idx); }
 
-        auto& operator++() noexcept { return _head = _owner->_next(_head), *this; }
-        auto& operator--() noexcept { return _head = _owner->_prev(_head), *this; }
+        auto&   operator++() noexcept { return _head = _owner->_next(_head), *this; }
+        auto&   operator--() noexcept { return _head = _owner->_prev(_head), *this; }
 
-        auto operator++(int) noexcept
+        auto    operator++(int) noexcept
         {
             auto c = *this;
             return ++*this, c;
@@ -102,10 +102,10 @@ class circular_queue
             return --*this, c;
         }
 
-        auto& operator-=(ptrdiff_t i) noexcept { return _head = _owner->_jmp(_head, -i), *this; }
-        auto& operator+=(ptrdiff_t i) noexcept { return _head = _owner->_jmp(_head, i), *this; }
+        auto&       operator-=(ptrdiff_t i) noexcept { return _head = _owner->_jmp(_head, -i), *this; }
+        auto&       operator+=(ptrdiff_t i) noexcept { return _head = _owner->_jmp(_head, i), *this; }
 
-        auto operator-(_iterator const& op) const noexcept { return static_cast<ptrdiff_t>(_idx() - op._idx()); }
+        auto        operator-(_iterator const& op) const noexcept { return static_cast<ptrdiff_t>(_idx() - op._idx()); }
 
         friend auto operator+(_iterator it, ptrdiff_t i) { return it += i; }
         friend auto operator+(ptrdiff_t i, _iterator it) { return it += i; }
@@ -121,7 +121,7 @@ class circular_queue
         friend class circular_queue;
 
         owner_type* _owner;
-        size_t _head;
+        size_t      _head;
     };
 
    public:
@@ -267,30 +267,30 @@ class circular_queue
         return _head >= _tail ? _head - _tail : _head + _cap() - _tail;
     }
 
-    auto cbegin() const noexcept { return const_iterator(this, _tail); }
-    auto cend() const noexcept { return const_iterator(this, _head); }
-    auto begin() const noexcept { return cbegin(); }
-    auto end() const noexcept { return cend(); }
-    auto begin() noexcept { return iterator(this, _tail); }
-    auto end() noexcept { return iterator(this, _head); }
+    auto             cbegin() const noexcept { return const_iterator(this, _tail); }
+    auto             cend() const noexcept { return const_iterator(this, _head); }
+    auto             begin() const noexcept { return cbegin(); }
+    auto             end() const noexcept { return cend(); }
+    auto             begin() noexcept { return iterator(this, _tail); }
+    auto             end() noexcept { return iterator(this, _head); }
 
-    auto crbegin() const noexcept { return const_reverse_iterator(this, _tail); }
-    auto crend() const noexcept { return const_reverse_iterator(this, _head); }
-    auto rbegin() const noexcept { return cbegin(); }
-    auto rend() const noexcept { return cend(); }
-    auto rbegin() noexcept { return reverse_iterator(this, _tail); }
-    auto rend() noexcept { return reverse_iterator(this, _head); }
+    auto             crbegin() const noexcept { return const_reverse_iterator(this, _tail); }
+    auto             crend() const noexcept { return const_reverse_iterator(this, _head); }
+    auto             rbegin() const noexcept { return cbegin(); }
+    auto             rend() const noexcept { return cend(); }
+    auto             rbegin() noexcept { return reverse_iterator(this, _tail); }
+    auto             rend() noexcept { return reverse_iterator(this, _head); }
 
     constexpr size_t capacity() const noexcept { return _capacity - 1; }
-    bool empty() const noexcept { return _head == _tail; }
+    bool             empty() const noexcept { return _head == _tail; }
 
-    Ty_& front() noexcept { return _front(); }
-    Ty_ const& front() const noexcept { return _front(); }
+    Ty_&             front() noexcept { return _front(); }
+    Ty_ const&       front() const noexcept { return _front(); }
 
-    Ty_& back() noexcept { return _back(); }
-    Ty_ const& back() const noexcept { return _back(); }
+    Ty_&             back() noexcept { return _back(); }
+    Ty_ const&       back() const noexcept { return _back(); }
 
-    bool is_full() const noexcept { return _next(_head) == _tail; }
+    bool             is_full() const noexcept { return _next(_head) == _tail; }
 
     template <class Fn_>
     void for_each(Fn_&& fn)
@@ -416,9 +416,9 @@ class circular_queue
     }
 
    private:
-    size_t _capacity = {};
+    size_t                     _capacity = {};
     std::unique_ptr<chunk_t[]> _data;
-    size_t _head = {};
-    size_t _tail = {};
+    size_t                     _head = {};
+    size_t                     _tail = {};
 };
 }  // namespace CPPHEADERS_NS_

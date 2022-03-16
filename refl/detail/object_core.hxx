@@ -51,7 +51,7 @@ CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
 
 struct object_archive_exception : object_exception
 {
-    archive::error_info error;
+    archive::error_info        error;
 
     object_archive_exception&& set(archive::if_archive_base* archive)
     {
@@ -61,7 +61,7 @@ struct object_archive_exception : object_exception
 
     template <typename... Args_>
     object_archive_exception(archive::if_archive_base* archive = nullptr,
-                             char const* fmt                   = nullptr,
+                             char const*               fmt     = nullptr,
                              Args_&&... args)
     {
         if (archive) { set(archive); }
@@ -93,7 +93,7 @@ class object_metadata;  // forwarding
 struct object_view_t
 {
     object_metadata_t meta = {};
-    object_data_t* data    = {};
+    object_data_t*    data = {};
 
    public:
     object_view_t() = default;
@@ -108,7 +108,7 @@ struct object_view_t
 
 struct object_const_view_t
 {
-    object_metadata_t meta    = {};
+    object_metadata_t    meta = {};
     object_data_t const* data = {};
 
    public:
@@ -133,15 +133,15 @@ struct dynamic_object_ptr
 {
    private:
     object_metadata_t _meta = {};
-    object_data_t* _data    = {};
+    object_data_t*    _data = {};
 
    public:
     /*  Lifetime Management  */
 
    public:
     auto pair() const noexcept { return std::make_pair(_meta, _data); }
-    operator object_view_t() noexcept { return {_meta, _data}; }
-    operator object_const_view_t() noexcept { return {_meta, _data}; }
+         operator object_view_t() noexcept { return {_meta, _data}; }
+         operator object_const_view_t() noexcept { return {_meta, _data}; }
 };
 
 // alias
@@ -176,7 +176,7 @@ struct property_metadata
    public:
     property_metadata() = default;
     property_metadata(
-            size_t offset,
+            size_t             offset,
             object_metadata_fn descriptor)
             : offset(offset),
               type(descriptor()),
@@ -189,8 +189,8 @@ struct property_metadata
  *
  */
 enum class requirement_status_tag {
-    required = 0,
-    optional = 1,
+    required           = 0,
+    optional           = 1,
 
     optional_empty     = 1,  // assume default optional == empty
     optional_has_value = 2,
@@ -220,9 +220,9 @@ class if_primitive_control
      * Archive to writer
      * Property may not exist if this primitive is being archived as root.
      */
-    virtual void archive(archive::if_writer* strm,
-                         void const* pvdata,
-                         object_metadata_t desc_self,
+    virtual void archive(archive::if_writer*        strm,
+                         void const*                pvdata,
+                         object_metadata_t          desc_self,
                          optional_property_metadata opt_as_property) const
     {
         *strm << nullptr;
@@ -232,9 +232,9 @@ class if_primitive_control
      * Restore from reader
      * Property may not exist if this primitive is being archived as root.
      */
-    virtual void restore(archive::if_reader* strm,
-                         void* pvdata,
-                         object_metadata_t desc_self,
+    virtual void restore(archive::if_reader*        strm,
+                         void*                      pvdata,
+                         object_metadata_t          desc_self,
                          optional_property_metadata opt_as_property) const = 0;
 
     /**
@@ -277,15 +277,15 @@ class templated_primitive_control : public if_primitive_control
 
    protected:
     virtual void impl_archive(
-            archive::if_writer* strm,
-            const Ty_& data,
-            object_metadata_t desc_self,
+            archive::if_writer*        strm,
+            const Ty_&                 data,
+            object_metadata_t          desc_self,
             optional_property_metadata opt_as_property) const = 0;
 
     virtual void impl_restore(
-            archive::if_reader* strm,
-            Ty_* pvdata,
-            object_metadata_t desc_self,
+            archive::if_reader*        strm,
+            Ty_*                       pvdata,
+            object_metadata_t          desc_self,
             optional_property_metadata opt_as_property) const = 0;
 
     virtual requirement_status_tag
@@ -382,10 +382,10 @@ class object_metadata
     /**
      * Archive/Serialization will
      */
-    bool is_primitive() const noexcept { return !!_primitive; }
-    bool is_object() const noexcept { return _is_object; }
-    bool is_tuple() const noexcept { return not is_primitive() && not is_object(); }
-    bool is_optional() const noexcept { return is_primitive() && _primitive->status() != requirement_status_tag::required; }
+    bool        is_primitive() const noexcept { return !!_primitive; }
+    bool        is_object() const noexcept { return _is_object; }
+    bool        is_tuple() const noexcept { return not is_primitive() && not is_object(); }
+    bool        is_optional() const noexcept { return is_primitive() && _primitive->status() != requirement_status_tag::required; }
 
     entity_type type() const noexcept
     {
@@ -444,8 +444,8 @@ class object_metadata
      * @return Number of properties. ~size_t{} if error.
      */
     size_t property(
-            object_data_t* parent,
-            object_data_t* child,
+            object_data_t*             parent,
+            object_data_t*             child,
             hierarchy_append_fn const& append) const
     {
         assert(parent <= child);
@@ -482,8 +482,8 @@ class object_metadata
     dynamic_object_ptr clone(object_data_t* parent) const;
 
    public:
-    void _archive_to(archive::if_writer* strm,
-                     object_data_t const* data,
+    void _archive_to(archive::if_writer*        strm,
+                     object_data_t const*       data,
                      optional_property_metadata opt_property) const
     {
         // 1. iterate properties, and access to their object descriptor
@@ -496,10 +496,10 @@ class object_metadata
             if (is_object()) {
                 size_t num_filled = 0;
                 for (auto& [key, index] : _keys) {
-                    auto& prop = _props.at(index);
+                    auto& prop       = _props.at(index);
 
-                    auto child      = prop.type;
-                    auto child_data = retrieve_self(data, prop);
+                    auto  child      = prop.type;
+                    auto  child_data = retrieve_self(data, prop);
                     assert(child_data);
 
                     if (auto status = child->requirement_status(child_data);
@@ -512,10 +512,10 @@ class object_metadata
 
                 auto do_write
                         = [&](auto&& key, int index) {
-                              auto& prop = _props.at(index);
+                              auto& prop       = _props.at(index);
 
-                              auto child      = prop.type;
-                              auto child_data = retrieve_self(data, prop);
+                              auto  child      = prop.type;
+                              auto  child_data = retrieve_self(data, prop);
                               assert(child_data);
 
                               if (auto status = child->requirement_status(child_data);
@@ -564,9 +564,9 @@ class object_metadata
         std::string keybuf;
     };
 
-    void _restore_from(archive::if_reader* strm,
-                       object_data_t* data,
-                       restore_context* context,  // for reusing key buffer during recursive
+    void _restore_from(archive::if_reader*        strm,
+                       object_data_t*             data,
+                       restore_context*           context,  // for reusing key buffer during recursive
                        optional_property_metadata opt_property) const
     {
         // 1. iterate properties, and access to their object descriptor
@@ -580,7 +580,7 @@ class object_metadata
             if (not strm->is_object_next())
                 throw error::invalid_read_state{strm, "'object' expected"};
 
-            auto context_key           = strm->begin_object();
+            auto       context_key     = strm->begin_object();
             bool const use_integer_key = strm->use_integer_key,
                        allow_missing   = strm->allow_missing_argument,
                        allow_unknown   = strm->allow_unknown_argument;
@@ -621,9 +621,9 @@ class object_metadata
                     }
                 }
 
-                auto& prop      = _props.at(index);
-                auto child      = prop.type;
-                auto child_data = retrieve_self(data, prop);
+                auto& prop       = _props.at(index);
+                auto  child      = prop.type;
+                auto  child_data = retrieve_self(data, prop);
                 assert(child_data);
 
                 if (not allow_missing && not child->is_optional())
@@ -636,8 +636,8 @@ class object_metadata
 
             if (not allow_missing) {
                 // verify all arguments ready
-                auto pred_req    = [](decltype(_props[0]) e) { return not e.type->is_optional(); };
-                int num_required = count_if(_props, pred_req);
+                auto pred_req     = [](decltype(_props[0]) e) { return not e.type->is_optional(); };
+                int  num_required = count_if(_props, pred_req);
 
                 if (num_essential_retrived != num_required)
                     throw error::missing_entity{strm, "%d elems missing [total:%d]",
@@ -692,7 +692,7 @@ class object_metadata
 
         // otherwise, check for object/tuple
         auto& property = *at(*it);
-        auto descr     = property.type;
+        auto  descr    = property.type;
 
         // primitive cannot have children
         if (descr->is_primitive()) { return ~size_t{}; }
@@ -744,17 +744,17 @@ class object_metadata
          */
         object_metadata_ptr create()
         {
-            auto result     = std::move(_current);
-            auto& generated = *result;
-            auto lookup     = &generated._offset_lookup;
+            auto       result    = std::move(_current);
+            auto&      generated = *result;
+            auto       lookup    = &generated._offset_lookup;
 
-            auto const n_props = generated._props.size();
+            auto const n_props   = generated._props.size();
             lookup->reserve(n_props);
 
             // for name key autogeneration
             std::vector<int> used_name_keys;
 
-            bool const is_object = generated.is_object();
+            bool const       is_object = generated.is_object();
             used_name_keys.reserve(n_props);
 
             auto* key_table = &generated._keys;
@@ -793,8 +793,8 @@ class object_metadata
                 // target key table
                 generated._key_indices.reserve(n_props);
 
-                size_t idx_table    = 0;
-                int generated_index = 1;
+                size_t idx_table       = 0;
+                int    generated_index = 1;
                 for (auto& prop : generated._props) {
                     // autogenerate unassigned ones
                     if (prop.name_key_self < 0) {
@@ -849,7 +849,7 @@ class object_metadata
        private:
         primitive_factory& setup(size_t extent, if_primitive_control const* ref)
         {
-            *_current = {};
+            *_current            = {};
 
             _current->_extent    = extent;
             _current->_primitive = ref;
@@ -989,7 +989,7 @@ class object_metadata
         auto& extend()
         {
             constexpr Class_* pointer = nullptr;
-            const auto offset         = (intptr_t) static_cast<Base_*>(pointer) - (intptr_t)pointer;
+            const auto        offset  = (intptr_t) static_cast<Base_*>(pointer) - (intptr_t)pointer;
 
             return basic_extend(get_object_metadata<Base_>(), offset);
         }

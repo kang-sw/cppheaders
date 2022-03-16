@@ -73,10 +73,10 @@ class basic_event
     struct _entity_type
     {
         event_key id;
-        event_fn function;
-        uint64_t priority = 0;
+        event_fn  function;
+        uint64_t  priority = 0;
 
-        bool operator<(_entity_type const& rhs) const noexcept
+        bool      operator<(_entity_type const& rhs) const noexcept
         {
             // send pending-remove elements to back
             if (not id && rhs.id)
@@ -100,7 +100,7 @@ class basic_event
     {
         friend class basic_event;
         basic_event* owner_ = {};
-        event_key key_      = {};
+        event_key    key_   = {};
 
         handle(basic_event* o, event_key key) noexcept
                 : owner_{o}, key_{key} {}
@@ -168,14 +168,14 @@ class basic_event
     }
 
     template <typename Callable_>
-    handle add(Callable_&& fn,
+    handle add(Callable_&&    fn,
                event_priority priority = event_priority::last,
-               uint64_t value          = 0)
+               uint64_t       value    = 0)
     {
         lock_guard _{_mtx};
-        auto* evt     = &_events.emplace_back();
-        evt->id       = {++_hash_gen};
-        evt->priority = (value & (1ull << DELEGATE_BITS) - 1) + (uint64_t)priority;
+        auto*      evt = &_events.emplace_back();
+        evt->id        = {++_hash_gen};
+        evt->priority  = (value & (1ull << DELEGATE_BITS) - 1) + (uint64_t)priority;
 
         _dirty |= evt->priority != 0;
 
@@ -229,7 +229,7 @@ class basic_event
     void priority(handle const& h, event_priority offset, uint64_t value = 0) noexcept
     {
         lock_guard _{_mtx};
-        auto entity = _find(h);
+        auto       entity = _find(h);
         if (not entity)
             return;
 
@@ -242,7 +242,7 @@ class basic_event
     void remove(handle h) noexcept
     {
         lock_guard _{_mtx};
-        auto entity = _find(h);
+        auto       entity = _find(h);
         if (not entity)
             return;
 
@@ -290,11 +290,11 @@ class basic_event
     }
 
    private:
-    container _events;
-    uint64_t _hash_gen = 0;
+    container      _events;
+    uint64_t       _hash_gen = 0;
 
     mutable Mutex_ _mtx;
-    volatile bool _dirty = false;
+    volatile bool  _dirty = false;
 };
 
 template <typename... Args_>

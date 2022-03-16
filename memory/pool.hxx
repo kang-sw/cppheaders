@@ -109,7 +109,7 @@ class basic_resource_pool
        private:
         friend class basic_resource_pool;
 
-        basic_resource_pool* _owner = nullptr;
+        basic_resource_pool*              _owner = nullptr;
         typename std::list<Ty_>::iterator _ref{};
     };
 
@@ -118,7 +118,7 @@ class basic_resource_pool
         using pointer = Ty_*;
         handle_type handle;
 
-        void operator()(pointer)
+        void        operator()(pointer)
         {
             handle.checkin();
         }
@@ -127,7 +127,7 @@ class basic_resource_pool
    public:
     handle_type checkout()
     {
-        lock_guard _{_mut};
+        lock_guard  _{_mut};
         handle_type r;
         r._owner = this;
 
@@ -204,10 +204,10 @@ class basic_resource_pool
     }
 
    private:
-    Mutex_ _mut;
+    Mutex_                       _mut;
 
-    perfkit::function<void()> _constructor;
-    std::list<Ty_> _pool;
+    perfkit::function<void()>    _constructor;
+    std::list<Ty_>               _pool;
     std::vector<buffer_iterator> _free;
 };
 

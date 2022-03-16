@@ -95,7 +95,7 @@ struct queue_buffer_block
     // if offset + size exceeds capacity, it implicitly means its next node is _refer(0).
     uint32_t size = 0;
 
-    bool occupied() const noexcept { return size != 0; }
+    bool     occupied() const noexcept { return size != 0; }
 };
 
 // To avoid <memory> header dependency.
@@ -287,11 +287,11 @@ class queue_buffer_impl
     }
 
    private:
-    size_t _capacity  = 0;
-    size_t _num_alloc = 0;
-    memblk* _mem      = nullptr;
-    memblk* _tail     = nullptr;  // defined as forward-list
-    memblk* _head     = nullptr;
+    size_t  _capacity  = 0;
+    size_t  _num_alloc = 0;
+    memblk* _mem       = nullptr;
+    memblk* _tail      = nullptr;  // defined as forward-list
+    memblk* _head      = nullptr;
 };
 
 class basic_queue_allocator_impl
@@ -341,7 +341,7 @@ class basic_queue_allocator_impl
 
        private:
         friend class basic_queue_allocator_impl;
-        Ty_* _elem                         = nullptr;
+        Ty_*                        _elem  = nullptr;
         basic_queue_allocator_impl* _alloc = nullptr;
     };
 
@@ -387,7 +387,7 @@ class basic_queue_allocator_impl
 
        private:
         friend class basic_queue_allocator_impl;
-        array_view<Ty_> _elems             = {};
+        array_view<Ty_>             _elems = {};
         basic_queue_allocator_impl* _alloc = nullptr;
     };
 
@@ -407,8 +407,8 @@ class basic_queue_allocator_impl
     Ty_* construct(Args_&&... args)
     {
         constexpr size_t alloc_size = sizeof(Ty_) + sizeof(node_type);
-        auto node                   = (node_type*)_impl->allocate(alloc_size);
-        auto memory                 = (Ty_*)(node + 1);
+        auto             node       = (node_type*)_impl->allocate(alloc_size);
+        auto             memory     = (Ty_*)(node + 1);
 
         if constexpr (std::is_trivial_v<Ty_>) {
             node->n         = 0;
@@ -429,8 +429,8 @@ class basic_queue_allocator_impl
     array_view<Ty_> construct_array(size_t n)
     {
         size_t const alloc_size = sizeof(Ty_) * n + sizeof(node_type);
-        auto node               = (node_type*)_impl->allocate(alloc_size);
-        Ty_* memory             = (Ty_*)(node + 1);
+        auto         node       = (node_type*)_impl->allocate(alloc_size);
+        Ty_*         memory     = (Ty_*)(node + 1);
 
         if constexpr (std::is_trivial_v<Ty_>) {
             node->n         = n;

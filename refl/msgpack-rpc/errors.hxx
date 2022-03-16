@@ -43,7 +43,7 @@ CPPH_DECLARE_EXCEPTION(remote_reply_exception, std::runtime_error);
 //!
 class remote_handler_exception : public std::exception
 {
-    std::any _body;
+    std::any                  _body;
     refl::object_const_view_t _view;
 
    public:

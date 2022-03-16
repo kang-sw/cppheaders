@@ -94,8 +94,8 @@ class service_info
             using tuple_type   = std::tuple<std::decay_t<Params_>...>;
 
            public:
-            handler_type _handler;
-            pool<tuple_type> _params;
+            handler_type      _handler;
+            pool<tuple_type>  _params;
             pool<return_type> _rv_pool;
 
            public:
@@ -105,7 +105,7 @@ class service_info
 
             void invoke(
                     session_profile const& session,
-                    reader& reader,
+                    reader&                reader,
                     void (*fn_write)(void*, refl::object_const_view_t),
                     void* uobj) override
             {
@@ -211,7 +211,7 @@ class service_info
               typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
     service_info& serve(
             signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-            typename Signature_::serve_signature_2 func)
+            typename Signature_::serve_signature_2               func)
     {
         return serve2(std::string(iface.name()), std::move(func));
     }
@@ -220,7 +220,7 @@ class service_info
               typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
     service_info& serve(
             signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-            typename Signature_::serve_signature_1 func)
+            typename Signature_::serve_signature_1               func)
     {
         return serve1(std::string(iface.name()), std::move(func));
     }
@@ -229,7 +229,7 @@ class service_info
               typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
     service_info& serve(
             signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-            typename Signature_::serve_signature func)
+            typename Signature_::serve_signature                 func)
     {
         return serve(std::string(iface.name()), std::move(func));
     }

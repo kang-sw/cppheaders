@@ -25,6 +25,9 @@
 #pragma once
 
 //
+#include <stdexcept>
+#include <type_traits>
+
 #include "__namespace__"
 
 namespace CPPHEADERS_NS_ {
@@ -35,10 +38,10 @@ template <typename Ty_, size_t N_>
 class static_vector
 {
    public:
-    using value_type    = Ty_;
-    using pointer       = value_type*;
-    using const_pointer = value_type const*;
-    using reference     = value_type&;
+    using value_type     = Ty_;
+    using pointer        = value_type*;
+    using const_pointer  = value_type const*;
+    using reference      = value_type&;
 
     using iterator       = pointer;
     using const_iterator = const_pointer;
@@ -172,19 +175,19 @@ class static_vector
         return *this;
     }
 
-    constexpr auto size() const noexcept { return _size; }
-    constexpr auto data() const noexcept { return _ptr; }
-    constexpr auto data() noexcept { return _ptr; }
+    constexpr auto   size() const noexcept { return _size; }
+    constexpr auto   data() const noexcept { return _ptr; }
+    constexpr auto   data() noexcept { return _ptr; }
 
-    constexpr auto begin() noexcept { return _ptr; }
-    constexpr auto begin() const noexcept { return _ptr; }
-    constexpr auto end() noexcept { return _ptr + _size; }
-    constexpr auto end() const noexcept { return _ptr + _size; }
+    constexpr auto   begin() noexcept { return _ptr; }
+    constexpr auto   begin() const noexcept { return _ptr; }
+    constexpr auto   end() noexcept { return _ptr + _size; }
+    constexpr auto   end() const noexcept { return _ptr + _size; }
 
-    constexpr auto& front() const noexcept { return at(0); }
-    constexpr auto& back() const noexcept { return at(_size - 1); }
+    constexpr auto&  front() const noexcept { return at(0); }
+    constexpr auto&  back() const noexcept { return at(_size - 1); }
 
-    constexpr auto empty() const noexcept { return size() == 0; }
+    constexpr auto   empty() const noexcept { return size() == 0; }
     constexpr size_t capacity() const noexcept { return N_; }
 
     template <typename... Args_>
@@ -332,7 +335,7 @@ class static_vector
 
    private:
     std::array<std::byte, sizeof(Ty_) * N_> _buffer;
-    Ty_* _ptr    = reinterpret_cast<Ty_*>(_buffer.data());
-    size_t _size = 0;
+    Ty_*                                    _ptr  = reinterpret_cast<Ty_*>(_buffer.data());
+    size_t                                  _size = 0;
 };
 }  // namespace CPPHEADERS_NS_

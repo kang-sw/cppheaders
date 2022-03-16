@@ -28,16 +28,16 @@
 #define INTERNAL_CPPH_concat_2_(a, b) a##b
 #define INTERNAL_CPPH_concat_(a, b)   INTERNAL_CPPH_concat_2_(a, b)
 
-#define INTERNAL_CPPH_define_(ValT, Cond)                                                            \
-    template <typename ValT>                                                                         \
-    constexpr bool INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) = Cond;                \
-                                                                                                     \
-    template <typename ValT>                                                                         \
-            struct get_object_metadata_t < ValT,                                                     \
-            std::enable_if_t < INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) < ValT >>> \
-    {                                                                                                \
-        auto operator()() const;                                                                     \
-    };                                                                                               \
-    template <typename ValT>                                                                         \
-            auto get_object_metadata_t < ValT,                                                       \
+#define INTERNAL_CPPH_define_(ValT, Cond)                                                                                            \
+    template <typename ValT>                                                                                                         \
+    constexpr bool INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) = Cond;                                                \
+                                                                                                                                     \
+    template <typename ValT>                                                                                                         \
+            struct get_object_metadata_t < ValT,                                                                                     \
+            std::enable_if_t < INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) < ValT >>>                                 \
+    {                                                                                                                                \
+        auto operator()() const;                                                                                                     \
+    };                                                                                                                               \
+    template <typename ValT>                                                                                                         \
+            auto                                                                                       get_object_metadata_t < ValT, \
             std::enable_if_t < INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) < ValT >>> ::operator()() const

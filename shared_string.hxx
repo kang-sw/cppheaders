@@ -71,29 +71,29 @@ class basic_shared_string
 
    public:
     std::string const& string() const noexcept { return *_string; }
-    bool is_valid() const noexcept { return _string; }
-    operator bool() const noexcept { return is_valid(); }
+    bool               is_valid() const noexcept { return _string; }
+                       operator bool() const noexcept { return is_valid(); }
 
-    operator string_type const&() const noexcept { return *_string; }
-    operator string_view_type() const noexcept { return *_string; };
+                       operator string_type const&() const noexcept { return *_string; }
+                       operator string_view_type() const noexcept { return *_string; };
     std::string const& operator*() const noexcept { return *_string; }
     std::string const* operator->() const noexcept { return &*_string; }
 
-    size_t size() const noexcept { return _string->size(); }
-    bool empty() const noexcept { return _string->empty(); }
-    char const* c_str() const noexcept { return _string->c_str(); }
+    size_t             size() const noexcept { return _string->size(); }
+    bool               empty() const noexcept { return _string->empty(); }
+    char const*        c_str() const noexcept { return _string->c_str(); }
 
-    auto begin() noexcept { return _string->begin(); }
-    auto end() noexcept { return _string->end(); }
-    auto rbegin() noexcept { return _string->rbegin(); }
-    auto rend() noexcept { return _string->rend(); }
+    auto               begin() noexcept { return _string->begin(); }
+    auto               end() noexcept { return _string->end(); }
+    auto               rbegin() noexcept { return _string->rbegin(); }
+    auto               rend() noexcept { return _string->rend(); }
 
-    auto begin() const noexcept { return _string->begin(); }
-    auto end() const noexcept { return _string->end(); }
-    auto cbegin() const noexcept { return _string->cbegin(); }
-    auto cend() const noexcept { return _string->cend(); }
-    auto rbegin() const noexcept { return _string->rbegin(); }
-    auto rend() const noexcept { return _string->end(); }
+    auto               begin() const noexcept { return _string->begin(); }
+    auto               end() const noexcept { return _string->end(); }
+    auto               cbegin() const noexcept { return _string->cbegin(); }
+    auto               cend() const noexcept { return _string->cend(); }
+    auto               rbegin() const noexcept { return _string->rbegin(); }
+    auto               rend() const noexcept { return _string->end(); }
 
    private:
     std::shared_ptr<string_type>

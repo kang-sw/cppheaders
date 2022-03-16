@@ -79,7 +79,7 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
     struct invoke_proxy_t
     {
         signature_t const* const _host;
-        RpcContext_* const _rpc;
+        RpcContext_* const       _rpc;
 
        public:
         rpc_status rpc(return_type* ret, Params_ const&... args) const

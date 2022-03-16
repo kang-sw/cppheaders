@@ -226,8 +226,8 @@ auto range_alpha(Float_ value, Float_ v1, Float_ v2)
     if (v1 == v2) { return Float_(value > v1); }
     auto [min, max] = std::minmax(v1, v2);
 
-    Float_ alpha = std::clamp(value, min, max);
-    alpha        = (alpha - min) / (max - min);
+    Float_ alpha    = std::clamp(value, min, max);
+    alpha           = (alpha - min) / (max - min);
 
     return alpha;
 }

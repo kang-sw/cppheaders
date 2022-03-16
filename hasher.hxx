@@ -95,7 +95,7 @@ struct basic_key
     }
 
     explicit operator bool() const noexcept { return valid(); }
-    bool valid() const noexcept { return value != 0; }
+    bool     valid() const noexcept { return value != 0; }
 
     template <typename Ty_>
     [[deprecated("Use hash() instead")]]  //

@@ -35,10 +35,10 @@ class request_handle
 {
     friend class context;
     std::weak_ptr<detail::session> _wp;
-    int _msgid = 0;
+    int                            _msgid = 0;
 
    public:
-    operator bool() const noexcept { return _msgid > 0 && not _wp.expired(); }
+         operator bool() const noexcept { return _msgid > 0 && not _wp.expired(); }
     auto errc() const noexcept { return async_rpc_result::type{_msgid}; }
 
     template <typename Duration_, typename Sptr_ = std::shared_ptr<detail::session>>

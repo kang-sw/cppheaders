@@ -138,7 +138,7 @@ class writer : public archive::if_writer
         _ctx.reserve_depth(depth_estimated);
     }
 
-    void reserve_depth(size_t n) { _ctx.reserve_depth(n); }
+    void       reserve_depth(size_t n) { _ctx.reserve_depth(n); }
 
     if_writer& write(nullptr_t a_nullptr) override
     {

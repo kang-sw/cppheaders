@@ -87,7 +87,7 @@ template <const auto& str>
 constexpr auto break_VA_ARGS() noexcept
 {
     constexpr auto n_words = _count_words<str>();
-    auto result            = std::array<std::string_view, n_words>{};
+    auto           result  = std::array<std::string_view, n_words>{};
 
     for (size_t i = 0; i < result.size(); ++i) {
         auto [begin, end] = _words_boundary<str>(i);
@@ -123,7 +123,7 @@ constexpr bool is_optional_v = _is_optional<std::remove_const_t<std::remove_refe
 template <size_t N_, typename KeyTy_, typename Fn_, typename... Args_>
 constexpr void visit_with_key(
         std::array<KeyTy_, N_> const& keys,
-        Fn_&& visitor,
+        Fn_&&                         visitor,
         Args_&&... args)
 {
     size_t at = 0;

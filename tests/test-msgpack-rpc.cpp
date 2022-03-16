@@ -46,7 +46,7 @@ TEST_CASE("Read socket zero receive", "[asio][.]")
     using namespace asio;
     using asio::ip::tcp;
 
-    io_context ioc;
+    io_context    ioc;
     tcp::acceptor acpt{ioc};
     tcp::endpoint ep{ip::make_address("127.0.0.1"), 34561};
     acpt.open(ep.protocol());
@@ -58,8 +58,8 @@ TEST_CASE("Read socket zero receive", "[asio][.]")
 
     steady_timer tim{ioc};
 
-    bool written = false;
-    tcp::socket sock{ioc};
+    bool         written = false;
+    tcp::socket  sock{ioc};
     acpt.async_accept(
             sock,
             [&](error_code ec) {
@@ -81,7 +81,7 @@ TEST_CASE("Read socket zero receive", "[asio][.]")
             });
 
     tcp::socket recv{ioc};
-    char buf2[6];
+    char        buf2[6];
 
     recv.open(ep.protocol());
     recv.async_connect(
@@ -118,7 +118,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     using namespace msgpack::rpc::asio_ex;
 
     using asio::ip::tcp;
-    static std::mutex _mtx_cout;
+    static std::mutex                                                          _mtx_cout;
 
     function<void(msgpack::rpc::session_profile_view, int*, int, std::string)> fn =
             [](auto&& profile, int* rv, int val, std::string arg2) {
@@ -139,8 +139,8 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                       throw std::runtime_error{"Vlue!"};
               };
 
-    auto stub_print = msgpack::rpc::create_signature<void(std::string)>("print");
-    auto stub_noti  = msgpack::rpc::create_signature<void(void)>("noti");
+    auto                       stub_print = msgpack::rpc::create_signature<void(std::string)>("print");
+    auto                       stub_noti  = msgpack::rpc::create_signature<void(void)>("noti");
 
     msgpack::rpc::service_info service;
     service.serve2("hello", std::move(fn));
@@ -148,12 +148,12 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     service.serve(stub_print, [](auto&& str) { printf("hello, world! %s\n", str.c_str()); });
     service.serve(stub_noti, [] { printf("noti!\n"); });
 
-    io_context ioc;
+    io_context            ioc;
     msgpack::rpc::context context{service};
-    auto ctx = &context;
+    auto                  ctx = &context;
 
-    tcp::acceptor acpt{ioc};
-    tcp::endpoint ep{ip::make_address("127.0.0.1"), 34561};
+    tcp::acceptor         acpt{ioc};
+    tcp::endpoint         ep{ip::make_address("127.0.0.1"), 34561};
     acpt.open(ep.protocol());
     acpt.set_option(tcp::acceptor::reuse_address{true});
     acpt.bind(ep);
@@ -231,21 +231,21 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
             dup_ioc();
 
             for (int i = 0; i < 256; ++i) {
-                int rv   = -1;
+                int  rv  = -1;
                 auto res = ctx->rpc(&rv, "hello", i, "vv32");
                 CHECK(res == msgpack::rpc::rpc_status::okay);
                 CHECK(rv == i * i);
             }
 
             for (int i = 0; i < 256; ++i) {
-                int rv    = -1;
+                int  rv   = -1;
                 auto rslt = ctx->rpc(&rv, "hello", i);
                 ctx->rpc(nullptr, "hello", i);
                 CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
 
             for (int i = 0; i < 256; ++i) {
-                int rv    = -1;
+                int  rv   = -1;
                 auto rslt = ctx->rpc(&rv, "hello", "fea", 3.21);
                 CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
@@ -266,7 +266,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
 
         SECTION("Multiple Writer")
         {
-            std::atomic_int max = 64;
+            std::atomic_int                max = 64;
             std::vector<std::future<bool>> futures;
 
             dup_ioc();
@@ -281,7 +281,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                                 fflush(stdout);
                             }
 
-                            int rv      = -1;
+                            int  rv     = -1;
                             auto result = ctx->rpc(&rv, "hello", i, "Gvb");
                             assert(result == msgpack::rpc::rpc_status::okay);
 
@@ -315,7 +315,7 @@ TEST_CASE("interop-server", "[msgpack-rpc][.]")
 
     using asio::ip::tcp;
 
-    io_context ioc;
+    io_context    ioc;
     tcp::acceptor acpt{ioc};
     tcp::endpoint ep{ip::make_address("127.0.0.1"), 34561};
 
@@ -324,7 +324,7 @@ TEST_CASE("interop-server", "[msgpack-rpc][.]")
     acpt.bind(ep);
 
     service_info service;
-    auto stub_sum = create_signature<double(double, double)>("sum");
+    auto         stub_sum = create_signature<double(double, double)>("sum");
     service.serve(
             stub_sum,
             [](session_profile const& profile, auto* r, auto a, auto b) {
@@ -333,7 +333,7 @@ TEST_CASE("interop-server", "[msgpack-rpc][.]")
                 *r = a + b;
             });
 
-    context ctx{std::move(service)};
+    context                      ctx{std::move(service)};
 
     msgpack::rpc::session_config cfg;
     asio_ex::open_acceptor(ctx, cfg, acpt);

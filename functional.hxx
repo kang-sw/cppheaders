@@ -224,8 +224,8 @@ class function<Ret_(Args_...)>
     }
 
    private:
-    _callable_t* _callable                                    = nullptr;
-    std::array<char, _function_size - sizeof(void*)> _sbo_buf = {};
+    _callable_t*                                     _callable = nullptr;
+    std::array<char, _function_size - sizeof(void*)> _sbo_buf  = {};
 };
 
 // Function utiltiies

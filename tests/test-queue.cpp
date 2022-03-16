@@ -100,7 +100,7 @@ TEST_CASE("typed allocator")
 {
     cpph::queue_allocator alloc{1024};
     {
-        auto p = alloc.construct<int>();
+        auto p    = alloc.construct<int>();
 
         auto ptr  = alloc.checkout<int>();
         auto ptr1 = alloc.checkout<int[]>(131);

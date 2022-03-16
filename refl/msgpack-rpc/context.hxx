@@ -64,7 +64,7 @@ class context;
 class if_connection
 {
     std::weak_ptr<detail::session> _owner = {};
-    std::string _peer;
+    std::string                    _peer;
 
    public:
     virtual ~if_connection() = default;
@@ -190,8 +190,8 @@ class session : public std::enable_shared_from_this<session>
    public:
     struct config
     {
-        bool use_integer_key              = true;
-        std::chrono::microseconds timeout = {};
+        bool                      use_integer_key = true;
+        std::chrono::microseconds timeout         = {};
     };
 
    private:
@@ -204,8 +204,8 @@ class session : public std::enable_shared_from_this<session>
     friend class rpc::context;
 
     std::weak_ptr<nullptr_t> _owner_fence;
-    context* _owner = {};
-    config _conf;
+    context*                 _owner = {};
+    config                   _conf;
 
     // A session will automatically be expired if connection is destroyed.
     std::unique_ptr<if_connection> _conn;
@@ -220,9 +220,9 @@ class session : public std::enable_shared_from_this<session>
     // Writing operation is protected.
     // - When reply to RPC
     // - When send rpc request
-    spinlock _write_lock;
+    spinlock     _write_lock;
     volatile int _msgid_gen = 0;
-    std::string _method_name_buf;
+    std::string  _method_name_buf;
 
     // Check function is waiting for awake.
     std::atomic_bool _waiting{false};
@@ -237,7 +237,7 @@ class session : public std::enable_shared_from_this<session>
     std::atomic_bool _pending_kill = false;
 
     // write refcount
-    volatile int _refcnt = 0;
+    volatile int                      _refcnt = 0;
 
     std::weak_ptr<if_context_monitor> _monitor;
 
@@ -245,9 +245,9 @@ class session : public std::enable_shared_from_this<session>
     using request_handle_type = decltype(_requests)::iterator;
 
    public:
-    session(context* owner,
-            config const& conf,
-            std::unique_ptr<if_connection> conn,
+    session(context*                          owner,
+            config const&                     conf,
+            std::unique_ptr<if_connection>    conn,
             std::weak_ptr<if_context_monitor> wmonitor) noexcept
             : _owner(owner), _conf(conf), _conn(std::move(conn)), _monitor(std::move(wmonitor))
     {
@@ -273,7 +273,7 @@ class session : public std::enable_shared_from_this<session>
     auto async_rpc(RetPtr_ result, std::string_view method, CompletionToken_&& handler, Params_&&... params)
     {
         decltype(_requests)::iterator request;
-        int msgid;
+        int                           msgid;
 
         // create reply slot
         _rpc_notify.critical_section([&] {
@@ -344,7 +344,7 @@ class session : public std::enable_shared_from_this<session>
 
     bool abort_rpc(int msgid)
     {
-        bool found = false;
+        bool                                       found = false;
         decltype(request_info::completion_handler) handler;
         _rpc_notify.critical_section([&] {
             if (auto iter = _requests.find(msgid); iter != _requests.end()) {
@@ -462,7 +462,7 @@ class session : public std::enable_shared_from_this<session>
         // NOTE: This function guaranteed to not be re-entered multiple times on single session
         try {
             // Assume data is ready to be read.
-            auto key = _reader.begin_array();
+            auto     key = _reader.begin_array();
 
             rpc_type type;
 
@@ -557,7 +557,7 @@ class session : public std::enable_shared_from_this<session>
 
         if (auto pair = find_ptr(_get_services(), _method_name_buf)) {
             auto& srv = pair->second;
-            auto ctx  = _reader.begin_array();  // begin reading params
+            auto  ctx = _reader.begin_array();  // begin reading params
 
             if (_reader.elem_left() < srv->num_params()) {
                 // number of parameters are insufficient.
@@ -567,7 +567,7 @@ class session : public std::enable_shared_from_this<session>
                     struct uobj_t
                     {
                         session* self;
-                        int msgid;
+                        int      msgid;
                     } uobj{this, msgid};
 
                     srv->invoke(
@@ -616,7 +616,7 @@ class session : public std::enable_shared_from_this<session>
 
         if (auto pair = find_ptr(_get_services(), _method_name_buf)) {
             auto& srv = pair->second;
-            auto ctx  = _reader.begin_array();
+            auto  ctx = _reader.begin_array();
 
             if (_reader.elem_left() >= srv->num_params()) {
                 try {
@@ -639,7 +639,7 @@ class session : public std::enable_shared_from_this<session>
     }
 
     service_info::handler_table_type const& _get_services() const;
-    void _erase_self();
+    void                                    _erase_self();
 };
 }  // namespace detail
 
@@ -664,10 +664,10 @@ class context
 
     // List of created sessions.
     std::set<session_ptr, std::owner_less<>> _session_sources;
-    std::deque<session_wptr> _sessions;
+    std::deque<session_wptr>                 _sessions;
 
-    mutable thread::event_wait _session_notify;
-    pool<std::vector<session_ptr>> _notify_pool;
+    mutable thread::event_wait               _session_notify;
+    pool<std::vector<session_ptr>>           _notify_pool;
 
     //! Context monitor
     std::weak_ptr<if_context_monitor> _monitor;
@@ -683,9 +683,9 @@ class context
      * Create new context, with appropriate dispatcher function.
      */
     explicit context(
-            service_info service                      = {},
-            dispatch_function dispatcher              = [](auto&& fn) { fn(); },
-            std::weak_ptr<if_context_monitor> monitor = {})
+            service_info                      service    = {},
+            dispatch_function                 dispatcher = [](auto&& fn) { fn(); },
+            std::weak_ptr<if_context_monitor> monitor    = {})
             : _dispatch(std::move(dispatcher)),
               _service(std::move(service)),
               _monitor(std::move(monitor))
@@ -722,9 +722,9 @@ class context
               typename CompletionToken_,
               typename... Params_>
     auto _async_rpc(
-            session_ptr& session,
-            RetPtr_ retval,
-            std::string_view method,
+            session_ptr&       session,
+            RetPtr_            retval,
+            std::string_view   method,
             CompletionToken_&& handler,
             Params_&&... params) -> async_rpc_result::type
     {
@@ -758,8 +758,8 @@ class context
     template <typename RetPtr_,
               typename CompletionToken_,
               typename... Params_>
-    auto async_rpc(RetPtr_ retval,
-                   std::string_view method,
+    auto async_rpc(RetPtr_            retval,
+                   std::string_view   method,
                    CompletionToken_&& handler,
                    Params_&&... params) -> request_handle
     {
@@ -800,13 +800,13 @@ class context
      * @throw remote_reply_exception
      */
     template <typename RetPtr_, typename... Params_, class Rep_, class Ratio_>
-    auto rpc(RetPtr_ retval,
-             std::string_view method,
+    auto rpc(RetPtr_                             retval,
+             std::string_view                    method,
              std::chrono::duration<Rep_, Ratio_> timeout,
              Params_&&... params) -> rpc_status
     {
         volatile rpc_status status = rpc_status::unknown_error;
-        std::exception_ptr user_except;
+        std::exception_ptr  user_except;
 
         for (;;) {
             auto session = _checkout();
@@ -849,7 +849,7 @@ class context
     }
 
     template <typename RetPtr_, typename... Params_>
-    auto rpc(RetPtr_ retval,
+    auto rpc(RetPtr_          retval,
              std::string_view method,
              Params_&&... params) -> rpc_status
     {
@@ -932,8 +932,8 @@ class context
     session_handle create_session(session_config const& conf, Args_&&... args)
     {
         // put created session reference to sessions_source and sessions both.
-        auto connection = std::make_unique<Conn_>(std::forward<Args_>(args)...);
-        auto session    = std::make_shared<detail::session>(this, conf, std::move(connection), _monitor);
+        auto           connection = std::make_unique<Conn_>(std::forward<Args_>(args)...);
+        auto           session    = std::make_shared<detail::session>(this, conf, std::move(connection), _monitor);
 
         session_handle handle;
         handle._ref = session;
@@ -993,7 +993,7 @@ class context
         using namespace std::chrono_literals;
 
         session_ptr session = {};
-        auto predicate =
+        auto        predicate =
                 [&] {
                     int max_cycle = _sessions.size();
                     for (; not _sessions.empty() && max_cycle > 0; --max_cycle) {
@@ -1035,7 +1035,7 @@ class context
     {
         session_ptr session = {};
 
-        auto source = _session_sources.find(ptr);
+        auto        source  = _session_sources.find(ptr);
         if (source != _session_sources.end()) {  // if given session is never occupied by any other context ..
             session = *source;
             _session_sources.erase(source);

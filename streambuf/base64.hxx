@@ -43,7 +43,7 @@ class basic_b64 : public std::streambuf
         n_write_bytes = n_write_words * 3,
         n_read_bytes  = n_read_words * 3,
 
-        read_offset = (n_write_bytes + 3) / 4 * 4
+        read_offset   = (n_write_bytes + 3) / 4 * 4
     };
 
     char _iobuf[read_offset + n_read_bytes];

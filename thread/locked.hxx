@@ -37,7 +37,7 @@ class locked
    public:
     struct locked_reference
     {
-        Ty_* _ptr = nullptr;
+        Ty_*                     _ptr = nullptr;
         std::unique_lock<Mutex_> _lock;
 
        public:
@@ -46,12 +46,12 @@ class locked
         auto& operator*() { return *_ptr; }
         auto& operator*() const { return *_ptr; }
 
-        operator bool() const { return _lock; }
+              operator bool() const { return _lock; }
     };
 
     struct locked_const_reference
     {
-        Ty_ const* _ptr = nullptr;
+        Ty_ const*            _ptr = nullptr;
         std::unique_lock<Ty_> _lock;
 
        public:
@@ -60,7 +60,7 @@ class locked
         auto& operator*() { return *_ptr; }
         auto& operator*() const { return *_ptr; }
 
-        operator bool() const { return _lock; }
+              operator bool() const { return _lock; }
     };
 
    public:
@@ -117,7 +117,7 @@ class locked
     }
 
    private:
-    Ty_ _value;
+    Ty_            _value;
     mutable Mutex_ _mut;
 };
 

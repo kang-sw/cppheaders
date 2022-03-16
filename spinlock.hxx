@@ -39,7 +39,7 @@ struct spinlock
 {
     std::atomic_bool lock_{false};
 
-    void lock() noexcept
+    void             lock() noexcept
     {
         for (;;) {
             // Optimistically assume the lock is free on the first try

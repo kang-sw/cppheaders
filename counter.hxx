@@ -110,14 +110,14 @@ class _counter<Ty_, 1>
         return count_ -= n, *this;
     }
 
-    constexpr _counter& operator++() { return ++count_, *this; }
-    constexpr _counter operator++(int) { return ++count_, _counter(count_ - 1); }
-    constexpr _counter& operator--() { return --count_, *this; }
-    constexpr _counter operator--(int) { return --count_, _counter(count_ - 1); }
-    constexpr bool operator<(_counter o) const { return count_ < o.count_; }
-    constexpr bool operator>(_counter o) const { return count_ > o.count_; }
-    constexpr bool operator==(_counter o) const { return count_ == o.count_; }
-    constexpr bool operator!=(_counter o) const { return count_ != o.count_; }
+    constexpr _counter&           operator++() { return ++count_, *this; }
+    constexpr _counter            operator++(int) { return ++count_, _counter(count_ - 1); }
+    constexpr _counter&           operator--() { return --count_, *this; }
+    constexpr _counter            operator--(int) { return --count_, _counter(count_ - 1); }
+    constexpr bool                operator<(_counter o) const { return count_ < o.count_; }
+    constexpr bool                operator>(_counter o) const { return count_ > o.count_; }
+    constexpr bool                operator==(_counter o) const { return count_ == o.count_; }
+    constexpr bool                operator!=(_counter o) const { return count_ != o.count_; }
     constexpr auto /*Ty_ const&*/ operator*() const { return count_; }
     constexpr auto /*Ty_ const**/ operator->() const { return &count_; }
     constexpr auto /*Ty_ const&*/ operator*() { return count_; }
@@ -159,21 +159,21 @@ class _counter<Ty_, ~size_t{}>
     }
 
    public:
-    constexpr friend _counter operator-(_counter c, difference_type n) { return _counter(c.count_ + n); }
-    constexpr friend _counter operator-(difference_type n, _counter c) { return c + n; }
-    constexpr friend _counter operator+(_counter c, difference_type n) { return _counter(c.count_ - n); }
-    constexpr friend _counter operator+(difference_type n, _counter c) { return c - n; }
-    constexpr difference_type operator-(_counter o) const { return o.count_ - count_; }
-    constexpr _counter& operator-=(difference_type n) { return count_ += n, *this; }
-    constexpr _counter& operator+=(difference_type n) { return count_ -= n, *this; }
-    constexpr _counter& operator--() { return ++count_, *this; }
-    constexpr _counter operator--(int) { return ++count_, _counter(count_ - 1); }
-    constexpr _counter& operator++() { return --count_, *this; }
-    constexpr _counter operator++(int) { return --count_, _counter(count_ - 1); }
-    constexpr bool operator>(_counter o) const { return count_ < o.count_; }
-    constexpr bool operator<(_counter o) const { return count_ > o.count_; }
-    constexpr bool operator==(_counter o) const { return count_ == o.count_; }
-    constexpr bool operator!=(_counter o) const { return count_ != o.count_; }
+    constexpr friend _counter     operator-(_counter c, difference_type n) { return _counter(c.count_ + n); }
+    constexpr friend _counter     operator-(difference_type n, _counter c) { return c + n; }
+    constexpr friend _counter     operator+(_counter c, difference_type n) { return _counter(c.count_ - n); }
+    constexpr friend _counter     operator+(difference_type n, _counter c) { return c - n; }
+    constexpr difference_type     operator-(_counter o) const { return o.count_ - count_; }
+    constexpr _counter&           operator-=(difference_type n) { return count_ += n, *this; }
+    constexpr _counter&           operator+=(difference_type n) { return count_ -= n, *this; }
+    constexpr _counter&           operator--() { return ++count_, *this; }
+    constexpr _counter            operator--(int) { return ++count_, _counter(count_ - 1); }
+    constexpr _counter&           operator++() { return --count_, *this; }
+    constexpr _counter            operator++(int) { return --count_, _counter(count_ - 1); }
+    constexpr bool                operator>(_counter o) const { return count_ < o.count_; }
+    constexpr bool                operator<(_counter o) const { return count_ > o.count_; }
+    constexpr bool                operator==(_counter o) const { return count_ == o.count_; }
+    constexpr bool                operator!=(_counter o) const { return count_ != o.count_; }
     constexpr auto /*Ty_ const&*/ operator*() const { return count_; }
     constexpr auto /*Ty_ const**/ operator->() const { return &count_; }
     constexpr auto /*Ty_ const&*/ operator*() { return count_; }
@@ -235,7 +235,7 @@ class _counter
     using reference         = value_type&;
     using pointer           = value_type*;
 
-    using dimension = std::array<Ty_, num_dimension>;
+    using dimension         = std::array<Ty_, num_dimension>;
 
    public:
     template <typename... Ints_>
@@ -261,23 +261,20 @@ class _counter
     }
 
     constexpr _counter& operator++() { return incr(), *this; }
-    constexpr _counter operator++(int)
+    constexpr _counter  operator++(int)
     {
         auto cpy = *this;
         incr();
         return cpy;
     }
 
-    constexpr bool operator==(_counter const& o) const { return current == o.current; }
-    constexpr bool operator!=(_counter const& o) const { return !(*this == o); }
-
-    // constexpr bool operator==(_counter_end_marker_t) const { return current[0] == max[0]; }
-    // constexpr bool operator!=(_counter_end_marker_t) const { return current[0] != max[0]; }
+    constexpr bool  operator==(_counter const& o) const { return current == o.current; }
+    constexpr bool  operator!=(_counter const& o) const { return !(*this == o); }
 
     constexpr auto& operator*() const { return current; }
-    constexpr auto operator->() const { return &current; }
+    constexpr auto  operator->() const { return &current; }
     constexpr auto& operator*() { return current; }
-    constexpr auto operator->() { return &current; }
+    constexpr auto  operator->() { return &current; }
 
    public:
     dimension max;
@@ -293,7 +290,7 @@ struct _count_index
     // constexpr iterator end() const { return _counter<SizeTy_, Dim_>{max, max}; }
     constexpr iterator end() const { return _counter<SizeTy_, Dim_>{max, max}; }
 
-    dimension max;
+    dimension          max;
 };
 
 template <typename SizeTy_>
@@ -324,8 +321,8 @@ constexpr auto rcounter(SizeTy_ size)
 {
     struct min_counter_gen
     {
-        SizeTy_ begin_;
-        SizeTy_ end_;
+        SizeTy_                                begin_;
+        SizeTy_                                end_;
         constexpr _counter<SizeTy_, ~size_t{}> begin() const { return {begin_}; }
         constexpr _counter<SizeTy_, ~size_t{}> end() const { return {end_}; }
     };
@@ -357,7 +354,7 @@ template <typename SizeTy_, size_t Dim_>
 constexpr auto counter(std::array<SizeTy_, Dim_> const& idx)
 {
     _count_index<SizeTy_, Dim_> counter{};
-    bool has_zero = false;
+    bool                        has_zero = false;
     for (size_t i = 0; i < Dim_; ++i) {
         counter.max[i] = idx[i];
         has_zero       = has_zero || idx[i] == 0;

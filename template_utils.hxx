@@ -44,12 +44,9 @@ template <std::size_t I = 0, typename FuncT, typename... Tp>
         inline typename std::enable_if < I<sizeof...(Tp), void>::type
         tuple_for_each(std::tuple<Tp...>& t, FuncT&& f)
 {
-    if constexpr (std::is_invocable_v<FuncT, decltype(std::get<I>(t)), size_t>)
-    {
+    if constexpr (std::is_invocable_v<FuncT, decltype(std::get<I>(t)), size_t>) {
         f(std::get<I>(t), I);
-    }
-    else
-    {
+    } else {
         f(std::get<I>(t));
     }
     tuple_for_each<I + 1, FuncT&&, Tp...>(t, std::forward<FuncT>(f));
@@ -65,12 +62,9 @@ template <std::size_t I = 0, typename FuncT, typename... Tp>
         inline typename std::enable_if < I<sizeof...(Tp), void>::type
         tuple_for_each(std::tuple<Tp...> const& t, FuncT&& f)
 {
-    if constexpr (std::is_invocable_v<FuncT, decltype(std::get<I>(t)), size_t>)
-    {
+    if constexpr (std::is_invocable_v<FuncT, decltype(std::get<I>(t)), size_t>) {
         f(std::get<I>(t), I);
-    }
-    else
-    {
+    } else {
         f(std::get<I>(t));
     }
     tuple_for_each<I + 1, FuncT&&, Tp...>(t, std::forward<FuncT>(f));
@@ -83,19 +77,19 @@ template <typename Begin_, typename End_>
 struct _borrowed_range
 {
     Begin_ _begin;
-    End_ _end;
+    End_   _end;
 
-    auto begin() const noexcept { return _begin; }
-    auto end() const noexcept { return _end; }
+    auto   begin() const noexcept { return _begin; }
+    auto   end() const noexcept { return _end; }
 
-    auto begin() noexcept { return _begin; }
-    auto end() noexcept { return _end; }
+    auto   begin() noexcept { return _begin; }
+    auto   end() noexcept { return _end; }
 
-    bool size() const noexcept { return std::distance(_begin, _end); }
-    bool empty() const noexcept { return _begin == _end; }
+    bool   size() const noexcept { return std::distance(_begin, _end); }
+    bool   empty() const noexcept { return _begin == _end; }
 
-    auto& front() const noexcept { return *_begin; }
-    auto& back() const noexcept { return *(std::prev(_end, 1)); }
+    auto&  front() const noexcept { return *_begin; }
+    auto&  back() const noexcept { return *(std::prev(_end, 1)); }
 };
 
 template <typename Begin_, typename End_>
@@ -127,7 +121,7 @@ struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)>
 template <class R, class... Args>
 struct function_traits<R(Args...)>
 {
-    using return_type = R;
+    using return_type                  = R;
 
     static constexpr std::size_t arity = sizeof...(Args);
 
@@ -165,7 +159,7 @@ struct function_traits
     using call_type = function_traits<decltype(&F::operator())>;
 
    public:
-    using return_type = typename call_type::return_type;
+    using return_type                  = typename call_type::return_type;
 
     static constexpr std::size_t arity = call_type::arity - 1;
 

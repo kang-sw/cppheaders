@@ -43,7 +43,7 @@ class format_context
         using tuple_type = std::tuple<Args_...>;
 
         format_context* _base;
-        tuple_type _tup;
+        tuple_type      _tup;
 
        private:
         template <typename Ty_, size_t... Idx_>

@@ -224,31 +224,31 @@ enum class reader_scope_type {
 
 struct reader_scope_context_t
 {
-    reader_scope_type type = {};
-    context_key context    = {};
-    int token_pos          = false;
-    bool is_key_next       = false;
-    int elem_left          = 0;
+    reader_scope_type type        = {};
+    context_key       context     = {};
+    int               token_pos   = false;
+    bool              is_key_next = false;
+    int               elem_left   = 0;
 };
 
 struct reader::impl
 {
-    if_reader* self;
+    if_reader*                          self;
 
-    std::vector<jsmntok_t> tokens;
-    std::string string;
-    jsmn_parser parser;
-    size_t pos_next = ~size_t{};
+    std::vector<jsmntok_t>              tokens;
+    std::string                         string;
+    jsmn_parser                         parser;
+    size_t                              pos_next = ~size_t{};
 
     std::vector<reader_scope_context_t> scopes;
-    int64_t context_keygen = 0;
+    int64_t                             context_keygen = 0;
 
-    streambuf::view base64_view{};
-    streambuf::b64_r base64{&base64_view};
+    streambuf::view                     base64_view{};
+    streambuf::b64_r                    base64{&base64_view};
 
    public:
-    auto next() const { return &tokens.at(pos_next); }
-    auto next() { return &tokens.at(pos_next); }
+    auto             next() const { return &tokens.at(pos_next); }
+    auto             next() { return &tokens.at(pos_next); }
 
     std::string_view tokstr(jsmntok_t const& tok) const
     {
@@ -313,9 +313,9 @@ struct reader::impl
 
         auto it_tok = tokens.begin() + scope->token_pos;
 
-        auto it = std::lower_bound(
-                it_tok, tokens.end(), it_tok->end,
-                [](jsmntok_t const& t, int e) { return t.start < e; });
+        auto it     = std::lower_bound(
+                    it_tok, tokens.end(), it_tok->end,
+                    [](jsmntok_t const& t, int e) { return t.start < e; });
         pos_next = it - tokens.begin();
         scopes.pop_back();
 

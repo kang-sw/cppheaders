@@ -130,7 +130,7 @@ class local_promise
        private:
         future_state _get_state() const { return _state.load(std::memory_order_acquire); }
 
-        void _verify_valid() const
+        void         _verify_valid() const
         {
             switch (_get_state()) {
                 case future_state::busy:
@@ -151,8 +151,8 @@ class local_promise
         friend class local_promise<Ty_>;
 
         std::atomic<future_state> _state = future_state::empty;
-        std::exception_ptr _eptr         = nullptr;
-        std::optional<Ty_> _value;
+        std::exception_ptr        _eptr  = nullptr;
+        std::optional<Ty_>        _value;
     };
 
    public:

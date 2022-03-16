@@ -106,7 +106,7 @@ class worker
     }
 
    private:
-    std::thread _worker;
+    std::thread      _worker;
     std::atomic_bool _active;
 };
 

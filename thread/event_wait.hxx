@@ -163,10 +163,10 @@ class event_wait
     auto wait_until_2(TimePoint_&& time_point, Predicate_&& predicate) const
     {
         ulock_type lc{_mtx};
-        auto b = _cvar.wait_until(
-                lc,
-                std::forward<TimePoint_>(time_point),
-                std::forward<Predicate_>(predicate));
+        auto       b = _cvar.wait_until(
+                      lc,
+                      std::forward<TimePoint_>(time_point),
+                      std::forward<Predicate_>(predicate));
 
         return b ? lc : ulock_type{};
     }
@@ -175,7 +175,7 @@ class event_wait
     auto wait_until_2(TimePoint_&& time_point) const
     {
         ulock_type lc{_mtx};
-        auto b = _cvar.wait_until(lc, std::forward<TimePoint_>(time_point));
+        auto       b = _cvar.wait_until(lc, std::forward<TimePoint_>(time_point));
         return b ? lc : ulock_type{};
     }
 
@@ -190,7 +190,7 @@ class event_wait
 
    private:
     mutable std::condition_variable _cvar;
-    mutable std::mutex _mtx;
+    mutable std::mutex              _mtx;
 };
 
 }  // namespace CPPHEADERS_NS_::thread
