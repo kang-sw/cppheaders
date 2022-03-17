@@ -111,9 +111,13 @@ class transient_socket_streambuf : public std::streambuf
 
     size_t _showmanyc_impl()
     {
-        asio::socket_base::bytes_readable navail{true};
-        _socket.io_control(navail);
-        return navail.get();
+        try {
+            asio::socket_base::bytes_readable navail{true};
+            _socket.io_control(navail);
+            return navail.get();
+        } catch (asio::system_error&) {
+            throw invalid_connection{};
+        }
     }
 
    public:
@@ -133,11 +137,13 @@ template <typename Protocol_>
 class basic_socket_connection : public if_connection
 {
    public:
-    using socket    = typename Protocol_::socket;
-    using streambuf = asio::basic_socket_streambuf<Protocol_>;
+    using socket        = typename Protocol_::socket;
+    using streambuf     = asio::basic_socket_streambuf<Protocol_>;
+    using socket_buffer = transient_socket_streambuf<Protocol_>;
 
    private:
-    transient_socket_streambuf<Protocol_> _buf;
+    socket_buffer   _buf;
+    std::atomic_int _wait_counter = 0;
 
    public:
     explicit basic_socket_connection(socket sock)
@@ -156,9 +162,7 @@ class basic_socket_connection : public if_connection
         return &_buf;
     }
 
-    std::atomic_int _wait_counter = 0;
-
-    void            begin_wait() override
+    void begin_wait() override
     {
         auto fn = bind_front_weak(
                 owner(),
