@@ -33,6 +33,9 @@
 #define INTERNAL_CPPH_STRINGIFY2(A) #A
 #define INTERNAL_CPPH_STRINGIFY(A)  INTERNAL_CPPH_STRINGIFY2(A)
 
+/* temporary variable name ************************************************************************/
+#define CPPH_TMPVAR auto INTERNAL_CPPH_CONCAT(_internal_cpph_tmpvar_, __LINE__)
+
 /* generic      ***********************************************************************************/
 #define CPPH_BIND(Function)                                                                            \
     [this](auto&&... args) {                                                                           \
