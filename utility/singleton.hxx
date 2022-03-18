@@ -26,7 +26,6 @@
 #pragma once
 #include <atomic>
 #include <cassert>
-#include <exception>
 #include <type_traits>
 
 #include "../__namespace__"
@@ -44,14 +43,14 @@ struct singleton_t
 
    public:
     template <typename... Args_>
-    void create(Args_&&... args)
+    void create(Args_&&... args) const noexcept(std::is_nothrow_constructible_v<Ty_, Args_...>)
     {
         assert(not _ptr());
         _ptr() = new Ty_{std::forward<Args_>(args)...};
     }
 
     template <typename = void>
-    void destroy()
+    void destroy() const noexcept(std::is_nothrow_destructible_v<Ty_>)
     {
         assert(_ptr());
         delete _ptr();
