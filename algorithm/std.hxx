@@ -32,6 +32,8 @@
 
 namespace CPPHEADERS_NS_ {
 inline namespace algorithm {
+using std::move;
+
 #define INTERNAL_CPPH_DEFINE_WRAPPER(FUNC)                                          \
     template <typename Container_, typename... Args_>                               \
     auto FUNC(Container_&& a, Args_&&... args)                                      \
@@ -76,7 +78,6 @@ INTERNAL_CPPH_DEFINE_WRAPPER(copy_if)
 INTERNAL_CPPH_DEFINE_WRAPPER(copy_n)
 INTERNAL_CPPH_DEFINE_WRAPPER(copy_backward)
 
-INTERNAL_CPPH_DEFINE_WRAPPER(move)
 INTERNAL_CPPH_DEFINE_WRAPPER(move_backward)
 
 INTERNAL_CPPH_DEFINE_WRAPPER(fill)
