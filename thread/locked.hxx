@@ -89,28 +89,55 @@ class locked
     }
 
     template <typename Visitor_>
-    void use(Visitor_&& visitor)
+    [[deprecated]] void use(Visitor_&& visitor)
     {
         std::lock_guard _{_mut};
         visitor(_value);
     }
 
     template <typename Visitor_>
-    void use(Visitor_&& visitor) const
+    [[deprecated]] void use(Visitor_&& visitor) const
     {
         std::lock_guard _{_mut};
         visitor(_value);
     }
 
     template <typename Visitor_>
-    void try_use(Visitor_&& visitor)
+    void access(Visitor_&& visitor)
+    {
+        std::lock_guard _{_mut};
+        visitor(_value);
+    }
+    template <typename Visitor_>
+    void access(Visitor_&& visitor) const
+    {
+        std::lock_guard _{_mut};
+        visitor(_value);
+    }
+
+    template <typename Visitor_>
+    void try_access(Visitor_&& visitor)
     {
         if (std::lock_guard _{_mut, std::try_to_lock})
             visitor(_value);
     }
 
     template <typename Visitor_>
-    void try_use(Visitor_&& visitor) const
+    void try_access(Visitor_&& visitor) const
+    {
+        if (std::lock_guard _{_mut, std::try_to_lock})
+            visitor(_value);
+    }
+
+    template <typename Visitor_>
+    [[deprecated]] void try_use(Visitor_&& visitor)
+    {
+        if (std::lock_guard _{_mut, std::try_to_lock})
+            visitor(_value);
+    }
+
+    template <typename Visitor_>
+    [[deprecated]] void try_use(Visitor_&& visitor) const
     {
         if (std::lock_guard _{_mut, std::try_to_lock})
             visitor(_value);
