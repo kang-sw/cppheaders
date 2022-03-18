@@ -35,14 +35,35 @@ namespace CPPHEADERS_NS_ {
 template <typename Ty_, typename Label_ = void>
 struct singleton_t
 {
+   private:
+    static Ty_*& _ptr() noexcept
+    {
+        static Ty_* pointer;
+        return pointer;
+    }
+
    public:
+    template <typename... Args_>
+    void create(Args_&&... args)
+    {
+        assert(not _ptr());
+        _ptr() = new Ty_{std::forward<Args_>(args)...};
+    }
+
+    template <typename = void>
+    void destroy()
+    {
+        assert(_ptr());
+        delete _ptr();
+    }
+
     /**
      * Returns default-constructed instance
      */
     Ty_& get() const noexcept
     {
-        static Ty_ inst;
-        return inst;
+        assert(_ptr());
+        return *_ptr();
     }
 
     Ty_* operator->() const noexcept { return &get(); }
@@ -51,5 +72,12 @@ struct singleton_t
 
 template <typename Ty_, typename Label_ = void>
 constexpr inline static singleton_t<Ty_, Label_> singleton = {};
+
+template <typename Ty_, typename Label_ = void>
+Ty_& default_singleton()
+{
+    static Ty_ _instance;
+    return _instance;
+}
 
 }  // namespace CPPHEADERS_NS_
