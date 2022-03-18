@@ -143,10 +143,10 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     auto                       stub_noti  = msgpack::rpc::create_signature<void(void)>("noti");
 
     msgpack::rpc::service_info service;
-    service.serve2("hello", std::move(fn));
-    service.serve("except", std::move(fn2));
-    service.serve(stub_print, [](auto&& str) { printf("hello, world! %s\n", str.c_str()); });
-    service.serve(stub_noti, [] { printf("noti!\n"); });
+    service.route2("hello", std::move(fn));
+    service.route("except", std::move(fn2));
+    service.route(stub_print, [](auto&& str) { printf("hello, world! %s\n", str.c_str()); });
+    service.route(stub_noti, [] { printf("noti!\n"); });
 
     io_context            ioc;
     msgpack::rpc::context context{service};
@@ -325,7 +325,7 @@ TEST_CASE("interop-server", "[msgpack-rpc][.]")
 
     service_info service;
     auto         stub_sum = create_signature<double(double, double)>("sum");
-    service.serve(
+    service.route(
             stub_sum,
             [](session_profile const& profile, auto* r, auto a, auto b) {
                 printf("PEER %s: %f + %f\n", profile.peer_name.c_str(), a, b);

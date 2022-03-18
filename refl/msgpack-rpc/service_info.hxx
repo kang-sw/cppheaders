@@ -87,7 +87,7 @@ class service_info
      * Original signature of serve()
      */
     template <typename RetVal_, typename... Params_>
-    service_info& serve2(std::string method_name, function<void(session_profile const&, RetVal_*, Params_...)> handler)
+    service_info& route2(std::string method_name, function<void(session_profile const&, RetVal_*, Params_...)> handler)
     {
         struct service_handler : if_service_handler
         {
@@ -150,7 +150,7 @@ class service_info
      * @param handler RPC handler. Uses cpph::function to accept move-only signatures
      */
     template <typename RetVal_, typename... Params_>
-    service_info& serve1(std::string method_name, function<void(RetVal_*, Params_...)> handler)
+    service_info& route1(std::string method_name, function<void(RetVal_*, Params_...)> handler)
     {
         function<void(session_profile const&, RetVal_*, Params_...)> fn =
                 [_handler = std::move(handler)]  //
@@ -161,7 +161,7 @@ class service_info
                         _handler(buffer, std::forward<decltype(args)>(args)...);
                 };
 
-        this->serve2(std::move(method_name), std::move(fn));
+        this->route2(std::move(method_name), std::move(fn));
         return *this;
     }
 
@@ -176,7 +176,7 @@ class service_info
      * @param handler RPC handler. Uses cpph::function to accept move-only signatures
      */
     template <typename RetVal_, typename... Params_>
-    service_info& serve(std::string method_name, function<RetVal_(Params_...)> handler)
+    service_info& route(std::string method_name, function<RetVal_(Params_...)> handler)
     {
         function<void(session_profile const&, RetVal_*, Params_...)> fn =
                 [_handler = std::move(handler)]  //
@@ -187,7 +187,7 @@ class service_info
                         *buffer = _handler(std::forward<decltype(args)>(args)...);
                 };
 
-        this->serve2(std::move(method_name), std::move(fn));
+        this->route2(std::move(method_name), std::move(fn));
         return *this;
     }
 
@@ -204,36 +204,45 @@ class service_info
     //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature, callable_t>)
     //            return serve(name, typename iface_t::serve_signature{std::forward<Callable_>(service)});
     //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_1, callable_t>)
-    //            return serve1(name, typename iface_t::serve_signature_1{std::forward<Callable_>(service)});
+    //            return route1(name, typename iface_t::serve_signature_1{std::forward<Callable_>(service)});
     //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_2, callable_t>)
-    //            return serve2(name, typename iface_t::serve_signature_2{std::forward<Callable_>(service)});
+    //            return route2(name, typename iface_t::serve_signature_2{std::forward<Callable_>(service)});
     //    }
 
     template <size_t N_, typename Ret_, typename... Params_,
               typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
-    service_info& serve(
+    service_info& route(
             signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
             typename Signature_::serve_signature_2               func)
     {
-        return serve2(std::string(iface.name()), std::move(func));
+        return route2(std::string(iface.name()), std::move(func));
     }
 
     template <size_t N_, typename Ret_, typename... Params_,
-              typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
-    service_info& serve(
+              typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>,
+              typename Callable_,
+              typename = std::enable_if_t<not std::is_convertible_v<Callable_, typename Signature_::serve_signature_2>>>
+    service_info& route(
             signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-            typename Signature_::serve_signature_1               func)
+            Callable_&&                                          handler)
     {
-        return serve1(std::string(iface.name()), std::move(func));
-    }
+        typename Signature_::serve_signature_2 fn =
+                [_handler = std::forward<Callable_>(handler)]  //
+                (auto&&, Ret_* buffer, auto&&... args) mutable {
+                    if constexpr (std::is_convertible_v<Callable_, typename Signature_::serve_signature_1>) {
+                        if constexpr (std::is_void_v<Ret_>)
+                            _handler(buffer, std::forward<decltype(args)>(args)...);
+                        else
+                            _handler(buffer, std::forward<decltype(args)>(args)...);
+                    } else {
+                        if constexpr (std::is_void_v<Ret_>)
+                            _handler(std::forward<decltype(args)>(args)...);
+                        else
+                            *buffer = _handler(std::forward<decltype(args)>(args)...);
+                    }
+                };
 
-    template <size_t N_, typename Ret_, typename... Params_,
-              typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
-    service_info& serve(
-            signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-            typename Signature_::serve_signature                 func)
-    {
-        return serve(std::string(iface.name()), std::move(func));
+        return route2(std::string(iface.name()), std::move(fn));
     }
 
    public:
