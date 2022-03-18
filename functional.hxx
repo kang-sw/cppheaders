@@ -307,10 +307,10 @@ struct _bound_weak_functor_t
  * @return
  */
 template <class Callable_, typename... Captures_>
-auto bind_front(Callable_&& callable, Captures_&&... captures)
+auto bind_front(Callable_ callable, Captures_&&... captures)
 {
     return _bound_functor_t{
-            std::forward<Callable_>(callable),
+            std::move(callable),
             std::make_tuple(std::forward<Captures_>(captures)...)};
 }
 
@@ -319,11 +319,12 @@ auto bind_front(Callable_&& callable, Captures_&&... captures)
  *  only when given weak reference is valid.
  */
 template <class Callable_, typename Ptr_, typename... Captures_>
-auto bind_front_weak(Ptr_&& ref, Callable_&& callable, Captures_&&... captures)
+auto bind_front_weak(Ptr_&& ref, Callable_ callable, Captures_&&... captures)
 {
+    using std::decay_t;
     return _bound_weak_functor_t{
             std::forward<Ptr_>(ref),
-            std::forward<Callable_>(callable),
+            std::move(callable),
             std::make_tuple(std::forward<Captures_>(captures)...)};
 }
 }  // namespace CPPHEADERS_NS_
