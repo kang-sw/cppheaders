@@ -109,7 +109,7 @@ class if_connection
     void notify_disconnect();
 
     /**
-     * Start communication. Before this call, call to notify() cause crash.
+     * Start communication. Before this call, call to notify_one() cause crash.
      *
      * @throw invalid_connection on connection invalidated during launch
      */
@@ -421,7 +421,7 @@ class session : public std::enable_shared_from_this<session>
     //    }
 
     template <typename... Params_>
-    void notify(std::string_view method, Params_&&... params)
+    void notify_one(std::string_view method, Params_&&... params)
     {
         lock_guard lc{_write_lock};
 
@@ -863,7 +863,7 @@ class context
      * Notify single session
      */
     template <typename... Params_>
-    void notify(std::string_view method, Params_&&... params)
+    void notify_one(std::string_view method, Params_&&... params)
     {
         try {
             using namespace std::chrono_literals;
@@ -871,7 +871,7 @@ class context
             auto session = _checkout(false);
             if (not session) { return; }
 
-            session->notify(method, std::forward<Params_>(params)...);
+            session->notify_one(method, std::forward<Params_>(params)...);
             _checkin(std::move(session));
         } catch (invalid_connection& e) {
             // do nothing, session will be disposed automatically by disposing pointer.
@@ -899,7 +899,7 @@ class context
 
         for (auto& sp : *all) {
             try {
-                sp->notify(method, std::forward<Params_>(params)...);
+                sp->notify_one(method, std::forward<Params_>(params)...);
                 _checkin(std::move(sp));
             } catch (invalid_connection&) {
                 ;  // do nothing, let it be disposed

@@ -208,7 +208,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                         printf("Notify %d\n", i);
                         fflush(stdout);
                     }
-                    ctx->notify("hello", i, "fdas");
+                    ctx->notify_one("hello", i, "fdas");
                 });
             }
 
@@ -219,7 +219,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                         printf("Notify %d\n", i);
                         fflush(stdout);
                     }
-                    ctx->notify("print", std::string("stub 0:") + std::to_string(i));
+                    ctx->notify_one("print", std::string("stub 0:") + std::to_string(i));
                 });
             }
 

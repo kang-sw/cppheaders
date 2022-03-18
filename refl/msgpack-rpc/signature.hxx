@@ -127,9 +127,9 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
                     args...);
         }
 
-        void notify(Params_ const&... args) const
+        void notify_one(Params_ const&... args) const
         {
-            _rpc->notify(_host->name(), args...);
+            _rpc->notify_one(_host->name(), args...);
         }
 
         void notify_all(Params_ const&... args) const
