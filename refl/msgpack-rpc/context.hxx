@@ -971,7 +971,10 @@ class context
     size_t session_count() const
     {
         size_t n;
-        _session_notify.critical_section([&] { n = _sessions.size(); });
+        _session_notify.critical_section(
+                [&] {
+                    n = count_if(_sessions, [](auto&& wp) { return not wp.expired(); });
+                });
         return n;
     }
 
@@ -1092,10 +1095,12 @@ class context
 
         _session_notify.critical_section(
                 [this, wp = wptr] {
-                    auto iter = _session_sources.find(wp);
-                    if (_session_sources.end() == iter) { return; }
+                    if (auto iter = _session_sources.find(wp); iter != _session_sources.end())
+                        _session_sources.erase(iter);
 
-                    _session_sources.erase(iter);
+                    auto pred_sessions = [wp](auto&& ptr) { return ptr_equals(wp, ptr); };
+                    if (auto iter = find_if(_sessions, pred_sessions); iter != _sessions.end())
+                        _sessions.erase(iter);
                 });
 
         return true;
