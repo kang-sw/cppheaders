@@ -25,7 +25,6 @@
  ******************************************************************************/
 
 #pragma once
-#include <any>
 #include <map>
 #include <string>
 
@@ -43,7 +42,7 @@ CPPH_DECLARE_EXCEPTION(remote_reply_exception, std::runtime_error);
 //!
 class remote_handler_exception : public std::exception
 {
-    std::any                  _body;
+    std::unique_ptr<void>     _body;
     refl::object_const_view_t _view;
 
    public:
@@ -53,9 +52,9 @@ class remote_handler_exception : public std::exception
     explicit remote_handler_exception(ArgTy_&& other)
     {
         using value_type = std::decay_t<ArgTy_>;
-        _body            = std::make_any<value_type>(std::forward<ArgTy_>(other));
-        auto& ref        = std::any_cast<value_type&>(_body);
-        _view            = refl::object_const_view_t{ref};
+        auto ptr         = std::make_unique<value_type>(std::forward<ArgTy_>(other));
+        _body            = ptr;
+        _view            = refl::object_const_view_t{*ptr};
     }
 
     refl::object_const_view_t view() const { return _view; }
