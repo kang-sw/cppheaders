@@ -169,13 +169,13 @@ class basic_event
 
     template <typename Callable_>
     handle add(Callable_&&    fn,
-               event_priority priority = event_priority::last,
-               uint64_t       value    = 0)
+               event_priority priority = event_priority::middle,
+               int64_t        value    = 0)
     {
         lock_guard _{_mtx};
         auto*      evt = &_events.emplace_back();
         evt->id        = {++_hash_gen};
-        evt->priority  = (value & (1ull << DELEGATE_BITS) - 1) + (uint64_t)priority;
+        evt->priority  = value + (uint64_t)priority;
 
         _dirty |= evt->priority != 0;
 
@@ -203,7 +203,7 @@ class basic_event
     }
 
     template <typename Ptr_, typename Callable_>
-    handle add_weak(Ptr_&& ptr, Callable_&& callable, event_priority priority = event_priority::last)
+    handle add_weak(Ptr_&& ptr, Callable_&& callable, event_priority priority = event_priority::middle, int64_t value = 0)
     {
         std::weak_ptr wptr{std::forward<Ptr_>(ptr)};
 
@@ -211,7 +211,7 @@ class basic_event
                 [wptr     = std::move(wptr),
                  callable = std::forward<Callable_>(callable)](
                         Args_... args) mutable
-                        -> event_control {
+                -> event_control {
                     auto anchor = wptr.lock();  // Prevent anchor to be destroyed during function call
                     if (not anchor) { return event_control::expire; }
 
@@ -223,10 +223,12 @@ class basic_event
                         return callable();
                     else if constexpr (std::is_invocable_v<Callable_>)
                         return callable(), event_control::ok;
-                });
+                },
+                priority,
+                value);
     }
 
-    void priority(handle const& h, event_priority offset, uint64_t value = 0) noexcept
+    void priority(handle const& h, event_priority offset, int64_t value = 0) noexcept
     {
         lock_guard _{_mtx};
         auto       entity = _find(h);
