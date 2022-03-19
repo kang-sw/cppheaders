@@ -34,25 +34,19 @@ namespace CPPHEADERS_NS_ {
 template <typename Ty_, typename Mutex_ = perfkit::spinlock>
 class locked
 {
+   private:
+    Ty_            _value;
+    mutable Mutex_ _mut;
+
    public:
-    struct locked_reference
+    class locked_reference
     {
         Ty_*                     _ptr = nullptr;
         std::unique_lock<Mutex_> _lock;
 
        public:
-        auto* operator->() { return _ptr; }
-        auto* operator->() const { return _ptr; }
-        auto& operator*() { return *_ptr; }
-        auto& operator*() const { return *_ptr; }
-
-              operator bool() const { return _lock; }
-    };
-
-    struct locked_const_reference
-    {
-        Ty_ const*            _ptr = nullptr;
-        std::unique_lock<Ty_> _lock;
+        locked_reference(Ty_* ptr, std::unique_lock<Mutex_> lock) noexcept
+                : _ptr(ptr), _lock(std::move(lock)) {}
 
        public:
         auto* operator->() { return _ptr; }
@@ -60,7 +54,27 @@ class locked
         auto& operator*() { return *_ptr; }
         auto& operator*() const { return *_ptr; }
 
-              operator bool() const { return _lock; }
+        //
+        operator bool() const { return _lock; }
+    };
+
+    class locked_const_reference
+    {
+        Ty_ const*               _ptr = nullptr;
+        std::unique_lock<Mutex_> _lock;
+
+       public:
+        locked_const_reference(Ty_ const* ptr, std::unique_lock<Mutex_> lock) noexcept
+                : _ptr(ptr), _lock(std::move(lock)) {}
+
+       public:
+        auto* operator->() { return _ptr; }
+        auto* operator->() const { return _ptr; }
+        auto& operator*() { return *_ptr; }
+        auto& operator*() const { return *_ptr; }
+
+        //
+        operator bool() const { return _lock; }
     };
 
    public:
@@ -68,24 +82,24 @@ class locked
     using lock_type  = Mutex_;
 
    public:
-    locked_reference lock()
+    auto lock()
     {
-        return {&_value, std::unique_lock{_mut}};
+        return locked_reference{&_value, std::unique_lock{_mut}};
     }
 
-    locked_const_reference lock() const
+    auto lock() const
     {
-        return {&_value, std::unique_lock{_mut}};
+        return locked_const_reference{&_value, std::unique_lock{_mut}};
     }
 
-    locked_reference try_lock()
+    auto try_lock()
     {
-        return {&_value, std::unique_lock{_mut, std::try_to_lock}};
+        return locked_reference{&_value, std::unique_lock{_mut, std::try_to_lock}};
     }
 
-    locked_const_reference try_lock() const
+    auto try_lock() const
     {
-        return {&_value, std::unique_lock{_mut, std::try_to_lock}};
+        return locked_const_reference{&_value, std::unique_lock{_mut, std::try_to_lock}};
     }
 
     template <typename Visitor_>
@@ -142,10 +156,6 @@ class locked
         if (std::lock_guard _{_mut, std::try_to_lock})
             visitor(_value);
     }
-
-   private:
-    Ty_            _value;
-    mutable Mutex_ _mut;
 };
 
 }  // namespace CPPHEADERS_NS_
