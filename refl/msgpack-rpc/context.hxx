@@ -830,7 +830,6 @@ class context
     {
         size_t num_sent = 0;
         auto   all      = _notify_pool.checkout();
-        all->clear();
 
         _session_notify.critical_section(
                 [&] {
@@ -858,6 +857,7 @@ class context
             }
         }
 
+        all->clear();
         return num_sent;
     }
 
