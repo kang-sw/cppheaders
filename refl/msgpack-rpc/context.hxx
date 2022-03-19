@@ -937,6 +937,25 @@ class context
         return n;
     }
 
+    /**
+     * Return total I/O bytes
+     */
+    void totals(size_t* num_read, size_t* num_write)
+    {
+        *num_read = *num_write = 0;
+        _session_notify.critical_section(
+                [&] {
+                    for (auto& wp : _sessions)
+                        if (auto sess = wp.lock()) {
+                            *num_write += sess->_profile.total_write;
+                            *num_read += sess->_profile.total_read;
+                        }
+                });
+    }
+
+    /**
+     * Disconnect all open sessions
+     */
     void disconnect_all()
     {
         decltype(_sessions) clone;
