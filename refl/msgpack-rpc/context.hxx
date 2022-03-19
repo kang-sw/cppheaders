@@ -36,7 +36,9 @@
 #include "../../memory/pool.hxx"
 #include "../../thread/event_wait.hxx"
 #include "../../thread/locked.hxx"
+#include "../../thread/thread_pool.hxx"
 #include "../../timer.hxx"
+#include "../../utility/singleton.hxx"
 #include "../__namespace__"
 #include "../archive/msgpack-reader.hxx"
 #include "../archive/msgpack-writer.hxx"
@@ -610,12 +612,22 @@ class context
     std::chrono::milliseconds global_timeout{6'000'000};
 
    public:
+    class wrap_thread_pool_t
+    {
+        thread_pool* _ptr;
+
+       public:
+        explicit wrap_thread_pool_t() noexcept : _ptr{&default_singleton<thread_pool>()} {}
+        void operator()(function<void()>&& fn) { _ptr->post(std::move(fn)); }
+    };
+
+   public:
     /**
      * Create new context, with appropriate poster function.
      */
     explicit context(
             service_info                      service = {},
-            post_function                     poster  = [](auto&& fn) { fn(); },
+            post_function                     poster  = wrap_thread_pool_t(),
             std::weak_ptr<if_context_monitor> monitor = {})
             : _post(std::move(poster)),
               _service(std::move(service)),

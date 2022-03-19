@@ -150,7 +150,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     service.route(stub_noti, [] { printf("noti!\n"); });
 
     io_context            ioc;
-    msgpack::rpc::context context{service, [](auto&& fn) { asio::post(std::forward<decltype(fn)>(fn)); }};
+    msgpack::rpc::context context{service};
     auto                  ctx = &context;
 
     tcp::acceptor         acpt{ioc};
