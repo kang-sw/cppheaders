@@ -61,7 +61,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                 *strm << const_buffer_view{*data};
             } else {
                 using value_type = typename Container_::value_type;
-                auto total_size  = sizeof(value_type) * std::size(*data);
+                auto total_size = sizeof(value_type) * std::size(*data);
 
                 strm->binary_push(total_size);
                 for (auto& elem : *data) {
@@ -77,7 +77,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                           refl::optional_property_metadata prop) const override
         {
             auto                  chunk_size = strm->begin_binary();
-            [[maybe_unused]] auto clean      = cleanup([&] { strm->end_binary(); });
+            [[maybe_unused]] auto clean = cleanup([&] { strm->end_binary(); });
 
             if constexpr (not binary_type::is_container) {
                 strm->binary_read_some(mutable_buffer_view{data, 1});

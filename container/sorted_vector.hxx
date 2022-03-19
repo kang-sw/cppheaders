@@ -38,15 +38,15 @@ template <typename KeyTy_, typename MapTy_,
 class sorted_vector
 {
    public:
-    using key_type               = KeyTy_;
-    using mapped_type            = MapTy_;
-    using value_type             = std::pair<KeyTy_, MapTy_>;
-    using allocator_type         = Alloc_;
-    using vector_type            = std::vector<std::pair<KeyTy_, MapTy_>, Alloc_>;
+    using key_type = KeyTy_;
+    using mapped_type = MapTy_;
+    using value_type = std::pair<KeyTy_, MapTy_>;
+    using allocator_type = Alloc_;
+    using vector_type = std::vector<std::pair<KeyTy_, MapTy_>, Alloc_>;
 
-    using iterator               = typename vector_type::iterator;
-    using const_iterator         = typename vector_type::const_iterator;
-    using reverse_iterator       = typename vector_type::reverse_iterator;
+    using iterator = typename vector_type::iterator;
+    using const_iterator = typename vector_type::const_iterator;
+    using reverse_iterator = typename vector_type::reverse_iterator;
     using const_reverse_iterator = typename vector_type::const_reverse_iterator;
 
    private:
@@ -167,7 +167,7 @@ class sorted_vector
     template <typename Key_, typename... Args_>
     auto try_emplace_hint(size_t idx_hint, Key_&& key, Args_&&... args)
     {
-        auto hint       = _vector.begin() + idx_hint;
+        auto hint = _vector.begin() + idx_hint;
 
         bool wrong_hint = idx_hint >= _vector.size();
         if (wrong_hint)

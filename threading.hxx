@@ -33,7 +33,7 @@ template <typename Mutex_>
 struct lock_guard
 {
     enum {
-        nothrow_lockable   = noexcept(std::declval<Mutex_>().lock()),
+        nothrow_lockable = noexcept(std::declval<Mutex_>().lock()),
         nothrow_unlockable = noexcept(std::declval<Mutex_>().unlock())
     };
 

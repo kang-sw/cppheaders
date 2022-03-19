@@ -35,7 +35,7 @@ template <typename CharTy_, typename Traits_, typename Alloc_>
 class basic_shared_string
 {
    public:
-    using string_type      = std::basic_string<CharTy_, Traits_, Alloc_>;
+    using string_type = std::basic_string<CharTy_, Traits_, Alloc_>;
     using string_view_type = std::basic_string_view<CharTy_, Traits_>;
 
    public:
@@ -57,7 +57,7 @@ class basic_shared_string
             : _string(std::make_shared<string_type>(str)) {}
 
     basic_shared_string(basic_shared_string const& r) noexcept = default;
-    basic_shared_string(basic_shared_string&& r) noexcept      = default;
+    basic_shared_string(basic_shared_string&& r) noexcept = default;
     basic_shared_string& operator=(basic_shared_string const& r) noexcept = default;
     basic_shared_string& operator=(basic_shared_string&& r) noexcept = default;
 
@@ -102,10 +102,10 @@ class basic_shared_string
 
 template <typename CharTy_,
           typename Traits_ = std::char_traits<CharTy_>,
-          typename Alloc_  = std::allocator<CharTy_>>
+          typename Alloc_ = std::allocator<CharTy_>>
 class basic_shared_string;
 
-using shared_string  = basic_shared_string<char>;
+using shared_string = basic_shared_string<char>;
 using wshared_string = basic_shared_string<wchar_t>;
 
 }  // namespace CPPHEADERS_NS_

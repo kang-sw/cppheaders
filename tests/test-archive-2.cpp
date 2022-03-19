@@ -39,7 +39,7 @@ struct base_object
     auto&                           fill()
     {
         opt_double = 31314.;
-        list_int   = {1, 2, 34};
+        list_int = {1, 2, 34};
         bin_vec_chars.assign({'h', 'e', 'l', 'l', 'o'});
 
         return *this;

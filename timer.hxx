@@ -34,8 +34,8 @@ class basic_poll_timer
 {
    public:
     using clock_type = Clock_;
-    using timepoint  = typename clock_type::time_point;
-    using duration   = typename clock_type::duration;
+    using timepoint = typename clock_type::time_point;
+    using duration = typename clock_type::duration;
 
    public:
     template <typename Duration_>
@@ -77,7 +77,7 @@ class basic_poll_timer
         auto now = clock_type::now();
         if (now > _tp) {
             _latest_dt = now - (_tp - _interval);
-            _tp        = now + _interval;
+            _tp = now + _interval;
 
             return true;
         } else {
@@ -128,8 +128,8 @@ class basic_poll_timer
     }
 
    private:
-    timepoint _tp        = {};
-    duration  _interval  = {};
+    timepoint _tp = {};
+    duration  _interval = {};
     duration  _latest_dt = {};
 };
 

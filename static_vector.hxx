@@ -38,22 +38,22 @@ template <typename Ty_, size_t N_>
 class static_vector
 {
    public:
-    using value_type     = Ty_;
-    using pointer        = value_type*;
-    using const_pointer  = value_type const*;
-    using reference      = value_type&;
+    using value_type = Ty_;
+    using pointer = value_type*;
+    using const_pointer = value_type const*;
+    using reference = value_type&;
 
-    using iterator       = pointer;
+    using iterator = pointer;
     using const_iterator = const_pointer;
 
    private:
     enum {
-        _nt_dtor         = std::is_nothrow_destructible_v<Ty_>,
-        _nt_move         = not std::is_move_assignable_v<Ty_> || std::is_nothrow_move_assignable_v<Ty_>,
-        _nt_copy         = not std::is_copy_assignable_v<Ty_> || std::is_nothrow_move_assignable_v<Ty_>,
+        _nt_dtor = std::is_nothrow_destructible_v<Ty_>,
+        _nt_move = not std::is_move_assignable_v<Ty_> || std::is_nothrow_move_assignable_v<Ty_>,
+        _nt_copy = not std::is_copy_assignable_v<Ty_> || std::is_nothrow_move_assignable_v<Ty_>,
         _nt_ctor_default = not std::is_default_constructible_v<Ty_> || std::is_nothrow_default_constructible_v<Ty_>,
-        _nt_ctor_move    = not std::is_move_constructible_v<Ty_> || std::is_nothrow_move_constructible_v<Ty_>,
-        _nt_ctor_copy    = not std::is_copy_constructible_v<Ty_> || std::is_nothrow_copy_constructible_v<Ty_>,
+        _nt_ctor_move = not std::is_move_constructible_v<Ty_> || std::is_nothrow_move_constructible_v<Ty_>,
+        _nt_ctor_copy = not std::is_copy_constructible_v<Ty_> || std::is_nothrow_copy_constructible_v<Ty_>,
     };
 
    private:
@@ -335,7 +335,7 @@ class static_vector
 
    private:
     std::array<std::byte, sizeof(Ty_) * N_> _buffer;
-    Ty_*                                    _ptr  = reinterpret_cast<Ty_*>(_buffer.data());
+    Ty_*                                    _ptr = reinterpret_cast<Ty_*>(_buffer.data());
     size_t                                  _size = 0;
 };
 }  // namespace CPPHEADERS_NS_

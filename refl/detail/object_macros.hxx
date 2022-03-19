@@ -53,8 +53,8 @@
                 Qualify                                                                                                               \
                 initialize_object_metadata()                                                                                          \
         {                                                                                                                             \
-            using ClassName                                                         = std::remove_pointer_t<decltype(this)>;          \
-            using self_t                                                            = ClassName;                                      \
+            using ClassName = std::remove_pointer_t<decltype(this)>;                                                                  \
+            using self_t = ClassName;                                                                                                 \
             auto                                             _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>(); \
                                                                                                                                       \
             _cpph_internal_factory INTERNAL_CPPH_REFL_UNWRAP AttrOps;                                                                 \
@@ -79,7 +79,7 @@
         initialize_object_metadata(                                                                                                   \
                 CPPHEADERS_NS_::refl::type_tag<ClassName>)                                                                            \
         {                                                                                                                             \
-            using self_t                                                            = ClassName;                                      \
+            using self_t = ClassName;                                                                                                 \
             auto                                             _cpph_internal_factory = CPPHEADERS_NS_::refl::FactoryType<ClassName>(); \
                                                                                                                                       \
             _cpph_internal_factory INTERNAL_CPPH_REFL_UNWRAP AttrOps;                                                                 \

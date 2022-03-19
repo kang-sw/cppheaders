@@ -140,7 +140,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
             };
 
     auto stub_print = msgpack::rpc::create_signature<void(std::string)>("print");
-    auto stub_noti  = msgpack::rpc::create_signature<void(void)>("noti");
+    auto stub_noti = msgpack::rpc::create_signature<void(void)>("noti");
 
     //
     msgpack::rpc::service_info service;
@@ -232,21 +232,21 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
             dup_ioc();
 
             for (int i = 0; i < 256; ++i) {
-                int  rv  = -1;
+                int  rv = -1;
                 auto res = ctx->rpc(&rv, "hello", i, "vv32");
                 REQUIRE(res == msgpack::rpc::rpc_status::okay);
                 REQUIRE(rv == i * i);
             }
 
             for (int i = 0; i < 256; ++i) {
-                int  rv   = -1;
+                int  rv = -1;
                 auto rslt = ctx->rpc(&rv, "hello", i);
                 ctx->rpc(nullptr, "hello", i);
                 REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
 
             for (int i = 0; i < 256; ++i) {
-                int  rv   = -1;
+                int  rv = -1;
                 auto rslt = ctx->rpc(&rv, "hello", "fea", 3.21);
                 REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
@@ -282,7 +282,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                                 fflush(stdout);
                             }
 
-                            int  rv     = -1;
+                            int  rv = -1;
                             auto result = ctx->rpc(&rv, "hello", i, "Gvb");
                             assert(result == msgpack::rpc::rpc_status::okay);
 

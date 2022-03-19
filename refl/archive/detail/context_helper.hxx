@@ -46,11 +46,11 @@ class write_context_helper
 
     struct scoped_context_t
     {
-        scope_type type      = scope_type::invalid;
+        scope_type type = scope_type::invalid;
         bool       key_ready = false;
 
-        size_t     size      = 0;
-        size_t     capacity  = 0;
+        size_t     size = 0;
+        size_t     capacity = 0;
 
         bool       is_key_next() const
         {
@@ -109,7 +109,7 @@ class write_context_helper
             throw error::writer_invalid_state{self, "Object key expected"};
 
         bool comma_required = elem->size++ > 0;
-        elem->key_ready     = true;
+        elem->key_ready = true;
 
         _assert_scope_size_valid(elem);
         return comma_required;
@@ -153,8 +153,8 @@ class write_context_helper
     void push_array(size_t n)
     {
         _assert_value_context();
-        auto elem      = &_scopes.emplace_back();
-        elem->type     = scope_type::array;
+        auto elem = &_scopes.emplace_back();
+        elem->type = scope_type::array;
         elem->capacity = n;
     }
 
@@ -162,8 +162,8 @@ class write_context_helper
     void push_object(size_t n)
     {
         _assert_value_context();
-        auto elem      = &_scopes.emplace_back();
-        elem->type     = scope_type::object;
+        auto elem = &_scopes.emplace_back();
+        elem->type = scope_type::object;
         elem->capacity = n * 2;
     }
 
@@ -171,8 +171,8 @@ class write_context_helper
     void push_binary(size_t n)
     {
         _assert_value_context();
-        auto elem      = &_scopes.emplace_back();
-        elem->type     = scope_type::binary;
+        auto elem = &_scopes.emplace_back();
+        elem->type = scope_type::binary;
         elem->capacity = n;
     }
 
@@ -256,7 +256,7 @@ class write_context_helper
         if (_scopes.empty())
             return false;  // if it's empty scope, simply push value back.
 
-        auto elem           = &_scopes.back();
+        auto elem = &_scopes.back();
         bool comma_required = false;
 
         if (elem->type != scope_type::object)  // object value must not have comma.

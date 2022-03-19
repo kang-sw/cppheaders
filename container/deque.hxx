@@ -53,20 +53,20 @@ constexpr inline bool _is_pow2(size_t value)
 
 template <typename Ty_,
           size_t BlockSize_ = size_t{1} << detail::_nearlest_llog2(1024 / sizeof(Ty_) * 2 - 1),
-          typename Alloc_   = std::allocator<Ty_>>
+          typename Alloc_ = std::allocator<Ty_>>
 class deque : Alloc_  // zero_size optimization
 {
     // block size must be power of 2 for optimization
     static_assert(detail::_is_pow2(BlockSize_));
 
    public:
-    using value_type      = Ty_;
-    using reference       = Ty_&;
+    using value_type = Ty_;
+    using reference = Ty_&;
     using const_reference = Ty_ const&;
-    using pointer         = Ty_*;
-    using const_pointer   = Ty_ const*;
-    using allocator_type  = Alloc_;
-    using size_type       = size_t;
+    using pointer = Ty_*;
+    using const_pointer = Ty_ const*;
+    using allocator_type = Alloc_;
+    using size_type = size_t;
     using difference_type = ptrdiff_t;
 
     enum : size_t {
@@ -78,11 +78,11 @@ class deque : Alloc_  // zero_size optimization
 
     enum {
         _ct_df_trive = std::is_trivially_default_constructible_v<value_type>,
-        _cp_triv     = std::is_trivially_copyable_v<value_type>,
-        _dt_triv     = std::is_trivially_destructible_v<value_type>,
+        _cp_triv = std::is_trivially_copyable_v<value_type>,
+        _dt_triv = std::is_trivially_destructible_v<value_type>,
 
-        _shift       = detail::_nearlest_llog2(block_size),
-        _mask        = block_size - 1,
+        _shift = detail::_nearlest_llog2(block_size),
+        _mask = block_size - 1,
     };
 
    public:
@@ -100,7 +100,7 @@ class deque : Alloc_  // zero_size optimization
         }
     };
 
-    using iterator       = _basic_iterator<true>;
+    using iterator = _basic_iterator<true>;
     using const_iterator = _basic_iterator<false>;
 
    private:
@@ -173,7 +173,7 @@ class deque : Alloc_  // zero_size optimization
         // remaining space that can be used for inserting elements into head.
         // (number of fully empty blocks + remining size of current block)
         auto [min, max] = std::minmax(_blk_tail(), _blk_head());
-        auto n_empty    = (max - min) * block_size;
+        auto n_empty = (max - min) * block_size;
 
         return 0;
     }

@@ -35,21 +35,21 @@ template <class Default, class AlwaysVoid,
 struct detector
 {
     using value_t = std::false_type;
-    using type    = Default;
+    using type = Default;
 };
 
 template <class Default, template <class...> class Op, class... Args>
 struct detector<Default, std::void_t<Op<Args...>>, Op, Args...>
 {
     using value_t = std::true_type;
-    using type    = Op<Args...>;
+    using type = Op<Args...>;
 };
 
 // special type to indicate detection failure
 struct nonesuch
 {
-    nonesuch()                = delete;
-    ~nonesuch()               = delete;
+    nonesuch() = delete;
+    ~nonesuch() = delete;
     nonesuch(nonesuch const&) = delete;
     void operator=(nonesuch const&) = delete;
 };

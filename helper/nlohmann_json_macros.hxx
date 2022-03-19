@@ -52,7 +52,7 @@
         {                                                           \
             namespace _ns = CPPHEADERS_NS_::macro_utils;            \
                                                                     \
-            r             = nlohmann::json::object();               \
+            r = nlohmann::json::object();                           \
             CPPHEADERS_NS_::macro_utils::visit_with_key(            \
                     INTERNAL_CPPH_BRK_TOKENS_ACCESS_ARRAY(),        \
                     _ns::to_json_visitor(r),                        \

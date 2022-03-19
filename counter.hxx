@@ -48,11 +48,11 @@ class _counter<Ty_, 1>
 {
    public:
     using iterator_category = std::random_access_iterator_tag;
-    using difference_type   = ptrdiff_t;
-    using value_type        = Ty_;
-    using reference         = Ty_&;
-    using pointer           = Ty_*;
-    using dimension         = Ty_;
+    using difference_type = ptrdiff_t;
+    using value_type = Ty_;
+    using reference = Ty_&;
+    using pointer = Ty_*;
+    using dimension = Ty_;
 
    public:
     constexpr _counter() noexcept
@@ -136,10 +136,10 @@ class _counter<Ty_, ~size_t{}>
 {
    public:
     using iterator_category = std::random_access_iterator_tag;
-    using difference_type   = ptrdiff_t;
-    using value_type        = Ty_;
-    using reference         = Ty_&;
-    using pointer           = Ty_*;
+    using difference_type = ptrdiff_t;
+    using value_type = Ty_;
+    using reference = Ty_&;
+    using pointer = Ty_*;
 
    public:
     constexpr _counter() noexcept
@@ -230,12 +230,12 @@ class _counter
     };
 
     using iterator_category = std::forward_iterator_tag;
-    using difference_type   = ptrdiff_t;
-    using value_type        = Ty_;
-    using reference         = value_type&;
-    using pointer           = value_type*;
+    using difference_type = ptrdiff_t;
+    using value_type = Ty_;
+    using reference = value_type&;
+    using pointer = value_type*;
 
-    using dimension         = std::array<Ty_, num_dimension>;
+    using dimension = std::array<Ty_, num_dimension>;
 
    public:
     template <typename... Ints_>
@@ -284,7 +284,7 @@ class _counter
 template <typename SizeTy_, size_t Dim_>
 struct _count_index
 {
-    using iterator  = _counter<SizeTy_, Dim_>;
+    using iterator = _counter<SizeTy_, Dim_>;
     using dimension = typename iterator::dimension;
     constexpr iterator begin() const { return _counter<SizeTy_, Dim_>{max, {}}; }
     // constexpr iterator end() const { return _counter<SizeTy_, Dim_>{max, max}; }
@@ -334,10 +334,10 @@ template <typename SizeTy_, typename... Ints_>
 constexpr auto counter(SizeTy_ size, Ints_... args)
 {
     constexpr auto n_dim = sizeof...(Ints_) + 1;
-    using size_type      = std::decay_t<SizeTy_>;
+    using size_type = std::decay_t<SizeTy_>;
     _count_index<size_type, n_dim> counter{};
     counter.max[0] = std::forward<SizeTy_>(size);
-    bool has_zero  = false;
+    bool has_zero = false;
     tuple_for_each(
             std::forward_as_tuple(std::forward<Ints_>(args)...),
             [&](auto&& r, size_t i) {
@@ -357,7 +357,7 @@ constexpr auto counter(std::array<SizeTy_, Dim_> const& idx)
     bool                        has_zero = false;
     for (size_t i = 0; i < Dim_; ++i) {
         counter.max[i] = idx[i];
-        has_zero       = has_zero || idx[i] == 0;
+        has_zero = has_zero || idx[i] == 0;
     }
 
     counter.max[0] *= !has_zero;

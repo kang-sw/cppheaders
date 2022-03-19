@@ -42,8 +42,8 @@
 namespace CPPHEADERS_NS_::refl {
 class object_metadata;
 
-using object_metadata_t          = object_metadata const*;
-using object_metadata_ptr        = std::unique_ptr<object_metadata const>;
+using object_metadata_t = object_metadata const*;
+using object_metadata_ptr = std::unique_ptr<object_metadata const>;
 using optional_property_metadata = struct property_metadata const*;
 
 namespace error {
@@ -61,7 +61,7 @@ struct object_archive_exception : object_exception
 
     template <typename... Args_>
     object_archive_exception(archive::if_archive_base* archive = nullptr,
-                             char const*               fmt     = nullptr,
+                             char const*               fmt = nullptr,
                              Args_&&... args)
     {
         if (archive) { set(archive); }
@@ -189,10 +189,10 @@ struct property_metadata
  *
  */
 enum class requirement_status_tag {
-    required           = 0,
-    optional           = 1,
+    required = 0,
+    optional = 1,
 
-    optional_empty     = 1,  // assume default optional == empty
+    optional_empty = 1,  // assume default optional == empty
     optional_has_value = 2,
 };
 
@@ -496,9 +496,9 @@ class object_metadata
             if (is_object()) {
                 size_t num_filled = 0;
                 for (auto& [key, index] : _keys) {
-                    auto& prop       = _props.at(index);
+                    auto& prop = _props.at(index);
 
-                    auto  child      = prop.type;
+                    auto  child = prop.type;
                     auto  child_data = retrieve_self(data, prop);
                     assert(child_data);
 
@@ -512,9 +512,9 @@ class object_metadata
 
                 auto do_write
                         = [&](auto&& key, int index) {
-                              auto& prop       = _props.at(index);
+                              auto& prop = _props.at(index);
 
-                              auto  child      = prop.type;
+                              auto  child = prop.type;
                               auto  child_data = retrieve_self(data, prop);
                               assert(child_data);
 
@@ -540,7 +540,7 @@ class object_metadata
             } else if (is_tuple()) {
                 strm->array_push(_props.size());
                 for (auto& prop : _props) {
-                    auto child      = prop.type;
+                    auto child = prop.type;
                     auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
@@ -580,12 +580,12 @@ class object_metadata
             if (not strm->is_object_next())
                 throw error::invalid_read_state{strm, "'object' expected"};
 
-            auto       context_key     = strm->begin_object();
+            auto       context_key = strm->begin_object();
             bool const use_integer_key = strm->use_integer_key,
-                       allow_missing   = strm->allow_missing_argument,
-                       allow_unknown   = strm->allow_unknown_argument;
+                       allow_missing = strm->allow_missing_argument,
+                       allow_unknown = strm->allow_unknown_argument;
 
-            int integer_key            = -1;
+            int integer_key = -1;
             int num_essential_retrived = 0;
 
             while (not strm->should_break(context_key)) {
@@ -621,8 +621,8 @@ class object_metadata
                     }
                 }
 
-                auto& prop       = _props.at(index);
-                auto  child      = prop.type;
+                auto& prop = _props.at(index);
+                auto  child = prop.type;
                 auto  child_data = retrieve_self(data, prop);
                 assert(child_data);
 
@@ -636,7 +636,7 @@ class object_metadata
 
             if (not allow_missing) {
                 // verify all arguments ready
-                auto pred_req     = [](decltype(_props[0]) e) { return not e.type->is_optional(); };
+                auto pred_req = [](decltype(_props[0]) e) { return not e.type->is_optional(); };
                 int  num_required = count_if(_props, pred_req);
 
                 if (num_essential_retrived != num_required)
@@ -692,7 +692,7 @@ class object_metadata
 
         // otherwise, check for object/tuple
         auto& property = *at(*it);
-        auto  descr    = property.type;
+        auto  descr = property.type;
 
         // primitive cannot have children
         if (descr->is_primitive()) { return ~size_t{}; }
@@ -716,8 +716,8 @@ class object_metadata
     class basic_factory
     {
        public:
-        virtual ~basic_factory()                = default;
-        basic_factory()                         = default;
+        virtual ~basic_factory() = default;
+        basic_factory() = default;
         basic_factory(basic_factory&&) noexcept = default;
         basic_factory& operator=(basic_factory&&) noexcept = default;
 
@@ -730,8 +730,8 @@ class object_metadata
         {
             assert(not _current->is_primitive());
 
-            auto index       = _current->_props.size();
-            auto prop        = &_current->_props.emplace_back(info);
+            auto index = _current->_props.size();
+            auto prop = &_current->_props.emplace_back(info);
             prop->index_self = index;
 
             return index;
@@ -744,11 +744,11 @@ class object_metadata
          */
         object_metadata_ptr create()
         {
-            auto       result    = std::move(_current);
+            auto       result = std::move(_current);
             auto&      generated = *result;
-            auto       lookup    = &generated._offset_lookup;
+            auto       lookup = &generated._offset_lookup;
 
-            auto const n_props   = generated._props.size();
+            auto const n_props = generated._props.size();
             lookup->reserve(n_props);
 
             // for name key autogeneration
@@ -793,7 +793,7 @@ class object_metadata
                 // target key table
                 generated._key_indices.reserve(n_props);
 
-                size_t idx_table       = 0;
+                size_t idx_table = 0;
                 int    generated_index = 1;
                 for (auto& prop : generated._props) {
                     // autogenerate unassigned ones
@@ -849,9 +849,9 @@ class object_metadata
        private:
         primitive_factory& setup(size_t extent, if_primitive_control const* ref)
         {
-            *_current            = {};
+            *_current = {};
 
-            _current->_extent    = extent;
+            _current->_extent = extent;
             _current->_primitive = ref;
 
             return *this;
@@ -881,7 +881,7 @@ class object_metadata
 
         virtual Ty_ const& define_basic(size_t extent)
         {
-            *_current         = {};
+            *_current = {};
             _current->_extent = extent;
 
             return _self();
@@ -891,7 +891,7 @@ class object_metadata
         static property_metadata create_property_metadata(MemVar_ Class_::*mem_ptr)
         {
             property_metadata info;
-            info.type   = get_object_metadata<MemVar_>();
+            info.type = get_object_metadata<MemVar_>();
             info.offset = reinterpret_cast<size_t>(
                     &(reinterpret_cast<Class_ const volatile*>(NULL)->*mem_ptr));
 
@@ -920,7 +920,7 @@ class object_metadata
 
         auto& add_property(std::string key, property_metadata info)
         {
-            info.name  = std::move(key);
+            info.name = std::move(key);
             auto index = add_property_impl(std::move(info));
 
             return *this;
@@ -967,7 +967,7 @@ class object_metadata
         template <typename MemVar_>
         auto& property(MemVar_ Class_::*mem_ptr, std::string name, int name_key = -1)
         {
-            auto info          = create_property_metadata(mem_ptr);
+            auto info = create_property_metadata(mem_ptr);
             info.name_key_self = name_key;
             add_property(std::move(name), std::move(info));
             return *this;
@@ -989,7 +989,7 @@ class object_metadata
         auto& extend()
         {
             constexpr Class_* pointer = nullptr;
-            const auto        offset  = (intptr_t) static_cast<Base_*>(pointer) - (intptr_t)pointer;
+            const auto        offset = (intptr_t) static_cast<Base_*>(pointer) - (intptr_t)pointer;
 
             return basic_extend(get_object_metadata<Base_>(), offset);
         }

@@ -40,8 +40,8 @@ namespace CPPHEADERS_NS_ {
 using event_key = basic_key<class LABEL_delegate_key>;
 
 enum class event_control {
-    ok      = 0,
-    expire  = 1,
+    ok = 0,
+    expire = 1,
     consume = 2,
 };
 
@@ -55,13 +55,13 @@ enum {
 };
 
 enum class event_priority : uint64_t {
-    last      = 0,
-    very_low  = 1ull << DELEGATE_BITS,
-    low       = 2ull << DELEGATE_BITS,
-    middle    = 3ull << DELEGATE_BITS,
-    high      = 4ull << DELEGATE_BITS,
+    last = 0,
+    very_low = 1ull << DELEGATE_BITS,
+    low = 2ull << DELEGATE_BITS,
+    middle = 3ull << DELEGATE_BITS,
+    high = 4ull << DELEGATE_BITS,
     very_high = 5ull << DELEGATE_BITS,
-    first     = ~uint64_t{},
+    first = ~uint64_t{},
 };
 
 template <typename Mutex_, typename... Args_>
@@ -92,7 +92,7 @@ class basic_event
     static_assert(std::is_nothrow_move_constructible_v<_entity_type>);
 
    public:
-    using container  = std::vector<_entity_type>;
+    using container = std::vector<_entity_type>;
     using mutex_type = Mutex_;
 
    public:
@@ -100,7 +100,7 @@ class basic_event
     {
         friend class basic_event;
         basic_event* owner_ = {};
-        event_key    key_   = {};
+        event_key    key_ = {};
 
         handle(basic_event* o, event_key key) noexcept
                 : owner_{o}, key_{key} {}
@@ -108,10 +108,10 @@ class basic_event
        public:
         auto& operator=(handle&& o) noexcept
         {
-            owner_   = o.owner_;
-            key_     = o.key_;
+            owner_ = o.owner_;
+            key_ = o.key_;
             o.owner_ = nullptr;
-            o.key_   = {};
+            o.key_ = {};
             return *this;
         }
 
@@ -171,12 +171,12 @@ class basic_event
     template <typename Callable_>
     handle add(Callable_&&    fn,
                event_priority priority = event_priority::middle,
-               int64_t        value    = 0)
+               int64_t        value = 0)
     {
         lock_guard _{_mtx};
         auto*      evt = &_events.emplace_back();
-        evt->id        = {++_hash_gen};
-        evt->priority  = value + (uint64_t)priority;
+        evt->id = {++_hash_gen};
+        evt->priority = value + (uint64_t)priority;
 
         _dirty |= evt->priority != 0;
 
@@ -212,7 +212,7 @@ class basic_event
         std::weak_ptr wptr{std::forward<Ptr_>(ptr)};
 
         return add(
-                [wptr     = std::move(wptr),
+                [wptr = std::move(wptr),
                  callable = std::forward<Callable_>(callable)](
                         Args_... args) mutable
                 -> event_control {
@@ -242,7 +242,7 @@ class basic_event
         value &= (1ull << DELEGATE_BITS) - 1;
         value += (uint64_t)offset;
         entity->priority = value;
-        _dirty           = true;
+        _dirty = true;
     }
 
     void remove(handle h) noexcept
@@ -253,7 +253,7 @@ class basic_event
             return;
 
         entity->id = {};
-        _dirty     = true;
+        _dirty = true;
     }
 
     bool empty() const noexcept

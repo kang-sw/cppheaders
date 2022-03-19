@@ -224,11 +224,11 @@ enum class reader_scope_type {
 
 struct reader_scope_context_t
 {
-    reader_scope_type type        = {};
-    context_key       context     = {};
-    int               token_pos   = false;
+    reader_scope_type type = {};
+    context_key       context = {};
+    int               token_pos = false;
     bool              is_key_next = false;
-    int               elem_left   = 0;
+    int               elem_left = 0;
 };
 
 struct reader::impl
@@ -270,10 +270,10 @@ struct reader::impl
         if (t == reader_scope_type::array && ntok->type != JSMN_ARRAY)
             throw error::reader_parse_failed{self};
 
-        auto elem           = &scopes.emplace_back();
-        elem->type          = t;
-        elem->token_pos     = pos_next++;
-        elem->elem_left     = ntok->size * ((t == reader_scope_type::object) + 1);
+        auto elem = &scopes.emplace_back();
+        elem->type = t;
+        elem->token_pos = pos_next++;
+        elem->elem_left = ntok->size * ((t == reader_scope_type::object) + 1);
         elem->context.value = ++context_keygen;
 
         return elem;
@@ -284,7 +284,7 @@ struct reader::impl
         if (scopes.empty()) { return; }
 
         auto scope = &scopes.back();
-        auto ntok  = next();
+        auto ntok = next();
 
         if (scope->is_key_next && ntok->type != JSMN_STRING) { throw error::reader_invalid_context{self}; }
 
@@ -313,9 +313,9 @@ struct reader::impl
 
         auto it_tok = tokens.begin() + scope->token_pos;
 
-        auto it     = std::lower_bound(
-                    it_tok, tokens.end(), it_tok->end,
-                    [](jsmntok_t const& t, int e) { return t.start < e; });
+        auto it = std::lower_bound(
+                it_tok, tokens.end(), it_tok->end,
+                [](jsmntok_t const& t, int e) { return t.start < e; });
         pos_next = it - tokens.begin();
         scopes.pop_back();
 
@@ -347,7 +347,7 @@ if_reader& reader::read(bool& v)
 {
     _validate();
     auto next = self->next();
-    auto tok  = self->tokstr(*next);
+    auto tok = self->tokstr(*next);
     if (next->type != JSMN_PRIMITIVE) { throw error::reader_parse_failed{this}; }
 
     if (tok == "true")
@@ -366,7 +366,7 @@ if_reader& reader::read(int64_t& v)
     _validate();
 
     auto next = self->next();
-    auto tok  = self->tokstr(*next);
+    auto tok = self->tokstr(*next);
     if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE) {
         auto r = std::from_chars(tok.data(), tok.data() + tok.size(), v);
         if (r.ptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}; }
@@ -383,10 +383,10 @@ if_reader& reader::read(double& v)
     _validate();
 
     auto next = self->next();
-    auto tok  = self->tokstr(*next);
+    auto tok = self->tokstr(*next);
     if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE) {
         char* eptr = {};
-        v          = strtod(tok.data(), &eptr);
+        v = strtod(tok.data(), &eptr);
         if (eptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}; }
     } else {
         throw error::reader_parse_failed{this};
@@ -401,7 +401,7 @@ if_reader& reader::read(std::string& v)
     _validate();
 
     auto next = self->next();
-    auto tok  = self->tokstr(*next);
+    auto tok = self->tokstr(*next);
     if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
 
     v.clear();

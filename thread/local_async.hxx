@@ -151,7 +151,7 @@ class local_promise
         friend class local_promise<Ty_>;
 
         std::atomic<future_state> _state = future_state::empty;
-        std::exception_ptr        _eptr  = nullptr;
+        std::exception_ptr        _eptr = nullptr;
         std::optional<Ty_>        _value;
     };
 

@@ -48,7 +48,7 @@ TEST_CASE("overall", "[queue_allocator]")
     }
 
     int inserter = 0;
-    int reader   = 0;
+    int reader = 0;
 
     // allocate half
     for (size_t i = 0; i < BUFLEN / 8 / 2; ++i) {
@@ -77,7 +77,7 @@ TEST_CASE("overall", "[queue_allocator]")
     first_size = buffer.size();
     for (size_t i = 0; i < BUFLEN / 8 / 2 / 2; ++i) {
         int* ptr = (int*)buffer.allocate(8);
-        *ptr     = inserter++;
+        *ptr = inserter++;
         REQUIRE(buffer.size() == first_size + i + 1);
     }
 
@@ -100,9 +100,9 @@ TEST_CASE("typed allocator")
 {
     cpph::queue_allocator alloc{1024};
     {
-        auto p    = alloc.construct<int>();
+        auto p = alloc.construct<int>();
 
-        auto ptr  = alloc.checkout<int>();
+        auto ptr = alloc.checkout<int>();
         auto ptr1 = alloc.checkout<int[]>(131);
 
         REQUIRE_NOTHROW(ptr1.at(130));

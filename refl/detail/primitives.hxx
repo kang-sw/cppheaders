@@ -137,8 +137,8 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
             auto n_elem = desc->extent() / sizeof(ElemTy_);
-            auto begin  = (ElemTy_ const*)&data;
-            auto end    = begin + n_elem;
+            auto begin = (ElemTy_ const*)&data;
+            auto end = begin + n_elem;
 
             strm->array_push(n_elem);
             std::for_each(begin, end, [&](auto&& elem) { *strm << elem; });
@@ -150,9 +150,9 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
                           optional_property_metadata) const override
         {
             assert(desc->extent() % sizeof(ElemTy_) == 0);
-            auto n_elem  = desc->extent() / sizeof(ElemTy_);
-            auto begin   = data;
-            auto end     = begin + n_elem;
+            auto n_elem = desc->extent() / sizeof(ElemTy_);
+            auto begin = data;
+            auto end = begin + n_elem;
 
             auto context = strm->begin_array();
             std::for_each(begin, end, [&](auto&& elem) { *strm >> elem; });
@@ -237,7 +237,7 @@ auto get_list_like_descriptor() -> object_metadata_t
     } manip;
 
     constexpr auto extent = sizeof(Container_);
-    static auto    desc   = object_metadata::primitive_factory::define(extent, &manip);
+    static auto    desc = object_metadata::primitive_factory::define(extent, &manip);
     return &*desc;
 }
 
@@ -259,7 +259,7 @@ namespace detail {
 template <typename Map_>
 auto get_dictionary_descriptor() -> object_metadata_ptr
 {
-    using key_type    = typename Map_::key_type;
+    using key_type = typename Map_::key_type;
     using mapped_type = typename Map_::mapped_type;
 
     static struct manip_t : templated_primitive_control<Map_>
@@ -323,8 +323,8 @@ INTERNAL_CPPH_define_(
          || is_template_instance_of<ValTy_, std::unique_ptr>::value
          || is_template_instance_of<ValTy_, std::shared_ptr>::value))
 {
-    using value_type             = remove_cvr_t<decltype(*std::declval<ValTy_>())>;
-    constexpr bool is_optional   = is_template_instance_of<ValTy_, std::optional>::value;
+    using value_type = remove_cvr_t<decltype(*std::declval<ValTy_>())>;
+    constexpr bool is_optional = is_template_instance_of<ValTy_, std::optional>::value;
     constexpr bool is_unique_ptr = is_template_instance_of<ValTy_, std::unique_ptr>::value;
     constexpr bool is_shared_ptr = is_template_instance_of<ValTy_, std::shared_ptr>::value;
 

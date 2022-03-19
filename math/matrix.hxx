@@ -54,24 +54,24 @@ template <typename Ty_, int Row_, int Col_>
 class matrix
 {
    public:
-    constexpr static int num_rows  = Row_,
-                         num_cols  = Col_,
-                         length    = Row_ * Col_,
+    constexpr static int num_rows = Row_,
+                         num_cols = Col_,
+                         length = Row_ * Col_,
                          short_dim = Row_ < Col_ ? Row_ : Col_,
-                         long_dim  = Row_ < Col_ ? Col_ : Row_;
+                         long_dim = Row_ < Col_ ? Col_ : Row_;
 
-    using value_type               = Ty_;
-    using reference                = Ty_&;
-    using const_reference          = Ty_ const&;
+    using value_type = Ty_;
+    using reference = Ty_&;
+    using const_reference = Ty_ const&;
 
     template <size_t NR_, size_t NC_>
     using matx_type = matrix<value_type, NR_, NC_>;
 
     template <size_t Len_>
-    using vector_type   = matrix<value_type, Len_, 1>;
+    using vector_type = matrix<value_type, Len_, 1>;
 
-    using row_type      = matx_type<1, num_cols>;
-    using column_type   = matx_type<num_rows, 1>;
+    using row_type = matx_type<1, num_cols>;
+    using column_type = matx_type<num_rows, 1>;
     using diagonal_type = matx_type<short_dim, 1>;
 
    private:
@@ -109,14 +109,14 @@ class matrix
         static_assert(sizeof...(args) + 1 == length);
         value[0] = v;
 
-        int n    = 1;
+        int n = 1;
         ((value[n++] = std::forward<Args_>(args)), ...);
     }
 
     constexpr matrix(matrix const&) = default;
     constexpr matrix& operator=(matrix const&) = default;
 
-    constexpr matrix& operator                 =(value_type const& v)
+    constexpr matrix& operator=(value_type const& v)
     {
         for (int i = 0; i < length; ++i)
             value[i] = v;
@@ -214,7 +214,7 @@ class matrix
         static_assert(sizeof...(args) == length);
 
         matrix matx = {};
-        size_t n    = 0;
+        size_t n = 0;
         ((matx(n++) = std::forward<Args_>(args)), ...);
 
         return matx;
@@ -717,16 +717,16 @@ using matx34i = matrix<int, 3, 4>;
 using matx42i = matrix<int, 4, 2>;
 using matx43i = matrix<int, 4, 3>;
 using matx44i = matrix<int, 4, 4>;
-using vec2d   = vector<double, 2>;
-using vec3d   = vector<double, 3>;
-using vec4d   = vector<double, 4>;
-using vec2f   = vector<float, 2>;
-using vec3f   = vector<float, 3>;
-using vec4f   = vector<float, 4>;
-using vec2i   = vector<int, 2>;
-using vec3i   = vector<int, 3>;
-using vec4i   = vector<int, 4>;
-using vec2b   = vector<uint8_t, 2>;
-using vec3b   = vector<uint8_t, 3>;
-using vec4b   = vector<uint8_t, 4>;
+using vec2d = vector<double, 2>;
+using vec3d = vector<double, 3>;
+using vec4d = vector<double, 4>;
+using vec2f = vector<float, 2>;
+using vec3f = vector<float, 3>;
+using vec4f = vector<float, 4>;
+using vec2i = vector<int, 2>;
+using vec3i = vector<int, 3>;
+using vec4i = vector<int, 4>;
+using vec2b = vector<uint8_t, 2>;
+using vec3b = vector<uint8_t, 3>;
+using vec4b = vector<uint8_t, 4>;
 }  // namespace CPPHEADERS_NS_::math

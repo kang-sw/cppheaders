@@ -33,7 +33,7 @@ namespace CPPHEADERS_NS_::thread {
 using namespace std::literals;
 
 const auto event_wait_default_predicate = [] { return true; };
-const auto event_wait_default_critical  = [] { return true; };
+const auto event_wait_default_critical = [] { return true; };
 
 /**
  * Simple wrapper of event wait handle
@@ -42,11 +42,11 @@ class event_wait
 {
    private:
     using mutex_type = std::mutex;
-    using cvar_type  = std::condition_variable;
+    using cvar_type = std::condition_variable;
 
     using ulock_type = std::unique_lock<mutex_type>;
-    using pred_type  = decltype(event_wait_default_predicate);
-    using opr_type   = decltype(event_wait_default_critical);
+    using pred_type = decltype(event_wait_default_predicate);
+    using opr_type = decltype(event_wait_default_critical);
 
    public:
     template <typename Opr_ = opr_type>

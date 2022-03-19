@@ -49,12 +49,12 @@ enum class my_enum {
 namespace ns {
 struct inner_arg_1
 {
-    std::string         str1  = (char const*)u8"str1-value\r\t\n\\n";
-    std::string         str2  = "str2-value";
-    int                 var   = 133;
-    bool                k     = true;
+    std::string         str1 = (char const*)u8"str1-value\r\t\n\\n";
+    std::string         str2 = "str2-value";
+    int                 var = 133;
+    bool                k = true;
     std::array<bool, 4> bools = {false, false, true, false};
-    double              g     = 3.14;
+    double              g = 3.14;
 
     CPPH_REFL_DEFINE_OBJECT_inline((), (str1), (str2),
                                    (var), (k), (bools), (g));
@@ -62,11 +62,11 @@ struct inner_arg_1
 
 struct inner_arg_2
 {
-    inner_arg_1 rtt      = {};
-    nullptr_t   nothing  = nullptr;
+    inner_arg_1 rtt = {};
+    nullptr_t   nothing = nullptr;
     nullptr_t   nothing2 = nullptr;
 
-    int         ints[3]  = {1, 23, 4};
+    int         ints[3] = {1, 23, 4};
 
     CPPH_REFL_DEFINE_TUPLE_inline((), rtt, nothing, nothing2, ints);
 };
@@ -86,7 +86,7 @@ struct outer
     inner_arg_1                          arg1;
     inner_arg_2                          arg2;
     std::pair<int, bool>                 arg = {3, false};
-    std::tuple<int, double, std::string> bb  = {5, 1.14, "hello"};
+    std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
 
     binary<abcd>                         r;
 
@@ -96,7 +96,7 @@ struct outer
     };
 
     std::unique_ptr<int> no_value;
-    std::unique_ptr<int> has_value   = std::make_unique<int>(3);
+    std::unique_ptr<int> has_value = std::make_unique<int>(3);
     std::shared_ptr<int> has_value_s = std::make_shared<int>(3);
 
     CPPH_REFL_DEFINE_OBJECT_inline((), (arg1),
@@ -155,18 +155,18 @@ struct vectors
 
     my_enum                              my_enum_value = my_enum::test3;
 
-    std::pair<int, bool>                 arg           = {3, false};
-    std::tuple<int, double, std::string> bb            = {5, 1.14, "hell금방갈게요o"};
+    std::pair<int, bool>                 arg = {3, false};
+    std::tuple<int, double, std::string> bb = {5, 1.14, "hell금방갈게요o"};
 
     outer                                some_outer;
 
     std::optional<int>                   no_val;
     std::optional<int>                   has_val = 1;
 
-    variant_type                         vt1     = 3;
-    variant_type                         vt2     = 3.14;
-    variant_type                         vt3     = std::string{"hello!"};
-    variant_type                         vt4     = false;
+    variant_type                         vt1 = 3;
+    variant_type                         vt2 = 3.14;
+    variant_type                         vt3 = std::string{"hello!"};
+    variant_type                         vt4 = false;
 
     CPPH_REFL_DEFINE_OBJECT_inline((), (bb, "BB", 0x7fffffff), (f), (f2), (f3), (f4), (f5), (my_enum_value), (arg), (some_outer),
                                    (no_val), (has_val),
@@ -286,9 +286,9 @@ static auto ssvd = [] {
     msgrd.use_integer_key = true;
 
     TestType other2{};
-    other2.arg     = {};
-    other2.bb      = {};
-    other2.f       = {};
+    other2.arg = {};
+    other2.bb = {};
+    other2.f = {};
     other2.has_val = {};
 
     g_debugstr_1.clear();

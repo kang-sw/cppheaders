@@ -68,8 +68,8 @@ struct lambda_t
     void                 operator()()
     {
         volatile int s = 0;
-        s              = 1;
-        s              = 0;
+        s = 1;
+        s = 0;
     }
 };
 
@@ -80,9 +80,9 @@ TEST_CASE("benchmark")
     cpph::function<void()> test1 = lambda_t{};
     std::function<void()>  test2 = lambda_t{};
 
-    using clk                    = std::chrono::system_clock;
+    using clk = std::chrono::system_clock;
 
-    auto n1                      = clk::now();
+    auto n1 = clk::now();
     for (auto i = 0; i < 400'000; ++i) {
         test1 = lambda_t{};
         test1();
@@ -93,7 +93,7 @@ TEST_CASE("benchmark")
         test2 = lambda_t{};
         test2();
     }
-    auto n3  = clk::now();
+    auto n3 = clk::now();
 
     auto t_1 = n2 - n1;
     auto t_2 = n2 - n1;

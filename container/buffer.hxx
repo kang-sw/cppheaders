@@ -34,19 +34,19 @@ template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<Ty_>>>
 class buffer
 {
    private:
-    using value_type      = Ty_;
-    using pointer         = Ty_*;
-    using const_pointer   = Ty_ const*;
-    using reference       = Ty_&;
+    using value_type = Ty_;
+    using pointer = Ty_*;
+    using const_pointer = Ty_ const*;
+    using reference = Ty_&;
     using const_reference = Ty_ const&;
-    using size_type       = size_t;
+    using size_type = size_t;
     using difference_type = ptrdiff_t;
-    using view_type       = array_view<value_type>;
+    using view_type = array_view<value_type>;
     using const_view_type = array_view<value_type const>;
 
    private:
     pointer   _buffer = nullptr;
-    size_type _size   = 0;
+    size_type _size = 0;
 
    public:
     buffer() noexcept = default;
@@ -79,7 +79,7 @@ class buffer
         }
 
         auto buflen = sizeof(value_type) * new_size;
-        _size       = new_size;
+        _size = new_size;
 
         if (not _buffer)
             _buffer = (Ty_*)malloc(buflen);
@@ -105,11 +105,11 @@ class buffer
     {
         _try_release();
 
-        _buffer       = other._buffer;
-        _size         = other._size;
+        _buffer = other._buffer;
+        _size = other._size;
 
         other._buffer = {};
-        other._size   = {};
+        other._size = {};
     }
 
     void _try_release() noexcept
@@ -118,7 +118,7 @@ class buffer
 
         free(_buffer);
         _buffer = {};
-        _size   = {};
+        _size = {};
     }
 };
 }  // namespace CPPHEADERS_NS_

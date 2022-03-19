@@ -84,7 +84,7 @@ struct _function_decompose;
 template <typename Ret_, typename... Args_>
 struct _function_decompose<Ret_(Args_...)>
 {
-    using return_type          = Ret_;
+    using return_type = Ret_;
     using parameter_tuple_type = std::tuple<Args_...>;
 };
 
@@ -95,9 +95,9 @@ template <size_t N_, typename RetVal_, typename... Params_>
 class signature_t<N_, RetVal_, std::tuple<Params_...>>
 {
    public:
-    using return_type       = RetVal_;
-    using rpc_signature     = function<void(RetVal_*, Params_...)>;
-    using serve_signature   = function<RetVal_(Params_&...)>;
+    using return_type = RetVal_;
+    using rpc_signature = function<void(RetVal_*, Params_...)>;
+    using serve_signature = function<RetVal_(Params_&...)>;
     using serve_signature_1 = function<void(RetVal_*, Params_&...)>;
     using serve_signature_2 = function<void(session_profile const&, RetVal_*, Params_&...)>;
 
@@ -192,8 +192,8 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
 template <typename Signature_, size_t N_>
 constexpr auto create_signature(char const (&name)[N_])
 {
-    using decomposed     = _function_decompose<Signature_>;
-    using return_type    = typename decomposed::return_type;
+    using decomposed = _function_decompose<Signature_>;
+    using return_type = typename decomposed::return_type;
     using parameter_type = typename decomposed::parameter_tuple_type;
 
     return signature_t<N_, return_type, parameter_type>{name};

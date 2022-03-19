@@ -54,12 +54,12 @@ template <typename... Args_>
 class _zip_iterator
 {
    public:
-    using tuple_type        = std::tuple<Args_...>;
+    using tuple_type = std::tuple<Args_...>;
     using iterator_category = std::random_access_iterator_tag;
-    using value_type        = std::tuple<std::remove_reference_t<decltype(*Args_{})>...>;
-    using difference_type   = ptrdiff_t;
-    using reference         = std::tuple<decltype(*std::declval<Args_>())...>;
-    using pointer           = value_type*;
+    using value_type = std::tuple<std::remove_reference_t<decltype(*Args_{})>...>;
+    using difference_type = ptrdiff_t;
+    using reference = std::tuple<decltype(*std::declval<Args_>())...>;
+    using pointer = value_type*;
 
    private:
     template <size_t... N_>
@@ -155,8 +155,8 @@ template <typename... Args_>
 class _zip_range
 {
    public:
-    using tuple_type     = std::tuple<Args_...>;
-    using iterator       = _zip_iterator<Args_...>;
+    using tuple_type = std::tuple<Args_...>;
+    using iterator = _zip_iterator<Args_...>;
     using const_iterator = _zip_iterator<Args_...>;
 
     _zip_iterator<Args_...> begin() const { return {begin_}; }
@@ -189,11 +189,11 @@ template <typename... Containers_>
 decltype(auto) zip(Containers_&&... containers)
 {
     auto                                                       begin = std::make_tuple(std::begin(containers)...);
-    auto                                                       end   = std::make_tuple(std::end(containers)...);
+    auto                                                       end = std::make_tuple(std::end(containers)...);
 
     _zip_impl::_zip_range<decltype(std::begin(containers))...> zips;
     zips.begin_ = begin;
-    zips.end_   = end;
+    zips.end_ = end;
     return zips;
 }
 }  // namespace zipper

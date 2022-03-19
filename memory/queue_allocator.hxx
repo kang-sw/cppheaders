@@ -185,7 +185,7 @@ class queue_buffer_impl
     memblk* release() noexcept
     {
         auto ref = _mem;
-        _mem     = nullptr;
+        _mem = nullptr;
         return ref;
     }
 
@@ -207,7 +207,7 @@ class queue_buffer_impl
                 throw queue_out_of_memory{};
 
             _head = _tail = _refer(0);
-            _head->size   = num_block;
+            _head->size = num_block;
         } else {
             // 1.   if there's not enough space to allocate new memory block,
             //       fill tail memory to end, and insert new item at first.
@@ -218,7 +218,7 @@ class queue_buffer_impl
             if (_head >= _tail) {
                 if (candidate + num_block >= _border()) {
                     _head->size = _border() - _head - 1;
-                    candidate   = _refer(0);
+                    candidate = _refer(0);
 
                     if (candidate + 1 + num_block >= _tail)
                         throw queue_out_of_memory{};
@@ -235,7 +235,7 @@ class queue_buffer_impl
             }
 
             candidate->size = num_block;
-            _head           = candidate;
+            _head = candidate;
         }
 
         ++_num_alloc;
@@ -252,8 +252,8 @@ class queue_buffer_impl
             do  // perform all deferred deallocations
             {
                 auto next = _next(_tail);
-                *_tail    = {};
-                _tail     = next;
+                *_tail = {};
+                _tail = next;
 
                 --_num_alloc;
             } while (_tail && _tail->occupied() && _tail->defferred);
@@ -287,11 +287,11 @@ class queue_buffer_impl
     }
 
    private:
-    size_t  _capacity  = 0;
+    size_t  _capacity = 0;
     size_t  _num_alloc = 0;
-    memblk* _mem       = nullptr;
-    memblk* _tail      = nullptr;  // defined as forward-list
-    memblk* _head      = nullptr;
+    memblk* _mem = nullptr;
+    memblk* _tail = nullptr;  // defined as forward-list
+    memblk* _head = nullptr;
 };
 
 class basic_queue_allocator_impl
@@ -334,14 +334,14 @@ class basic_queue_allocator_impl
         {
             if (_alloc) {
                 _alloc->destruct(_elem);
-                _elem  = nullptr;
+                _elem = nullptr;
                 _alloc = nullptr;
             }
         }
 
        private:
         friend class basic_queue_allocator_impl;
-        Ty_*                        _elem  = nullptr;
+        Ty_*                        _elem = nullptr;
         basic_queue_allocator_impl* _alloc = nullptr;
     };
 
@@ -407,14 +407,14 @@ class basic_queue_allocator_impl
     Ty_* construct(Args_&&... args)
     {
         constexpr size_t alloc_size = sizeof(Ty_) + sizeof(node_type);
-        auto             node       = (node_type*)_impl->allocate(alloc_size);
-        auto             memory     = (Ty_*)(node + 1);
+        auto             node = (node_type*)_impl->allocate(alloc_size);
+        auto             memory = (Ty_*)(node + 1);
 
         if constexpr (std::is_trivial_v<Ty_>) {
-            node->n         = 0;
+            node->n = 0;
             node->node_dtor = [](void* p, size_t n) {};
         } else {
-            node->n         = 0;
+            node->n = 0;
             node->node_dtor = [](void* p, size_t n) {
                 (*(Ty_*)p).~Ty_();
             };
@@ -429,14 +429,14 @@ class basic_queue_allocator_impl
     array_view<Ty_> construct_array(size_t n)
     {
         size_t const alloc_size = sizeof(Ty_) * n + sizeof(node_type);
-        auto         node       = (node_type*)_impl->allocate(alloc_size);
-        Ty_*         memory     = (Ty_*)(node + 1);
+        auto         node = (node_type*)_impl->allocate(alloc_size);
+        Ty_*         memory = (Ty_*)(node + 1);
 
         if constexpr (std::is_trivial_v<Ty_>) {
-            node->n         = n;
+            node->n = n;
             node->node_dtor = [](void* p, size_t n) {};
         } else {
-            node->n         = n;
+            node->n = n;
             node->node_dtor = [](void* p, size_t n) {
                 while (n--)
                     ((Ty_*)p)[n].~Ty_();
@@ -465,7 +465,7 @@ class basic_queue_allocator_impl
         } else {
             alloc_ptr<Ty_> ptr;
             ptr._alloc = this;
-            ptr._elem  = construct<Ty_>(std::forward<Args_>(args)...);
+            ptr._elem = construct<Ty_>(std::forward<Args_>(args)...);
 
             return ptr;
         }

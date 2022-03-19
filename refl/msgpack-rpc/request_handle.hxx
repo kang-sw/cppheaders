@@ -68,7 +68,7 @@ class request_handle
     void reset()
     {
         _msgid = 0;
-        _wp    = {};
+        _wp = {};
     }
 };
 }  // namespace CPPHEADERS_NS_::msgpack::rpc

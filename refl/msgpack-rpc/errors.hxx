@@ -52,9 +52,9 @@ class remote_handler_exception : public std::exception
     explicit remote_handler_exception(ArgTy_&& other)
     {
         using value_type = std::decay_t<ArgTy_>;
-        auto ptr         = std::make_unique<value_type>(std::forward<ArgTy_>(other));
-        _body            = ptr;
-        _view            = refl::object_const_view_t{*ptr};
+        auto ptr = std::make_unique<value_type>(std::forward<ArgTy_>(other));
+        _body = ptr;
+        _view = refl::object_const_view_t{*ptr};
     }
 
     refl::object_const_view_t view() const { return _view; }

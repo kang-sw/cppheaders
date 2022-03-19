@@ -57,16 +57,16 @@ class circular_queue
     class _iterator
     {
        public:
-        using owner_type        = std::conditional_t<Constant_, circular_queue const, circular_queue>;
-        using value_type        = Ty_;
+        using owner_type = std::conditional_t<Constant_, circular_queue const, circular_queue>;
+        using value_type = Ty_;
         using value_type_actual = std::conditional_t<Constant_, Ty_ const, Ty_>;
-        using pointer           = value_type_actual*;
-        using reference         = value_type_actual&;
-        using difference_type   = ptrdiff_t;
+        using pointer = value_type_actual*;
+        using reference = value_type_actual&;
+        using difference_type = ptrdiff_t;
         using iterator_category = std::random_access_iterator_tag;
 
        public:
-        _iterator() noexcept                 = default;
+        _iterator() noexcept = default;
         _iterator(const _iterator&) noexcept = default;
         _iterator& operator=(const _iterator&) noexcept = default;
 
@@ -125,9 +125,9 @@ class circular_queue
     };
 
    public:
-    using iterator               = _iterator<false, false>;
-    using const_iterator         = _iterator<true, false>;
-    using reverse_iterator       = _iterator<false, true>;
+    using iterator = _iterator<false, false>;
+    using const_iterator = _iterator<true, false>;
+    using reverse_iterator = _iterator<false, true>;
     using const_reverse_iterator = _iterator<true, true>;
 
    public:
@@ -149,10 +149,10 @@ class circular_queue
     circular_queue& operator=(const circular_queue& op) noexcept(is_safe_ctor)
     {
         clear();
-        _head     = 0;
-        _tail     = 0;
+        _head = 0;
+        _tail = 0;
         _capacity = op._capacity;
-        _data     = std::make_unique<chunk_t[]>(_capacity);
+        _data = std::make_unique<chunk_t[]>(_capacity);
 
         std::copy(op.begin(), op.end(), std::back_inserter(*this));
         return *this;

@@ -52,7 +52,7 @@ class _array_reinterpret_accessor
         };
 
         using rtype = std::conditional_t<is_const, std::add_const_t<RTy_>, RTy_>&;
-        auto buf    = &((Array_*)this)->at(offset);
+        auto buf = &((Array_*)this)->at(offset);
 
         // verify
         (void)((Array_*)this)->at(offset + sizeof(RTy_) - 1);
@@ -73,10 +73,10 @@ template <typename Ty_>
 class array_view : public _array_view_base<array_view<Ty_>, Ty_>
 {
    public:
-    using value_type    = Ty_;
-    using pointer       = value_type*;
+    using value_type = Ty_;
+    using pointer = value_type*;
     using const_pointer = value_type const*;
-    using reference     = value_type&;
+    using reference = value_type&;
 
    public:
     constexpr array_view() noexcept = default;
@@ -258,7 +258,7 @@ class array_view<void const> : public array_view<char const>
     }
 };
 
-using const_buffer_view   = array_view<void const>;
+using const_buffer_view = array_view<void const>;
 using mutable_buffer_view = array_view<void>;
 
 template <typename Range_>

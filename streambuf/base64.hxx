@@ -38,12 +38,12 @@ class basic_b64 : public std::streambuf
 
     enum {
         n_write_words = WriteWords_,
-        n_read_words  = ReadWords_,
+        n_read_words = ReadWords_,
 
         n_write_bytes = n_write_words * 3,
-        n_read_bytes  = n_read_words * 3,
+        n_read_bytes = n_read_words * 3,
 
-        read_offset   = (n_write_bytes + 3) / 4 * 4
+        read_offset = (n_write_bytes + 3) / 4 * 4
     };
 
     char _iobuf[read_offset + n_read_bytes];
@@ -130,7 +130,7 @@ class basic_b64 : public std::streambuf
         if constexpr (n_write_words > 0) {
             char encoded[base64::encoded_size(n_write_bytes)];
 
-            auto n_obuf    = _n_obuf();
+            auto n_obuf = _n_obuf();
             auto n_written = base64::encoded_size(n_obuf);
             base64::encode_bytes(_o().data(), n_obuf, encoded);
             _src->sputn(encoded, n_written);
@@ -138,7 +138,7 @@ class basic_b64 : public std::streambuf
     }
 };
 
-using b64   = basic_b64<8, 8>;
+using b64 = basic_b64<8, 8>;
 using b64_r = basic_b64<0, 16>;
 using b64_w = basic_b64<16, 0>;
 

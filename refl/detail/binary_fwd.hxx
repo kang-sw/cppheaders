@@ -55,7 +55,7 @@ class binary<
     using Container_::Container_;
 
     enum {
-        is_container  = true,
+        is_container = true,
         is_contiguous = false
     };
 };
@@ -71,7 +71,7 @@ class binary<Container_,
     using Container_::Container_;
 
     enum {
-        is_container  = true,
+        is_container = true,
         is_contiguous = true
     };
 };

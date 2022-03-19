@@ -42,7 +42,7 @@ void wait_pointer_unique(Pointer_&& ptr)
 template <typename Pointer_, typename Dur_>
 bool wait_pointer_unique(Pointer_&& ptr, Dur_&& duration)
 {
-    auto now   = [] { return std::chrono::steady_clock::now(); };
+    auto now = [] { return std::chrono::steady_clock::now(); };
     auto until = now() + duration;
 
     if (not ptr) { return true; }

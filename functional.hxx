@@ -53,15 +53,15 @@ template <typename Ret_, typename... Args_>
 class function<Ret_(Args_...)>
 {
    public:
-    using return_type   = Ret_;
+    using return_type = Ret_;
     using function_type = std::function<Ret_(Args_...)>;
 
    private:
     struct _callable_t
     {
-        virtual ~_callable_t()                 = default;
+        virtual ~_callable_t() = default;
         virtual Ret_ operator()(Args_... args) = 0;
-        virtual void move(void* to)            = 0;
+        virtual void move(void* to) = 0;
     };
 
    private:
@@ -101,7 +101,7 @@ class function<Ret_(Args_...)>
     void _move_from(function&& rhs) noexcept
     {
         if (not rhs.is_sbo()) {
-            _callable     = rhs._callable;
+            _callable = rhs._callable;
             rhs._callable = nullptr;
         } else {
             _callable = (_callable_t*)_sbob();
@@ -119,7 +119,7 @@ class function<Ret_(Args_...)>
 
    public:
     function& operator=(function const& fn) noexcept = delete;
-    function(function const& fn) noexcept            = delete;
+    function(function const& fn) noexcept = delete;
 
     function(default_function_t) noexcept
     {
@@ -225,7 +225,7 @@ class function<Ret_(Args_...)>
 
    private:
     _callable_t*                                     _callable = nullptr;
-    std::array<char, _function_size - sizeof(void*)> _sbo_buf  = {};
+    std::array<char, _function_size - sizeof(void*)> _sbo_buf = {};
 };
 
 // Function utiltiies

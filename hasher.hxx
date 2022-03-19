@@ -34,7 +34,7 @@
 
 namespace CPPHEADERS_NS_ {
 namespace hasher {
-constexpr static uint64_t FNV_PRIME       = 0x100000001b3ull;
+constexpr static uint64_t FNV_PRIME = 0x100000001b3ull;
 constexpr static uint64_t FNV_OFFSET_BASE = 0xcbf29ce484222325ull;
 
 /// hash a single byte

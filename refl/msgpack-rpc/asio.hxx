@@ -50,7 +50,7 @@ class transient_socket_streambuf : public std::streambuf
     char                      _wbuf[2048];
     char                      _rbuf[2048];
 
-    size_t                    _nread  = 0;
+    size_t                    _nread = 0;
     size_t                    _nwrite = 0;
 
    public:
@@ -129,7 +129,7 @@ class transient_socket_streambuf : public std::streambuf
     void nrw(size_t* nwrite, size_t* nread) const noexcept
     {
         *nwrite = _nwrite;
-        *nread  = _nread;
+        *nread = _nread;
     }
 };
 
@@ -137,8 +137,8 @@ template <typename Protocol_>
 class basic_socket_connection : public if_connection
 {
    public:
-    using socket        = typename Protocol_::socket;
-    using streambuf     = asio::basic_socket_streambuf<Protocol_>;
+    using socket = typename Protocol_::socket;
+    using streambuf = asio::basic_socket_streambuf<Protocol_>;
     using socket_buffer = transient_socket_streambuf<Protocol_>;
 
    private:
@@ -225,9 +225,9 @@ auto open_acceptor(
         asio::basic_socket_acceptor<Protocol_, Exec_>& acceptor,
         asio::strand<Exec_>*                           pstrand = nullptr)
 {
-    using strand_type   = asio::strand<Exec_>;
+    using strand_type = asio::strand<Exec_>;
     using acceptor_type = std::remove_reference_t<decltype(acceptor)>;
-    using socket_type   = typename Protocol_::socket;
+    using socket_type = typename Protocol_::socket;
 
     struct _accept_function
     {

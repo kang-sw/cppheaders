@@ -163,7 +163,7 @@ class session : public std::enable_shared_from_this<session>
     struct config
     {
         bool                      use_integer_key = true;
-        std::chrono::microseconds timeout         = {};
+        std::chrono::microseconds timeout = {};
     };
 
    private:
@@ -249,9 +249,9 @@ class session : public std::enable_shared_from_this<session>
 
         // create reply slot
         _rpc_notify.critical_section([&] {
-            msgid     = ++_msgid_gen < 0 ? (_msgid_gen = 1) : _msgid_gen;
+            msgid = ++_msgid_gen < 0 ? (_msgid_gen = 1) : _msgid_gen;
             auto pair = _requests.try_emplace(msgid);
-            request   = pair.first;
+            request = pair.first;
             assert(pair.second);  // message id should never duplicate
 
             _waiting_ids.push_back(msgid);
@@ -275,7 +275,7 @@ class session : public std::enable_shared_from_this<session>
 
                                     this->_rpc_notify.notify_all([&] {
                                         auto iter = find(_waiting_ids, msgid);
-                                        *iter     = _waiting_ids.back();
+                                        *iter = _waiting_ids.back();
                                         _waiting_ids.pop_back();
                                     });
                                 };
@@ -347,7 +347,7 @@ class session : public std::enable_shared_from_this<session>
         decltype(request_info::completion_handler) handler;
         _rpc_notify.critical_section([&] {
             if (auto iter = _requests.find(msgid); iter != _requests.end()) {
-                found   = true;
+                found = true;
                 handler = std::move(iter->second.completion_handler);
                 _requests.erase(iter);
             }
@@ -515,7 +515,7 @@ class session : public std::enable_shared_from_this<session>
                     srv->invoke(
                             _profile, _reader,
                             [](void* pvself, refl::object_const_view_t data) {
-                                auto self  = ((uobj_t*)pvself)->self;
+                                auto self = ((uobj_t*)pvself)->self;
                                 auto msgid = ((uobj_t*)pvself)->msgid;
 
                                 fn_reply(self, msgid, nullptr, data);
@@ -582,7 +582,7 @@ class context
 {
     friend class detail::session;
 
-    using session_ptr  = std::shared_ptr<detail::session>;
+    using session_ptr = std::shared_ptr<detail::session>;
     using session_wptr = std::weak_ptr<detail::session>;
 
    public:
@@ -631,7 +631,7 @@ class context
      */
     explicit context(
             service_info                      service = {},
-            post_function                     poster  = wrap_thread_pool_t(),
+            post_function                     poster = wrap_thread_pool_t(),
             std::weak_ptr<if_context_monitor> monitor = {})
             : _post(std::move(poster)),
               _service(std::move(service)),
@@ -652,8 +652,8 @@ class context
      */
     context& operator=(context const&) = delete;
     context& operator=(context&&) noexcept = delete;
-    context(context const&)                = delete;
-    context(context&&) noexcept            = delete;
+    context(context const&) = delete;
+    context(context&&) noexcept = delete;
 
     ~context() noexcept
     {
@@ -833,7 +833,7 @@ class context
     size_t notify_all(std::string_view method, Qualify_&& qualifier, Params_&&... params)
     {
         size_t num_sent = 0;
-        auto   all      = _notify_pool.checkout();
+        auto   all = _notify_pool.checkout();
 
         _session_notify.critical_section(
                 [&] {
@@ -899,7 +899,7 @@ class context
     {
         // put created session reference to sessions_source and sessions both.
         auto           connection = std::make_unique<Conn_>(std::forward<Args_>(args)...);
-        auto           session    = std::make_shared<detail::session>(this, conf, std::move(connection), _monitor);
+        auto           session = std::make_shared<detail::session>(this, conf, std::move(connection), _monitor);
 
         session_handle handle;
         handle._ref = session;
@@ -949,7 +949,7 @@ class context
         _session_notify.critical_section(
                 [&] {
                     *num_write = _offset_tx;
-                    *num_read  = _offset_rx;
+                    *num_read = _offset_rx;
 
                     for (auto& wp : _sessions)
                         if (auto sess = wp.lock()) {
@@ -1027,7 +1027,7 @@ class context
     {
         session_ptr session = {};
 
-        auto        source  = _session_sources.find(ptr);
+        auto        source = _session_sources.find(ptr);
         if (source != _session_sources.end()) {  // if given session is never occupied by any other context ..
             session = *source;
             _session_sources.erase(source);
@@ -1141,7 +1141,7 @@ inline void session::_start_()
 {
     // As weak_from_this cannot be called inside of constructor,
     //  initialization of each sessions must be called explicitly.
-    _waiting     = true;
+    _waiting = true;
     _owner_fence = _owner->_fence;
     _conn->_init_(weak_from_this());
 }

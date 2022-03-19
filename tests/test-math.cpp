@@ -32,17 +32,17 @@ using namespace cpph::math;
 void foofoo()
 {
     constexpr matx33i m = matx33i::eye(), n = matx33i::create(1, 2, 3, 4, 5, 6, 7, 8, 9);
-    auto              c  = m + (-n);
+    auto              c = m + (-n);
 
     constexpr auto    cc = matx33i{}.row(2);
     static_assert(decltype(cc)::length == 3);
 
-    constexpr int  r  = cc(0, 1);
+    constexpr int  r = cc(0, 1);
     auto           gk = cc(4, 1);
 
     constexpr bool kk = m == n;
 
-    matx33i        g  = {};
+    matx33i        g = {};
     g += c;
 
     g.col(3).x();
@@ -101,7 +101,7 @@ TEST_CASE("inv", "[math.matrix]")
 
 TEST_CASE("arithmentic", "[math.type]")
 {
-    using rect        = rectangle;
+    using rect = rectangle;
     constexpr rect s1 = {0, 0, 100, 100};
     constexpr rect s2 = rect::from_tl_br({50, 50}, {150, 150});
     static_assert((s1 & s2) == rect{50, 50, 50, 50});

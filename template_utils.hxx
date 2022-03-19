@@ -100,7 +100,7 @@ make_iterable(Begin_&& begin, End_&& end) -> _borrowed_range<Begin_, End_>
 }
 
 using shared_null = std::shared_ptr<nullptr_t>;
-using weak_null   = std::shared_ptr<nullptr_t>;
+using weak_null = std::shared_ptr<nullptr_t>;
 inline shared_null make_null() { return std::make_shared<nullptr_t>(); }
 
 /**
@@ -121,7 +121,7 @@ struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)>
 template <class R, class... Args>
 struct function_traits<R(Args...)>
 {
-    using return_type                  = R;
+    using return_type = R;
 
     static constexpr std::size_t arity = sizeof...(Args);
 
@@ -159,7 +159,7 @@ struct function_traits
     using call_type = function_traits<decltype(&F::operator())>;
 
    public:
-    using return_type                  = typename call_type::return_type;
+    using return_type = typename call_type::return_type;
 
     static constexpr std::size_t arity = call_type::arity - 1;
 

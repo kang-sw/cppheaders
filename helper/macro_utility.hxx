@@ -87,11 +87,11 @@ template <const auto& str>
 constexpr auto break_VA_ARGS() noexcept
 {
     constexpr auto n_words = _count_words<str>();
-    auto           result  = std::array<std::string_view, n_words>{};
+    auto           result = std::array<std::string_view, n_words>{};
 
     for (size_t i = 0; i < result.size(); ++i) {
         auto [begin, end] = _words_boundary<str>(i);
-        result[i]         = std::string_view{str + begin, end - begin};
+        result[i] = std::string_view{str + begin, end - begin};
     }
 
     return result;

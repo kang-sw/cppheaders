@@ -39,7 +39,7 @@ template <typename Ty_, typename Mutex_ = null_mutex>
 class basic_resource_pool
 {
    public:
-    using buffer_type     = std::list<Ty_>;
+    using buffer_type = std::list<Ty_>;
     using buffer_iterator = typename buffer_type::iterator;
 
    public:
@@ -100,10 +100,10 @@ class basic_resource_pool
        private:
         void _assign(handle_type&& other)
         {
-            _owner       = other._owner;
-            _ref         = other._ref;
+            _owner = other._owner;
+            _ref = other._ref;
             other._owner = nullptr;
-            other._ref   = {};
+            other._ref = {};
         }
 
        private:
@@ -154,7 +154,7 @@ class basic_resource_pool
         _free.push_back(h._ref);
 
         h._owner = {};
-        h._ref   = {};
+        h._ref = {};
     }
 
     void shrink()

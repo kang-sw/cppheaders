@@ -122,7 +122,7 @@ void unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
                     if (it == end) { return; }
                     char lo = *it++;
 
-                    *out++  = hexval(hi, lo);
+                    *out++ = hexval(hi, lo);
                     [[fallthrough]];
                 }
 
@@ -132,7 +132,7 @@ void unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
                     if (it == end) { return; }
                     char lo = *it++;
 
-                    *out++  = hexval(hi, lo);
+                    *out++ = hexval(hi, lo);
                     break;
                 }
             }

@@ -227,8 +227,8 @@ auto range_alpha(Float_ value, Float_ v1, Float_ v2)
     if (v1 == v2) { return Float_(value > v1); }
     auto [min, max] = std::minmax(v1, v2);
 
-    Float_ alpha    = std::clamp(value, min, max);
-    alpha           = (alpha - min) / (max - min);
+    Float_ alpha = std::clamp(value, min, max);
+    alpha = (alpha - min) / (max - min);
 
     return alpha;
 }
@@ -242,7 +242,7 @@ auto lerp(ValTy_ const& a, ValTy_ const& b, Alpha_ const& alpha)
 template <typename ValTy_ = double, typename Iter_, typename Mult_ = std::multiplies<>>
 auto variance(Iter_ begin, Iter_ end, Mult_ mult = std::multiplies<>{})
 {
-    auto div  = static_cast<ValTy_>(std::distance(begin, end));
+    auto div = static_cast<ValTy_>(std::distance(begin, end));
     auto mean = std::reduce(begin, end) / div;
     return std::transform_reduce(
                    begin, end,

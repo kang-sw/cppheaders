@@ -39,11 +39,11 @@ template <typename Ty_, size_t Dim_>
 class ndarray
 {
    public:
-    using value_type      = typename std::vector<Ty_>::value_type;
-    using reference       = typename std::vector<Ty_>::reference;
+    using value_type = typename std::vector<Ty_>::value_type;
+    using reference = typename std::vector<Ty_>::reference;
     using const_reference = typename std::vector<Ty_>::const_reference;
-    using size_type       = size_t;
-    using dimension_type  = std::array<size_type, Dim_>;
+    using size_type = size_t;
+    using dimension_type = std::array<size_type, Dim_>;
     enum : size_t {
         dimension = Dim_
     };
@@ -77,9 +77,9 @@ class ndarray
     {
         data_.resize(std::reduce(dim_.begin(), dim_.end(), size_type(1), std::multiplies<>{}));
 
-        auto it_dim     = dim_.end() - 1;
+        auto it_dim = dim_.end() - 1;
         auto it_dim_end = dim_.begin();
-        auto it_step    = steps_.end() - 1;
+        auto it_step = steps_.end() - 1;
 
         for (size_t step = 1;; --it_step) {
             step *= *it_dim;
@@ -97,9 +97,9 @@ class ndarray
         if constexpr (sizeof...(Ints_)) { reshape(ints...); }
     }
 
-    ndarray() noexcept               = default;
+    ndarray() noexcept = default;
     ndarray(ndarray const&) noexcept = default;
-    ndarray(ndarray&&) noexcept      = default;
+    ndarray(ndarray&&) noexcept = default;
     ndarray& operator=(ndarray&&) noexcept = default;
     ndarray& operator=(ndarray const&) noexcept = default;
 

@@ -139,8 +139,8 @@ class error_info
    public:
     bool        has_error = false;
 
-    int         line      = 0;
-    int         column    = 0;
+    int         line = 0;
+    int         column = 0;
 
     std::string message;
 
@@ -155,7 +155,7 @@ class error_info
         std::string rval;
         rval.reserve(32 + message.size());
 
-        auto fmt  = "line %d, column %d (B_%lld)";
+        auto fmt = "line %d, column %d (B_%lld)";
         auto size = snprintf(NULL, 0, fmt, line, column, _byte_pos);
         rval.resize(size + 1);
         snprintf(rval.data(), rval.size() + 1, fmt, line, column, _byte_pos);
@@ -244,7 +244,7 @@ class if_writer : public if_archive_base
     virtual if_writer& write(uint64_t v) { return this->write((int64_t)v); }
 
     virtual if_writer& write(float v) { return this->write((double)v); }
-    virtual if_writer& write(double v)           = 0;
+    virtual if_writer& write(double v) = 0;
 
     virtual if_writer& write(std::string_view v) = 0;
 
@@ -279,18 +279,18 @@ class if_writer : public if_archive_base
     //! push/pop write binary context
     //! Firstly pushed binary size is immutable. call binary_pop only when
     //!  'total' bytes was written!
-    virtual if_writer& binary_push(size_t total)            = 0;
+    virtual if_writer& binary_push(size_t total) = 0;
     virtual if_writer& binary_write_some(const_buffer_view) = 0;
-    virtual if_writer& binary_pop()                         = 0;
+    virtual if_writer& binary_pop() = 0;
 
     //! push objects which has 'num_elems' elements
     //! set -1 when unkown. (maybe rare case)
     virtual if_writer& object_push(size_t num_elems) = 0;
-    virtual if_writer& object_pop()                  = 0;
+    virtual if_writer& object_pop() = 0;
 
     //! push array which has 'num_elems' elements
     virtual if_writer& array_push(size_t num_elems) = 0;
-    virtual if_writer& array_pop()                  = 0;
+    virtual if_writer& array_pop() = 0;
 
     //! Assert to write key next
     virtual void write_key_next() = 0;
@@ -343,7 +343,7 @@ class if_reader : public if_archive_base
     virtual if_reader& read(uint64_t& v) { return this->read((int64_t&)v); }
 
     virtual if_reader& read(float& v) { return _upcast<double>(v); }
-    virtual if_reader& read(double& v)      = 0;
+    virtual if_reader& read(double& v) = 0;
 
     virtual if_reader& read(std::string& v) = 0;
 
@@ -363,7 +363,7 @@ class if_reader : public if_archive_base
 
     //! @return number of bytes actually read.
     virtual size_t binary_read_some(mutable_buffer_view v) = 0;
-    virtual void   end_binary()                            = 0;
+    virtual void   end_binary() = 0;
 
     /**
      * to distinguish variable sized object's boundary.
@@ -377,7 +377,7 @@ class if_reader : public if_archive_base
     //! enter into context
     //! @throw invalid_context if
     virtual context_key begin_object() = 0;
-    virtual context_key begin_array()  = 0;
+    virtual context_key begin_array() = 0;
 
     //! Check should break out of this object/array context
     //! Used for dynamic object retrival
@@ -386,7 +386,7 @@ class if_reader : public if_archive_base
     //! break current context, regardless if there's any remaining object.
     //! @throw invalid_context
     virtual void end_object(context_key) = 0;
-    virtual void end_array(context_key)  = 0;
+    virtual void end_array(context_key) = 0;
 
     //! Assert key on next read
     virtual void read_key_next() = 0;

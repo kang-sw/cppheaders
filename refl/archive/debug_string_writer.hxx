@@ -38,7 +38,7 @@ class debug_string_writer : public if_writer
     };
 
    private:
-    int                        _idgen          = 0;
+    int                        _idgen = 0;
     bool                       _comma_required = false;
 
     std::vector<int>           _id_stack;
@@ -219,7 +219,7 @@ class debug_string_writer : public if_writer
         if (_state() != context_state::object_key)
             throw error::writer_invalid_state{this, "expect object_key"};
 
-        bool was_empty  = not _comma_required;
+        bool was_empty = not _comma_required;
         _comma_required = true;
 
         _id_stack.pop_back();
@@ -259,7 +259,7 @@ class debug_string_writer : public if_writer
         if (_state() != context_state::array)
             throw error::writer_invalid_state{this, "expect array"};
 
-        bool was_empty  = not _comma_required;
+        bool was_empty = not _comma_required;
         _comma_required = true;
 
         _id_stack.pop_back();

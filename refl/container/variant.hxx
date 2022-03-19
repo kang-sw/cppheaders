@@ -84,7 +84,7 @@ auto get_metadata(type_tag<std::variant<Args_...>>)
 
         void impl_restore(archive::if_reader* strm, variant_type* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
-            auto key   = strm->begin_array();
+            auto key = strm->begin_array();
             auto index = ~size_t{};
             *strm >> index;
 

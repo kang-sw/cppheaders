@@ -41,7 +41,7 @@ class rectangle_
    public:
     using value_type = Ty_;
     using point_type = vector<Ty_, 2>;
-    using size_type  = vector<Ty_, 2>;
+    using size_type = vector<Ty_, 2>;
 
    public:
     constexpr rectangle_() noexcept = default;
@@ -112,8 +112,8 @@ class rectangle_
     from_tl_br(point_type tl, point_type br) noexcept
     {
         size_type size = br - tl;
-        size.width()   = std::max<value_type>(0, size.width());
-        size.height()  = std::max<value_type>(0, size.height());
+        size.width() = std::max<value_type>(0, size.width());
+        size.height() = std::max<value_type>(0, size.height());
 
         return rectangle_{tl.x(), tl.y(), size.width(), size.height()};
     }
@@ -131,6 +131,6 @@ class rectangle_
     value_type height;
 };
 
-using rectangle  = rectangle_<int>;
+using rectangle = rectangle_<int>;
 using rectanglef = rectangle_<float>;
 }  // namespace CPPHEADERS_NS_::math

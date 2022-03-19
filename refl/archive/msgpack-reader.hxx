@@ -264,7 +264,7 @@ class reader : public archive::if_reader
 
     size_t binary_read_some(mutable_buffer_view v) override
     {
-        auto scope  = _verify_scope(scope_t::type_binary);
+        auto scope = _verify_scope(scope_t::type_binary);
         auto n_read = std::min<uint32_t>(v.size(), scope->elems_left);
 
         if (_buf->sgetn(v.data(), n_read) != n_read)
@@ -377,7 +377,7 @@ class reader : public archive::if_reader
     uint32_t _skip_once()
     {
         // intentionally uses getc instead of bumpc
-        auto     header     = _verify_eof(_buf->sgetc());
+        auto     header = _verify_eof(_buf->sgetc());
         uint32_t skip_bytes = 0;
         switch (_typecode(header)) {
             case typecode::positive_fixint:
@@ -463,12 +463,12 @@ class reader : public archive::if_reader
 
     scope_t* _new_scope(scope_t::type_t ty, uint32_t n_elems)
     {
-        auto scope          = &_scope.emplace_back();
-        scope->type         = ty;
-        scope->elems_left   = n_elems + n_elems * (ty == scope_t::type_object);
-        scope->reading_key  = false;
+        auto scope = &_scope.emplace_back();
+        scope->type = ty;
+        scope->elems_left = n_elems + n_elems * (ty == scope_t::type_object);
+        scope->reading_key = false;
         scope->ctxkey.index = uint32_t(_scope.size() - 1);
-        scope->ctxkey.id    = ++_scope_key_gen;
+        scope->ctxkey.id = ++_scope_key_gen;
 
         return scope;
     }
