@@ -118,10 +118,10 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     using namespace msgpack::rpc::asio_ex;
 
     using asio::ip::tcp;
-    static std::mutex                                                          _mtx_cout;
+    static std::mutex _mtx_cout;
 
-    function<void(msgpack::rpc::session_profile_view, int*, int, std::string)> fn =
-            [](auto&& profile, int* rv, int val, std::string arg2) {
+    function<void(msgpack::rpc::session_profile_view, int*, int, std::string)>
+            fn = [](auto&& profile, int* rv, int val, std::string arg2) {
                 {
                     std::lock_guard _lc_{_mtx_cout};
                     printf("Peer [%s]: %d, %s\n", profile.peer_name.c_str(), val, arg2.c_str());
@@ -131,17 +131,18 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
                 *rv = val * val;
             };
 
-    function<int(bool)> fn2
-            = [](bool value) {
-                  if (value)
-                      return 264;
-                  else
-                      throw std::runtime_error{"Vlue!"};
-              };
+    function<int(bool)>
+            fn2 = [](bool value) {
+                if (value)
+                    return 264;
+                else
+                    throw std::runtime_error{"Vlue!"};
+            };
 
-    auto                       stub_print = msgpack::rpc::create_signature<void(std::string)>("print");
-    auto                       stub_noti  = msgpack::rpc::create_signature<void(void)>("noti");
+    auto stub_print = msgpack::rpc::create_signature<void(std::string)>("print");
+    auto stub_noti  = msgpack::rpc::create_signature<void(void)>("noti");
 
+    //
     msgpack::rpc::service_info service;
     service.route2("hello", std::move(fn));
     service.route("except", std::move(fn2));
@@ -149,7 +150,7 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
     service.route(stub_noti, [] { printf("noti!\n"); });
 
     io_context            ioc;
-    msgpack::rpc::context context{service};
+    msgpack::rpc::context context{service, [](auto&& fn) { asio::post(std::forward<decltype(fn)>(fn)); }};
     auto                  ctx = &context;
 
     tcp::acceptor         acpt{ioc};
@@ -233,26 +234,26 @@ TEST_CASE("Tcp context", "[msgpack-rpc][.]")
             for (int i = 0; i < 256; ++i) {
                 int  rv  = -1;
                 auto res = ctx->rpc(&rv, "hello", i, "vv32");
-                CHECK(res == msgpack::rpc::rpc_status::okay);
-                CHECK(rv == i * i);
+                REQUIRE(res == msgpack::rpc::rpc_status::okay);
+                REQUIRE(rv == i * i);
             }
 
             for (int i = 0; i < 256; ++i) {
                 int  rv   = -1;
                 auto rslt = ctx->rpc(&rv, "hello", i);
                 ctx->rpc(nullptr, "hello", i);
-                CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
+                REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
 
             for (int i = 0; i < 256; ++i) {
                 int  rv   = -1;
                 auto rslt = ctx->rpc(&rv, "hello", "fea", 3.21);
-                CHECK(rslt == msgpack::rpc::rpc_status::invalid_parameter);
+                REQUIRE(rslt == msgpack::rpc::rpc_status::invalid_parameter);
             }
 
             for (int i = 0; i < 16; ++i) {
                 auto rslt = stub_print(*ctx).rpc(nullptr, "hello!");
-                CHECK(rslt == msgpack::rpc::rpc_status::okay);
+                REQUIRE(rslt == msgpack::rpc::rpc_status::okay);
             }
         }
 
