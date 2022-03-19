@@ -608,6 +608,10 @@ class context
     // Lifetime guard
     std::shared_ptr<nullptr_t> _fence = std::make_shared<nullptr_t>();
 
+    // Offset of Rx/Tx values from disposed sessions
+    size_t _offset_rx = 0;
+    size_t _offset_tx = 0;
+
    public:
     std::chrono::milliseconds global_timeout{6'000'000};
 
@@ -942,9 +946,11 @@ class context
      */
     void totals(size_t* num_read, size_t* num_write)
     {
-        *num_read = *num_write = 0;
         _session_notify.critical_section(
                 [&] {
+                    *num_write = _offset_tx;
+                    *num_read  = _offset_rx;
+
                     for (auto& wp : _sessions)
                         if (auto sess = wp.lock()) {
                             *num_write += sess->_profile.total_write;
@@ -1066,6 +1072,9 @@ class context
         if (auto ptr = wptr.lock()) {
             if (not ptr->_pending_kill.exchange(true)) {
                 ptr->_conn->disconnect();
+
+                _offset_tx += ptr->_profile.total_write;
+                _offset_rx += ptr->_profile.total_read;
             }
         } else {
             return false;  // handle already disposed.
