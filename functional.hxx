@@ -230,6 +230,10 @@ class function<Ret_(Args_...)>
 
 // Function utiltiies
 
+#if __cplusplus > 201703L
+using std::bind_front;
+#else
+
 template <typename Callable_, typename Tuple_>
 struct _bound_functor_t
 {
@@ -257,6 +261,23 @@ struct _bound_functor_t
             return std::apply(fn, tuple);
     }
 };
+
+/**
+ * Bind callable with arguments in front of parameter list.
+ * Function parameters will be delivered to backward
+ *
+ * @tparam Callable_
+ * @tparam Captures_
+ * @return
+ */
+template <class Callable_, typename... Captures_>
+auto bind_front(Callable_ callable, Captures_&&... captures)
+{
+    return _bound_functor_t{
+            std::move(callable),
+            std::make_tuple(std::forward<Captures_>(captures)...)};
+}
+#endif
 
 template <typename Callable_, typename Tuple_>
 struct _bound_weak_functor_t
@@ -297,22 +318,6 @@ struct _bound_weak_functor_t
         }
     }
 };
-
-/**
- * Bind callable with arguments in front of parameter list.
- * Function parameters will be delivered to backward
- *
- * @tparam Callable_
- * @tparam Captures_
- * @return
- */
-template <class Callable_, typename... Captures_>
-auto bind_front(Callable_ callable, Captures_&&... captures)
-{
-    return _bound_functor_t{
-            std::move(callable),
-            std::make_tuple(std::forward<Captures_>(captures)...)};
-}
 
 /**
  * Bind front callable with weak reference. Actual callable will be invoked
