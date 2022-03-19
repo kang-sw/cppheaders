@@ -147,41 +147,6 @@ class if_context_monitor
     virtual void on_dispose_session(session_profile const&) noexcept {}
 };
 
-inline std::string_view to_string(rpc_status s)
-{
-    static std::map<rpc_status, std::string const, std::less<>> etos{
-            {rpc_status::okay, "OKAY"},
-            {rpc_status::waiting, "WAITING"},
-            {rpc_status::aborted, "ABORTED"},
-            {rpc_status::timeout, "ERROR_TIMEOUT"},
-            {rpc_status::unknown_error, "UNKNOWN"},
-            {rpc_status::internal_error, "ERROR_INTERNAL"},
-            {rpc_status::invalid_parameter, "ERROR_INVALID_PARAMETER"},
-            {rpc_status::invalid_return_type, "ERROR_INVALID_RETURN_TYPE"},
-            {rpc_status::method_not_exist, "ERROR_METHOD_NOT_EXIST"},
-    };
-
-    auto p = find_ptr(etos, s);
-    return p ? std::string_view(p->second) : std::string_view("UNKNOWN");
-}
-
-inline auto from_string(std::string_view s)
-{
-    static std::map<std::string, rpc_status, std::less<>> stoe{
-            {"OKAY", rpc_status::okay},
-            {"WAITING", rpc_status::waiting},
-            {"ERROR_TIMEOUT", rpc_status::timeout},
-            {"ABORTED", rpc_status::aborted},
-            {"UNKOWN", rpc_status::unknown_error},
-            {"ERROR_INTERNAL", rpc_status::internal_error},
-            {"ERROR_INVALID_PARAMETER", rpc_status::invalid_parameter},
-            {"ERROR_INVALID_RETURN_TYPE", rpc_status::invalid_return_type},
-            {"ERROR_METHOD_NOT_EXIST", rpc_status::method_not_exist},
-    };
-
-    auto p = find_ptr(stoe, s);
-    return p ? p->second : rpc_status::unknown_error;
-}
 
 namespace detail {
 /**
