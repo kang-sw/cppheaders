@@ -72,11 +72,11 @@ class basic_event
 
     struct _entity_type
     {
-        event_key id;
-        event_fn  function;
-        uint64_t  priority = 0;
+        event_key                 id;
+        std::shared_ptr<event_fn> function;
+        uint64_t                  priority = 0;
 
-        bool      operator<(_entity_type const& rhs) const noexcept
+        bool                      operator<(_entity_type const& rhs) const noexcept
         {
             // send pending-remove elements to back
             if (not id && rhs.id)
@@ -148,18 +148,19 @@ class basic_event
             std::sort(_events.begin(), _events.end());
         }
 
-        for (auto it = _events.begin(); it != _events.end();) {
-            if (not it->id) {
-                _events.erase(it++);
+        for (auto idx = 0; idx < _events.size();) {
+            if (not _events[idx].id) {
+                _events.erase(_events.begin() + idx);
             } else {
+                auto func_ptr = _events[idx].function;
                 lock.unlock();
-                auto invoke_result = (int)it->function(std::forward<Args_>(args)...);
+                auto invoke_result = (int)(*func_ptr)(std::forward<Args_>(args)...);
                 lock.lock();
 
                 if (invoke_result & (int)event_control::expire)
-                    it = _events.erase(it);
+                    _events.erase(_events.begin() + idx);
                 else
-                    ++it;
+                    ++idx;
 
                 if (invoke_result & (int)event_control::consume)
                     break;
@@ -179,24 +180,27 @@ class basic_event
 
         _dirty |= evt->priority != 0;
 
+        using std::forward;
+        using std::make_shared;
+
         if constexpr (std::is_invocable_r_v<event_control, Callable_, Args_...>) {
-            evt->function = (std::forward<Callable_>(fn));
+            evt->function = make_shared<event_fn>(forward<Callable_>(fn));
         } else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>) {
-            evt->function =
-                    [_fn = std::forward<Callable_>(fn)](auto&&... args) mutable {
+            evt->function = make_shared<event_fn>(
+                    [_fn = forward<Callable_>(fn)](auto&&... args) mutable {
                         return _fn(args...) ? event_control::ok
                                             : event_control::expire;
-                    };
+                    });
         } else if constexpr (std::is_invocable_v<Callable_, Args_...>) {
-            evt->function =
-                    [_fn = std::forward<Callable_>(fn)](auto&&... args) mutable {
+            evt->function = make_shared<event_fn>(
+                    [_fn = forward<Callable_>(fn)](auto&&... args) mutable {
                         return _fn(args...), event_control::ok;
-                    };
+                    });
         } else {
-            evt->function =
-                    [_fn = std::forward<Callable_>(fn)](auto&&...) mutable {
+            evt->function = make_shared<event_fn>(
+                    [_fn = forward<Callable_>(fn)](auto&&...) mutable {
                         return _fn(), event_control::ok;
-                    };
+                    });
         }
 
         return handle{this, evt->id};
