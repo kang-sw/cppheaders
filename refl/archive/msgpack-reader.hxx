@@ -180,8 +180,7 @@ class reader : public archive::if_reader
     if_reader& read(nullptr_t) override
     {
         // skip single item
-        _skip_once();
-        _step_context();
+        if (_skip_once() > 0) { _step_context(); }
         return *this;
     }
 
@@ -375,7 +374,7 @@ class reader : public archive::if_reader
         _scope.pop_back();
     }
 
-    void _skip_once()
+    uint32_t _skip_once()
     {
         // intentionally uses getc instead of bumpc
         auto     header     = _verify_eof(_buf->sgetc());
@@ -445,6 +444,7 @@ class reader : public archive::if_reader
         }
 
         _discard_n_bytes(skip_bytes);
+        return skip_bytes;
     }
 
     size_t _calc_num_break_scope(scope_t::type_t type, context_key key)

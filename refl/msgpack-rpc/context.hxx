@@ -561,16 +561,7 @@ class session : public std::enable_shared_from_this<session>
             _reader.end_array(ctx);  // end reading params
         } else {
             _reader >> nullptr;
-
-            lock_guard _wr_lock_{_write_lock};
-            _writer.array_push(4);
-            _writer << rpc_type::reply
-                    << msgid
-                    << to_string(rpc_status::method_not_exist)
-                    << nullptr;
-            _writer.array_pop();
-
-            _writer.flush();
+            fn_reply(this, msgid, to_string(rpc_status::method_not_exist), nullptr);
         }
     }
 
