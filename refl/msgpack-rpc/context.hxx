@@ -147,7 +147,6 @@ class if_context_monitor
     virtual void on_dispose_session(session_profile const&) noexcept {}
 };
 
-
 namespace detail {
 /**
  * Indicates single connection
@@ -839,10 +838,13 @@ class context
     /**
      * Notify all sessions
      */
-    template <typename... Params_>
-    void notify_all(std::string_view method, Params_&&... params)
+    template <
+            typename... Params_, typename Qualify_,
+            typename = std::enable_if_t<std::is_invocable_r_v<bool, Qualify_, session_profile const&>>>
+    size_t notify_all(std::string_view method, Qualify_&& qualifier, Params_&&... params)
     {
-        auto all = _notify_pool.checkout();
+        size_t num_sent = 0;
+        auto   all      = _notify_pool.checkout();
         all->clear();
 
         _session_notify.critical_section(
@@ -854,15 +856,31 @@ class context
                 });
 
         for (auto& sp : *all) {
+            if (not qualifier(sp->_profile)) {
+                _checkin(std::move(sp));
+                continue;
+            }
+
             try {
                 sp->notify_one(method, std::forward<Params_>(params)...);
                 _checkin(std::move(sp));
+
+                ++num_sent;
             } catch (invalid_connection&) {
                 ;  // do nothing, let it be disposed
             } catch (archive::error::archive_exception&) {
                 ;  // same as above.
             }
         }
+
+        return num_sent;
+    }
+
+    template <typename... Params_>
+    size_t notify_all(std::string_view method, Params_&&... params)
+    {
+        auto fn_always = [](auto&&) { return true; };
+        return notify_all(method, fn_always, std::forward<Params_>(params)...);
     }
 
    public:

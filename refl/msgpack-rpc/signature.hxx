@@ -170,9 +170,15 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
             _rpc->notify_one(_host->name(), args...);
         }
 
-        void notify_all(Params_ const&... args) const
+        size_t notify_all(Params_ const&... args) const
         {
-            _rpc->notify_all(_host->name(), args...);
+            return _rpc->notify_all(_host->name(), args...);
+        }
+
+        template <typename Qualify_>
+        size_t notify_all(Params_ const&... args, Qualify_&& qualify_function) const
+        {
+            return _rpc->notify_all(_host->name(), std::forward<Qualify_>(qualify_function), args...);
         }
     };
 
