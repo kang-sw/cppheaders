@@ -1000,7 +1000,7 @@ class context
                         _sessions.push_back(ptr);
 
                         // Only 2 concurrent request can be accepted per session.
-                        if (session && session->_refcnt > 2) {
+                        if (max_cycle > 1 && session && session->_refcnt > 2) {
                             --session->_refcnt;
                             session = nullptr;
 

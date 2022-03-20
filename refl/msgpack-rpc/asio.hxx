@@ -27,8 +27,8 @@
 #include <asio/basic_socket_acceptor.hpp>
 #include <asio/basic_socket_streambuf.hpp>
 #include <asio/bind_executor.hpp>
-#include <asio/dispatch.hpp>
 #include <asio/ip/basic_endpoint.hpp>
+#include <asio/post.hpp>
 #include <asio/strand.hpp>
 
 #include "../__namespace__"
@@ -173,7 +173,7 @@ class basic_socket_connection : public if_connection
                 });
 
         if (_buf.in_avail())
-            this->notify_receive();
+            asio::post(_buf.socket().get_executor(), [this] { notify_receive(); });
         else
             _buf.socket().async_wait(socket::wait_read, std::move(fn));
     }
