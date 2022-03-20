@@ -195,9 +195,9 @@ class session : public std::enable_shared_from_this<session>
     // Writing operation is protected.
     // - When reply to RPC
     // - When send rpc request
-    spinlock     _write_lock_data;
     spinlock     _write_lock_next;
-    spinlock     _write_lock_low;
+    std::mutex   _write_lock_data;
+    std::mutex   _write_lock_low;
 
     volatile int _msgid_gen = 0;
     std::string  _method_name_buf;
