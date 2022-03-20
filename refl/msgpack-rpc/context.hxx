@@ -380,15 +380,23 @@ class session : public std::enable_shared_from_this<session>
     }
 
     void wakeup();
-    void dispose_self()
+
+    void cancel_all_requests()
     {
+        std::vector<int> reqs;
+
         _rpc_notify.notify_all(
                 [&] {
+                    reqs.reserve(_requests.size());
                     rpc_error error{rpc_status::aborted};
-                    for (auto& [msgid, elem] : _requests) {
-                    }
+                    for (auto& [msgid, elem] : _requests) { reqs.push_back(msgid); }
                 });
 
+        for (auto msgid : reqs) { abort_rpc(msgid); }
+    }
+
+    void dispose_self()
+    {
         _erase_self();
     }
 
@@ -1071,6 +1079,7 @@ class context
     {
         if (auto ptr = wptr.lock()) {
             if (not ptr->_pending_kill.exchange(true)) {
+                ptr->cancel_all_requests();
                 ptr->_conn->disconnect();
 
                 _offset_tx += ptr->_profile.total_write;
