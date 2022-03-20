@@ -268,4 +268,24 @@ Ty_& declref() noexcept
     return *(Ty_*)nullptr;
 }
 
+/// y_combinator for lambda recurse
+/// @see https://stackoverflow.com/a/40873657/12923403
+template <class F>
+struct y_combinator {
+    F f; // the lambda will be stored here
+
+    // a forwarding operator():
+    template <class... Args>
+    decltype(auto) operator()(Args&&... args) const {
+        // we pass ourselves to f, then the arguments.
+        return f(*this, std::forward<Args>(args)...);
+    }
+};
+
+// helper function that deduces the type of the lambda:
+template <class F>
+y_combinator<std::decay_t<F>> make_y_combinator(F&& f) {
+    return {std::forward<F>(f)};
+}
+
 }  // namespace CPPHEADERS_NS_
