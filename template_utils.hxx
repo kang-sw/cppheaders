@@ -282,6 +282,9 @@ struct y_combinator {
     }
 };
 
+// Deduction guide
+template <class F> y_combinator(F) -> y_combinator<F>;
+
 // helper function that deduces the type of the lambda:
 template <class F>
 y_combinator<std::decay_t<F>> make_y_combinator(F&& f) {
