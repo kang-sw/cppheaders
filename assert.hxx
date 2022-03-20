@@ -31,13 +31,6 @@
 #if defined(CPPHEADERS_IMPLEMENT_ASSERTIONS)
 #    include <cstdio>
 #    include <stdexcept>
-
-#    if CPPHEADERS_ENABLE_BACKWARD
-#        include "third/backward.hpp"
-namespace CPPHEADERS_NS_::_backward {
-backward::SignalHandling sh;
-}
-#    endif
 #endif
 
 namespace CPPHEADERS_NS_ {

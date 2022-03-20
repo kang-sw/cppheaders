@@ -38,6 +38,7 @@
 #include "../../thread/locked.hxx"
 #include "../../thread/thread_pool.hxx"
 #include "../../timer.hxx"
+#include "../../utility/cleanup.hxx"
 #include "../../utility/singleton.hxx"
 #include "../__namespace__"
 #include "../archive/msgpack-reader.hxx"
@@ -194,7 +195,10 @@ class session : public std::enable_shared_from_this<session>
     // Writing operation is protected.
     // - When reply to RPC
     // - When send rpc request
-    spinlock     _write_lock;
+    spinlock     _write_lock_data;
+    spinlock     _write_lock_next;
+    spinlock     _write_lock_low;
+
     volatile int _msgid_gen = 0;
     std::string  _method_name_buf;
 
@@ -315,7 +319,8 @@ class session : public std::enable_shared_from_this<session>
 
         // send message
         {
-            lock_guard lc{_write_lock};
+            _lock_hi();
+            cleanup_t _guard_{[&] { _unlock_hi(); }};
 
             _writer.array_push(4);
             {
@@ -364,7 +369,8 @@ class session : public std::enable_shared_from_this<session>
     template <typename... Params_>
     void notify_one(std::string_view method, Params_&&... params)
     {
-        lock_guard lc{_write_lock};
+        _lock_lo();
+        cleanup_t _guard_{[&] { _unlock_lo(); }};
 
         _writer.array_push(3);
         {
@@ -400,15 +406,35 @@ class session : public std::enable_shared_from_this<session>
         _erase_self();
     }
 
-    auto lock_write() { return std::unique_lock{_write_lock}; }
-    auto try_lock_write() { return std::unique_lock{_write_lock, std::try_to_lock}; }
-
     bool pending_kill() const noexcept { return _pending_kill.load(std::memory_order_acquire); }
 
     void _start_();
 
    private:
     void _post(function<void()>&& fn);
+
+    void _lock_hi()
+    {
+        lock_guard _lc_{_write_lock_next};
+        _write_lock_data.lock();
+    }
+
+    void _unlock_hi()
+    {
+        _write_lock_data.unlock();
+    }
+
+    void _lock_lo()
+    {
+        _write_lock_low.lock();
+        _lock_hi();
+    }
+
+    void _unlock_lo()
+    {
+        _unlock_hi();
+        _write_lock_low.unlock();
+    }
 
     void _wakeup_func()
     {
@@ -494,7 +520,8 @@ class session : public std::enable_shared_from_this<session>
 
         static const auto fn_reply
                 = [](decltype(this) self, int msgid, auto&& err, auto&& result) {
-                      lock_guard _lc_{self->_write_lock};
+                      self->_lock_hi();
+                      cleanup_t _guard_{[&] { self->_unlock_hi(); }};
 
                       self->_writer.array_push(4);
                       self->_writer << rpc_type::reply
