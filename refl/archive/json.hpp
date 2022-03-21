@@ -27,48 +27,9 @@
 
 #include "../../streambuf/base64.hxx"
 #include "../../streambuf/view.hxx"
-#include "detail/context_helper.hxx"
+#include "json-writer.hxx"
 
 namespace CPPHEADERS_NS_::archive::json {
-CPPH_DECLARE_EXCEPTION(invalid_key_type, error::writer_exception);
-
-class writer : public archive::if_writer
-{
-   private:
-    detail::write_context_helper _ctx;
-
-   public:
-    int              indent = -1;
-    streambuf::b64_w _base64;
-
-   public:
-    explicit writer(std::streambuf* buf, size_t depth_maybe = 0);
-
-    if_writer& write(nullptr_t a_nullptr) override;
-    if_writer& write(int64_t v) override;
-    if_writer& write(double v) override;
-    if_writer& write(bool v) override;
-    if_writer& write(std::string_view v) override;
-
-    if_writer& binary_push(size_t total) override;
-    if_writer& binary_write_some(const_buffer_view view) override;
-    if_writer& binary_pop() override;
-
-    if_writer& object_push(size_t num_elems) override;
-    if_writer& object_pop() override;
-
-    if_writer& array_push(size_t num_elems) override;
-    if_writer& array_pop() override;
-
-    void       write_key_next() override;
-
-   private:
-    void _on_write();
-    void _append_comma();
-    void _throw_invalid_key_type();
-    void _brk_indent();
-};
-
 class reader : public archive::if_reader
 {
     struct impl;
