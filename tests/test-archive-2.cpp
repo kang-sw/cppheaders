@@ -62,11 +62,12 @@ CPPH_REFL_DECLARE(base_object);
 #include "refl/archive/json.hpp"
 #include "refl/archive/msgpack-reader.hxx"
 #include "refl/archive/msgpack-writer.hxx"
-#include "refl/container/array.hxx"
-#include "refl/container/binary.hxx"
-#include "refl/container/list.hxx"
-#include "refl/container/variant.hxx"
 #include "refl/object.hxx"
+#include "refl/types/array.hxx"
+#include "refl/types/binary.hxx"
+#include "refl/types/chrono.hxx"
+#include "refl/types/list.hxx"
+#include "refl/types/variant.hxx"
 
 using namespace cpph;
 
