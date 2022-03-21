@@ -166,6 +166,12 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
 };
 
 template <typename Ty_>
+array_view(Ty_*, size_t n) -> array_view<Ty_>;
+
+template <typename Range_, typename = decltype(std::size(std::declval<Range_>()))>
+array_view(Range_&&) -> array_view<std::decay_t<decltype(*std::data(std::declval<Range_>()))>>;
+
+template <typename Ty_>
 using const_array_view = array_view<Ty_ const>;
 
 template <typename Ty_>

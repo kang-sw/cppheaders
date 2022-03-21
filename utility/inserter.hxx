@@ -31,20 +31,20 @@
 
 namespace CPPHEADERS_NS_ {
 template <typename InsertFn_>
-class adapt_insert_iterator
+class adapt_inserter
 {
    public:
     InsertFn_ assign;
 
    public:
-    adapt_insert_iterator(InsertFn_ fn) noexcept : assign(std::move(fn)) {}
+    adapt_inserter(InsertFn_ fn) noexcept : assign(std::move(fn)) {}
 
-    adapt_insert_iterator& operator*() noexcept { return *this; };
-    adapt_insert_iterator& operator++(int) noexcept { return *this; }
-    adapt_insert_iterator& operator++() noexcept { return *this; }
+    adapt_inserter& operator*() noexcept { return *this; };
+    adapt_inserter& operator++(int) noexcept { return *this; }
+    adapt_inserter& operator++() noexcept { return *this; }
 
-    template <typename Ty_, class = std::enable_if_t<not std::is_same_v<Ty_, adapt_insert_iterator>>>
-    adapt_insert_iterator& operator=(Ty_&& other)
+    template <typename Ty_, class = std::enable_if_t<not std::is_same_v<Ty_, adapt_inserter>>>
+    adapt_inserter& operator=(Ty_&& other)
     {
         assign(std::forward<Ty_>(other));
         return *this;
@@ -52,9 +52,6 @@ class adapt_insert_iterator
 };
 
 template <typename InsertFn_>
-auto adapt_inserter(InsertFn_&& insert_fn)
-{
-    return adapt_insert_iterator<remove_cvr_t<InsertFn_>>{std::forward<InsertFn_>(insert_fn)};
-}
+adapt_inserter(InsertFn_&&) -> adapt_inserter<InsertFn_>;
 
 }  // namespace CPPHEADERS_NS_
