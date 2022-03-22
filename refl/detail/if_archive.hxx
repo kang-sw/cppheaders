@@ -96,6 +96,10 @@ struct reader_exception : archive_exception
     }
 };
 
+CPPH_DECLARE_EXCEPTION(reader_recoverable_exception, reader_exception);
+CPPH_DECLARE_EXCEPTION(reader_check_failed, reader_recoverable_exception);
+CPPH_DECLARE_EXCEPTION(reader_recoverable_parse_failure, reader_recoverable_exception);
+
 CPPH_DECLARE_EXCEPTION(reader_invalid_context, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_parse_failed, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_read_stream_error, reader_exception);

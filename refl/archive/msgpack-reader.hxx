@@ -28,7 +28,7 @@
 #include "detail/msgpack.hxx"
 
 namespace CPPHEADERS_NS_::archive::msgpack {
-CPPH_DECLARE_EXCEPTION(type_mismatch_exception, error::reader_parse_failed);
+CPPH_DECLARE_EXCEPTION(type_mismatch_exception, error::reader_recoverable_exception);
 
 class reader : public archive::if_reader
 {
@@ -124,8 +124,10 @@ class reader : public archive::if_reader
         char buf[64];
         char buflen = _read_elem_count_str(header);
 
-        if (buflen >= sizeof buf)
-            throw error::reader_parse_failed{this, "too big number"};
+        if (buflen >= sizeof buf) {
+            _discard_n_bytes(buflen);
+            throw error::reader_recoverable_exception{this, "too big number"};
+        }
 
         if (_buf->sgetn(buf, buflen) != buflen)
             throw error::reader_unexpected_end_of_file{this};
@@ -134,8 +136,9 @@ class reader : public archive::if_reader
         char* tail;
         auto  value = strtod(buf, &tail);
 
-        if (tail - buf != buflen)
-            throw error::reader_parse_failed{this, "given string is not a number"};
+        if (tail - buf != buflen) {
+            throw error::reader_recoverable_parse_failure{this, "given string is not a number"};
+        }
 
         return value;
     }
@@ -455,7 +458,7 @@ class reader : public archive::if_reader
                 if (it->type == type)
                     return it - _scope.rbegin() + 1;
                 else
-                    throw error::reader_invalid_context{this, "type mismatch with context!"};
+                    throw error::reader_check_failed{this, "type mismatch with context!"};
             }
 
         throw error::reader_invalid_context{this, "too early scope end call!"};
@@ -481,9 +484,9 @@ class reader : public archive::if_reader
         if (scope.type != scope_t::type_object) { return; }
 
         if ((scope.elems_left & 1) == 0)
-            throw error::reader_invalid_context{this, "context is in key order"};
+            throw error::reader_check_failed{this, "context is in key order"};
         if (scope.reading_key)
-            throw error::reader_invalid_context{this, "reading_key is set"};
+            throw error::reader_check_failed{this, "reading_key is set"};
     }
 
     char _verify_eof(std::streambuf::traits_type::int_type value) const
@@ -500,24 +503,24 @@ class reader : public archive::if_reader
 
         auto scope = &_scope.back();
         if (scope->type == scope_t::type_binary)
-            throw error::reader_invalid_context{this, "binary can not have any subobject!"};
+            throw error::reader_check_failed{this, "binary can not have any subobject!"};
 
         if (scope->type == scope_t::type_object && not(scope->elems_left & 1)) {
             if (not scope->reading_key)
-                throw error::reader_invalid_context{this, "read_key_next is not called!"};
+                throw error::reader_check_failed{this, "read_key_next is not called!"};
             else
                 scope->reading_key = false;
         }
 
         if (scope->elems_left-- == 0)
-            throw error::reader_invalid_context{this, "all elements read"};
+            throw error::reader_check_failed{this, "all elements read"};
     }
 
     scope_t const& _scope_ref() const
     {
         auto size = _scope.size();
         if (size == 0)
-            throw error::reader_invalid_context{(if_reader*)this, "not in any valid scope!"};
+            throw error::reader_check_failed{(if_reader*)this, "not in any valid scope!"};
 
         return _scope[size - 1];
     }
@@ -528,7 +531,7 @@ class reader : public archive::if_reader
     {
         auto scope = &_scope_ref();
         if (scope->type != t)
-            throw error::reader_invalid_context{
+            throw error::reader_check_failed{
                     this, "invalid scope type: was %d - %d expected", scope->type, t};
 
         return scope;
