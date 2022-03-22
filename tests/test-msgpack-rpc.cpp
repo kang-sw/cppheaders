@@ -41,6 +41,9 @@
 using namespace std::literals;
 using namespace cpph;
 
+template <size_t N_>
+class RR;
+
 TEST_CASE("Read socket zero receive", "[asio][.]")
 {
     using namespace asio;

@@ -45,6 +45,17 @@ class basic_resource_pool
    public:
     struct handle_type
     {
+        class deleter
+        {
+            handle_type _handle;
+
+           public:
+            using pointer = Ty_*;
+
+            deleter(handle_type&& h) noexcept : _handle(std::move(h)) {}
+            void operator()(pointer) { _handle.checkin(); }
+        };
+
        public:
         handle_type() noexcept = default;
 
@@ -95,7 +106,22 @@ class basic_resource_pool
             return *_ref;
         }
 
-        std::shared_ptr<Ty_> share() && noexcept;
+        auto share() && noexcept
+        {
+            // Backup pointer before move 'this' reference
+            auto pointer = &**this;
+
+            return std::shared_ptr<Ty_>{
+                    pointer, deleter{std::move(*this)}};
+        }
+
+        auto unique() && noexcept
+        {
+            auto pointer = &**this;
+
+            return std::unique_ptr<Ty_, deleter>{
+                    pointer, deleter{std::move(*this)}};
+        }
 
        private:
         void _assign(handle_type&& other)
@@ -113,17 +139,6 @@ class basic_resource_pool
         typename std::list<Ty_>::iterator _ref{};
     };
 
-    struct shared_handle_deleter
-    {
-        using pointer = Ty_*;
-        handle_type handle;
-
-        void        operator()(pointer)
-        {
-            handle.checkin();
-        }
-    };
-
    public:
     handle_type checkout()
     {
@@ -131,14 +146,11 @@ class basic_resource_pool
         handle_type r;
         r._owner = this;
 
-        if (not _free.empty()) {
-            r._ref = _free.back();
-            _free.pop_back();
-            return r;
-        }
+        if (_free.empty())
+            _fn_construct_back();
 
-        _constructor();
-        r._ref = _pool.begin();
+        r._ref = _free.begin();
+        _pool.splice(_pool.end(), _free, r._ref);
         return r;
     }
 
@@ -151,7 +163,7 @@ class basic_resource_pool
             throw std::invalid_argument{"invalid owner reference"};
 
         lock_guard _{_mut};
-        _free.push_back(h._ref);
+        _free.splice(_free.begin(), _pool, h._ref);
 
         h._owner = {};
         h._ref = {};
@@ -160,24 +172,22 @@ class basic_resource_pool
     void shrink()
     {
         lock_guard _{_mut};
-
-        for (auto it : _free)
-            _pool.erase(it);
+        _free.clear();
     }
 
     //! Check if not any resource is currently checked out.
     bool empty()
     {
         lock_guard _{_mut};
-
-        return _pool.size() == _free.size();
+        return _pool.empty();
     }
 
     basic_resource_pool()
     {
-        _constructor = [this] {
-            _pool.emplace_front();
-        };
+        _fn_construct_back =
+                [this] {
+                    _free.emplace_back();
+                };
     }
 
     ~basic_resource_pool()
@@ -192,34 +202,23 @@ class basic_resource_pool
     template <typename... Args_>
     explicit basic_resource_pool(Args_&&... args)
     {
-        _constructor =
-                [this,
-                 tup_args = std::forward_as_tuple(args...)] {
+        _fn_construct_back =
+                [this, tup_args = std::forward_as_tuple(args...)] {
                     std::apply(
                             [this](auto&&... args) {
-                                _pool.emplace_front(std::forward<decltype(args)>(args)...);
+                                _free.emplace_back(std::forward<decltype(args)>(args)...);
                             },
                             tup_args);
                 };
     }
 
    private:
-    Mutex_                       _mut;
+    Mutex_                    _mut;
 
-    perfkit::function<void()>    _constructor;
-    std::list<Ty_>               _pool;
-    std::vector<buffer_iterator> _free;
+    perfkit::function<void()> _fn_construct_back;
+    std::list<Ty_>            _pool;
+    std::list<Ty_>            _free;
 };
-
-template <typename Ty_, typename Mutex_>
-std::shared_ptr<Ty_> basic_resource_pool<Ty_, Mutex_>::handle_type::share() && noexcept
-{
-    auto ptr = &**this;
-
-    return std::shared_ptr<Ty_>{
-            ptr,
-            shared_handle_deleter{std::move(*this)}};
-}
 
 template <typename Ty_>
 using pool = basic_resource_pool<Ty_, spinlock>;
