@@ -12,6 +12,7 @@ add_executable(
         test-thread.cpp
         test-streambuf.cpp
         test-templates.cpp
+        test-rpc.cpp
         test-archive.cpp
         test-archive-2.cpp
         test-container.cpp
@@ -65,7 +66,7 @@ if (TARGET perfkit::asio)
             ${PROJECT_NAME}
 
             PRIVATE
-            test-msgpack-rpc.cpp
+            test-rpc.cpp
     )
 endif ()
 

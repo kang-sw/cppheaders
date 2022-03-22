@@ -22,18 +22,53 @@
 //
 // project home: https://github.com/perfkitpp
 
-/**
- * Configurations
- */
+#pragma once
+#include <cassert>
+#include <memory>
 
-/**
- * Required sources for compilation
- *
- * DO NOT INCLUDE THIS FILE MORE THAN ONCE!
- */
-#include "refl/archive/__cpph__.inc"
+#include "../__namespace__"
+#include "defs.hxx"
 
-// DO NOT CHANGE THE ORDER!
-// ASSERTION MUST BE PLACED LAST
-#define CPPHEADERS_IMPLEMENT_ASSERTIONS
-#include "assert.hxx"
+namespace CPPHEADERS_NS_::msgpack::rpc {
+
+class request_handle
+{
+    friend class context;
+    std::weak_ptr<detail::session> _wp;
+    int                            _msgid = 0;
+
+   public:
+    operator bool() const noexcept { return _msgid > 0 && not _wp.expired(); }
+
+    //
+    auto errc() const noexcept { return async_rpc_result::type{_msgid}; }
+
+    template <typename Duration_, typename Sptr_ = std::shared_ptr<detail::session>>
+    bool wait(Duration_&& duration) const noexcept
+    {
+        assert(_msgid > 0);
+
+        if (Sptr_ session = _wp.lock())
+            return session->wait_rpc(_msgid, duration);
+        else
+            return false;
+    }
+
+    template <typename Sptr_ = std::shared_ptr<detail::session>>
+    bool abort() const noexcept
+    {
+        assert(_msgid > 0);
+
+        if (Sptr_ session = _wp.lock())
+            return session->abort_rpc(_msgid);
+        else
+            return false;
+    }
+
+    void reset()
+    {
+        _msgid = 0;
+        _wp = {};
+    }
+};
+}  // namespace CPPHEADERS_NS_::msgpack::rpc
