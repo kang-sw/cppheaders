@@ -26,14 +26,66 @@
 
 #pragma once
 #include <memory>
+#include <system_error>
 
 #include "../../__namespace__"
 
 namespace CPPHEADERS_NS_::rpc {
-class basic_context;
+using std::make_shared;
+using std::make_unique;
+using std::shared_ptr;
+using std::unique_ptr;
+using std::weak_ptr;
 
-enum class rpc_status {
+class basic_context;
+class session;
+struct session_profile;
+
+using error_code = std::error_code;
+
+enum class error_type {
+    okay,
+    aborted,
+    timeout,
+    invalid_connection,
 };
+
+class error_category : public std::error_category
+{
+   public:
+    const char* name() const noexcept override
+    {
+        return "RPC error";
+    }
+
+    std::string message(int errc) const override
+    {
+        switch (error_type{errc}) {
+            case error_type::okay: return "No error";
+            case error_type::aborted: return "RPC request aborted";
+            case error_type::timeout: return "RPC synchronous request timeout";
+            case error_type::invalid_connection: return "Disconnected";
+
+            default: return "Unknown error";
+        }
+    }
+
+    static error_category* instance() noexcept
+    {
+        static error_category _cat;
+        return &_cat;
+    }
+};
+
+class system_error : public std::system_error
+{
+    using std::system_error::system_error;
+};
+
+auto make_error(error_type errc)
+{
+    return std::error_code(int(errc), *error_category::instance());
+}
 
 enum class rpc_type {
     request,
@@ -41,15 +93,4 @@ enum class rpc_type {
     reply_okay,
     reply_error
 };
-
-namespace async_rpc_result {
-enum type : int {
-    invalid = 0,
-    error = -1,
-
-    no_active_connection = -10,
-    invalid_parameters = -11,
-    invalid_connection = -12,
-};
-}
 }  // namespace CPPHEADERS_NS_::rpc

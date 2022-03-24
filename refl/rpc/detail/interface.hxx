@@ -26,13 +26,66 @@
 
 #pragma once
 
+#include <memory>
+
+#include "../../../functional.hxx"
 #include "../../__namespace__"
+#include "../../detail/object_core.hxx"
+#include "defs.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-class if_stream_receiver
+using std::shared_ptr;
+using std::unique_ptr;
+using std::weak_ptr;
+
+class if_event_proc
 {
    public:
-    virtual ~if_stream_receiver() = default;
-    virtual void on_receive() noexcept = 0;
+    virtual ~if_event_proc() = default;
+
+    virtual void post_user_event(function<void()>&& fn) { post_system_event(std::move(fn)); }
+    virtual void post_system_event(function<void()>&&) = 0;
 };
+
+class if_session
+{
+   public:
+    virtual ~if_session() = default;
+
+    virtual void on_data_in() = 0;
+};
+
+class if_service_handler
+{
+   public:
+    struct parameter_buffer_type
+    {
+        shared_ptr<if_service_handler>  _self;
+        shared_ptr<void>                _handle;
+
+        array_view<refl::object_view_t> params;
+
+       public:
+        refl::shared_object_ptr invoke(session_profile const& profile) &&
+        {
+            return _self->invoke(profile, std::move(*this));
+        }
+    };
+
+   public:
+    virtual ~if_service_handler() = default;
+
+    /**
+     * Returns parameter buffer of this handler.
+     */
+    virtual auto checkout_parameter_buffer() -> parameter_buffer_type = 0;
+
+   private:
+    /**
+     * Invoke handler with given parameters, and return invocation result.
+     */
+    virtual auto invoke(session_profile const&, parameter_buffer_type&& params)
+            -> refl::shared_object_ptr = 0;
+};
+
 }  // namespace CPPHEADERS_NS_::rpc

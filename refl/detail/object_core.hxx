@@ -42,6 +42,9 @@
 namespace CPPHEADERS_NS_::refl {
 class object_metadata;
 
+using std::shared_ptr;
+using std::weak_ptr;
+
 using object_metadata_t = object_metadata const*;
 using object_metadata_ptr = std::unique_ptr<object_metadata const>;
 using optional_property_metadata = struct property_metadata const*;
@@ -122,26 +125,49 @@ struct object_const_view_t
     auto pair() const noexcept { return std::make_pair(meta, data); }
 };
 
-/**
- * A descriptor for runtime object field entity
- *
- * Manages object lifecycle, etc.
- *
- * TODO: dynamic object manipulation
- */
-struct dynamic_object_ptr
+struct shared_object_ptr
 {
    private:
-    object_metadata_t _meta = {};
-    object_data_t*    _data = {};
+    object_metadata_t         _meta = {};
+    shared_ptr<object_data_t> _data = {};
 
    public:
-    /*  Lifetime Management  */
+    shared_object_ptr() noexcept = default;
+    shared_object_ptr(shared_object_ptr&&) noexcept = default;
+    shared_object_ptr& operator=(shared_object_ptr&&) noexcept = default;
+
+    template <typename Ty_>
+    explicit shared_object_ptr(shared_ptr<Ty_> pointer) noexcept;
+
+    shared_object_ptr(
+            decltype(_meta) a,
+            decltype(_data) b) noexcept
+            : _meta(a), _data(std::move(b)) {}
+
+                        operator object_view_t() noexcept { return view(); }
+                        operator object_const_view_t() const noexcept { return view(); }
+    object_view_t       view() { return {_meta, &*_data}; }
+    object_const_view_t view() const { return {_meta, &*_data}; }
+
+    explicit            operator bool() const noexcept { return !!_data; }
+};
+
+struct weak_object_ptr
+{
+   private:
+    object_metadata_t       _meta = {};
+    weak_ptr<object_data_t> _data = {};
 
    public:
-    auto pair() const noexcept { return std::make_pair(_meta, _data); }
-         operator object_view_t() noexcept { return {_meta, _data}; }
-         operator object_const_view_t() noexcept { return {_meta, _data}; }
+    weak_object_ptr() noexcept = default;
+    weak_object_ptr(weak_object_ptr&&) noexcept = default;
+    weak_object_ptr& operator=(weak_object_ptr&&) noexcept = default;
+
+    template <typename Ty_>
+    explicit weak_object_ptr(weak_ptr<Ty_> pointer);
+
+    auto              expired() const noexcept { return _data.expired(); }
+    shared_object_ptr lock() const noexcept { return shared_object_ptr{_meta, _data.lock()}; }
 };
 
 // alias
@@ -474,12 +500,12 @@ class object_metadata
     /**
      * Create default initialized dynamic object
      */
-    dynamic_object_ptr create_default() const;
+    shared_object_ptr create_default() const;
 
     /**
      * Clone dynamic object from template
      */
-    dynamic_object_ptr clone(object_data_t* parent) const;
+    shared_object_ptr clone(object_data_t* parent) const;
 
    public:
     void _archive_to(archive::if_writer*        strm,
@@ -1103,6 +1129,20 @@ constexpr bool has_object_metadata_initializer_v = false;
 template <typename ValTy_>
 constexpr bool has_object_metadata_initializer_v<
         ValTy_, std::void_t<decltype(initialize_object_metadata(type_tag_v<ValTy_>))>> = true;
+
+template <typename Ty_>
+shared_object_ptr::shared_object_ptr(shared_ptr<Ty_> pointer) noexcept
+        : _meta(get_object_metadata<Ty_>()),
+          _data(std::reinterpret_pointer_cast<object_data_t>(pointer))
+{
+}
+
+template <typename Ty_>
+weak_object_ptr::weak_object_ptr(weak_ptr<Ty_> pointer)
+        : _meta(get_object_metadata<Ty_>()),
+          _data(std::reinterpret_pointer_cast<object_data_t>(pointer))
+{
+}
 
 template <typename Ty_>
 object_view_t::object_view_t(Ty_* p) noexcept : data((object_data_t*)p)

@@ -25,44 +25,29 @@
  ******************************************************************************/
 
 #pragma once
-#include <map>
-#include <string>
+#include <memory>
+#include <streambuf>
 
-#include "../../helper/exception.hxx"
 #include "../__namespace__"
-#include "defs.hxx"
+#include "detail/defs.hxx"
+#include "detail/interface.hxx"
 
-namespace CPPHEADERS_NS_::msgpack::rpc {
-CPPH_DECLARE_EXCEPTION(exception, std::exception);
-CPPH_DECLARE_EXCEPTION(invalid_connection, exception);
-
-//! Exception propagated to RPC client.
-CPPH_DECLARE_EXCEPTION(remote_reply_exception, std::runtime_error);
-
-//!
-class remote_handler_exception : public std::exception
+namespace CPPHEADERS_NS_::rpc {
+class if_connection_streambuf : public std::streambuf
 {
-    std::unique_ptr<void>     _body;
-    refl::object_const_view_t _view;
+   private:
+    friend class session;
+    if_session* _owner;
 
    public:
-    template <typename ArgTy_,
-              typename = std::enable_if_t<
-                      not std::is_same_v<std::decay_t<ArgTy_>, remote_handler_exception>>>
-    explicit remote_handler_exception(ArgTy_&& other)
-    {
-        using value_type = std::decay_t<ArgTy_>;
-        auto ptr = std::make_unique<value_type>(std::forward<ArgTy_>(other));
-        _body = ptr;
-        _view = refl::object_const_view_t{*ptr};
-    }
+    /**
+     *
+     */
+    virtual void async_wait_data() noexcept = 0;
+    virtual void close() noexcept = 0;
 
-    refl::object_const_view_t view() const { return _view; }
+   protected:
+    void on_data_in() noexcept { _owner->on_data_in(); }
 };
 
-namespace detail {
-CPPH_DECLARE_EXCEPTION(rpc_handler_error, exception);
-CPPH_DECLARE_EXCEPTION(rpc_handler_missing_parameter, rpc_handler_error);
-CPPH_DECLARE_EXCEPTION(rpc_handler_fatal_state, rpc_handler_error);
-}  // namespace detail
-}  // namespace CPPHEADERS_NS_::msgpack::rpc
+}  // namespace CPPHEADERS_NS_::rpc

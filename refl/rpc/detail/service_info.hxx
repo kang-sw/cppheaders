@@ -26,237 +26,161 @@
  ******************************************************************************/
 
 #pragma once
+#include <array>
 #include <map>
-#include <set>
 #include <utility>
 
-#include "../../functional.hxx"
-#include "../../helper/exception.hxx"
-#include "../../memory/pool.hxx"
-#include "../__namespace__"
-#include "../archive/msgpack-reader.hxx"
-#include "../archive/msgpack-writer.hxx"
-#include "../detail/object_core.hxx"
+#include "../../../functional.hxx"
+#include "../../../memory/pool.hxx"
+#include "../../__namespace__"
+#include "../../detail/object_core.hxx"
+#include "defs.hxx"
+#include "interface.hxx"
 #include "signature.hxx"
 
-namespace CPPHEADERS_NS_::msgpack::rpc {
-using namespace archive::msgpack;
+namespace CPPHEADERS_NS_::rpc {
+using std::enable_if_t, std::is_convertible_v;
+using std::move, std::forward;
+using std::string, std::string_view, std::tuple;
 
-/**
- * Information of created session.
- */
-struct session_profile
+using service_table_t = std::map<string, unique_ptr<if_service_handler>, std::less<>>;
+
+class service_descriptor
 {
-    std::string peer_name;
-    size_t      total_read = 0;
-    size_t      total_write = 0;
+    friend class service_builder;
+    shared_ptr<service_table_t> _service;
+
+   public:
+    shared_ptr<if_service_handler>
+    find_handler(string_view method_name) const noexcept
+    {
+        if (auto iter = _service->find(method_name); iter != _service->end())
+            return shared_ptr<if_service_handler>{_service, iter->second.get()};
+        else
+            return nullptr;
+    }
 };
 
-using session_profile_view = session_profile const&;
+template <typename RetVal, typename... Params>
+using service_handler_fn = function<RetVal(session_profile const&, RetVal*, Params...)>;
 
-/**
- * Defines service information
- */
-class service_info
+class service_builder
 {
-   public:
-    class if_service_handler
-    {
-        size_t _n_params = 0;
-
-       public:
-        explicit if_service_handler(size_t n_params) noexcept : _n_params(n_params) {}
-        virtual ~if_service_handler() = default;
-
-        //! invoke with given parameters.
-        //! @return error message if invocation failed
-        //! @throw remote_handler_exception
-        virtual void invoke(session_profile const&, reader&, void (*)(void*, refl::object_const_view_t), void*) = 0;
-
-        //! number of parameters
-        size_t num_params() const noexcept { return _n_params; }
-    };
-
-    using handler_table_type = std::map<std::string, std::shared_ptr<if_service_handler>, std::less<>>;
-
-   private:
-    handler_table_type _handlers;
+    shared_ptr<service_table_t> _table;
 
    public:
-    /**
-     * Original signature of serve()
-     */
-    template <typename RetVal_, typename... Params_>
-    service_info& route2(std::string method_name, function<void(session_profile const&, RetVal_*, Params_...)> handler)
+    auto confirm() noexcept
     {
-        struct service_handler : if_service_handler
+        service_descriptor rv;
+        rv._service = std::exchange(_table, nullptr);
+
+        return rv;
+    }
+
+    template <typename RetVal, typename... Params>
+    service_builder& route(
+            string                                  method_name,
+            service_handler_fn<RetVal, Params...>&& handler)
+    {
+        if (not _table) { _table = make_shared<service_table_t>(); }
+
+        class handler_impl_t : public if_service_handler
         {
-            using handler_type = decltype(handler);
-            using return_type = std::conditional_t<std::is_void_v<RetVal_>, nullptr_t, RetVal_>;
-            using tuple_type = std::tuple<std::decay_t<Params_>...>;
+            using parameter_type = tuple<std::decay_t<Params>...>;
+            using param_desc_buffer_type = std::array<refl::object_view_t, sizeof...(Params)>;
 
-           public:
-            handler_type      _handler;
-            pool<tuple_type>  _params;
-            pool<return_type> _rv_pool;
-
-           public:
-            explicit service_handler(handler_type&& h) noexcept
-                    : if_service_handler(sizeof...(Params_)),
-                      _handler(std::move(h)) {}
-
-            void invoke(
-                    session_profile const& session,
-                    reader&                reader,
-                    void (*fn_write)(void*, refl::object_const_view_t),
-                    void* uobj) override
+            struct param_buf_pack_t
             {
-                std::apply(
-                        [&](auto&... params) {
-                            ((reader >> params), ...);
+                parameter_type         params;
+                param_desc_buffer_type view_buffer;
 
-                            pool_ptr<return_type> rval;
-                            if constexpr (std::is_void_v<RetVal_>) {
-                                _handler(session, nullptr, params...);
-                                if (fn_write) { fn_write(uobj, refl::object_const_view_t{nullptr}); }
-                            } else {
-                                rval = _rv_pool.checkout();
-                                _handler(session, &*rval, params...);
-                                if (fn_write) { fn_write(uobj, refl::object_const_view_t{*rval}); }
-                            }
-                        },
-                        *_params.checkout());
+                param_buf_pack_t() noexcept
+                {
+                    auto fn_assign_descriptors
+                            = [this](auto&... arg) {
+                                  size_t n = 0;
+                                  ((view_buffer[n++] = refl::object_view_t{&arg}), ...);
+                              };
+
+                    std::apply(fn_assign_descriptors, params);
+                }
+            };
+
+            weak_ptr<void>         _owner;
+            decltype(handler)      _handler;
+            pool<param_buf_pack_t> _pool_param;
+            pool<RetVal>           _pool_retval;
+
+           public:
+            handler_impl_t(decltype(_owner) owner, decltype(_handler))
+                    : _owner(move(owner)), _handler(move(handler)) {}
+
+            auto checkout_parameter_buffer() -> parameter_buffer_type override
+            {
+                auto data_ptr = _pool_param.checkout().share();
+                auto rv = parameter_buffer_type{};
+                rv._self = shared_ptr<if_service_handler>(_owner, this);
+                rv._handle = data_ptr;
+                rv.params = data_ptr->view_buffer;
+
+                return rv;
+            }
+
+           private:
+            auto invoke(const session_profile& profile, if_service_handler::parameter_buffer_type&& params) -> refl::shared_object_ptr override
+            {
+                auto rv = _pool_retval.checkout();
+                auto param_buf = static_cast<param_buf_pack_t*>(params._handle.get());
+                auto fn_invoke_handler =
+                        [&](auto&... params) {
+                            _handler(&profile, &*rv, params...);
+                        };
+                std::apply(fn_invoke_handler, param_buf->params);
+                return rv.share();
             }
         };
 
-        auto [it, is_new] = _handlers.try_emplace(
-                std::move(method_name),
-                std::make_shared<service_handler>(std::move(handler)));
+        auto [iter, is_new] = _table->try_emplace(
+                move(method_name),
+                std::make_unique<handler_impl_t>(_table, move(handler)));
 
-        if (not is_new)
-            throw std::logic_error{"Method name must not duplicate!"};
-
+        if (not is_new) { throw std::logic_error{"method name duplication: " + method_name}; }
         return *this;
     }
 
-    /**
-     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
-     *  notify, return value of handler will silently be discarded regardless of its return
-     *  type.
-     *
-     * @tparam RetVal_ Must be declared as refl object.
-     * @tparam Params_ Must be declared as refl object.
-     * @param method_name Name of method to serve
-     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
-     */
-    template <typename RetVal_, typename... Params_>
-    service_info& route1(std::string method_name, function<void(RetVal_*, Params_...)> handler)
+    template <typename RetVal, typename... Params,
+              typename Signature = signature_t<RetVal, Params...>>
+    service_builder& route(Signature const&                        signature,
+                           service_handler_fn<RetVal, Params...>&& handler)
     {
-        function<void(session_profile const&, RetVal_*, Params_...)> fn =
-                [_handler = std::move(handler)]  //
-                (auto&&, RetVal_* buffer, auto&&... args) mutable {
-                    if constexpr (std::is_void_v<RetVal_>)
-                        _handler(buffer, std::forward<decltype(args)>(args)...);
-                    else
-                        _handler(buffer, std::forward<decltype(args)>(args)...);
-                };
-
-        this->route2(std::move(method_name), std::move(fn));
-        return *this;
+        return route(signature.name(), move(handler));
     }
 
-    /**
-     * Serve RPC service. Does not distinguish notify/request handler. If client rpc mode was
-     *  notify, return value of handler will silently be discarded regardless of its return
-     *  type.
-     *
-     * @tparam RetVal_ Must be declared as refl object.
-     * @tparam Params_ Must be declared as refl object.
-     * @param method_name Name of method to serve
-     * @param handler RPC handler. Uses cpph::function to accept move-only signatures
-     */
-    template <typename RetVal_, typename... Params_>
-    service_info& route(std::string method_name, function<RetVal_(Params_...)> handler)
+    template <typename RetVal, typename... Params,
+              typename Signature = signature_t<RetVal, Params...>,
+              typename Callable,
+              typename = enable_if_t<not is_convertible_v<Callable, typename Signature::serve_signature_2>>>
+    service_builder& route(Signature const& signature,
+                           Callable&&       handler)
     {
-        function<void(session_profile const&, RetVal_*, Params_...)> fn =
-                [_handler = std::move(handler)]  //
-                (auto&&, RetVal_* buffer, auto&&... args) mutable {
-                    if constexpr (std::is_void_v<RetVal_>)
-                        _handler(std::forward<decltype(args)>(args)...);
-                    else
-                        *buffer = _handler(std::forward<decltype(args)>(args)...);
-                };
+        enum : bool { is_void_return = std::is_void_v<RetVal> };
 
-        this->route2(std::move(method_name), std::move(fn));
-        return *this;
-    }
-
-    //    template <size_t N_, typename Ret_, typename... Params_, typename Callable_>
-    //    service_info& operator()(
-    //            signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-    //            Callable_&& service)
-    //    {
-    //        using iface_t    = std::decay_t<decltype(iface)>;
-    //        using callable_t = std::decay_t<decltype(service)>;
-    //
-    //        std::string name{iface.name()};
-    //
-    //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature, callable_t>)
-    //            return serve(name, typename iface_t::serve_signature{std::forward<Callable_>(service)});
-    //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_1, callable_t>)
-    //            return route1(name, typename iface_t::serve_signature_1{std::forward<Callable_>(service)});
-    //        if constexpr (std::is_constructible_v<typename iface_t::serve_signature_2, callable_t>)
-    //            return route2(name, typename iface_t::serve_signature_2{std::forward<Callable_>(service)});
-    //    }
-
-    template <size_t N_, typename Ret_, typename... Params_,
-              typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>>
-    service_info& route(
-            signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-            typename Signature_::serve_signature_2               func)
-    {
-        return route2(std::string(iface.name()), std::move(func));
-    }
-
-    template <size_t N_, typename Ret_, typename... Params_,
-              typename Signature_ = signature_t<N_, Ret_, std::tuple<Params_...>>,
-              typename Callable_,
-              typename = std::enable_if_t<not std::is_convertible_v<Callable_, typename Signature_::serve_signature_2>>>
-    service_info& route(
-            signature_t<N_, Ret_, std::tuple<Params_...>> const& iface,
-            Callable_&&                                          handler)
-    {
-        typename Signature_::serve_signature_2 fn =
-                [_handler = std::forward<Callable_>(handler)]  //
-                (auto&&, Ret_* buffer, auto&&... args) mutable {
-                    if constexpr (std::is_convertible_v<Callable_, typename Signature_::serve_signature_1>) {
-                        if constexpr (std::is_void_v<Ret_>)
-                            _handler(buffer, std::forward<decltype(args)>(args)...);
+        auto func = [this, handler = forward<Callable>(handler)]  //
+                (auto&&, RetVal* rbuf, auto&&... args) mutable {
+                    if constexpr (std::is_invocable_v<Callable, RetVal*, Params...>) {
+                        handler(rbuf, args...);
+                    } else if constexpr (std::is_invocable_r_v<RetVal, Callable, Params...>) {
+                        if constexpr (is_void_return)
+                            handler(args...);
                         else
-                            _handler(buffer, std::forward<decltype(args)>(args)...);
+                            *rbuf = handler(args...);
                     } else {
-                        if constexpr (std::is_void_v<Ret_>)
-                            _handler(std::forward<decltype(args)>(args)...);
-                        else
-                            *buffer = _handler(std::forward<decltype(args)>(args)...);
+                        RetVal::INVALID_CALLABLE_TYPE();
                     }
                 };
 
-        return route2(std::string(iface.name()), std::move(fn));
+        return route(signature.name(), move(func));
     }
-
-   public:
-    auto const& _services_() const noexcept { return _handlers; }
 };
 
-// inline void pewpew()
-//{
-//     static auto const stub = create_signature<bool(int, double)>("absc");
-//     service_info t;
-//
-//     t(stub, [](int, double) -> bool { return false; });
-//     t(stub, [](bool*, int, double) {});
-//     t(stub, [](auto&&, bool*, int, double) {});
-// }
-
-}  // namespace CPPHEADERS_NS_::msgpack::rpc
+}  // namespace CPPHEADERS_NS_::rpc

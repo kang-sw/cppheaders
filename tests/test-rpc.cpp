@@ -27,4 +27,5 @@
 #include "catch.hpp"
 
 //
-#include "refl/rpc/connection_streambuf_base.hxx"
+#include "refl/rpc/connection.hxx"
+#include "refl/rpc/detail/service_info.hxx"

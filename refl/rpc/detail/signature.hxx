@@ -26,57 +26,15 @@
 
 #pragma once
 #include <array>
+#include <string>
 #include <tuple>
 
-#include "../__namespace__"
-#include "errors.hxx"
+#include "../../../functional.hxx"
+#include "../../__namespace__"
+#include "defs.hxx"
 
-namespace CPPHEADERS_NS_::msgpack::rpc {
-
-inline std::string_view to_string(rpc_status s)
-{
-    static std::map<rpc_status, std::string const, std::less<>> etos{
-            {rpc_status::okay, "OKAY"},
-            {rpc_status::waiting, "WAITING"},
-            {rpc_status::aborted, "ABORTED"},
-            {rpc_status::timeout, "ERROR_TIMEOUT"},
-            {rpc_status::unknown_error, "UNKNOWN"},
-            {rpc_status::internal_error, "ERROR_INTERNAL"},
-            {rpc_status::invalid_parameter, "ERROR_INVALID_PARAMETER"},
-            {rpc_status::invalid_return_type, "ERROR_INVALID_RETURN_TYPE"},
-            {rpc_status::method_not_exist, "ERROR_METHOD_NOT_EXIST"},
-    };
-
-    auto p = find_ptr(etos, s);
-    return p ? std::string_view(p->second) : std::string_view("UNKNOWN");
-}
-
-inline auto from_string(std::string_view s)
-{
-    static std::map<std::string, rpc_status, std::less<>> stoe{
-            {"OKAY", rpc_status::okay},
-            {"WAITING", rpc_status::waiting},
-            {"ERROR_TIMEOUT", rpc_status::timeout},
-            {"ABORTED", rpc_status::aborted},
-            {"UNKOWN", rpc_status::unknown_error},
-            {"ERROR_INTERNAL", rpc_status::internal_error},
-            {"ERROR_INVALID_PARAMETER", rpc_status::invalid_parameter},
-            {"ERROR_INVALID_RETURN_TYPE", rpc_status::invalid_return_type},
-            {"ERROR_METHOD_NOT_EXIST", rpc_status::method_not_exist},
-    };
-
-    auto p = find_ptr(stoe, s);
-    return p ? p->second : rpc_status::unknown_error;
-}
-
-struct session_profile;
-
-struct rpc_error : std::runtime_error
-{
-    rpc_status error_code;
-    explicit rpc_error(rpc_status v) noexcept
-            : runtime_error(std::string(to_string(v))), error_code(v) {}
-};
+namespace CPPHEADERS_NS_::rpc {
+using std::string, std::string_view;
 
 template <typename Signature_>
 struct _function_decompose;
@@ -88,29 +46,25 @@ struct _function_decompose<Ret_(Args_...)>
     using parameter_tuple_type = std::tuple<Args_...>;
 };
 
-template <size_t, typename, typename>
+template <typename, typename>
 class signature_t;
 
-template <size_t N_, typename RetVal_, typename... Params_>
-class signature_t<N_, RetVal_, std::tuple<Params_...>>
+template <typename RetVal_, typename... Params_>
+class signature_t<RetVal_, std::tuple<Params_...>>
 {
    public:
     using return_type = RetVal_;
     using rpc_signature = function<void(RetVal_*, Params_...)>;
     using serve_signature = function<RetVal_(Params_&...)>;
     using serve_signature_1 = function<void(RetVal_*, Params_&...)>;
-    using serve_signature_2 = function<void(session_profile const&, RetVal_*, Params_&...)>;
+    using serve_signature_2 = function<void(struct session_profile const&, RetVal_*, Params_&...)>;
 
    private:
-    char _method_name[N_]{};
+    string const _method_name;
 
    public:
-    explicit signature_t(char const (&name)[N_]) noexcept
-    {
-        std::copy_n(name, N_, _method_name);
-    }
-
-    std::string_view name() const noexcept { return std::string_view(_method_name, N_ - 1); }
+    explicit signature_t(string name) noexcept : _method_name(std::move(name)) {}
+    string const& name() const noexcept { return _method_name; }
 
    public:
     template <class RpcContext_>
@@ -120,15 +74,14 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
         RpcContext_* const       _rpc;
 
        public:
-        rpc_status rpc(return_type* ret, Params_ const&... args) const
+        template <typename Timeout_>
+        return_type rpc(Params_ const&... args, Timeout_ timeout) const
         {
-            return _rpc->rpc(ret, _host->name(), args...);
-        }
+            return_type ret;
+            error_type  errc = _rpc->rpc(&ret, _host->name(), timeout, args...);
+            if (errc != error_type::okay) { throw system_error{make_error(errc)}; }
 
-        template <typename Duration_>
-        rpc_status rpc(return_type* ret, Params_ const&... args, Duration_&& timeout) const
-        {
-            return _rpc->rpc(ret, _host->name(), timeout, args...);
+            return ret;
         }
 
         template <typename CompletionContext_>
@@ -137,6 +90,14 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
             return _rpc->async_rpc(
                     ret, _host->name(),
                     std::forward<CompletionContext_>(complete_handler),
+                    args...);
+        }
+
+        auto async_rpc(return_type* ret, Params_ const&... args) const
+        {
+            return _rpc->async_rpc(
+                    ret, _host->name(),
+                    [](auto) {},
                     args...);
         }
 
@@ -157,28 +118,15 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
                     args...);
         }
 
-        auto async_rpc(return_type* ret, Params_ const&... args) const
+        void notify(Params_ const&... args) const
         {
-            return _rpc->async_rpc(
-                    ret, _host->name(),
-                    [](auto) {},
-                    args...);
-        }
-
-        void notify_one(Params_ const&... args) const
-        {
-            _rpc->notify_one(_host->name(), args...);
-        }
-
-        size_t notify_all(Params_ const&... args) const
-        {
-            return _rpc->notify_all(_host->name(), args...);
+            _rpc->notify(_host->name(), args...);
         }
 
         template <typename Qualify_>
-        size_t notify_all(Params_ const&... args, Qualify_&& qualify_function) const
+        size_t notify(Params_ const&... args, Qualify_&& qualify_function) const
         {
-            return _rpc->notify_all(_host->name(), std::forward<Qualify_>(qualify_function), args...);
+            return _rpc->notify(_host->name(), std::forward<Qualify_>(qualify_function), args...);
         }
     };
 
@@ -189,13 +137,13 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
     }
 };
 
-template <typename Signature_, size_t N_>
-constexpr auto create_signature(char const (&name)[N_])
+template <typename Signature_>
+auto create_signature(string name)
 {
     using decomposed = _function_decompose<Signature_>;
     using return_type = typename decomposed::return_type;
     using parameter_type = typename decomposed::parameter_tuple_type;
 
-    return signature_t<N_, return_type, parameter_type>{name};
+    return signature_t<return_type, parameter_type>{name};
 }
-}  // namespace CPPHEADERS_NS_::msgpack::rpc
+}  // namespace CPPHEADERS_NS_::rpc

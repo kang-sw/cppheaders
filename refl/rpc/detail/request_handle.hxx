@@ -26,49 +26,52 @@
 #include <cassert>
 #include <memory>
 
-#include "../__namespace__"
+#include "../../__namespace__"
 #include "defs.hxx"
 
-namespace CPPHEADERS_NS_::msgpack::rpc {
+namespace CPPHEADERS_NS_::rpc {
 
 class request_handle
 {
     friend class context;
-    std::weak_ptr<detail::session> _wp;
-    int                            _msgid = 0;
+    std::weak_ptr<session> _wp;
+    int                    _msgid_or_negative_error = 0;
 
    public:
-    operator bool() const noexcept { return _msgid > 0 && not _wp.expired(); }
+    operator bool() const noexcept { return _msgid_or_negative_error > 0 && not _wp.expired(); }
 
     //
-    auto errc() const noexcept { return async_rpc_result::type{_msgid}; }
+    auto errc() const noexcept
+    {
+        return error_type{_msgid_or_negative_error < 0 ? -_msgid_or_negative_error : 0};
+    }
 
-    template <typename Duration_, typename Sptr_ = std::shared_ptr<detail::session>>
+    template <typename Duration_, typename Sptr_ = std::shared_ptr<session>>
     bool wait(Duration_&& duration) const noexcept
     {
-        assert(_msgid > 0);
+        assert(_msgid_or_negative_error > 0);
 
         if (Sptr_ session = _wp.lock())
-            return session->wait_rpc(_msgid, duration);
+            return session->wait_rpc(_msgid_or_negative_error, duration);
         else
             return false;
     }
 
-    template <typename Sptr_ = std::shared_ptr<detail::session>>
+    template <typename Sptr_ = std::shared_ptr<session>>
     bool abort() const noexcept
     {
-        assert(_msgid > 0);
+        assert(_msgid_or_negative_error > 0);
 
         if (Sptr_ session = _wp.lock())
-            return session->abort_rpc(_msgid);
+            return session->abort_rpc(_msgid_or_negative_error);
         else
             return false;
     }
 
     void reset()
     {
-        _msgid = 0;
+        _msgid_or_negative_error = 0;
         _wp = {};
     }
 };
-}  // namespace CPPHEADERS_NS_::msgpack::rpc
+}  // namespace CPPHEADERS_NS_::rpc
