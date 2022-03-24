@@ -1,29 +1,26 @@
-
-/*******************************************************************************
- * MIT License
- *
- * Copyright (c) 2022. Seungwoo Kang
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * project home: https://github.com/perfkitpp
- ******************************************************************************/
+// MIT License
+//
+// Copyright (c) 2021-2022. Seungwoo Kang
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+// project home: https://github.com/perfkitpp
 
 #pragma once
 #include <array>
@@ -36,30 +33,10 @@
 #include "../../detail/object_core.hxx"
 #include "defs.hxx"
 #include "interface.hxx"
+#include "service.hxx"
 #include "signature.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-using std::enable_if_t, std::is_convertible_v;
-using std::move, std::forward;
-using std::string, std::string_view, std::tuple;
-
-using service_table_t = std::map<string, unique_ptr<if_service_handler>, std::less<>>;
-
-class service_descriptor
-{
-    friend class service_builder;
-    shared_ptr<service_table_t> _service;
-
-   public:
-    shared_ptr<if_service_handler>
-    find_handler(string_view method_name) const noexcept
-    {
-        if (auto iter = _service->find(method_name); iter != _service->end())
-            return shared_ptr<if_service_handler>{_service, iter->second.get()};
-        else
-            return nullptr;
-    }
-};
 
 template <typename RetVal, typename... Params>
 using service_handler_fn = function<RetVal(session_profile const&, RetVal*, Params...)>;
@@ -71,7 +48,7 @@ class service_builder
    public:
     auto confirm() noexcept
     {
-        service_descriptor rv;
+        service rv;
         rv._service = std::exchange(_table, nullptr);
 
         return rv;
@@ -115,10 +92,10 @@ class service_builder
             handler_impl_t(decltype(_owner) owner, decltype(_handler))
                     : _owner(move(owner)), _handler(move(handler)) {}
 
-            auto checkout_parameter_buffer() -> parameter_buffer_type override
+            auto checkout_parameter_buffer() -> handler_package_type override
             {
                 auto data_ptr = _pool_param.checkout().share();
-                auto rv = parameter_buffer_type{};
+                auto rv = handler_package_type{};
                 rv._self = shared_ptr<if_service_handler>(_owner, this);
                 rv._handle = data_ptr;
                 rv.params = data_ptr->view_buffer;
@@ -127,7 +104,7 @@ class service_builder
             }
 
            private:
-            auto invoke(const session_profile& profile, if_service_handler::parameter_buffer_type&& params) -> refl::shared_object_ptr override
+            auto invoke(const session_profile& profile, if_service_handler::handler_package_type&& params) -> refl::shared_object_ptr override
             {
                 auto rv = _pool_retval.checkout();
                 auto param_buf = static_cast<param_buf_pack_t*>(params._handle.get());

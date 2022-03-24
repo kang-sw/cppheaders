@@ -23,4 +23,5 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "detail/connection.hxx"
+#include "detail/protocol_stream.hxx"
+#include "detail/remote_procedure_message_proxy.hxx"

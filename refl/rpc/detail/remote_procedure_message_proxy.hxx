@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * MIT License
  *
@@ -25,72 +26,70 @@
  ******************************************************************************/
 
 #pragma once
+#include <map>
+#include <optional>
 
-#include <memory>
-
-#include "../../../functional.hxx"
 #include "../../__namespace__"
-#include "../../detail/object_core.hxx"
-#include "defs.hxx"
+#include "interface.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-using std::shared_ptr;
-using std::unique_ptr;
-using std::weak_ptr;
-
-class remote_procedure_message_proxy;
-
-class if_event_proc
+struct packed_service_handler
 {
-   public:
-    virtual ~if_event_proc() = default;
-
-    virtual void post_rpc_completion(function<void()>&& fn) { post_handler_callback(std::move(fn)); }
-    virtual void post_handler_callback(function<void()>&&) = 0;
-};
-
-class if_session
-{
-    friend class if_connection_streambuf;
-
-   public:
-    virtual ~if_session() = default;
+    friend class remote_procedure_message_proxy;
 
    private:
-    virtual void on_data_wait_complete() = 0;
+    if_service_handler::handler_package_type _buf;
+
+   public:
+    auto parameter_buffer() const noexcept { return _buf.params; }
 };
 
-class if_service_handler
+class remote_procedure_message_proxy
 {
-   public:
-    struct handler_package_type
-    {
-        shared_ptr<if_service_handler>  _self;
-        shared_ptr<void>                _handle;
+    friend class session;
 
-        array_view<refl::object_view_t> params;
-
-       public:
-        refl::shared_object_ptr invoke(session_profile const& profile) &&
-        {
-            return _self->invoke(profile, std::move(*this));
-        }
+    enum class proxy_type {
+        none,
+        request,
+        notify,
+        reply_okay,
+        reply_error
     };
 
-   public:
-    virtual ~if_service_handler() = default;
-
-    /**
-     * Returns parameter buffer of this handler.
-     */
-    virtual auto checkout_parameter_buffer() -> handler_package_type = 0;
-
    private:
+    service*       _svc = {};
+    if_event_proc* _procedure = {};
+
+    proxy_type     _type = proxy_type::none;
+    int            _rpc_msgid = 0;
+
+   public:
     /**
-     * Invoke handler with given parameters, and return invocation result.
+     * Find service handler with method name.
+     *
+     * @return empty optional if method not found.
      */
-    virtual auto invoke(session_profile const&, handler_package_type&& params)
-            -> refl::shared_object_ptr = 0;
+    std::optional<packed_service_handler> find_handler(string_view method_name);
+
+    /**
+     * Post notify handler to event procedure
+     */
+    void post_notify_handler(packed_service_handler&& deserialized);
+
+    /**
+     * Post RPC handler to event procedure
+     */
+    void post_rpc_handler(int msgid, packed_service_handler&& deserialized);
+
+    /**
+     * Retrieves result buffer of waiting RPC
+     */
+    refl::object_view_t find_reply_buffer(int msgid);
+
+    /**
+     * Set reply as error, and get error buffer
+     */
+    string* set_reply_as_error(int msgid);
 };
 
 }  // namespace CPPHEADERS_NS_::rpc

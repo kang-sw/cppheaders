@@ -23,4 +23,38 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "detail/connection.hxx"
+#include <memory>
+#include <streambuf>
+
+#include "../../__namespace__"
+#include "defs.hxx"
+#include "interface.hxx"
+
+namespace CPPHEADERS_NS_::rpc {
+class if_connection_streambuf : public std::streambuf
+{
+  private:
+   friend class session;
+   if_session* _owner;
+
+  public:
+   /**
+    * Initialize this connection. Must not throw.
+    */
+   virtual void initialize() noexcept = 0;
+
+   /**
+    * start waiting for new data
+    */
+   virtual void async_wait_data() noexcept = 0;
+
+   /**
+    *
+    */
+   virtual void close() noexcept = 0;
+
+  protected:
+   void on_data_in() noexcept { _owner->on_data_wait_complete(); }
+};
+
+}  // namespace CPPHEADERS_NS_::rpc

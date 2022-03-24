@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * MIT License
  *
@@ -24,13 +25,35 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
-#include "catch.hpp"
+#pragma once
+#include <map>
 
-//
-#include "refl/rpc/connection.hxx"
-#include "refl/rpc/detail/protocol_stream.hxx"
-#include "refl/rpc/detail/service.hxx"
-#include "refl/rpc/detail/service_builder.hxx"
-#include "refl/rpc/detail/session.hxx"
-#include "refl/rpc/protocol.hxx"
-#include "refl/rpc/service.hxx"
+#include "../../__namespace__"
+#include "defs.hxx"
+#include "interface.hxx"
+#include "signature.hxx"
+
+namespace CPPHEADERS_NS_::rpc {
+using std::enable_if_t, std::is_convertible_v;
+using std::move, std::forward;
+using std::string, std::string_view, std::tuple;
+
+using service_table_t
+        = std::map<string, unique_ptr<if_service_handler>, std::less<>>;
+
+class service
+{
+    friend class service_builder;
+    shared_ptr<service_table_t> _service;
+
+   public:
+    shared_ptr<if_service_handler>
+    find_handler(string_view method_name) const noexcept
+    {
+        if (auto iter = _service->find(method_name); iter != _service->end())
+            return shared_ptr<if_service_handler>{_service, iter->second.get()};
+        else
+            return nullptr;
+    }
+};
+}  // namespace CPPHEADERS_NS_::rpc
