@@ -83,12 +83,14 @@ class root_pipe
 class pipe_base : std::enable_shared_from_this<pipe_base>
 {
     set<weak_ptr<pipe_base>, std::owner_less<>> _inputs;
-    std::type_info const*                       _shared_type_id;
+
+    //
+    std::type_info const* _shared_type_id;
+    std::mutex            _inputs_lock;
+    std::mutex            _procedure_lock;
 
     //
     shared_ptr<pipe_sequence_context const> _current_fence;  // immutable while in procedure
-    std::mutex                              _inputs_lock;
-    std::mutex                              _procedure_lock;
 
     //
     size_t _next_fence_id = 0;
@@ -101,20 +103,20 @@ class pipe_base : std::enable_shared_from_this<pipe_base>
    public:
     void reset_input() { _inputs.clear(); }
 
-    void add_input(shared_ptr<pipe_base> ptr)
+    void add_input(const shared_ptr<pipe_base>& ptr)
     {
-        if (ptr->_shared_type_id != _shared_type_id)
-            throw std::logic_error{"Shared data type is not compatible!"};
+        assert(ptr);
+        assert(ptr->_shared_type_id == _shared_type_id && "Shared data type must be compatible");
 
         lock_guard lc_{_inputs_lock};
-        _inputs.insert(std::move(ptr));
+        _inputs.insert(ptr);
     }
 
    protected:
     bool _check_fence_(detail::pipe_base* caller)
     {
-        if (not contains(_inputs, caller->weak_from_this()))
-            throw std::logic_error{"Input is not set!"};
+        assert(caller);
+        assert(contains(_inputs, caller->weak_from_this()));
 
         auto const& caller_fence = caller->_current_fence;
 
@@ -131,8 +133,9 @@ class pipe_base : std::enable_shared_from_this<pipe_base>
 
     bool _try_post_procedure_(detail::pipe_base* caller)
     {
-        // validate once more, fence could be invalidated
         auto const& caller_fence = caller->_current_fence;
+
+        // validate once more, next fence could be invalidated during waiting
         if (caller_fence->id < _next_fence_id)
             return false;
 
@@ -150,6 +153,24 @@ class pipe_base : std::enable_shared_from_this<pipe_base>
         default_singleton<thread_pool>().post(std::move(fn));
 
         return true;
+    }
+
+    void _post_procedure_as_root_(shared_ptr<void> shared_data)
+    {
+        std::unique_lock lc_{_procedure_lock};
+
+        assert(_inputs.empty());
+        assert(not _current_fence);
+
+        auto fence = std::make_shared<pipe_sequence_context>();
+        fence->id = ++_next_fence_id;
+        fence->shared_data = std::move(shared_data);
+
+        _current_fence = std::move(fence);
+        _swap_value_buffer();
+
+        auto fn = bind_front_weak(weak_from_this(), &pipe_base::_procedure_, this, std::move(lc_));
+        default_singleton<thread_pool>().post(std::move(fn));
     }
 
     void _wait_procedure_()
@@ -174,7 +195,7 @@ class pipe_base : std::enable_shared_from_this<pipe_base>
         _invoke_procedure_();
 
         // Clear current fence
-        _current_fence = {};
+        _current_fence.reset();
     }
 
     virtual void _swap_value_buffer() = 0;
@@ -185,7 +206,6 @@ class pipe_base : std::enable_shared_from_this<pipe_base>
 };
 }  // namespace detail
 
-
 template <typename InputType, typename SharedDataType>
 class pipe : protected detail::pipe_base
 {
@@ -195,19 +215,14 @@ class pipe : protected detail::pipe_base
    public:
     pipe() : pipe_base(&typeid(SharedDataType)) {}
 
+   private:
     /**
      * Pipe class have to make call to next pipe input before exit procedure
      * @param input
      */
     virtual void procedure(InputType& input, SharedDataType& shared) = 0;
 
-   protected:
-    /**
-     * Make call to
-     * @tparam Callable
-     * @param caller
-     * @param set_param
-     */
+   public:
     template <typename Callable>
     void commit(detail::pipe_base* caller, Callable&& set_param)
     {
@@ -227,13 +242,20 @@ class pipe : protected detail::pipe_base
         _try_post_procedure_(caller);  // on successful post,
     }
 
+    template <typename Callable>
+    void commit_to_root(Callable&& set_param)
+    {
+        set_param(_buf[_bufidx ^ 1]);
+        _post_procedure_as_root_(std::make_shared<SharedDataType>());
+    }
+
    private:
-    void _swap_value_buffer() override
+    void _swap_value_buffer() final
     {
         _bufidx ^= 1;
     }
 
-    void _invoke_procedure_() override
+    void _invoke_procedure_() final
     {
         procedure(_buf[_bufidx], *(SharedDataType*)_shared_data_());
     }
