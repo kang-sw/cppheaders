@@ -168,7 +168,7 @@ class event_wait
                       std::forward<TimePoint_>(time_point),
                       std::forward<Predicate_>(predicate));
 
-        return b ? lc : ulock_type{};
+        return b ? std::move(lc) : ulock_type{};
     }
 
     template <typename TimePoint_>
