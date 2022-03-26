@@ -29,6 +29,7 @@
 
 #include "../__namespace__"
 #include "../algorithm/std.hxx"
+#include "../utility/cleanup.hxx"
 #include "../utility/singleton.hxx"
 #include "event_wait.hxx"
 #include "locked.hxx"
@@ -100,8 +101,11 @@ class pipe_base : std::enable_shared_from_this<pipe_base>
    public:
     void reset_input() { _inputs.clear(); }
 
-    void add_input(weak_ptr<pipe_base> ptr)
+    void add_input(shared_ptr<pipe_base> ptr)
     {
+        if (ptr->_shared_type_id != _shared_type_id)
+            throw std::logic_error{"Shared data type is not compatible!"};
+
         lock_guard lc_{_inputs_lock};
         _inputs.insert(std::move(ptr));
     }
@@ -112,30 +116,45 @@ class pipe_base : std::enable_shared_from_this<pipe_base>
         if (not contains(_inputs, caller->weak_from_this()))
             throw std::logic_error{"Input is not set!"};
 
-        auto const& current_fence = caller->_current_fence;
+        auto const& caller_fence = caller->_current_fence;
 
-        if (current_fence->id < _next_fence_id)
+        if (caller_fence->id < _next_fence_id)
             return false;  // This input is already discarded
 
-        if (current_fence->id > _next_fence_id) {
-            _next_fence_id = current_fence->id;
+        if (caller_fence->id > _next_fence_id) {
+            _next_fence_id = caller_fence->id;
             _num_input_left = _inputs.size();
         }
 
         return true;
     }
 
-    void _post_(detail::pipe_base* caller)
+    bool _try_post_procedure_(detail::pipe_base* caller)
     {
+        // validate once more, fence could be invalidated
+        auto const& caller_fence = caller->_current_fence;
+        if (caller_fence->id < _next_fence_id)
+            return false;
+
         if (--_num_input_left > 0)
-            return;  // do nothing.
+            return false;  // do nothing.
 
         // wait until any active procedure finishes
-        lock_guard lc_{_procedure_lock};
+        std::unique_lock lc_{_procedure_lock};
 
         // post procedure
-        auto fn = bind_front_weak(weak_from_this(), &pipe_base::_procedure_, this);
+        _current_fence = caller->_current_fence;
+        _swap_value_buffer();
+
+        auto fn = bind_front_weak(weak_from_this(), &pipe_base::_procedure_, this, std::move(lc_));
         default_singleton<thread_pool>().post(std::move(fn));
+
+        return true;
+    }
+
+    void _wait_procedure_()
+    {
+        lock_guard lc_{_procedure_lock};
     }
 
     auto _input_guard_()
@@ -143,22 +162,29 @@ class pipe_base : std::enable_shared_from_this<pipe_base>
         return std::unique_lock{_inputs_lock};
     }
 
-   private:
-    void _procedure_()
+    void* _shared_data_()
     {
-        // procedure wait lock
-        lock_guard lc_{_procedure_lock};
-
+        return _current_fence->shared_data.get();
     }
+
+   private:
+    void _procedure_(std::unique_lock<std::mutex>)
+    {
+        // Invoke procedure
+        _invoke_procedure_();
+
+        // Clear current fence
+        _current_fence = {};
+    }
+
+    virtual void _swap_value_buffer() = 0;
+    virtual void _invoke_procedure_() = 0;
 
    public:
     void _verify_called_inside_procedure_() {}
 };
 }  // namespace detail
 
-class root_pipe_manip
-{
-};
 
 template <typename InputType, typename SharedDataType>
 class pipe : protected detail::pipe_base
@@ -167,6 +193,8 @@ class pipe : protected detail::pipe_base
     int       _bufidx = 0;
 
    public:
+    pipe() : pipe_base(&typeid(SharedDataType)) {}
+
     /**
      * Pipe class have to make call to next pipe input before exit procedure
      * @param input
@@ -185,13 +213,29 @@ class pipe : protected detail::pipe_base
     {
         caller->_verify_called_inside_procedure_();
 
-        auto _lock_ = this->_input_guard_();
+        auto lock = this->_input_guard_();
         if (not _check_fence_(caller))
             return;
 
         set_param(_buf[_bufidx ^ 1]);
-        _post_(caller);
-        _buf ^= _bufidx;
+
+        // Wait for all procedure finish
+        lock.unlock();
+        _wait_procedure_();
+
+        lock.lock();
+        _try_post_procedure_(caller);  // on successful post,
+    }
+
+   private:
+    void _swap_value_buffer() override
+    {
+        _bufidx ^= 1;
+    }
+
+    void _invoke_procedure_() override
+    {
+        procedure(_buf[_bufidx], *(SharedDataType*)_shared_data_());
     }
 };
 }  // namespace CPPHEADERS_NS_::pipe
