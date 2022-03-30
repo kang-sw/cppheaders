@@ -16,7 +16,6 @@ add_executable(
         test-archive.cpp
         test-archive-2.cpp
         test-container.cpp
-        test-pipe.cpp
 )
 
 
