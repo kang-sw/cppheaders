@@ -46,6 +46,18 @@ class service
     friend class service_builder;
     shared_ptr<service_table_t const> _service;
 
+   private:
+    service() noexcept
+    {
+        (void)0;
+    }
+
+   public:
+    service(service const&) noexcept = default;
+    service& operator=(service const&) noexcept = default;
+    service(service&&) noexcept = default;
+    service& operator=(service&&) noexcept = default;
+
    public:
     static inline service empty_service()
     {
@@ -66,6 +78,11 @@ class service
             return shared_ptr<if_service_handler>{_service, iter->second.get()};
         else
             return nullptr;
+    }
+
+    operator bool() const noexcept
+    {
+        return !!_service;
     }
 };
 }  // namespace CPPHEADERS_NS_::rpc

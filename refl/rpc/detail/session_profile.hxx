@@ -32,12 +32,14 @@ namespace CPPHEADERS_NS_::rpc {
  */
 struct session_profile
 {
-    size_t           unique_id = 0;
-    size_t           total_write = 0;
-    size_t           total_read = 0;
+    weak_ptr<session> w_self;
 
-    std::string      peer_name;
+    size_t            local_id = 0;
+    size_t            total_write = 0;
+    size_t            total_read = 0;
 
-    shared_ptr<void> user_data;
+    std::string_view  peer_name;
+
+    shared_ptr<void>  user_data;
 };
 }  // namespace CPPHEADERS_NS_::rpc

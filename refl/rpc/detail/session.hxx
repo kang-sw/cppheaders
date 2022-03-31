@@ -37,16 +37,23 @@
 namespace CPPHEADERS_NS_::rpc {
 using session_ptr = shared_ptr<class session>;
 
+template <int>
+class basic_session_builder;
+
 class session : public if_session, public std::enable_shared_from_this<session>
 {
+    template <int>
+    friend class basic_session_builder;
+
+   public:
+    using builder = basic_session_builder<0>;
+
+   private:
     // Reference to associated event procedure
     shared_ptr<if_event_proc> _event_proc;
 
     // Session monitor
     shared_ptr<if_session_monitor> _monitor;
-
-    // Registered user data
-    shared_ptr<void> _user_data;
 
     // Owning connection
     unique_ptr<if_connection_streambuf> _conn;
@@ -55,9 +62,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
     unique_ptr<if_protocol_stream> _protocol;
 
     // Service description
-    service _svc;
+    service _service = service::empty_service();
 
-    // I/O Lock
+    // I/O Lock. Only protects stream access
     std::mutex _mtx_io;
 
     // Check if this session is alive.
@@ -78,7 +85,13 @@ class session : public if_session, public std::enable_shared_from_this<session>
 #endif
 
    private:
-    session() noexcept = default;
+    /**
+     * Creating empty session outside of builder is basically prohibited
+     */
+    session() noexcept
+    {
+        (void)0;
+    };
 
    public:
     /**
@@ -116,7 +129,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
         remote_procedure_message_proxy proxy;
         proxy._procedure = &*_event_proc;
-        proxy._svc = &_svc;
+        proxy._svc = &_service;
 
         {
             lock_guard _lc_{_mtx_io};
@@ -143,46 +156,28 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _conn->async_wait_data();
     }
 
-   public:
-    template <int SlotValue = 0>
-    class builder
+   private:
+    void _initialize()
     {
-        enum slot_flags {
-            slot_event_proc,
-            slot_connection,
-            slot_protocol,
+        // Unique ID generator for local scope
+        // TODO: is UUID based world-wide id required?
+        static std::atomic_size_t _idgen = 0;
 
-            opt_slot_user_data,
-            opt_slot_monitor,
-            opt_slot_service,
-        };
+        // Fill basic profile info
+        _profile.w_self = weak_from_this();
+        _profile.local_id = ++_idgen;
+        _profile.peer_name = _conn->peer_name;
 
-       private:
-        shared_ptr<session> _session;
+        // Initialize protocol with given client
+        _protocol->initialize(&*_conn);
 
-       private:
-        template <slot_flags... Values,
-                  typename = std::enable_if_t<not(SlotValue & ((1 << Values) | ...))>>
-        auto& _make_ref() noexcept
-        {
-            return (builder<((SlotValue | (1 << Values)) | ...)>&)*this;
-        }
+        // Notify client that monitoring has begun
+        _monitor->on_session_created(&_profile);
 
-       public:
-        auto& user_data(shared_ptr<void> ptr)
-        {
-            return _make_ref<opt_slot_user_data>();
-        }
-
-        // TODO
-
-        auto build()
-        {
-            static_assert(SlotValue & (1 << slot_event_proc));
-            static_assert(SlotValue & (1 << slot_connection));
-            static_assert(SlotValue & (1 << slot_protocol));
-            return std::move(_session);
-        }
-    };
+        // Start initial receive
+        _waiting.store(true);
+        _conn->_wowner = weak_from_this();
+        _conn->async_wait_data();
+    }
 };
 }  // namespace CPPHEADERS_NS_::rpc

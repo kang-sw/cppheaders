@@ -33,12 +33,13 @@
 #include "refl/rpc/detail/service.hxx"
 #include "refl/rpc/detail/service_builder.hxx"
 #include "refl/rpc/detail/session.hxx"
+#include "refl/rpc/detail/session_builder.hxx"
 #include "refl/rpc/protocol.hxx"
 #include "refl/rpc/service.hxx"
 
 using namespace cpph;
 
-TEST_CASE("Can compile modules", "[rpc]")
+TEST_CASE("Can compile modules", "[rpc][.]")
 {
     auto sig1 = rpc::create_signature<int(int, bool)>("hello");
     auto sig2 = rpc::create_signature<int(int, bool, std::string)>("hello");
@@ -56,4 +57,57 @@ TEST_CASE("Can compile modules", "[rpc]")
 
     decltype(sig3)::serve_signature_0 srr = [](double&) -> double { return 0; };
     decltype(sig1)::return_type       r;
+
+    class proto : public rpc::if_protocol_stream
+    {
+        rpc::protocol_stream_state initialize(rpc::if_connection_streambuf* streambuf) override
+        {
+            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
+        }
+        rpc::protocol_stream_state handle_single_message(rpc::remote_procedure_message_proxy& proxy) noexcept override
+        {
+            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
+        }
+        rpc::protocol_stream_state send_rpc_request(int msgid, array_view<refl::object_view_t> params) noexcept override
+        {
+            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
+        }
+        rpc::protocol_stream_state send_notify(array_view<refl::object_view_t> params) noexcept override
+        {
+            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
+        }
+        rpc::protocol_stream_state send_reply(int msgid, refl::shared_object_ptr retval) noexcept override
+        {
+            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
+        }
+    };
+
+    class conn : public rpc::if_connection_streambuf
+    {
+       public:
+        conn(const std::string& peer_name) : if_connection_streambuf(peer_name) {}
+
+        void initialize() noexcept override
+        {
+        }
+        void async_wait_data() noexcept override
+        {
+        }
+        void close() noexcept override
+        {
+        }
+        void get_total_rw(size_t* num_read, size_t* num_write) override
+        {
+        }
+    };
+
+    auto built = rpc::session::builder{}
+                         .user_data(nullptr)
+                         .event_procedure(nullptr)
+                         .protocol<proto>()
+                         .service(std::move(svc).build())
+                         .connection<conn>("hello")
+                         .build();
+
+    built;
 }
