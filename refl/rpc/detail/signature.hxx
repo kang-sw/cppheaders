@@ -63,6 +63,12 @@ class signature_t<RetVal_, std::tuple<Params_...>>
     using guide_t = void (*)(session_profile_view, RetVal_*, Params_&...);
     static inline guide_t const guide = nullptr;
 
+    template <typename Callable>
+    static constexpr bool invocable_0 = std::is_invocable_r_v<RetVal_, Callable, Params_&...>;
+
+    template <typename Callable>
+    static constexpr bool invocable_1 = std::is_invocable_v<Callable, RetVal_*, Params_&...>;
+
    private:
     string const _method_name;
 
@@ -141,6 +147,8 @@ class signature_t<RetVal_, std::tuple<Params_...>>
     {
         return invoke_proxy_t<RpcContext>{this, &rpc};
     }
+
+    auto&& wrap(serve_signature_full&& signature) const noexcept { return std::move(signature); }
 };
 
 template <typename Signature_>

@@ -27,6 +27,7 @@
 #include "catch.hpp"
 
 //
+#include "refl/object.hxx"
 #include "refl/rpc/connection.hxx"
 #include "refl/rpc/detail/protocol_stream.hxx"
 #include "refl/rpc/detail/service.hxx"
@@ -41,6 +42,18 @@ TEST_CASE("Can compile modules", "[rpc]")
 {
     auto sig1 = rpc::create_signature<int(int, bool)>("hello");
     auto sig2 = rpc::create_signature<int(int, bool, std::string)>("hello");
+    auto sig3 = rpc::create_signature<double(double)>("hello");
     auto svc = rpc::service_builder{};
 
+    sig3.wrap([](auto, double*, double&) {});
+    svc.route(sig3, [](double) -> double { return 0; });
+    svc.route(sig3, [](double*, double) { return 0; });
+    svc.route(sig1, [](int*, int&, bool&) {});
+    svc.route(sig2, [](rpc::session_profile_view, int*, int&, bool&, std::string&) {});
+
+    auto dr = [](double) -> double { return 0; };
+    static_assert(std::is_invocable_r_v<double, decltype(dr), double>);
+
+    decltype(sig3)::serve_signature_0 srr = [](double&) -> double { return 0; };
+    decltype(sig1)::return_type       r;
 }

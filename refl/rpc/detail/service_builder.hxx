@@ -53,75 +53,79 @@ class service_builder
         return rv;
     }
 
+   private:
+    template <typename RetVal, typename... Params>
+    class handler_impl_type : public if_service_handler
+    {
+        using parameter_type = tuple<std::decay_t<Params>...>;
+        using param_desc_buffer_type = std::array<refl::object_view_t, sizeof...(Params)>;
+        using pool_ret_type = std::conditional_t<std::is_void_v<RetVal>, nullptr_t, RetVal>;
+        using handler_type = function<void(session_profile_view, RetVal*, Params...)>;
+
+        struct param_buf_pack_t
+        {
+            parameter_type         params;
+            param_desc_buffer_type view_buffer;
+
+            param_buf_pack_t() noexcept
+            {
+                auto fn_assign_descriptors
+                        = [this](auto&... arg) {
+                              size_t n = 0;
+                              ((view_buffer[n++] = refl::object_view_t{&arg}), ...);
+                          };
+
+                std::apply(fn_assign_descriptors, params);
+            }
+        };
+
+        weak_ptr<void>         _owner;
+        handler_type           _handler;
+        pool<param_buf_pack_t> _pool_param;
+        pool<pool_ret_type>    _pool_retval;
+
+       public:
+        handler_impl_type(weak_ptr<void> owner, handler_type fn)
+                : _owner(move(owner)), _handler(move(fn)) {}
+
+        handler_package_type checkout_parameter_buffer() override
+        {
+            auto data_ptr = _pool_param.checkout().share();
+            auto rv = handler_package_type{};
+            rv._self = shared_ptr<if_service_handler>(_owner.lock(), this);
+            rv._handle = data_ptr;
+            rv.params = data_ptr->view_buffer;
+
+            return rv;
+        }
+
+       private:
+        refl::shared_object_ptr
+        invoke(const session_profile&                     profile,
+               if_service_handler::handler_package_type&& params) override
+        {
+            auto rv = _pool_retval.checkout();
+            auto param_buf = static_cast<param_buf_pack_t*>(params._handle.get());
+            auto fn_invoke_handler =
+                    [&](auto&... params) {
+                        _handler(&profile, &*rv, params...);
+                    };
+            std::apply(fn_invoke_handler, param_buf->params);
+            return {move(rv).share()};
+        }
+    };
+
+   public:
     template <typename RetVal, typename... Params>
     service_builder& route(
             string                                                     method_name,
             function<void(session_profile_view, RetVal*, Params...)>&& handler)
     {
-        using handler_type = function<void(session_profile_view, RetVal*, Params...)>;
-
         if (not _table) { _table = make_shared<service_table_t>(); }
-
-        class handler_impl_t : public if_service_handler
-        {
-            using parameter_type = tuple<std::decay_t<Params>...>;
-            using param_desc_buffer_type = std::array<refl::object_view_t, sizeof...(Params)>;
-
-            struct param_buf_pack_t
-            {
-                parameter_type         params;
-                param_desc_buffer_type view_buffer;
-
-                param_buf_pack_t() noexcept
-                {
-                    auto fn_assign_descriptors
-                            = [this](auto&... arg) {
-                                  size_t n = 0;
-                                  ((view_buffer[n++] = refl::object_view_t{&arg}), ...);
-                              };
-
-                    std::apply(fn_assign_descriptors, params);
-                }
-            };
-
-            weak_ptr<void>         _owner;
-            handler_type           _handler;
-            pool<param_buf_pack_t> _pool_param;
-            pool<RetVal>           _pool_retval;
-
-           public:
-            handler_impl_t(decltype(_owner) owner, handler_type fn)
-                    : _owner(move(owner)), _handler(move(fn)) {}
-
-            auto checkout_parameter_buffer() -> handler_package_type override
-            {
-                auto data_ptr = _pool_param.checkout().share();
-                auto rv = handler_package_type{};
-                rv._self = shared_ptr<if_service_handler>(_owner, this);
-                rv._handle = data_ptr;
-                rv.params = data_ptr->view_buffer;
-
-                return rv;
-            }
-
-           private:
-            auto invoke(const session_profile& profile, if_service_handler::handler_package_type&& params)
-                    -> refl::shared_object_ptr override
-            {
-                auto rv = _pool_retval.checkout();
-                auto param_buf = static_cast<param_buf_pack_t*>(params._handle.get());
-                auto fn_invoke_handler =
-                        [&](auto&... params) {
-                            _handler(&profile, &*rv, params...);
-                        };
-                std::apply(fn_invoke_handler, param_buf->params);
-                return rv.share();
-            }
-        };
 
         auto [iter, is_new] = _table->try_emplace(
                 move(method_name),
-                std::make_unique<handler_impl_t>(_table, move(handler)));
+                std::make_unique<handler_impl_type<RetVal, Params...>>(_table, move(handler)));
 
         if (not is_new) { throw std::logic_error{"method name duplication: " + method_name}; }
         return *this;
@@ -143,31 +147,30 @@ class service_builder
         return route(signature.name(), move(handler));
     }
 
-    template <typename RetVal, typename... Params,
-              typename Callable,
-              typename Signature = signature_t<RetVal, Params...>,
-              typename = enable_if_t<not is_convertible_v<
+    template <typename RetVal, typename... Params, typename Callable,
+              typename = std::enable_if_t<not std::is_convertible_v<
                       Callable, typename signature_t<RetVal, Params...>::serve_signature_full>>>
-    service_builder& route(signature_t<RetVal, Params...> const& signature,
-                           Callable&&                            handler)
+    service_builder& route(
+            signature_t<RetVal, Params...> const& signature,
+            Callable&&                            handler)
     {
-        enum : bool { is_void_return = std::is_void_v<RetVal> };
+        using signature_type = signature_t<RetVal, Params...>;
 
-        auto func = [this, handler = forward<Callable>(handler)]  //
-                (auto&&, RetVal* rbuf, auto&&... args) mutable {
-                    if constexpr (std::is_invocable_v<Callable, RetVal*, Params...>) {
-                        handler(rbuf, args...);
-                    } else if constexpr (std::is_invocable_r_v<RetVal, Callable, Params...>) {
-                        if constexpr (is_void_return)
-                            handler(args...);
-                        else
-                            *rbuf = handler(args...);
-                    } else {
-                        RetVal::INVALID_CALLABLE_TYPE();
-                    }
-                };
+        auto func = [this, handler = std::forward<Callable>(handler)]  //
+                (session_profile_view, RetVal * rbuf, auto&&... args) mutable -> void {
+            if constexpr (signature_type::template invocable_1<Callable>) {
+                handler(rbuf, args...);
+            } else if constexpr (signature_type::template invocable_0<Callable>) {
+                if constexpr (std::is_void_v<RetVal>)
+                    handler(args...);
+                else
+                    *rbuf = handler(args...);
+            } else {
+                RetVal::INVALID_CALLABLE_TYPE();
+            }
+        };
 
-        return route(signature.name(), move(func));
+        return route(signature.name(), signature.wrap(std::move(func)));
     }
 };
 
