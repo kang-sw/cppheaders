@@ -37,16 +37,15 @@
 #include "signature.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-
-template <typename RetVal, typename... Params>
-using service_handler_fn = function<RetVal(session_profile const&, RetVal*, Params...)>;
-
+/**
+ * Builds service
+ */
 class service_builder
 {
     shared_ptr<service_table_t> _table;
 
    public:
-    auto confirm() noexcept
+    auto build() noexcept
     {
         service rv;
         rv._service = std::exchange(_table, nullptr);
@@ -56,9 +55,11 @@ class service_builder
 
     template <typename RetVal, typename... Params>
     service_builder& route(
-            string                                  method_name,
-            service_handler_fn<RetVal, Params...>&& handler)
+            string                                                     method_name,
+            function<void(session_profile_view, RetVal*, Params...)>&& handler)
     {
+        using handler_type = function<void(session_profile_view, RetVal*, Params...)>;
+
         if (not _table) { _table = make_shared<service_table_t>(); }
 
         class handler_impl_t : public if_service_handler
@@ -84,13 +85,13 @@ class service_builder
             };
 
             weak_ptr<void>         _owner;
-            decltype(handler)      _handler;
+            handler_type           _handler;
             pool<param_buf_pack_t> _pool_param;
             pool<RetVal>           _pool_retval;
 
            public:
-            handler_impl_t(decltype(_owner) owner, decltype(_handler))
-                    : _owner(move(owner)), _handler(move(handler)) {}
+            handler_impl_t(decltype(_owner) owner, handler_type fn)
+                    : _owner(move(owner)), _handler(move(fn)) {}
 
             auto checkout_parameter_buffer() -> handler_package_type override
             {
@@ -104,7 +105,8 @@ class service_builder
             }
 
            private:
-            auto invoke(const session_profile& profile, if_service_handler::handler_package_type&& params) -> refl::shared_object_ptr override
+            auto invoke(const session_profile& profile, if_service_handler::handler_package_type&& params)
+                    -> refl::shared_object_ptr override
             {
                 auto rv = _pool_retval.checkout();
                 auto param_buf = static_cast<param_buf_pack_t*>(params._handle.get());
@@ -126,19 +128,28 @@ class service_builder
     }
 
     template <typename RetVal, typename... Params,
+              typename Signature = signature_t<RetVal, Params...>,
+              typename = std::enable_if_t<false>>
+    service_builder& route(
+            signature_t<RetVal, Params...> const&,
+            typename Signature::guide_t);
+
+    template <typename RetVal, typename... Params,
               typename Signature = signature_t<RetVal, Params...>>
-    service_builder& route(Signature const&                        signature,
-                           service_handler_fn<RetVal, Params...>&& handler)
+    service_builder& route(
+            signature_t<RetVal, Params...> const&      signature,
+            typename Signature::serve_signature_full&& handler)
     {
         return route(signature.name(), move(handler));
     }
 
     template <typename RetVal, typename... Params,
-              typename Signature = signature_t<RetVal, Params...>,
               typename Callable,
-              typename = enable_if_t<not is_convertible_v<Callable, typename Signature::serve_signature_2>>>
-    service_builder& route(Signature const& signature,
-                           Callable&&       handler)
+              typename Signature = signature_t<RetVal, Params...>,
+              typename = enable_if_t<not is_convertible_v<
+                      Callable, typename signature_t<RetVal, Params...>::serve_signature_full>>>
+    service_builder& route(signature_t<RetVal, Params...> const& signature,
+                           Callable&&                            handler)
     {
         enum : bool { is_void_return = std::is_void_v<RetVal> };
 

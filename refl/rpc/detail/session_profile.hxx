@@ -23,46 +23,21 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <memory>
-#include <streambuf>
-
 #include "../../__namespace__"
 #include "defs.hxx"
-#include "interface.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-class if_connection_streambuf : public std::streambuf
+/**
+ * Describes a session
+ */
+struct session_profile
 {
-   private:
-    friend class session;
-    if_session* _owner;
+    size_t           unique_id = 0;
+    size_t           total_write = 0;
+    size_t           total_read = 0;
 
-   public:
-    /**
-     * Initialize this connection. Must not throw.
-     */
-    virtual void initialize() noexcept = 0;
+    std::string      peer_name;
 
-    /**
-     * start waiting for new data
-     */
-    virtual void async_wait_data() noexcept = 0;
-
-    /**
-     * Close this session
-     */
-    virtual void close() noexcept = 0;
-
-    /**
-     * Get total number of read/write bytes
-     */
-    virtual void get_total_rw(size_t* num_read, size_t* num_write) = 0;
-
-   protected:
-    void on_data_in() noexcept
-    {
-        _owner->on_data_wait_complete();
-    }
+    shared_ptr<void> user_data;
 };
-
 }  // namespace CPPHEADERS_NS_::rpc

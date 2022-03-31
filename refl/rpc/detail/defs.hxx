@@ -37,20 +37,26 @@ using std::shared_ptr;
 using std::unique_ptr;
 using std::weak_ptr;
 
+struct session_profile;
+using session_profile_view = session_profile const*;
+
 class basic_context;
 class session;
-struct session_profile;
 
 using error_code = std::error_code;
 
-enum class error_type {
-    okay,
+/**
+ * Type of errors can occur
+ */
+enum class request_result {
+    okay = 0,
+
     aborted,
     timeout,
     invalid_connection,
 };
 
-class error_category : public std::error_category
+class request_result_category : public std::error_category
 {
    public:
     const char* name() const noexcept override
@@ -60,37 +66,49 @@ class error_category : public std::error_category
 
     std::string message(int errc) const override
     {
-        switch (error_type{errc}) {
-            case error_type::okay: return "No error";
-            case error_type::aborted: return "RPC request aborted";
-            case error_type::timeout: return "RPC synchronous request timeout";
-            case error_type::invalid_connection: return "Disconnected";
+        switch (request_result{errc}) {
+            case request_result::okay: return "No error";
+            case request_result::aborted: return "RPC request aborted";
+            case request_result::timeout: return "RPC synchronous request timeout";
+            case request_result::invalid_connection: return "This connection is expired";
 
             default: return "Unknown error";
         }
     }
 
-    static error_category* instance() noexcept
+    static request_result_category* instance() noexcept
     {
-        static error_category _cat;
+        static request_result_category _cat;
         return &_cat;
     }
 };
 
-class system_error : public std::system_error
+class request_exception : public std::system_error
 {
     using std::system_error::system_error;
 };
 
-auto make_error(error_type errc)
+auto make_request_result(request_result errc)
 {
-    return std::error_code(int(errc), *error_category::instance());
+    return std::error_code(int(errc), *request_result_category::instance());
 }
 
-enum class rpc_type {
+enum class rpc_payload_type {
     request,
     notify,
     reply_okay,
     reply_error
+};
+
+enum class protocol_stream_state {
+    okay = 0,
+    expired = -1,  // Protocol is in irreversible state. Session must be disposed.
+
+    // Errors that are '> recoverable_errors' are just warnings.
+    _warnings_ = 1,
+    warning_received_invalid_number_of_parameters,
+    warning_received_invalid_parameter_type,
+    warning_received_invalid_method_name,
+    warning_received_expired_rpc,
 };
 }  // namespace CPPHEADERS_NS_::rpc

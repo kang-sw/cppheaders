@@ -44,7 +44,19 @@ using service_table_t
 class service
 {
     friend class service_builder;
-    shared_ptr<service_table_t> _service;
+    shared_ptr<service_table_t const> _service;
+
+   public:
+    static inline service empty_service()
+    {
+        static service _instance = [] {
+            service svc;
+            svc._service = std::make_shared<service_table_t>();
+            return svc;
+        }();
+
+        return _instance;
+    }
 
    public:
     shared_ptr<if_service_handler>

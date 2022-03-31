@@ -43,7 +43,7 @@ class request_handle
     //
     auto errc() const noexcept
     {
-        return error_type{_msgid_or_negative_error < 0 ? -_msgid_or_negative_error : 0};
+        return request_result{_msgid_or_negative_error < 0 ? -_msgid_or_negative_error : 0};
     }
 
     template <typename Duration_, typename Sptr_ = std::shared_ptr<session>>

@@ -33,13 +33,6 @@
 #include "request_handle.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-
-enum class protocol_stream_state {
-    okay,
-    recovered_from_error,  // There was error, but recovered. Current message was invalid. (hint)
-    irreversible           // Protocol is in irreversible state. Session must be disposed.
-};
-
 /**
  * All of methods in this class will be called in critical section.
  */
@@ -65,7 +58,7 @@ class if_protocol_stream
      * 3. Fill parameter contents with internal if_writer, if_reader
      * 4. Submit packed_message_handler
      */
-    virtual protocol_stream_state handle_single_message(remote_procedure_message_proxy& proxy) = 0;
+    virtual protocol_stream_state handle_single_message(remote_procedure_message_proxy& proxy) noexcept = 0;
 
     /**
      * Send RPC with given message id and parameters.
@@ -77,22 +70,22 @@ class if_protocol_stream
      * If internal RPC protocol is compatible with simple integer, this function should only
      *  perform simple transfer operation.
      */
-    virtual protocol_stream_state send_rpc_request(int msgid, array_view<refl::object_view_t> params) = 0;
+    virtual protocol_stream_state send_rpc_request(int msgid, array_view<refl::object_view_t> params) noexcept = 0;
 
     /**
      * Send notify with given parameters.
      */
-    virtual protocol_stream_state send_notify(array_view<refl::object_view_t> params) = 0;
+    virtual protocol_stream_state send_notify(array_view<refl::object_view_t> params) noexcept = 0;
 
     /**
      * Send reply with given msgid and return value.
      */
-    virtual protocol_stream_state send_reply(int msgid, refl::shared_object_ptr retval) = 0;
+    virtual protocol_stream_state send_reply(int msgid, refl::shared_object_ptr retval) noexcept = 0;
 
     /**
      * This is called on every RPC cleanup(finish, abort) sequence. This function is required
      *  when send_rpc_request function created internal message identifier mapping.
      */
-    virtual protocol_stream_state cleanup_key_mapping(int msgid) { return protocol_stream_state::okay; }
+    virtual protocol_stream_state cleanup_key_mapping(int msgid) noexcept { return protocol_stream_state::okay; }
 };
 }  // namespace CPPHEADERS_NS_::rpc

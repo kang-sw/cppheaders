@@ -57,7 +57,7 @@ class if_session
     virtual ~if_session() = default;
 
    private:
-    virtual void on_data_wait_complete() = 0;
+    virtual void on_data_wait_complete() noexcept = 0;
 };
 
 class if_service_handler
@@ -91,6 +91,27 @@ class if_service_handler
      */
     virtual auto invoke(session_profile const&, handler_package_type&& params)
             -> refl::shared_object_ptr = 0;
+};
+
+class if_session_monitor
+{
+   public:
+    virtual ~if_session_monitor() = default;
+
+    /**
+     * Invoked when session is expired
+     */
+    virtual void on_session_expired(session_profile_view) {}
+
+    /**
+     * Invoked when session created
+     */
+    virtual void on_session_created(session_profile_view) {}
+
+    /**
+     * Invoked when recoverable error occurred during receiving
+     */
+    virtual void on_receive_warning(session_profile_view, protocol_stream_state) {}
 };
 
 }  // namespace CPPHEADERS_NS_::rpc

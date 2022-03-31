@@ -34,3 +34,13 @@
 #include "refl/rpc/detail/session.hxx"
 #include "refl/rpc/protocol.hxx"
 #include "refl/rpc/service.hxx"
+
+using namespace cpph;
+
+TEST_CASE("Can compile modules", "[rpc]")
+{
+    auto sig1 = rpc::create_signature<int(int, bool)>("hello");
+    auto sig2 = rpc::create_signature<int(int, bool, std::string)>("hello");
+    auto svc = rpc::service_builder{};
+
+}

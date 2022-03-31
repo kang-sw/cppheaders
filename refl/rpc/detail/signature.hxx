@@ -55,9 +55,13 @@ class signature_t<RetVal_, std::tuple<Params_...>>
    public:
     using return_type = RetVal_;
     using rpc_signature = function<void(RetVal_*, Params_...)>;
-    using serve_signature = function<RetVal_(Params_&...)>;
+    using serve_signature_0 = function<RetVal_(Params_&...)>;
     using serve_signature_1 = function<void(RetVal_*, Params_&...)>;
-    using serve_signature_2 = function<void(struct session_profile const&, RetVal_*, Params_&...)>;
+    using serve_signature_full = function<void(session_profile_view, RetVal_*, Params_&...)>;
+
+    // Helper for clion code inspection ...
+    using guide_t = void (*)(session_profile_view, RetVal_*, Params_&...);
+    static inline guide_t const guide = nullptr;
 
    private:
     string const _method_name;
@@ -77,9 +81,9 @@ class signature_t<RetVal_, std::tuple<Params_...>>
         template <typename Timeout_>
         return_type rpc(Params_ const&... args, Timeout_ timeout) const
         {
-            return_type ret;
-            error_type  errc = _rpc->rpc(&ret, _host->name(), timeout, args...);
-            if (errc != error_type::okay) { throw system_error{make_error(errc)}; }
+            return_type    ret;
+            request_result errc = _rpc->rpc(&ret, _host->name(), timeout, args...);
+            if (errc != request_result::okay) { throw request_exception{make_request_result(errc)}; }
 
             return ret;
         }
@@ -130,10 +134,12 @@ class signature_t<RetVal_, std::tuple<Params_...>>
         }
     };
 
-    template <class RpcContext_>
-    auto operator()(RpcContext_& rpc) const
+    template <class RpcContext>
+    auto operator()(RpcContext& rpc) const
+            -> decltype(std::declval<RpcContext>().totals(nullptr, nullptr),
+                        std::declval<invoke_proxy_t<RpcContext>>())
     {
-        return invoke_proxy_t<RpcContext_>{this, &rpc};
+        return invoke_proxy_t<RpcContext>{this, &rpc};
     }
 };
 
@@ -142,8 +148,8 @@ auto create_signature(string name)
 {
     using decomposed = _function_decompose<Signature_>;
     using return_type = typename decomposed::return_type;
-    using parameter_type = typename decomposed::parameter_tuple_type;
+    using param_tuple_type = typename decomposed::parameter_tuple_type;
 
-    return signature_t<return_type, parameter_type>{name};
+    return signature_t<return_type, param_tuple_type>{name};
 }
 }  // namespace CPPHEADERS_NS_::rpc
