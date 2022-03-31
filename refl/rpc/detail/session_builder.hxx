@@ -36,6 +36,8 @@ template <int SlotValue>
 class basic_session_builder
 {
     enum slot_flags {
+        flag_initialized,
+
         slot_event_proc,
         slot_connection,
         slot_protocol,
@@ -50,13 +52,22 @@ class basic_session_builder
 
    private:
     template <slot_flags... Values,
-              typename = std::enable_if_t<not(SlotValue & ((1 << Values) | ...))>>
+              typename = std::enable_if_t<
+                      (SlotValue & (1 << flag_initialized))
+                      && not(SlotValue & ((1 << Values) | ...))>>
     auto& _make_ref() noexcept
     {
         return (basic_session_builder<((SlotValue | (1 << Values)) | ...)>&)*this;
     }
 
    public:
+    inline auto& start()
+    {
+        assert(not _session);
+        _session = std::make_shared<session>(session::_ctor_hide_type{});
+        return (basic_session_builder<1 << flag_initialized>&)*this;
+    }
+
     inline auto& user_data(shared_ptr<void> ptr)
     {
         assert(ptr);
@@ -113,7 +124,8 @@ class basic_session_builder
         return _make_ref<slot_protocol>();
     }
 
-    inline auto build()
+    [[nodiscard]] inline auto
+    build()
     {
         static_assert(SlotValue & (1 << slot_event_proc));
         static_assert(SlotValue & (1 << slot_connection));
@@ -124,6 +136,12 @@ class basic_session_builder
 
         _session->_initialize();
         return std::move(_session);
+    }
+
+    inline auto build_to(session_ptr& out)
+    {
+        out.reset();
+        out = build();
     }
 };
 }  // namespace CPPHEADERS_NS_::rpc

@@ -88,10 +88,15 @@ class session : public if_session, public std::enable_shared_from_this<session>
     /**
      * Creating empty session outside of builder is basically prohibited
      */
-    session() noexcept
+    session() = delete;
+
+    // Hides constructor from public
+    struct _ctor_hide_type
     {
-        (void)0;
     };
+
+   public:
+    explicit session(_ctor_hide_type) noexcept {}
 
    public:
     /**
@@ -122,6 +127,14 @@ class session : public if_session, public std::enable_shared_from_this<session>
      * Get total number of received bytes
      */
 
+    /**
+     * Check condition
+     */
+    bool expired() const noexcept
+    {
+        return not _valid.load(std::memory_order_acquire);
+    }
+
    private:
     void on_data_wait_complete() noexcept override
     {
@@ -144,10 +157,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
                     break;
 
                 case protocol_stream_state::expired:
-                    _valid.store(false, std::memory_order_release);
-                    _monitor->on_session_expired(&_profile);
+                    _handle_expiration();
 
-                    // Do not wait for next receive ...
+                    // Do not run receive cycle anymore ...
                     return;
             }
         }
@@ -178,6 +190,15 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _waiting.store(true);
         _conn->_wowner = weak_from_this();
         _conn->async_wait_data();
+    }
+
+    void _handle_expiration()
+    {
+        if (_valid.exchange(false)) {
+            // Only notify expiration & close for once.
+            _monitor->on_session_expired(&_profile);
+            _conn->close();
+        }
     }
 };
 }  // namespace CPPHEADERS_NS_::rpc

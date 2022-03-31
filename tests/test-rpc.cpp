@@ -101,13 +101,15 @@ TEST_CASE("Can compile modules", "[rpc][.]")
         }
     };
 
-    auto built = rpc::session::builder{}
-                         .user_data(nullptr)
-                         .event_procedure(nullptr)
-                         .protocol<proto>()
-                         .service(std::move(svc).build())
-                         .connection<conn>("hello")
-                         .build();
+    rpc::session_ptr session;
+    rpc::session::builder{}
+            .start()
+            .user_data(nullptr)
+            .event_procedure(nullptr)
+            .protocol<proto>()
+            .service(std::move(svc).build())
+            .connection<conn>("hello")
+            .build_to(session);
 
-    built;
+    session;
 }
