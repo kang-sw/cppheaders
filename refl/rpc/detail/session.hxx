@@ -187,7 +187,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _monitor->on_session_created(&_profile);
 
         // Start initial receive
+#ifndef NDEBUG
         _waiting.store(true);
+#endif
+
         _conn->_wowner = weak_from_this();
         _conn->async_wait_data();
     }
