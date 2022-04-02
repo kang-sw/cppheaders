@@ -132,11 +132,11 @@ class service_builder
     }
 
     template <typename RetVal, typename... Params,
-              typename Signature = signature_t<RetVal, Params...>,
-              typename = std::enable_if_t<false>>
+              typename Signature = signature_t<RetVal, Params...>>
     service_builder& route(
             signature_t<RetVal, Params...> const&,
-            typename Signature::guide_t);
+            typename Signature::guide_t,
+            std::false_type);
 
     template <typename RetVal, typename... Params,
               typename Signature = signature_t<RetVal, Params...>>

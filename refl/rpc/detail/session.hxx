@@ -79,7 +79,14 @@ class session : public if_session, public std::enable_shared_from_this<session>
 #endif
 
    private:
-    // RPC features
+    struct rpc_context
+    {
+        int idgen = 0;
+    };
+
+   private:
+    // RPC features is prohibited before we use it
+    std::once_flag _rpc_init_flag;
 
    private:
     // Hides constructor from public
