@@ -32,6 +32,7 @@
 #include "../../functional.hxx"
 #include "../../helper/exception.hxx"
 #include "../../template_utils.hxx"
+#include "../../utility/cleanup.hxx"
 
 /**
  * Defines SAX-like interface for parsing / archiving
@@ -97,6 +98,7 @@ struct reader_exception : archive_exception {
 CPPH_DECLARE_EXCEPTION(reader_recoverable_exception, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_check_failed, reader_recoverable_exception);
 CPPH_DECLARE_EXCEPTION(reader_recoverable_parse_failure, reader_recoverable_exception);
+CPPH_DECLARE_EXCEPTION(reader_unimplemented, reader_recoverable_exception);
 
 CPPH_DECLARE_EXCEPTION(reader_invalid_context, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_parse_failed, reader_exception);
@@ -394,6 +396,108 @@ class if_reader : public if_archive_base
     //! Get next type
     virtual entity_type type_next() const = 0;
 
+   public:
+    //! Dump single object to target writer
+    virtual void dump_once(if_writer* target)
+    {
+        std::string str;
+        _dump_once_impl(target, str);
+    }
+
+   private:
+    // Actual implementation of dump_once. Uses reused buffer for string retrieval.
+    void _dump_once_impl(if_writer* target, std::string& buf)
+    {
+        switch (type_next()) {
+            case entity_type::object:
+            case entity_type::dictionary: {
+                auto key = begin_object();
+                auto _f0_ = cleanup([&] { end_object(key); });
+
+                if (elem_left() == ~size_t{})
+                    throw error::reader_check_failed{this, "This reader doesn't support object dumping!"};
+
+                target->object_push(elem_left());
+                auto _f1_ = cleanup([&] { target->object_pop(); });
+
+                while (not should_break(key))
+                    _dump_once_impl(target, buf);
+
+                // Suppress IDE warnings
+                _f0_, _f1_;
+
+                break;
+            }
+
+            case entity_type::array:
+            case entity_type::tuple: {
+                auto key = begin_array();
+                auto _f0_ = cleanup([&] { end_array(key); });
+
+                if (elem_left() == ~size_t{})
+                    throw error::reader_check_failed{this, "This reader doesn't support array dumping!"};
+
+                target->array_push(elem_left());
+                auto _f1_ = cleanup([&] { target->array_pop(); });
+
+                while (not should_break(key))
+                    _dump_once_impl(target, buf);
+
+                // Suppress IDE warnings
+                _f0_, _f1_;
+
+                break;
+            }
+
+            case entity_type::null:
+                target->write(nullptr);
+                break;
+
+            case entity_type::binary: {
+                char buffer[256];
+                auto bytes_left = begin_binary();
+                auto _f0_ = cleanup([&] { end_binary(); });
+
+                if (elem_left() == 0)
+                    throw error::reader_check_failed{this, "This reader doesn't support binary dumping!"};
+
+                while (bytes_left) {
+                    auto nwrite = std::min(bytes_left, sizeof buffer);
+                    binary_read_some({buffer, nwrite});
+                    target->binary_write_some({buffer, nwrite});
+                }
+
+                _f0_;
+                break;
+            }
+
+            case entity_type::boolean: {
+                bool value;
+                read(value), target->write(value);
+                break;
+            }
+
+            case entity_type::integer: {
+                int64_t value;
+                read(value), target->write(value);
+                break;
+            }
+
+            case entity_type::floating_point: {
+                double value;
+                read(value), target->write(value);
+            }
+
+            case entity_type::string:
+                read(buf), target->write(buf);
+                break;
+
+            case entity_type::invalid:
+                throw error::reader_check_failed{this, "reader is in invalid state!"};
+        }
+    }
+
+   public:
     //! check if next statement is null
     bool is_null_next() const
     {
