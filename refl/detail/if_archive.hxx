@@ -398,7 +398,7 @@ class if_reader : public if_archive_base
 
    public:
     //! Dump single object to target writer
-    virtual void dump_once(if_writer* target)
+    virtual void dump_single_object(if_writer* target)
     {
         std::string str;
         _dump_once_impl(target, str);
