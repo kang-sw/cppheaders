@@ -36,8 +36,7 @@
 
 namespace CPPHEADERS_NS_::futils {
 namespace detail {
-struct _freleae
-{
+struct _freleae {
     using pointer = FILE*;
     void operator()(pointer p) const noexcept { ::fclose(p); }
 };
@@ -70,15 +69,13 @@ std::string ssprintf(char const* fmt, Args_&&... args)
     return str;
 }
 
-struct file_not_exist : std::exception
-{
+struct file_not_exist : std::exception {
     char const* path;
     explicit file_not_exist(char const* ptr) : path(ptr) {}
     const char* what() const noexcept override { return usprintf("file not found: %s", path); }
 };
 
-struct file_read_error : std::exception
-{
+struct file_read_error : std::exception {
     explicit file_read_error(const char* filename) : filename(filename) {}
     char const* filename;
 

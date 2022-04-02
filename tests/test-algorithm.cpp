@@ -71,8 +71,7 @@ TEST_CASE("base64 correctly converted", "base64")
 
 #if __has_include("nlohmann/json.hpp")
 
-struct my_serialized
-{
+struct my_serialized {
     std::string        s;
     std::optional<int> k;
 
@@ -84,8 +83,7 @@ struct my_serialized
 
 TEST_CASE("json macro helper operation", "[helper]")
 {
-    struct k
-    {
+    struct k {
         int dd;
     };
 

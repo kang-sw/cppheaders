@@ -34,8 +34,7 @@
                                                                                                                                      \
     template <typename ValT>                                                                                                         \
             struct get_object_metadata_t < ValT,                                                                                     \
-            std::enable_if_t < INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) < ValT >>>                                 \
-    {                                                                                                                                \
+            std::enable_if_t < INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) < ValT >>> {                               \
         auto operator()() const;                                                                                                     \
     };                                                                                                                               \
     template <typename ValT>                                                                                                         \

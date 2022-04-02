@@ -85,8 +85,7 @@
 
 namespace CPPHEADERS_NS_ {
 namespace detail {
-struct queue_buffer_block
-{
+struct queue_buffer_block {
     uint32_t defferred : 1;
     uint32_t _padding  : 31;
 
@@ -100,8 +99,7 @@ struct queue_buffer_block
 
 // To avoid <memory> header dependency.
 template <typename Ty_>
-struct queue_buffer_default_allocator
-{
+struct queue_buffer_default_allocator {
     auto allocate(size_t n) -> Ty_*
     {
         return (Ty_*)malloc(n * sizeof(Ty_));
@@ -114,9 +112,7 @@ struct queue_buffer_default_allocator
 };
 }  // namespace detail
 
-struct queue_out_of_memory : std::bad_alloc
-{
-};
+struct queue_out_of_memory : std::bad_alloc {};
 
 namespace detail {
 class queue_buffer_impl
@@ -301,8 +297,7 @@ class basic_queue_allocator_impl
             : _impl(impl) {}
 
    private:
-    struct alignas(8) node_type
-    {
+    struct alignas(8) node_type {
         void (*node_dtor)(void*, size_t n);
         size_t n = 0;
     };

@@ -52,8 +52,7 @@ using optional_property_metadata = struct property_metadata const*;
 namespace error {
 CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
 
-struct object_archive_exception : object_exception
-{
+struct object_archive_exception : object_exception {
     archive::error_info        error;
 
     object_archive_exception&& set(archive::if_archive_base* archive)
@@ -93,8 +92,7 @@ class object_metadata;  // forwarding
 /**
  * Object/metadata wrapper for various use
  */
-struct object_view_t
-{
+struct object_view_t {
     object_metadata_t meta = {};
     object_data_t*    data = {};
 
@@ -111,8 +109,7 @@ struct object_view_t
     auto pair() const noexcept { return std::make_pair(meta, data); }
 };
 
-struct object_const_view_t
-{
+struct object_const_view_t {
     object_metadata_t    meta = {};
     object_data_t const* data = {};
 
@@ -129,8 +126,7 @@ struct object_const_view_t
     auto pair() const noexcept { return std::make_pair(meta, data); }
 };
 
-struct shared_object_ptr
-{
+struct shared_object_ptr {
    private:
     object_metadata_t         _meta = {};
     shared_ptr<object_data_t> _data = {};
@@ -156,8 +152,7 @@ struct shared_object_ptr
     explicit            operator bool() const noexcept { return !!_data; }
 };
 
-struct weak_object_ptr
-{
+struct weak_object_ptr {
    private:
     object_metadata_t       _meta = {};
     weak_ptr<object_data_t> _data = {};
@@ -180,8 +175,7 @@ using object_metadata_fn = std::function<object_metadata_t()>;
 /**
  * Object's sub property info
  */
-struct property_metadata
-{
+struct property_metadata {
     //! Offset from object root
     size_t offset = 0;
 
@@ -338,9 +332,7 @@ template <typename A_, typename B_>
 using object_sfinae_overload_t = object_sfinae_t<std::is_same_v<A_, B_>>;
 
 template <typename ValTy_, class = void>
-struct get_object_metadata_t
-{
-};
+struct get_object_metadata_t {};
 
 template <typename ValTy_>
 auto get_object_metadata()
@@ -589,8 +581,7 @@ class object_metadata
         }
     }
 
-    struct restore_context
-    {
+    struct restore_context {
         std::string keybuf;
     };
 
@@ -1070,8 +1061,7 @@ constexpr bool is_cpph_refl_object_v<
 }  // namespace detail
 
 template <typename ValTy_>
-struct get_object_metadata_t<ValTy_, std::enable_if_t<detail::is_cpph_refl_object_v<ValTy_>>>
-{
+struct get_object_metadata_t<ValTy_, std::enable_if_t<detail::is_cpph_refl_object_v<ValTy_>>> {
     auto operator()() const;
 };
 
@@ -1086,9 +1076,7 @@ namespace CPPHEADERS_NS_::refl {
  * A dummy template to identify type safely
  */
 template <typename ValTy_>
-struct type_tag
-{
-};
+struct type_tag {};
 
 template <typename ValTy_>
 constexpr type_tag<ValTy_> type_tag_v = {};
@@ -1098,8 +1086,7 @@ template <typename ValTy_>
 auto initialize_object_metadata(type_tag<ValTy_>)
         -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
 
-struct initialize_object_metadata_fn
-{
+struct initialize_object_metadata_fn {
     template <typename ValTy_>
     auto operator()(type_tag<ValTy_>) const
             -> decltype(initialize_object_metadata(type_tag_v<ValTy_>))
@@ -1118,8 +1105,7 @@ template <typename ValTy_>
 struct get_object_metadata_t<
         ValTy_,
         std::enable_if_t<std::is_same_v<
-                object_metadata_ptr, decltype(initialize_object_metadata(type_tag_v<ValTy_>))>>>
-{
+                object_metadata_ptr, decltype(initialize_object_metadata(type_tag_v<ValTy_>))>>> {
     auto operator()() const
     {
         static auto instance = initialize_object_metadata(type_tag_v<ValTy_>);
@@ -1138,15 +1124,13 @@ template <typename Ty_>
 shared_object_ptr::shared_object_ptr(shared_ptr<Ty_> pointer) noexcept
         : _meta(get_object_metadata<Ty_>()),
           _data(std::reinterpret_pointer_cast<object_data_t>(pointer))
-{
-}
+{}
 
 template <typename Ty_>
 weak_object_ptr::weak_object_ptr(weak_ptr<Ty_> pointer)
         : _meta(get_object_metadata<Ty_>()),
           _data(std::reinterpret_pointer_cast<object_data_t>(pointer))
-{
-}
+{}
 
 template <typename Ty_>
 object_view_t::object_view_t(Ty_* p) noexcept : data((object_data_t*)p)

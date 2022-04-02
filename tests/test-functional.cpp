@@ -61,8 +61,7 @@ TEST_CASE("overall operation", "[functional]")
     CHECK(s() == 444);
 }
 
-struct lambda_t
-{
+struct lambda_t {
     std::array<char, 40> bf;
 
     void                 operator()()

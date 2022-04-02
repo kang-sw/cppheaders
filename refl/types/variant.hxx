@@ -66,8 +66,7 @@ auto get_metadata(type_tag<std::variant<Args_...>>)
 {
     using variant_type = std::variant<Args_...>;
 
-    static struct manip_t : templated_primitive_control<variant_type>
-    {
+    static struct manip_t : templated_primitive_control<variant_type> {
         entity_type type() const noexcept override
         {
             return entity_type::tuple;

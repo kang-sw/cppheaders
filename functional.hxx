@@ -37,8 +37,7 @@ namespace CPPHEADERS_NS_ {
 //
 constexpr int _function_size = sizeof(std::function<void()>) + 16;
 
-struct default_function_t
-{
+struct default_function_t {
     // avoids ambiguous function call error
     // function f; f = {};
     constexpr explicit default_function_t(nullptr_t) {}
@@ -57,8 +56,7 @@ class function<Ret_(Args_...)>
     using function_type = std::function<Ret_(Args_...)>;
 
    private:
-    struct _callable_t
-    {
+    struct _callable_t {
         virtual ~_callable_t() = default;
         virtual Ret_ operator()(Args_... args) = 0;
         virtual void move(void* to) = 0;
@@ -70,8 +68,7 @@ class function<Ret_(Args_...)>
     {
         using callable_type = std::remove_cv_t<std::remove_reference_t<Callable_>>;
 
-        struct _callable_impl_t : _callable_t
-        {
+        struct _callable_impl_t : _callable_t {
             Ret_ operator()(Args_... args) override
             {
                 return std::invoke(_body, std::forward<Args_>(args)...);
@@ -235,8 +232,7 @@ using std::bind_front;
 #else
 
 template <typename Callable_, typename Tuple_>
-struct _bound_functor_t
-{
+struct _bound_functor_t {
     Callable_ fn;
     Tuple_    captures;
 
@@ -280,8 +276,7 @@ auto bind_front(Callable_ callable, Captures_&&... captures)
 #endif
 
 template <typename Callable_, typename Tuple_>
-struct _bound_weak_functor_t
-{
+struct _bound_weak_functor_t {
     std::weak_ptr<void> ptr;
     Callable_           fn;
     Tuple_              captures;

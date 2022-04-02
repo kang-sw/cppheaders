@@ -32,8 +32,7 @@ CPPH_DECLARE_EXCEPTION(type_mismatch_exception, error::reader_recoverable_except
 
 class reader : public archive::if_reader
 {
-    union key_t
-    {
+    union key_t {
         context_key data;
         struct
         {
@@ -42,8 +41,7 @@ class reader : public archive::if_reader
         };
     };
 
-    struct scope_t
-    {
+    struct scope_t {
         enum type_t {
             type_object,
             type_array,

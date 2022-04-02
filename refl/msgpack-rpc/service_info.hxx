@@ -45,8 +45,7 @@ using namespace archive::msgpack;
 /**
  * Information of created session.
  */
-struct session_profile
-{
+struct session_profile {
     std::string peer_name;
     size_t      total_read = 0;
     size_t      total_write = 0;
@@ -89,8 +88,7 @@ class service_info
     template <typename RetVal_, typename... Params_>
     service_info& route2(std::string method_name, function<void(session_profile const&, RetVal_*, Params_...)> handler)
     {
-        struct service_handler : if_service_handler
-        {
+        struct service_handler : if_service_handler {
             using handler_type = decltype(handler);
             using return_type = std::conditional_t<std::is_void_v<RetVal_>, nullptr_t, RetVal_>;
             using tuple_type = std::tuple<std::decay_t<Params_>...>;

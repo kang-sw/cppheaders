@@ -218,8 +218,7 @@ class iota_counter
 };
 
 class _counter_end_marker_t
-{
-};
+{};
 
 template <typename Ty_, size_t Dim_>
 class _counter
@@ -282,8 +281,7 @@ class _counter
 };
 
 template <typename SizeTy_, size_t Dim_>
-struct _count_index
-{
+struct _count_index {
     using iterator = _counter<SizeTy_, Dim_>;
     using dimension = typename iterator::dimension;
     constexpr iterator begin() const { return _counter<SizeTy_, Dim_>{max, {}}; }
@@ -294,9 +292,7 @@ struct _count_index
 };
 
 template <typename SizeTy_>
-struct _count_index<SizeTy_, 0>
-{
-};
+struct _count_index<SizeTy_, 0> {};
 
 template <typename SizeTy_>
 constexpr auto counter(SizeTy_ size)
@@ -319,8 +315,7 @@ constexpr auto count(SizeTy_ to)
 template <typename SizeTy_>
 constexpr auto rcounter(SizeTy_ size)
 {
-    struct min_counter_gen
-    {
+    struct min_counter_gen {
         SizeTy_                                begin_;
         SizeTy_                                end_;
         constexpr _counter<SizeTy_, ~size_t{}> begin() const { return {begin_}; }

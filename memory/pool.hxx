@@ -43,8 +43,7 @@ class basic_resource_pool
     using buffer_iterator = typename buffer_type::iterator;
 
    public:
-    struct handle_type
-    {
+    struct handle_type {
         class deleter
         {
             handle_type _handle;

@@ -34,8 +34,7 @@
 namespace CPPHEADERS_NS_ {
 
 template <typename Ty_>
-struct basic_exception : std::exception
-{
+struct basic_exception : std::exception {
    private:
     mutable std::string _message = {};
 
@@ -87,8 +86,7 @@ struct basic_exception : std::exception
 
 #ifndef CPPH_DECLARE_EXCEPTION
 #    define CPPH_DECLARE_EXCEPTION(Name, Base)                \
-        struct Name : Base                                    \
-        {                                                     \
+        struct Name : Base {                                  \
             using _cpph_internal_super = Base;                \
             using _cpph_internal_super::_cpph_internal_super; \
         }

@@ -44,8 +44,7 @@ class write_context_helper
         binary
     };
 
-    struct scoped_context_t
-    {
+    struct scoped_context_t {
         scope_type type = scope_type::invalid;
         bool       key_ready = false;
 
@@ -117,8 +116,7 @@ class write_context_helper
 
     //! Assert write key or value next.
     //! @return [bNeedComma, bIsKey, bNeedIndent]
-    struct write_directive
-    {
+    struct write_directive {
         bool is_key      : 1;
         bool need_comma  : 1;
         bool need_indent : 1;

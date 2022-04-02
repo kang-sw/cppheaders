@@ -71,8 +71,7 @@ inline auto from_string(std::string_view s)
 
 struct session_profile;
 
-struct rpc_error : std::runtime_error
-{
+struct rpc_error : std::runtime_error {
     rpc_status error_code;
     explicit rpc_error(rpc_status v) noexcept
             : runtime_error(std::string(to_string(v))), error_code(v) {}
@@ -82,8 +81,7 @@ template <typename Signature_>
 struct _function_decompose;
 
 template <typename Ret_, typename... Args_>
-struct _function_decompose<Ret_(Args_...)>
-{
+struct _function_decompose<Ret_(Args_...)> {
     using return_type = Ret_;
     using parameter_tuple_type = std::tuple<Args_...>;
 };
@@ -114,8 +112,7 @@ class signature_t<N_, RetVal_, std::tuple<Params_...>>
 
    public:
     template <class RpcContext_>
-    struct invoke_proxy_t
-    {
+    struct invoke_proxy_t {
         signature_t const* const _host;
         RpcContext_* const       _rpc;
 

@@ -38,8 +38,7 @@ class format_context
 {
    public:
     template <typename... Args_>
-    struct _proxy
-    {
+    struct _proxy {
         using tuple_type = std::tuple<Args_...>;
 
         format_context* _base;

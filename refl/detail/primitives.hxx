@@ -76,8 +76,7 @@ INTERNAL_CPPH_define_(
                 || (std::is_integral_v<ValTy_>)
                 || (std::is_floating_point_v<ValTy_>))
 {
-    static struct manip_t : templated_primitive_control<ValTy_>
-    {
+    static struct manip_t : templated_primitive_control<ValTy_> {
         entity_type type() const noexcept override
         {
             if constexpr (std::is_enum_v<ValTy_>) { return entity_type::integer; }
@@ -120,8 +119,7 @@ namespace detail {
 template <typename ElemTy_>
 object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
 {
-    static struct manip_t : templated_primitive_control<ElemTy_>
-    {
+    static struct manip_t : templated_primitive_control<ElemTy_> {
         entity_type type() const noexcept override
         {
             return entity_type::tuple;
@@ -184,8 +182,7 @@ auto get_list_like_descriptor() -> object_metadata_t
 {
     using value_type = typename Container_::value_type;
 
-    static struct manip_t : templated_primitive_control<Container_>
-    {
+    static struct manip_t : templated_primitive_control<Container_> {
         entity_type type() const noexcept override
         {
             return entity_type::array;
@@ -262,8 +259,7 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
     using key_type = typename Map_::key_type;
     using mapped_type = typename Map_::mapped_type;
 
-    static struct manip_t : templated_primitive_control<Map_>
-    {
+    static struct manip_t : templated_primitive_control<Map_> {
         entity_type type() const noexcept override
         {
             return entity_type::dictionary;
@@ -328,8 +324,7 @@ INTERNAL_CPPH_define_(
     constexpr bool is_unique_ptr = is_template_instance_of<ValTy_, std::unique_ptr>::value;
     constexpr bool is_shared_ptr = is_template_instance_of<ValTy_, std::shared_ptr>::value;
 
-    static struct manip_t : templated_primitive_control<ValTy_>
-    {
+    static struct manip_t : templated_primitive_control<ValTy_> {
         entity_type type() const noexcept override
         {
             return get_object_metadata<value_type>()->type();

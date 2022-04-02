@@ -75,8 +75,7 @@ constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base)
 }  // namespace hasher
 
 template <typename Label_>
-struct basic_key
-{
+struct basic_key {
     bool operator<(basic_key const& other) const noexcept { return value < other.value; }
     bool operator==(basic_key const& other) const noexcept { return value == other.value; }
 
@@ -119,8 +118,7 @@ struct basic_key
 
 namespace std {
 template <typename Label_>
-struct hash<CPPHEADERS_NS_::basic_key<Label_>>
-{
+struct hash<CPPHEADERS_NS_::basic_key<Label_>> {
     auto operator()(CPPHEADERS_NS_::basic_key<Label_> const& s) const noexcept
     {
         return ::std::hash<uint64_t>{}(s.value);

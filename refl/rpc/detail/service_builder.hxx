@@ -62,8 +62,7 @@ class service_builder
         using pool_ret_type = std::conditional_t<std::is_void_v<RetVal>, nullptr_t, RetVal>;
         using handler_type = function<void(session_profile_view, RetVal*, Params...)>;
 
-        struct param_buf_pack_t
-        {
+        struct param_buf_pack_t {
             parameter_type         params;
             param_desc_buffer_type view_buffer;
 

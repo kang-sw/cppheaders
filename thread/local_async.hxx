@@ -38,8 +38,7 @@
  */
 namespace CPPHEADERS_NS_::thread {
 
-struct future_error : std::exception
-{
+struct future_error : std::exception {
     enum class code {
         invalid_future,
         invalid_promise_request,

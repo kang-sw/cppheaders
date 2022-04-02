@@ -61,9 +61,7 @@ class _array_reinterpret_accessor
     }
 };
 
-struct _empty_base
-{
-};
+struct _empty_base {};
 template <typename Array_, typename Ty_>
 using _array_view_base = std::conditional_t<_is_buffer_elem_v<Ty_>,
                                             _array_reinterpret_accessor<Array_>,

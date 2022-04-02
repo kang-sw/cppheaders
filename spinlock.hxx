@@ -35,8 +35,7 @@ namespace CPPHEADERS_NS_ {
 
 //! @see https://rigtorp.se/spinlock/
 //! Applied slight modification to use atomic_flag
-struct spinlock
-{
+struct spinlock {
     std::atomic_bool lock_{false};
 
     //

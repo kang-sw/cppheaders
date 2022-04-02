@@ -71,8 +71,7 @@ class nlohmann_json_manip_t : public templated_primitive_control<nlohmann::json>
 }  // namespace detail
 
 INTERNAL_CPPH_define_(ValTy_, (std::is_same_v<ValTy_, nlohmann::json>))
-{
-}
+{}
 }  // namespace CPPHEADERS_NS_::refl
 
 #include "../detail/_deinit_macros.hxx"

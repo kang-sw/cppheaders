@@ -40,8 +40,7 @@ template <typename Signature_>
 struct _function_decompose;
 
 template <typename Ret_, typename... Args_>
-struct _function_decompose<Ret_(Args_...)>
-{
+struct _function_decompose<Ret_(Args_...)> {
     using return_type = Ret_;
     using parameter_tuple_type = std::tuple<Args_...>;
 };
@@ -78,8 +77,7 @@ class signature_t<RetVal_, std::tuple<Params_...>>
 
    public:
     template <class RpcContext_>
-    struct invoke_proxy_t
-    {
+    struct invoke_proxy_t {
         signature_t const* const _host;
         RpcContext_* const       _rpc;
 

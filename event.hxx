@@ -70,8 +70,7 @@ class basic_event
    public:
     using event_fn = function<event_control(Args_...)>;
 
-    struct _entity_type
-    {
+    struct _entity_type {
         event_key                 id;
         std::shared_ptr<event_fn> function;
         uint64_t                  priority = 0;

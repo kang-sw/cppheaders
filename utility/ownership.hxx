@@ -30,9 +30,7 @@
 #include "../__namespace__"
 
 namespace CPPHEADERS_NS_ {
-struct bad_ownership_access : std::exception
-{
-};
+struct bad_ownership_access : std::exception {};
 
 template <typename Ty_>
 class ownership

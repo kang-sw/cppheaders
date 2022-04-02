@@ -69,8 +69,7 @@ namespace error {
  */
 CPPH_DECLARE_EXCEPTION(archive_exception, basic_exception<archive_exception>);
 
-struct writer_exception : archive_exception
-{
+struct writer_exception : archive_exception {
     if_writer* writer;
 
     template <typename... Args_>
@@ -83,8 +82,7 @@ struct writer_exception : archive_exception
 
 CPPH_DECLARE_EXCEPTION(writer_invalid_state, writer_exception);
 
-struct reader_exception : archive_exception
-{
+struct reader_exception : archive_exception {
     if_reader* reader;
 
     template <typename... Args_>
@@ -105,8 +103,7 @@ CPPH_DECLARE_EXCEPTION(reader_parse_failed, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_read_stream_error, reader_exception);
 CPPH_DECLARE_EXCEPTION(reader_unexpected_end_of_file, reader_read_stream_error);
 
-struct reader_key_missing : reader_exception
-{
+struct reader_key_missing : reader_exception {
     explicit reader_key_missing(
             if_reader*         rd,
             const std::string& missing_key)
@@ -303,8 +300,7 @@ class if_writer : public if_archive_base
 /**
  * A context key to represent current parsing context
  */
-struct context_key
-{
+struct context_key {
     int64_t value;
 };
 

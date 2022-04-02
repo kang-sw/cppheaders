@@ -1043,8 +1043,7 @@ namespace detail {
 // clang-format on
 
 struct DOCTEST_INTERFACE TestFailureException
-{
-};
+{};
 
 DOCTEST_INTERFACE bool checkIfShouldThrow(assertType::Enum at);
 

@@ -108,14 +108,10 @@ auto views_to_strings(std::array<std::string_view, N_> const& views) noexcept
 }
 
 template <typename Ty_>
-struct _is_optional : std::false_type
-{
-};
+struct _is_optional : std::false_type {};
 
 template <typename Ty_>
-struct _is_optional<std::optional<Ty_>> : std::true_type
-{
-};
+struct _is_optional<std::optional<Ty_>> : std::true_type {};
 
 template <typename Ty_>
 constexpr bool is_optional_v = _is_optional<std::remove_const_t<std::remove_reference_t<Ty_>>>::value;

@@ -53,9 +53,7 @@ void main_1()
 }
 
 template <typename T, typename = void>
-struct test_strt
-{
-};
+struct test_strt {};
 
 template <typename T>
 auto test_strt_a()
@@ -64,8 +62,7 @@ auto test_strt_a()
 }
 
 template <typename T>
-struct test_strt<T, std::enable_if_t<std::is_same_v<T, int>>>
-{
+struct test_strt<T, std::enable_if_t<std::is_same_v<T, int>>> {
     auto operator()()
     {
         return int{};

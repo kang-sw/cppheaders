@@ -68,8 +68,7 @@ class if_session
 class if_service_handler
 {
    public:
-    struct handler_package_type
-    {
+    struct handler_package_type {
         shared_ptr<if_service_handler>  _self;
         shared_ptr<void>                _handle;
 

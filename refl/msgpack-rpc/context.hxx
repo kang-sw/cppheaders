@@ -161,15 +161,13 @@ namespace detail {
 class session : public std::enable_shared_from_this<session>
 {
    public:
-    struct config
-    {
+    struct config {
         bool                      use_integer_key = true;
         std::chrono::microseconds timeout = {};
     };
 
    private:
-    struct request_info
-    {
+    struct request_info {
         using handle_type = std::map<int, request_info>::iterator;
 
         function<void(reader*, std::exception_ptr)> completion_handler;
@@ -541,8 +539,7 @@ class session : public std::enable_shared_from_this<session>
                 fn_reply(this, msgid, to_string(rpc_status::invalid_parameter), nullptr);
             } else {
                 try {
-                    struct uobj_t
-                    {
+                    struct uobj_t {
                         session* self;
                         int      msgid;
                     } uobj{this, msgid};
@@ -908,8 +905,7 @@ class context
     }
 
    public:
-    struct session_handle
-    {
+    struct session_handle {
         friend class context;
 
        private:

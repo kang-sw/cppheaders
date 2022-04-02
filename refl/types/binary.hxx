@@ -41,8 +41,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
 {
     using binary_type = binary<Container_>;
 
-    static struct manip_t : refl::templated_primitive_control<binary_type>
-    {
+    static struct manip_t : refl::templated_primitive_control<binary_type> {
         refl::entity_type type() const noexcept override
         {
             return refl::entity_type::binary;

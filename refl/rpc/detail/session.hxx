@@ -79,8 +79,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
 #endif
 
    private:
-    struct rpc_context
-    {
+    struct rpc_context {
         int idgen = 0;
     };
 

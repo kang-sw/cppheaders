@@ -229,8 +229,7 @@ auto open_acceptor(
     using acceptor_type = std::remove_reference_t<decltype(acceptor)>;
     using socket_type = typename Protocol_::socket;
 
-    struct _accept_function
-    {
+    struct _accept_function {
         acceptor_type* _acceptor;
         context*       _ctx;
 

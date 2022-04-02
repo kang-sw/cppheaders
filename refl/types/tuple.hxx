@@ -41,8 +41,7 @@ namespace detail {
 template <typename... Args_>
 auto get_tuple_descriptor(type_tag<std::tuple<Args_...>>)
 {
-    static struct manip_t : templated_primitive_control<std::tuple<Args_...>>
-    {
+    static struct manip_t : templated_primitive_control<std::tuple<Args_...>> {
         entity_type type() const noexcept override
         {
             return entity_type::tuple;
@@ -75,8 +74,7 @@ INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::tuple>::valu
 
 INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::pair>::value))
 {
-    static struct manip_t : templated_primitive_control<ValTy_>
-    {
+    static struct manip_t : templated_primitive_control<ValTy_> {
         entity_type type() const noexcept override
         {
             return entity_type::tuple;

@@ -32,8 +32,7 @@
 
 namespace CPPHEADERS_NS_ {
 template <typename Ty_, typename Label_ = void>
-struct singleton_t
-{
+struct singleton_t {
    private:
     static Ty_*& _ptr() noexcept
     {

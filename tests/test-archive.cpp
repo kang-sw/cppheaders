@@ -31,12 +31,12 @@
 #include "refl/archive/json.hpp"
 #include "refl/archive/msgpack-reader.hxx"
 #include "refl/archive/msgpack-writer.hxx"
+#include "refl/object.hxx"
 #include "refl/types/array.hxx"
 #include "refl/types/binary.hxx"
 #include "refl/types/list.hxx"
 #include "refl/types/tuple.hxx"
 #include "refl/types/variant.hxx"
-#include "refl/object.hxx"
 
 using namespace cpph;
 
@@ -47,8 +47,7 @@ enum class my_enum {
 };
 
 namespace ns {
-struct inner_arg_1
-{
+struct inner_arg_1 {
     std::string         str1 = (char const*)u8"str1-value\r\t\n\\n";
     std::string         str2 = "str2-value";
     int                 var = 133;
@@ -60,8 +59,7 @@ struct inner_arg_1
                                    (var), (k), (bools), (g));
 };
 
-struct inner_arg_2
-{
+struct inner_arg_2 {
     inner_arg_1 rtt = {};
     nullptr_t   nothing = nullptr;
     nullptr_t   nothing2 = nullptr;
@@ -71,8 +69,7 @@ struct inner_arg_2
     CPPH_REFL_DEFINE_TUPLE_inline((), rtt, nothing, nothing2, ints);
 };
 
-struct abcd
-{
+struct abcd {
     int arg0 = 1;
     int arg1 = 2;
     int arg2 = 3;
@@ -81,8 +78,7 @@ struct abcd
     CPPH_REFL_DEFINE_OBJECT_inline((), (arg0), (arg1), (arg2), (arg3));
 };
 
-struct outer
-{
+struct outer {
     inner_arg_1                          arg1;
     inner_arg_2                          arg2;
     std::pair<int, bool>                 arg = {3, false};
@@ -128,8 +124,7 @@ auto initialize_object_metadata(cpph::refl::type_tag<values_0<S, T>>)
 static auto pp_ptr = refl::get_object_metadata<values_0<int, double>>();
 static_assert(perfkit::is_binary_compatible_v<abcd>);
 
-struct some_other
-{
+struct some_other {
     int         a, b, c;
     float       f, t, r;
 
@@ -141,8 +136,7 @@ struct some_other
 
 using variant_type = std::variant<int, double, std::string, bool>;
 
-struct vectors
-{
+struct vectors {
     std::vector<std::vector<double>> f
             = {{1., 2., 3.}, {4., 5, 6}};
 
@@ -173,8 +167,7 @@ struct vectors
                                    (vt1), (vt2), (vt3), (vt4));
 };
 
-struct some_other_2
-{
+struct some_other_2 {
     int         a, b, c;
     float       f, t, r;
 
@@ -190,8 +183,7 @@ namespace cpph::refl {
 
 }
 
-struct testarg_2
-{
+struct testarg_2 {
     std::string unistr;
 
     CPPH_REFL_DEFINE_OBJECT_inline((), (unistr));
@@ -338,8 +330,7 @@ TEST_CASE("archive", "[.]")
 CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, (), (a, "hello", 3), (b, 4), (c), (f), (t), (r), (e), (ff));
 CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, (), a, b, c, f, t, r, e, ff);
 
-struct bintest
-{
+struct bintest {
     binary<std::string> binstr = "hello, world!";
 
     CPPH_REFL_DEFINE_OBJECT_inline((), (binstr));

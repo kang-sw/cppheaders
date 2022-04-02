@@ -30,8 +30,7 @@ namespace CPPHEADERS_NS_::rpc {
 /**
  * Describes a session
  */
-struct session_profile
-{
+struct session_profile {
     weak_ptr<session> w_self;
 
     size_t            local_id = 0;

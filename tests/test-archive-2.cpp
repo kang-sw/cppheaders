@@ -30,8 +30,7 @@
 
 #include "refl/core.hxx"
 
-struct base_object
-{
+struct base_object {
     std::optional<double>           opt_double;
     std::list<int>                  list_int;
     cpph::binary<std::vector<char>> bin_vec_chars;
@@ -46,8 +45,7 @@ struct base_object
     }
 };
 
-struct child_object : base_object
-{
+struct child_object : base_object {
     CPPH_REFL_DECLARE_c;
 
     nullptr_t placeholder;

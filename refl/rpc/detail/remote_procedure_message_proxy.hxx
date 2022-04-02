@@ -33,8 +33,7 @@
 #include "interface.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-struct packed_service_handler
-{
+struct packed_service_handler {
     friend class remote_procedure_message_proxy;
 
    private:

@@ -44,8 +44,7 @@ enum class reader_scope_type {
     object
 };
 
-struct reader_scope_context_t
-{
+struct reader_scope_context_t {
     reader_scope_type type = {};
     context_key       context = {};
     int               token_pos = false;
@@ -53,8 +52,7 @@ struct reader_scope_context_t
     int               elem_left = 0;
 };
 
-struct reader::impl
-{
+struct reader::impl {
     if_reader*                          self;
 
     std::vector<jsmntok_t>              tokens;

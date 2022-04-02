@@ -37,8 +37,7 @@ namespace CPPHEADERS_NS_ {
 template <std::size_t I = 0, typename FuncT, typename... Tp>
 inline typename std::enable_if<I == sizeof...(Tp), void>::type
 tuple_for_each(std::tuple<Tp...>&, FuncT&&)  // Unused arguments are given no names.
-{
-}
+{}
 
 template <std::size_t I = 0, typename FuncT, typename... Tp>
         inline typename std::enable_if < I<sizeof...(Tp), void>::type
@@ -55,8 +54,7 @@ template <std::size_t I = 0, typename FuncT, typename... Tp>
 template <std::size_t I = 0, typename FuncT, typename... Tp>
 inline typename std::enable_if<I == sizeof...(Tp), void>::type
 tuple_for_each(std::tuple<Tp...> const&, FuncT&&)  // Unused arguments are given no names.
-{
-}
+{}
 
 template <std::size_t I = 0, typename FuncT, typename... Tp>
         inline typename std::enable_if < I<sizeof...(Tp), void>::type
@@ -74,8 +72,7 @@ template <std::size_t I = 0, typename FuncT, typename... Tp>
  * wrapper for borrowed ranges
  */
 template <typename Begin_, typename End_>
-struct _borrowed_range
-{
+struct _borrowed_range {
     Begin_ _begin;
     End_   _end;
 
@@ -114,20 +111,16 @@ struct function_traits;
 
 // function pointer
 template <class R, class... Args>
-struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)>
-{
-};
+struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)> {};
 
 template <class R, class... Args>
-struct function_traits<R(Args...)>
-{
+struct function_traits<R(Args...)> {
     using return_type = R;
 
     static constexpr std::size_t arity = sizeof...(Args);
 
     template <std::size_t N>
-    struct argument
-    {
+    struct argument {
         static_assert(N < arity, "error: invalid parameter index.");
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
     };
@@ -135,26 +128,19 @@ struct function_traits<R(Args...)>
 
 // member function pointer
 template <class C, class R, class... Args>
-struct function_traits<R (C::*)(Args...)> : public function_traits<R(C&, Args...)>
-{
-};
+struct function_traits<R (C::*)(Args...)> : public function_traits<R(C&, Args...)> {};
 
 // const member function pointer
 template <class C, class R, class... Args>
-struct function_traits<R (C::*)(Args...) const> : public function_traits<R(C&, Args...)>
-{
-};
+struct function_traits<R (C::*)(Args...) const> : public function_traits<R(C&, Args...)> {};
 
 // member object pointer
 template <class C, class R>
-struct function_traits<R(C::*)> : public function_traits<R(C&)>
-{
-};
+struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
 
 // functor
 template <class F>
-struct function_traits
-{
+struct function_traits {
    private:
     using call_type = function_traits<decltype(&F::operator())>;
 
@@ -164,22 +150,17 @@ struct function_traits
     static constexpr std::size_t arity = call_type::arity - 1;
 
     template <std::size_t N>
-    struct argument
-    {
+    struct argument {
         static_assert(N < arity, "error: invalid parameter index.");
         using type = typename call_type::template argument<N + 1>::type;
     };
 };
 
 template <class F>
-struct function_traits<F&> : public function_traits<F>
-{
-};
+struct function_traits<F&> : public function_traits<F> {};
 
 template <class F>
-struct function_traits<F&&> : public function_traits<F>
-{
-};
+struct function_traits<F&&> : public function_traits<F> {};
 
 template <typename Ptr1_, typename Ptr2_>
 bool ptr_equals(Ptr1_&& lhs, Ptr2_&& rhs)
@@ -189,8 +170,7 @@ bool ptr_equals(Ptr1_&& lhs, Ptr2_&& rhs)
 
 // check if has less
 template <class Opr_, class X_, class Y_ = X_>
-struct has_binary_op
-{
+struct has_binary_op {
     template <typename Op_, typename LTy_, typename RTy_>
     static auto _test(int) -> decltype(
             std::declval<Op_>()(std::declval<LTy_>(), std::declval<RTy_>()), std::true_type{})
@@ -238,14 +218,10 @@ constexpr bool is_any_of_v = ((std::is_same_v<Ty_, Args_>) || ...);
 // is_specialization
 // @see https://stackoverflow.com/questions/16337610/how-to-know-if-a-type-is-a-specialization-of-stdvector
 template <typename Test, template <typename...> class Ref>
-struct is_template_instance_of : std::false_type
-{
-};
+struct is_template_instance_of : std::false_type {};
 
 template <template <typename...> class Ref, typename... Args>
-struct is_template_instance_of<Ref<Args...>, Ref> : std::true_type
-{
-};
+struct is_template_instance_of<Ref<Args...>, Ref> : std::true_type {};
 
 template <typename Ty_>
 using remove_cvr_t = std::remove_cv_t<std::remove_reference_t<Ty_>>;
@@ -254,8 +230,7 @@ template <typename Type_, size_t N = sizeof(Type_)>
 class test_size_by_error;
 
 template <typename Ty_>
-struct static_const
-{
+struct static_const {
     static constexpr Ty_ value{};
 };
 
@@ -272,22 +247,25 @@ Ty_& declref() noexcept
 /// @see https://stackoverflow.com/a/40873657/12923403
 template <class F>
 struct y_combinator {
-    F f; // the lambda will be stored here
+    F f;  // the lambda will be stored here
 
     // a forwarding operator():
     template <class... Args>
-    decltype(auto) operator()(Args&&... args) const {
+    decltype(auto) operator()(Args&&... args) const
+    {
         // we pass ourselves to f, then the arguments.
         return f(*this, std::forward<Args>(args)...);
     }
 };
 
 // Deduction guide
-template <class F> y_combinator(F) -> y_combinator<F>;
+template <class F>
+y_combinator(F) -> y_combinator<F>;
 
 // helper function that deduces the type of the lambda:
 template <class F>
-y_combinator<std::decay_t<F>> make_y_combinator(F&& f) {
+y_combinator<std::decay_t<F>> make_y_combinator(F&& f)
+{
     return {std::forward<F>(f)};
 }
 
