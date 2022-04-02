@@ -110,20 +110,6 @@ class basic_session_builder
         return _make_ref<slot_protocol>();
     }
 
-    template <class Connection, typename... Args>
-    auto& connection(Args&&... args)
-    {
-        _session->_conn = std::make_unique<Connection>(std::forward<Args>(args)...);
-        return _make_ref<slot_connection>();
-    }
-
-    template <class Protocol, typename... Args>
-    auto& protocol(Args&&... args)
-    {
-        _session->_protocol = std::make_unique<Protocol>(std::forward<Args>(args)...);
-        return _make_ref<slot_protocol>();
-    }
-
     [[nodiscard]] inline auto
     build()
     {
