@@ -103,7 +103,9 @@ struct object_view_t
     object_view_t(const object_metadata* meta, object_data_t* data) : meta(meta), data(data) {}
 
     template <typename Ty_>
-    object_view_t(Ty_* p) noexcept;
+    explicit object_view_t(Ty_* p) noexcept;
+
+    bool empty() const noexcept { return data == nullptr; }
 
    public:
     auto pair() const noexcept { return std::make_pair(meta, data); }
@@ -120,6 +122,8 @@ struct object_const_view_t
 
     template <typename Ty_>
     explicit object_const_view_t(Ty_ const& p) noexcept;
+
+    bool empty() const noexcept { return data == nullptr; }
 
    public:
     auto pair() const noexcept { return std::make_pair(meta, data); }

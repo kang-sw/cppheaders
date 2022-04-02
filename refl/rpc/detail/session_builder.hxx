@@ -36,8 +36,6 @@ template <int SlotValue>
 class basic_session_builder
 {
     enum slot_flags {
-        flag_initialized,
-
         slot_event_proc,
         slot_connection,
         slot_protocol,
@@ -52,20 +50,22 @@ class basic_session_builder
 
    private:
     template <slot_flags... Values,
-              typename = std::enable_if_t<
-                      (SlotValue & (1 << flag_initialized))
-                      && not(SlotValue & ((1 << Values) | ...))>>
+              typename = std::enable_if_t<not(SlotValue & ((1 << Values) | ...))>>
     auto& _make_ref() noexcept
     {
         return (basic_session_builder<((SlotValue | (1 << Values)) | ...)>&)*this;
     }
 
    public:
-    inline auto& start()
+    basic_session_builder()
     {
-        assert(not _session);
+        reset();
+    }
+
+   public:
+    void reset()
+    {
         _session = std::make_shared<session>(session::_ctor_hide_type{});
-        return (basic_session_builder<1 << flag_initialized>&)*this;
     }
 
     inline auto& user_data(shared_ptr<void> ptr)

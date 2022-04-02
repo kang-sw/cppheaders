@@ -33,26 +33,31 @@ namespace CPPHEADERS_NS_::rpc {
 
 class request_handle
 {
-    friend class context;
+    friend class session;
+
     std::weak_ptr<session> _wp;
-    int                    _msgid_or_negative_error = 0;
+
+    union {
+        int _msgid = 0;
+        int _error;
+    };
 
    public:
-    operator bool() const noexcept { return _msgid_or_negative_error > 0 && not _wp.expired(); }
+    operator bool() const noexcept { return _msgid > 0 && not _wp.expired(); }
 
     //
     auto errc() const noexcept
     {
-        return request_result{_msgid_or_negative_error < 0 ? -_msgid_or_negative_error : 0};
+        return request_result{_msgid < 0 ? -_msgid : 0};
     }
 
     template <typename Duration_, typename Sptr_ = std::shared_ptr<session>>
     bool wait(Duration_&& duration) const noexcept
     {
-        assert(_msgid_or_negative_error > 0);
+        assert(_msgid > 0);
 
         if (Sptr_ session = _wp.lock())
-            return session->wait_rpc(_msgid_or_negative_error, duration);
+            return session->wait_rpc(_msgid, duration);
         else
             return false;
     }
@@ -60,17 +65,17 @@ class request_handle
     template <typename Sptr_ = std::shared_ptr<session>>
     bool abort() const noexcept
     {
-        assert(_msgid_or_negative_error > 0);
+        assert(_msgid > 0);
 
         if (Sptr_ session = _wp.lock())
-            return session->abort_rpc(_msgid_or_negative_error);
+            return session->abort_rpc(_msgid);
         else
             return false;
     }
 
     void reset()
     {
-        _msgid_or_negative_error = 0;
+        _msgid = 0;
         _wp = {};
     }
 };

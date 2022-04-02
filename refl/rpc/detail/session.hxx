@@ -67,17 +67,11 @@ class session : public if_session, public std::enable_shared_from_this<session>
     // I/O Lock. Only protects stream access
     std::mutex _mtx_io;
 
-    // Check if this session is alive.
+    // Cached RPC profile
     session_profile _profile;
-
-    // RPC lock
-    thread::event_wait _evt_rpc;
 
     // Current connection state for quick check.
     std::atomic_bool _valid;
-
-    // Unique request id generator per session
-    int _request_id_gen = 0;
 
 #ifndef NDEBUG
     // Waiting validator
@@ -85,31 +79,86 @@ class session : public if_session, public std::enable_shared_from_this<session>
 #endif
 
    private:
+    // RPC features
+
+   private:
+    // Hides constructor from public
+    enum class _ctor_hide_type {};
+
+   public:
     /**
-     * Creating empty session outside of builder is basically prohibited
+     * Below code prohibits external session construction
      */
     session() = delete;
-
-    // Hides constructor from public
-    struct _ctor_hide_type
-    {
-    };
-
-   public:
     explicit session(_ctor_hide_type) noexcept {}
+
+   private:
+    template <typename... Params>
+    auto _create_parameter_descriptor_array(
+            Params const&... params)
+            -> std::array<refl::object_const_view_t, sizeof...(Params)>
+    {
+        constexpr auto nparam = sizeof...(Params);
+        auto           views = std::array<refl::object_const_view_t, nparam>{};
+
+        // Fill parameter lists
+        {
+            size_t index = 0;
+            ((views[index++] = refl::object_const_view_t{params}), ...);
+            (void)index;
+        }
+
+        return views;
+    }
 
    public:
     /**
-     * Request RPC
+     * Send request
      */
+    template <typename RetPtr, typename... Params>
+    request_handle request(RetPtr return_buffer, Params const&... params)
+    {
+        if (expired()) { return {}; }
+
+        request_handle handle = {};
+        handle._wp = weak_from_this();
+        handle._msgid = 0;
+
+        // TODO: Handle RetPtr == nullptr_t
+
+        return handle;
+    }
 
     /**
      * Send notify
+     *
+     * @return false when connection is expired.
      */
+    template <typename... Params>
+    bool notify(string_view method, Params const&... params)
+    {
+        if (expired()) { return false; }  // perform quick check
+        auto views = _create_parameter_descriptor_array(params...);
+
+        {
+            lock_guard _lc_{_mtx_io};
+            auto       result = _protocol->send_notify(method, views);
+
+            _update_rw_count();
+
+            return result == protocol_stream_state::okay;
+        }
+    }
 
     /**
      * Close
+     *
+     * @return false if connection is already expired
      */
+    bool close()
+    {
+        return _set_expired();
+    }
 
     /**
      * Wait RPC for given time
@@ -126,6 +175,13 @@ class session : public if_session, public std::enable_shared_from_this<session>
     /**
      * Get total number of received bytes
      */
+    void totals(size_t* nread, size_t* nwrite)
+    {
+        lock_guard _lc_{_mtx_io};
+
+        *nread = _profile.total_read;
+        *nwrite = _profile.total_write;
+    }
 
     /**
      * Check condition
@@ -154,10 +210,11 @@ class session : public if_session, public std::enable_shared_from_this<session>
                     [[fallthrough]];
 
                 case protocol_stream_state::okay:
+                    _update_rw_count();
                     break;
 
                 case protocol_stream_state::expired:
-                    _handle_expiration();
+                    _set_expired();
 
                     // Do not run receive cycle anymore ...
                     return;
@@ -166,6 +223,18 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
         assert(_waiting.exchange(true) == false);
         _conn->async_wait_data();
+    }
+
+    auto reply_result_buffer(int msgid) -> refl::object_view_t override
+    {
+        // TODO: find corresponding reply result buffer.
+        return {};
+    }
+
+    auto reply_error_buffer(int msgid) -> std::string* override
+    {
+        // TODO: find corresponding reply error buffer.
+        return nullptr;
     }
 
    private:
@@ -192,13 +261,21 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _conn->async_wait_data();
     }
 
-    void _handle_expiration()
+    bool _set_expired()
     {
-        if (_valid.exchange(false)) {
+        bool const was_valid = _valid.exchange(false);
+        if (was_valid) {
             // Only notify expiration & close for once.
             _monitor->on_session_expired(&_profile);
             _conn->close();
         }
+
+        return was_valid;
+    }
+
+    void _update_rw_count()
+    {
+        _conn->get_total_rw(&_profile.total_read, &_profile.total_write);
     }
 };
 }  // namespace CPPHEADERS_NS_::rpc

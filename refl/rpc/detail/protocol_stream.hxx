@@ -57,6 +57,10 @@ class if_protocol_stream
      * 2. Find service handler from proxy.
      * 3. Fill parameter contents with internal if_writer, if_reader
      * 4. Submit packed_message_handler
+     *
+     * -> If received message was reply
+     * 1. Retrieve message id from message
+     * 2.
      */
     virtual protocol_stream_state handle_single_message(remote_procedure_message_proxy& proxy) noexcept = 0;
 
@@ -70,12 +74,12 @@ class if_protocol_stream
      * If internal RPC protocol is compatible with simple integer, this function should only
      *  perform simple transfer operation.
      */
-    virtual protocol_stream_state send_rpc_request(int msgid, array_view<refl::object_view_t> params) noexcept = 0;
+    virtual protocol_stream_state send_rpc_request(std::string_view method, int msgid, array_view<refl::object_view_t> params) noexcept = 0;
 
     /**
      * Send notify with given parameters.
      */
-    virtual protocol_stream_state send_notify(array_view<refl::object_view_t> params) noexcept = 0;
+    virtual protocol_stream_state send_notify(std::string_view method, array_view<refl::object_view_t> params) noexcept = 0;
 
     /**
      * Send reply with given msgid and return value.

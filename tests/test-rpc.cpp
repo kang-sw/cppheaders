@@ -68,11 +68,11 @@ TEST_CASE("Can compile modules", "[rpc][.]")
         {
             return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
         }
-        rpc::protocol_stream_state send_rpc_request(int msgid, array_view<refl::object_view_t> params) noexcept override
+        rpc::protocol_stream_state send_rpc_request(std::string_view, int msgid, array_view<refl::object_view_t> params) noexcept override
         {
             return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
         }
-        rpc::protocol_stream_state send_notify(array_view<refl::object_view_t> params) noexcept override
+        rpc::protocol_stream_state send_notify(std::string_view, array_view<refl::object_view_t> params) noexcept override
         {
             return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
         }
@@ -103,13 +103,10 @@ TEST_CASE("Can compile modules", "[rpc][.]")
 
     rpc::session_ptr session;
     rpc::session::builder{}
-            .start()
             .user_data(nullptr)
             .event_procedure(nullptr)
-            .protocol<proto>()
+            .protocol(std::make_unique<proto>())
             .service(std::move(svc).build())
-            .connection<conn>("hello")
+            .connection(std::make_unique<conn>("hello"))
             .build_to(session);
-
-    session;
 }

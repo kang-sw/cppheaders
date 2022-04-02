@@ -52,12 +52,17 @@ class if_event_proc
 class if_session
 {
     friend class if_connection_streambuf;
+    friend class remote_procedure_message_proxy;
 
    public:
     virtual ~if_session() = default;
 
    private:
     virtual void on_data_wait_complete() noexcept = 0;
+
+    // RPC functions
+    virtual auto reply_result_buffer(int msgid) -> refl::object_view_t = 0;
+    virtual auto reply_error_buffer(int msgid) -> std::string* = 0;
 };
 
 class if_service_handler

@@ -57,6 +57,7 @@ class remote_procedure_message_proxy
     };
 
    private:
+    if_session*    _owner = {};
     service*       _svc = {};
     if_event_proc* _procedure = {};
 
@@ -84,12 +85,27 @@ class remote_procedure_message_proxy
     /**
      * Retrieves result buffer of waiting RPC
      */
-    refl::object_view_t find_reply_buffer(int msgid);
+    refl::object_view_t reply_result_buffer(int msgid)
+    {
+        _verify_clear_state();
+
+        _type = proxy_type::reply_okay;
+        _rpc_msgid = msgid;
+
+        return _owner->reply_result_buffer(msgid);
+    }
 
     /**
      * Set reply as error, and get error buffer
      */
-    string* set_reply_as_error(int msgid);
+    string* reply_error_buffer(int msgid);
+
+   private:
+    void _verify_clear_state()
+    {
+        assert(_type == proxy_type::none);
+        assert(_rpc_msgid == 0);
+    }
 };
 
 }  // namespace CPPHEADERS_NS_::rpc
