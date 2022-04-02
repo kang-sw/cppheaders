@@ -233,13 +233,13 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _conn->async_wait_data();
     }
 
-    auto reply_result_buffer(int msgid) -> refl::object_view_t override
+    auto find_reply_result_buffer(int msgid) -> refl::object_view_t override
     {
         // TODO: find corresponding reply result buffer.
         return {};
     }
 
-    auto reply_error_buffer(int msgid) -> std::string* override
+    auto find_reply_error_buffer(int msgid) -> std::string* override
     {
         // TODO: find corresponding reply error buffer.
         return nullptr;

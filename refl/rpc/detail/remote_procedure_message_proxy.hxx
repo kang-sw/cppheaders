@@ -101,11 +101,11 @@ class remote_procedure_message_proxy
         _type = proxy_type::reply_okay;
         _rpc_msgid = msgid;
 
-        return _owner->reply_result_buffer(msgid);
+        return _owner->find_reply_result_buffer(msgid);
     }
 
     /**
-     * Set reply as error, and get error buffer
+     * Set reply as error, and dump single object as error
      */
     bool reply_error(int msgid, archive::if_reader* object)
     {
@@ -114,7 +114,7 @@ class remote_procedure_message_proxy
         _type = proxy_type::reply_error;
         _rpc_msgid = msgid;
 
-        auto json = _owner->reply_error_buffer(msgid);
+        auto json = _owner->find_reply_error_buffer(msgid);
         if (json == nullptr) { return false; }
 
         streambuf::stringbuf  buf{json};
