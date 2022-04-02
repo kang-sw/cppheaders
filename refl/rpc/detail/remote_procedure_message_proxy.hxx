@@ -29,26 +29,20 @@
 #include <map>
 #include <optional>
 
+#include "../../../streambuf/string.hxx"
 #include "../../__namespace__"
+#include "../../archive/json-writer.hxx"
 #include "interface.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-struct packed_service_handler {
-    friend class remote_procedure_message_proxy;
-
-   private:
-    if_service_handler::handler_package_type _buf;
-
-   public:
-    auto parameter_buffer() const noexcept { return _buf.params; }
-};
-
 class remote_procedure_message_proxy
 {
     friend class session;
 
     enum class proxy_type {
         none,
+        in_progress,
+
         request,
         notify,
         reply_okay,
@@ -56,30 +50,46 @@ class remote_procedure_message_proxy
     };
 
    private:
-    if_session*    _owner = {};
-    service*       _svc = {};
-    if_event_proc* _procedure = {};
+    if_session* _owner = {};
+    service*    _svc = {};
 
-    proxy_type     _type = proxy_type::none;
-    int            _rpc_msgid = 0;
+    proxy_type  _type = proxy_type::none;
+    int         _rpc_msgid = 0;
+
+    //
+    std::optional<service_handler_package> _handler;
 
    public:
     /**
-     * Find service handler with method name.
-     *
-     * @return empty optional if method not found.
+     * Find corresponding request parameter buffer with given method name,
+     *  and set internal state as request mode
      */
-    std::optional<packed_service_handler> find_handler(string_view method_name);
+    service_parameter_buffer* request_parameters(string_view method_name, int msgid)
+    {
+        auto rv = _parameters(method_name);
+
+        if (rv) {
+            _type = proxy_type::request;
+            _rpc_msgid = msgid;
+        }
+
+        return rv;
+    }
 
     /**
-     * Post notify handler to event procedure
+     * Find corresponding notify handler parameter buffer with given method name,
+     *  and set internal state as notify mode
      */
-    void post_notify_handler(packed_service_handler&& deserialized);
+    service_parameter_buffer* notify_parameters(string_view method_name)
+    {
+        auto rv = _parameters(method_name);
 
-    /**
-     * Post RPC handler to event procedure
-     */
-    void post_rpc_handler(int msgid, packed_service_handler&& deserialized);
+        if (rv) {
+            _type = proxy_type::notify;
+        }
+
+        return rv;
+    }
 
     /**
      * Retrieves result buffer of waiting RPC
@@ -97,13 +107,42 @@ class remote_procedure_message_proxy
     /**
      * Set reply as error, and get error buffer
      */
-    string* reply_error_buffer(int msgid);
+    bool reply_error(int msgid, archive::if_reader* object)
+    {
+        _verify_clear_state();
+
+        _type = proxy_type::reply_error;
+        _rpc_msgid = msgid;
+
+        auto json = _owner->reply_error_buffer(msgid);
+        if (json == nullptr) { return false; }
+
+        streambuf::stringbuf  buf{json};
+        archive::json::writer writer(&buf);
+
+        object->dump_single_object(&writer);
+        writer.flush();
+
+        return true;
+    }
 
    private:
     void _verify_clear_state()
     {
         assert(_type == proxy_type::none);
         assert(_rpc_msgid == 0);
+    }
+
+    service_parameter_buffer* _parameters(string_view method_name)
+    {
+        _verify_clear_state();
+        _type = proxy_type::in_progress;
+
+        auto handler = _svc->find_handler(method_name);
+        if (not handler) { return nullptr; }
+
+        _handler = handler->checkout_parameter_buffer();
+        return &_handler->params;
     }
 };
 

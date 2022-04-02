@@ -84,8 +84,8 @@ class session : public if_session, public std::enable_shared_from_this<session>
     };
 
    private:
-    // RPC features is prohibited before we use it
-    std::once_flag _rpc_init_flag;
+    // Optional RPC context.
+    unique_ptr<rpc_context> _rpc;
 
    private:
     // Hides constructor from public
@@ -202,8 +202,8 @@ class session : public if_session, public std::enable_shared_from_this<session>
     {
         assert(_waiting.exchange(false) == true);
 
-        remote_procedure_message_proxy proxy;
-        proxy._procedure = &*_event_proc;
+        remote_procedure_message_proxy proxy = {};
+        proxy._owner = this;
         proxy._svc = &_service;
 
         {
@@ -213,9 +213,11 @@ class session : public if_session, public std::enable_shared_from_this<session>
             switch (state) {
                 default:
                     _monitor->on_receive_warning(&_profile, state);
-                    [[fallthrough]];
+                    _update_rw_count();
+                    break;
 
                 case protocol_stream_state::okay:
+
                     _update_rw_count();
                     break;
 
@@ -285,6 +287,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
     void _update_rw_count()
     {
         _conn->get_total_rw(&_profile.total_read, &_profile.total_write);
+    }
+
+    void _handle_receive_result(remote_procedure_message_proxy&& proxy)
+    {
     }
 };
 }  // namespace CPPHEADERS_NS_::rpc

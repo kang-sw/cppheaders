@@ -49,29 +49,15 @@ class if_event_proc
     virtual void post_handler_callback(function<void()>&&) = 0;
 };
 
-class if_session
-{
-    friend class if_connection_streambuf;
-    friend class remote_procedure_message_proxy;
-
-   public:
-    virtual ~if_session() = default;
-
-   private:
-    virtual void on_data_wait_complete() noexcept = 0;
-
-    // RPC functions
-    virtual auto reply_result_buffer(int msgid) -> refl::object_view_t = 0;
-    virtual auto reply_error_buffer(int msgid) -> std::string* = 0;
-};
-
+/**
+ * Indicates single handler
+ */
 class if_service_handler
 {
    public:
     struct handler_package_type {
         shared_ptr<if_service_handler>  _self;
         shared_ptr<void>                _handle;
-
         array_view<refl::object_view_t> params;
 
        public:
@@ -97,6 +83,12 @@ class if_service_handler
             -> refl::shared_object_ptr = 0;
 };
 
+using service_handler_package = if_service_handler::handler_package_type;
+using service_parameter_buffer = decltype(if_service_handler::handler_package_type::params);
+
+/**
+ *
+ */
 class if_session_monitor
 {
    public:
@@ -116,6 +108,25 @@ class if_session_monitor
      * Invoked when recoverable error occurred during receiving
      */
     virtual void on_receive_warning(session_profile_view, protocol_stream_state) {}
+};
+
+/**
+ * Session interface
+ */
+class if_session
+{
+    friend class if_connection_streambuf;
+    friend class remote_procedure_message_proxy;
+
+   public:
+    virtual ~if_session() = default;
+
+   private:
+    virtual void on_data_wait_complete() noexcept = 0;
+
+    // RPC functions
+    virtual auto reply_result_buffer(int msgid) -> refl::object_view_t = 0;
+    virtual auto reply_error_buffer(int msgid) -> std::string* = 0;
 };
 
 }  // namespace CPPHEADERS_NS_::rpc
