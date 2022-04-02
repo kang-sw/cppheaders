@@ -113,8 +113,6 @@ class writer : public archive::if_writer
         if (d.need_comma) { _append_comma(); }
         if (d.need_indent) { _brk_indent(); }
 
-        // TODO: Escape strings
-
         _buf->sputc('"');
         auto inserter = adapt_inserter([&](char ch) { _buf->sputc(ch); });
         strutil::escape(v.begin(), v.end(), inserter);
