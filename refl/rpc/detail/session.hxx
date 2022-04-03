@@ -217,7 +217,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
                     break;
 
                 case protocol_stream_state::okay:
-
+                    _handle_receive_result(std::move(proxy));
                     _update_rw_count();
                     break;
 
@@ -291,6 +291,61 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
     void _handle_receive_result(remote_procedure_message_proxy&& proxy)
     {
+        using proxy_flag = remote_procedure_message_proxy::proxy_type;
+
+        switch (proxy._type) {
+            case proxy_flag::request:
+                assert(proxy._handler);
+                {
+                    std::move(*proxy._handler).invoke(_profile);
+                    auto fn_handle_rpc =
+                            [this, handler = move(*proxy._handler)]() mutable {
+                                try {
+                                    auto rval = move(handler).invoke(_profile);
+
+                                    // TODO: Send reply with rval
+                                } catch (service_handler_exception& e) {
+                                    // TODO: Send reply with error
+                                } catch (std::exception& e) {
+                                    // TODO: Send reply with error in string
+                                }
+                            };
+
+                    fn_handle_rpc;
+                }
+                break;
+
+            case proxy_flag::notify:
+                assert(proxy._handler);
+                {
+                    std::move(*proxy._handler).invoke(_profile);
+                    auto fn_handle_rpc =
+                            [this, handler = move(*proxy._handler)]() mutable {
+                                try {
+                                    auto rval = move(handler).invoke(_profile);
+
+                                    // TODO: Send reply with rval
+                                } catch (...) {
+                                    ;  // Simply report error to monitor
+                                }
+                            };
+
+                    fn_handle_rpc;
+                }
+                break;
+
+            case proxy_flag::reply_okay:
+                break;
+
+            case proxy_flag::reply_error:
+                break;
+
+            default:
+            case proxy_flag::in_progress:
+            case proxy_flag::none:
+                assert(false && "Invalid flag value value");
+                break;
+        }
     }
 };
 }  // namespace CPPHEADERS_NS_::rpc

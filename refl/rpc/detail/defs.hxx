@@ -29,6 +29,7 @@
 #include <system_error>
 
 #include "../../__namespace__"
+#include "../../detail/object_core.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
 using std::make_shared;
@@ -93,6 +94,9 @@ auto make_request_result(request_result errc)
     return std::error_code(int(errc), *request_result_category::instance());
 }
 
+/**
+ * For identifying RPC type ...
+ */
 enum class rpc_payload_type {
     request,
     notify,
@@ -100,6 +104,9 @@ enum class rpc_payload_type {
     reply_error
 };
 
+/**
+ * Defines current protocol stream state after operation
+ */
 enum class protocol_stream_state {
     okay = 0,
     expired = -1,  // Protocol is in irreversible state. Session must be disposed.
@@ -110,5 +117,23 @@ enum class protocol_stream_state {
     warning_received_invalid_parameter_type,
     warning_received_invalid_method_name,
     warning_received_expired_rpc,
+};
+
+/**
+ *
+ */
+class service_handler_exception : public std::exception
+{
+    refl::shared_object_ptr _data;
+
+   public:
+    template <typename ExceptionArg>
+    explicit service_handler_exception(ExceptionArg&& data)
+            : _data(refl::shared_object_ptr(make_shared<ExceptionArg>(
+                    std::forward<ExceptionArg>(data))))
+    {
+    }
+
+    auto const& data() const noexcept { return _data; }
 };
 }  // namespace CPPHEADERS_NS_::rpc
