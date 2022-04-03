@@ -50,6 +50,7 @@ class stringbuf : public std::streambuf
         _buf = buf;
         _read_end = buf->size();  // Set initial content as read target
 
+        setg(nullptr, nullptr, nullptr);
         _retarget();
     }
 
@@ -57,6 +58,8 @@ class stringbuf : public std::streambuf
     void clear()
     {
         _read_end = 0;
+
+        setg(nullptr, nullptr, nullptr);
         _retarget();
     }
 
