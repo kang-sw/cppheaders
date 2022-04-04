@@ -57,7 +57,7 @@ class if_service_handler
    public:
     struct handler_package_type {
         shared_ptr<if_service_handler>  _self;
-        shared_ptr<void>                _handle;
+        shared_ptr<void>                _param_body;
         array_view<refl::object_view_t> params;
 
        public:

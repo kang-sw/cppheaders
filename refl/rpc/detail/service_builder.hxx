@@ -92,7 +92,7 @@ class service_builder
             auto data_ptr = _pool_param.checkout().share();
             auto rv = handler_package_type{};
             rv._self = shared_ptr<if_service_handler>(_owner.lock(), this);
-            rv._handle = data_ptr;
+            rv._param_body = data_ptr;
             rv.params = data_ptr->view_buffer;
 
             return rv;
@@ -104,7 +104,7 @@ class service_builder
                if_service_handler::handler_package_type&& params) override
         {
             auto rv = _pool_retval.checkout();
-            auto param_buf = static_cast<param_buf_pack_t*>(params._handle.get());
+            auto param_buf = static_cast<param_buf_pack_t*>(params._param_body.get());
             auto fn_invoke_handler =
                     [&](auto&... params) {
                         _handler(&profile, &*rv, params...);
