@@ -1182,6 +1182,14 @@ operator<<(if_writer& writer, refl::object_const_view_t const& value)
     return writer;
 }
 
+template <>
+inline if_writer&
+operator<<(if_writer& writer, refl::object_view_t const& value)
+{
+    value.meta->_archive_to(&writer, value.data, nullptr);
+    return writer;
+}
+
 /**
  * Restore object from archive
  */

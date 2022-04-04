@@ -26,6 +26,8 @@
 
 #pragma once
 #include <memory>
+#include <string>
+#include <string_view>
 #include <system_error>
 
 #include "../../__namespace__"
@@ -35,6 +37,8 @@ namespace CPPHEADERS_NS_::rpc {
 using std::make_shared;
 using std::make_unique;
 using std::shared_ptr;
+using std::string;
+using std::string_view;
 using std::unique_ptr;
 using std::weak_ptr;
 
@@ -98,16 +102,6 @@ auto make_request_error(request_result errc)
 }
 
 /**
- * For identifying RPC type ...
- */
-enum class rpc_payload_type {
-    request,
-    notify,
-    reply_okay,
-    reply_error
-};
-
-/**
  * Defines current protocol stream state after operation
  */
 enum class protocol_stream_state {
@@ -139,4 +133,11 @@ class service_handler_exception : public std::exception
 
     auto const& data() const noexcept { return _data; }
 };
+
+/**
+ * Generic error strings for identifiable internal errors
+ */
+constexpr string_view errstr_method_not_found = "CPPH_RPC_ERROR_METHOD_NOT_FOUND",
+                      errstr_invalid_parameter = "CPPH_RPC_ERROR_INVALID_PARAMETER";
+
 }  // namespace CPPHEADERS_NS_::rpc

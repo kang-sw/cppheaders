@@ -35,6 +35,7 @@
 #include "refl/rpc/detail/session.hxx"
 #include "refl/rpc/detail/session_builder.hxx"
 #include "refl/rpc/protocol.hxx"
+#include "refl/rpc/protocol/msgpack-rpc.hxx"
 #include "refl/rpc/service.hxx"
 
 using namespace cpph;
