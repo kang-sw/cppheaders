@@ -130,6 +130,9 @@ class if_session
     virtual void on_data_wait_complete() noexcept = 0;
 
     // RPC functions
+    virtual void request_node_lock_begin() = 0;
+    virtual void request_node_lock_end() = 0;
+
     virtual auto find_reply_result_buffer(int msgid) -> refl::object_view_t = 0;
     virtual auto find_reply_error_buffer(int msgid) -> std::string* = 0;
 };

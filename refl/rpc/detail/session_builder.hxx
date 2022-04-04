@@ -43,6 +43,8 @@ class basic_session_builder
         opt_slot_user_data,
         opt_slot_monitor,
         opt_slot_service,
+
+        opt_request_enabled,
     };
 
    private:
@@ -108,6 +110,12 @@ class basic_session_builder
         assert(ptr);
         _session->_protocol = std::move(ptr);
         return _make_ref<slot_protocol>();
+    }
+
+    inline auto& enable_request()
+    {
+        _session->_rpc = make_unique<session::rpc_context>();
+        return _make_ref<opt_request_enabled>();
     }
 
     [[nodiscard]] inline auto

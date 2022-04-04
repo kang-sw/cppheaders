@@ -87,7 +87,7 @@ class signature_t<RetVal_, std::tuple<Params_...>>
         {
             return_type    ret;
             request_result errc = _rpc->rpc(&ret, _host->name(), timeout, args...);
-            if (errc != request_result::okay) { throw request_exception{make_request_result(errc)}; }
+            if (errc != request_result::okay) { throw request_exception{make_request_error(errc)}; }
 
             return ret;
         }

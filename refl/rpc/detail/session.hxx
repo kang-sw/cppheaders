@@ -25,9 +25,10 @@
 #pragma once
 #include <mutex>
 
+#include "../../../container/sorted_vector.hxx"
+#include "../../../memory/pool.hxx"
 #include "../../../thread/event_wait.hxx"
 #include "../../__namespace__"
-#include "../../detail/primitives.hxx"
 #include "connection.hxx"
 #include "interface.hxx"
 #include "protocol_stream.hxx"
@@ -37,6 +38,7 @@
 
 namespace CPPHEADERS_NS_::rpc {
 using session_ptr = shared_ptr<class session>;
+using request_complete_handler = function<void(error_code const&, std::string_view json_error)>;
 
 template <int>
 class basic_session_builder;
@@ -66,7 +68,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
     service _service = service::empty_service();
 
     // I/O Lock. Only protects stream access
-    std::mutex _mtx_io;
+    std::mutex _mtx_protocol;
 
     // Cached RPC profile
     session_profile _profile;
@@ -80,8 +82,24 @@ class session : public if_session, public std::enable_shared_from_this<session>
 #endif
 
    private:
+    struct rpc_request_node {
+        request_complete_handler handler;
+        refl::object_view_t      return_buffer;
+        string                   error_buffer;
+    };
+
     struct rpc_context {
+        thread::event_wait lock;
+
+        // Unique request id generator.
+        // Generated ID value range is (0, INT_MAX]
         int idgen = 0;
+
+        // Prevents repeated heap usage for every RPC request
+        pool<rpc_request_node> request_node_pool;
+
+        // List of active RPC requests
+        sorted_vector<int, pool_ptr<rpc_request_node>> requests;
     };
 
    private:
@@ -121,17 +139,57 @@ class session : public if_session, public std::enable_shared_from_this<session>
    public:
     /**
      * Send request
+     *
+     * Return buffer must be alive
      */
     template <typename RetPtr, typename... Params>
-    request_handle request(RetPtr return_buffer, Params const&... params)
+    request_handle request(
+            string_view              method,
+            RetPtr                   return_buffer,
+            request_complete_handler handler,
+            Params const&... params)
     {
-        if (expired()) { return {}; }
-
+        assert(this->is_request_enabled());
         request_handle handle = {};
-        handle._wp = weak_from_this();
-        handle._msgid = 0;
 
-        // TODO: Handle RetPtr == nullptr_t
+        auto           request = _rpc->request_node_pool.checkout();
+        request->handler = std::move(handler);
+
+        bool constexpr no_return
+                = (std::is_void_v<std::remove_pointer_t<RetPtr>>)
+               || (std::is_same_v<RetPtr, nullptr_t>);
+
+        if constexpr (not no_return)
+            request->return_buffer = refl::object_view_t{return_buffer};
+        else
+            request->return_buffer = {};
+
+        _rpc->lock.critical_section([&] {
+            handle._wp = weak_from_this();
+            handle._msgid = ++_rpc->idgen;
+
+            if (_rpc->idgen == std::numeric_limits<int>::max())
+                _rpc->idgen = 0;
+
+            _rpc->requests.try_emplace(handle._msgid, std::move(request));
+        });
+
+        auto views = _create_parameter_descriptor_array(params...);
+
+        {
+            lock_guard _{_mtx_protocol};
+            auto       expire = not expired() && not _protocol->send_request(method, handle._msgid, views);
+
+            if (expire)
+                _set_expired();
+
+            if (expired()) {
+                // As RPC invocation couldn't be succeeded, abort rpc and throw error to explicitly
+                //  notify caller that this session is in invalid state.
+                _rpc->lock.critical_section([&] { _rpc->requests.erase(handle._msgid); });
+                throw request_exception(make_request_error(request_result::invalid_connection));
+            }
+        }
 
         return handle;
     }
@@ -144,16 +202,19 @@ class session : public if_session, public std::enable_shared_from_this<session>
     template <typename... Params>
     bool notify(string_view method, Params const&... params)
     {
-        if (expired()) { return false; }  // perform quick check
         auto views = _create_parameter_descriptor_array(params...);
 
         {
-            lock_guard _lc_{_mtx_io};
-            auto       result = _protocol->send_notify(method, views);
+            lock_guard _lc_{_mtx_protocol};
+            if (expired()) { return false; }  // perform quick check
 
-            _update_rw_count();
-
-            return result == protocol_stream_state::okay;
+            if (not _protocol->send_notify(method, views)) {
+                _set_expired();
+                return false;
+            } else {
+                _update_rw_count();
+                return true;
+            }
         }
     }
 
@@ -165,6 +226,14 @@ class session : public if_session, public std::enable_shared_from_this<session>
     bool close()
     {
         return _set_expired();
+    }
+
+    /**
+     * Check if RPC request is enabled
+     */
+    bool is_request_enabled() const noexcept
+    {
+        return _rpc != nullptr;
     }
 
     /**
@@ -180,14 +249,32 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     bool abort_request(int msgid)
     {
-        // TODO: Find corresponding request, and mark aborted.
+        assert(this->is_request_enabled());
         bool valid_abortion = false;
 
+        // Find corresponding request, and mark aborted.
+        request_complete_handler callable;
+
+        _rpc->lock.critical_section([&] {
+            auto iter = _rpc->requests.find(msgid);
+            if (iter == _rpc->requests.end()) { return; }  // Expired request ...
+            if (not iter->second.valid()) { return; }      // Already under invocation ...
+
+            // Handler invocation will occur out of critical section
+            valid_abortion = true;
+            callable = std::exchange(iter->second->handler, {});
+
+            _rpc->requests.erase(iter);
+        });
 
         // msgid should be released
         if (valid_abortion) {
-            lock_guard _lc_{_mtx_io};
-            _protocol->release_key_mapping_on_abort(msgid);
+            auto errc = make_request_error(request_result::aborted);
+            callable(errc, "\"ABORTED\"");
+            _rpc->lock.notify_all();
+
+            if (lock_guard _lc_{_mtx_protocol}; not expired())
+                _protocol->release_key_mapping_on_abort(msgid);
         }
 
         return valid_abortion;
@@ -198,7 +285,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     void totals(size_t* nread, size_t* nwrite)
     {
-        lock_guard _lc_{_mtx_io};
+        lock_guard _lc_{_mtx_protocol};
 
         *nread = _profile.total_read;
         *nwrite = _profile.total_write;
@@ -221,43 +308,70 @@ class session : public if_session, public std::enable_shared_from_this<session>
         proxy._owner = this;
         proxy._svc = &_service;
 
+        protocol_stream_state state;
         {
-            lock_guard _lc_{_mtx_io};
-            auto       state = _protocol->handle_single_message(proxy);
+            lock_guard _lc_{_mtx_protocol};
+            if (expired()) { return; }  // If connection is already expired, do nothing.
 
-            switch (state) {
-                default:
-                    _monitor->on_receive_warning(&_profile, state);
-                    _update_rw_count();
-                    break;
+            state = _protocol->handle_single_message(proxy);
+            assert(std::unique_lock(_rpc->lock.mutex(), std::try_to_lock));
+        }
 
-                case protocol_stream_state::okay:
-                    _handle_receive_result(std::move(proxy));
-                    _update_rw_count();
-                    break;
+        switch (state) {
+            default:
+                _monitor->on_receive_warning(&_profile, state);
+                _update_rw_count();
+                break;
 
-                case protocol_stream_state::expired:
-                    _set_expired();
+            case protocol_stream_state::okay:
+                _handle_receive_result(std::move(proxy));
+                _update_rw_count();
+                break;
 
-                    // Do not run receive cycle anymore ...
-                    return;
-            }
+            case protocol_stream_state::expired:
+                _set_expired();
+
+                // Do not run receive cycle anymore ...
+                return;
         }
 
         assert(_waiting.exchange(true) == false);
         _conn->async_wait_data();
     }
 
+    void request_node_lock_begin() override
+    {
+        _rpc->lock.mutex().lock();
+    }
+
+    void request_node_lock_end() override
+    {
+        _rpc->lock.mutex().unlock();
+    }
+
     auto find_reply_result_buffer(int msgid) -> refl::object_view_t override
     {
-        // TODO: find corresponding reply result buffer.
-        return {};
+        assert(_rpc->lock.mutex().try_lock() == false);
+
+        // find corresponding reply result buffer.
+        auto iter = _rpc->requests.find(msgid);
+
+        if (iter != _rpc->requests.end())
+            return iter->second->return_buffer;
+        else
+            return {};
     }
 
     auto find_reply_error_buffer(int msgid) -> std::string* override
     {
-        // TODO: find corresponding reply error buffer.
-        return nullptr;
+        assert(_rpc->lock.mutex().try_lock() == false);
+
+        auto iter = _rpc->requests.find(msgid);
+
+        if (iter != _rpc->requests.end())
+            return &iter->second->error_buffer;
+        else
+            return {};
     }
 
    private:
@@ -304,6 +418,41 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _conn->get_total_rw(&_profile.total_read, &_profile.total_write);
     }
 
+    void _handle_reply(int msgid, bool successful)
+    {
+        decltype(_rpc->requests)::mapped_type request;
+
+        _rpc->lock.critical_section([&] {
+            auto iter = _rpc->requests.find(msgid);
+            if (iter == _rpc->requests.end()) { return; }
+
+            request = move(iter->second);
+        });
+
+        if (not request.valid())
+            return;  // Request seems already expired, do nothing.
+
+        error_code  errc = {};
+        string_view errmsg = {};
+
+        if (not successful) {
+            errc = make_request_error(request_result::exception_returned);
+            errmsg = request->error_buffer;
+        }
+
+        // Invoke RPC request handler
+        request->handler(errc, errmsg);
+        request = {};  // Checkin allocated request node
+
+        // Delete request node after handler invocation, to asure 'wait' returns after
+        _rpc->lock.notify_all([&] {
+            auto num_erased = _rpc->requests.erase(msgid);
+
+            assert(num_erased && "Logic error; Invalid deletion exploited");
+            (void)num_erased;
+        });
+    }
+
     void _handle_receive_result(remote_procedure_message_proxy&& proxy)
     {
         using proxy_flag = remote_procedure_message_proxy::proxy_type;
@@ -318,22 +467,22 @@ class session : public if_session, public std::enable_shared_from_this<session>
                              msgid = proxy._rpc_msgid,
                              handler = move(*proxy._handler)]() mutable {
                                 try {
-                                    auto       rval = move(handler).invoke(_profile);
+                                    auto rval = move(handler).invoke(_profile);
 
-                                    lock_guard _lc_{_mtx_io};
-                                    _protocol->send_reply_result(msgid, rval.view());
+                                    if (lock_guard _lc_{_mtx_protocol}; not expired())
+                                        _protocol->send_reply_result(msgid, rval.view());
                                 } catch (service_handler_exception& e) {
                                     // Send reply with error in object
                                     _monitor->on_handler_error(&_profile, e);
 
-                                    lock_guard _lc_{_mtx_io};
-                                    _protocol->send_reply_error(msgid, e.data());
+                                    if (lock_guard _lc_{_mtx_protocol}; not expired())
+                                        _protocol->send_reply_error(msgid, e.data());
                                 } catch (std::exception& e) {
                                     // Send reply with error in string
                                     _monitor->on_handler_error(&_profile, e);
 
-                                    lock_guard _lc_{_mtx_io};
-                                    _protocol->send_reply_error(msgid, e.what());
+                                    if (lock_guard _lc_{_mtx_protocol}; not expired())
+                                        _protocol->send_reply_error(msgid, e.what());
                                 }
                             };
 
@@ -362,12 +511,24 @@ class session : public if_session, public std::enable_shared_from_this<session>
                 break;
 
             case proxy_flag::reply_okay:
-                // TODO: Notify request result is ready.
+                assert(proxy._rpc_msgid);
+
+                // Notify request result is ready.
                 //  * Assumes reply value is already copied during protocol handler invocation
+                _event_proc->post_rpc_completion(
+                        bind_front_weak(
+                                weak_from_this(),
+                                &session::_handle_reply, this, proxy._rpc_msgid, true));
                 break;
 
             case proxy_flag::reply_error:
-                // TODO: Same as above.
+                assert(proxy._rpc_msgid);
+
+                // Do same as above.
+                _event_proc->post_rpc_completion(
+                        bind_front_weak(
+                                weak_from_this(),
+                                &session::_handle_reply, this, proxy._rpc_msgid, false));
                 break;
 
             case remote_procedure_message_proxy::proxy_type::reply_expired:

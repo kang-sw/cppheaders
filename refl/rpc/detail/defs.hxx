@@ -55,9 +55,11 @@ enum class request_result {
     aborted,
     timeout,
     invalid_connection,
+
+    exception_returned,
 };
 
-class request_result_category : public std::error_category
+class request_error_category : public std::error_category
 {
    public:
     const char* name() const noexcept override
@@ -72,14 +74,15 @@ class request_result_category : public std::error_category
             case request_result::aborted: return "RPC request aborted";
             case request_result::timeout: return "RPC synchronous request timeout";
             case request_result::invalid_connection: return "This connection is expired";
+            case request_result::exception_returned: return "Remote handler returned exception";
 
             default: return "Unknown error";
         }
     }
 
-    static request_result_category* instance() noexcept
+    static request_error_category* instance() noexcept
     {
-        static request_result_category _cat;
+        static request_error_category _cat;
         return &_cat;
     }
 };
@@ -89,9 +92,9 @@ class request_exception : public std::system_error
     using std::system_error::system_error;
 };
 
-auto make_request_result(request_result errc)
+auto make_request_error(request_result errc)
 {
-    return std::error_code(int(errc), *request_result_category::instance());
+    return std::error_code(int(errc), *request_error_category::instance());
 }
 
 /**

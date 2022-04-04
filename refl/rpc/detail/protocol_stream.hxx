@@ -45,7 +45,7 @@ class if_protocol_stream
     /**
      * Initialize internal stream handler(reader/writer) with given streambuf
      */
-    virtual protocol_stream_state initialize(if_connection_streambuf* streambuf) = 0;
+    virtual void initialize(if_connection_streambuf* streambuf) = 0;
 
     /**
      * Handle single message. This will be invoked when owning session
@@ -74,27 +74,27 @@ class if_protocol_stream
      * If internal RPC protocol is compatible with simple integer, this function should only
      *  perform simple transfer operation.
      */
-    virtual protocol_stream_state send_rpc_request(std::string_view method, int msgid, array_view<refl::object_view_t> params) noexcept = 0;
+    virtual bool send_request(std::string_view method, int msgid, array_view<refl::object_view_t> params) noexcept = 0;
 
     /**
      * Send notify with given parameters.
      */
-    virtual protocol_stream_state send_notify(std::string_view method, array_view<refl::object_view_t> params) noexcept = 0;
+    virtual bool send_notify(std::string_view method, array_view<refl::object_view_t> params) noexcept = 0;
 
     /**
      * Send reply with given msgid and return value.
      */
-    virtual protocol_stream_state send_reply_result(int msgid, refl::object_const_view_t retval) noexcept = 0;
+    virtual bool send_reply_result(int msgid, refl::object_const_view_t retval) noexcept = 0;
 
     /**
      * Send reply as error
      */
-    virtual protocol_stream_state send_reply_error(int msgid, refl::object_const_view_t error) noexcept = 0;
+    virtual bool send_reply_error(int msgid, refl::object_const_view_t error) noexcept = 0;
 
     /**
      * Send reply as string
      */
-    virtual protocol_stream_state send_reply_error(int msgid, std::string_view content) noexcept = 0;
+    virtual bool send_reply_error(int msgid, std::string_view content) noexcept = 0;
 
     /**
      * This is called on RPC abort sequence. This function is required

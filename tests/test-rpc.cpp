@@ -60,35 +60,33 @@ TEST_CASE("Can compile modules", "[rpc][.]")
 
     class proto : public rpc::if_protocol_stream
     {
-        rpc::protocol_stream_state initialize(rpc::if_connection_streambuf* streambuf) override
+       public:
+        void initialize(rpc::if_connection_streambuf* streambuf) override
         {
-            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
         }
         rpc::protocol_stream_state handle_single_message(rpc::remote_procedure_message_proxy& proxy) noexcept override
         {
             return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
         }
-        rpc::protocol_stream_state send_rpc_request(std::string_view, int msgid, array_view<refl::object_view_t> params) noexcept override
+        bool send_request(std::string_view method, int msgid, array_view<refl::object_view_t> params) noexcept override
         {
-            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
+            return false;
         }
-        rpc::protocol_stream_state send_notify(std::string_view, array_view<refl::object_view_t> params) noexcept override
+        bool send_notify(std::string_view method, array_view<refl::object_view_t> params) noexcept override
         {
-            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
+            return false;
         }
-        rpc::protocol_stream_state send_reply_result(int msgid, refl::object_const_view_t retval) noexcept override
+        bool send_reply_result(int msgid, refl::object_const_view_t retval) noexcept override
         {
-            return rpc::protocol_stream_state::expired;
+            return false;
         }
-        rpc::protocol_stream_state send_reply_error(int msgid, refl::object_const_view_t error) noexcept override
+        bool send_reply_error(int msgid, refl::object_const_view_t error) noexcept override
         {
-            return rpc::protocol_stream_state::expired;
+            return false;
         }
-
-       public:
-        rpc::protocol_stream_state send_reply_error(int msgid, std::string_view content) noexcept override
+        bool send_reply_error(int msgid, std::string_view content) noexcept override
         {
-            return rpc::protocol_stream_state::expired;
+            return false;
         }
     };
 
