@@ -40,7 +40,7 @@ class msgpack : public if_protocol_stream
         reply = 1,
         notify = 2,
 
-        INVALID = 999
+        INVALID = -1
     };
 
     struct internal_trivial_exception : std::exception {
@@ -64,11 +64,12 @@ class msgpack : public if_protocol_stream
     protocol_stream_state handle_single_message(remote_procedure_message_proxy& proxy) noexcept override
     {
         using epss = protocol_stream_state;
-        static auto verify_recoverable =
+        auto fn_verify_recoverable =
                 [](bool cond, epss on_fail) {
-                    if (not cond)
-                        throw internal_trivial_exception{on_fail};
+                    if (not cond) { throw internal_trivial_exception{on_fail}; }
                 };
+        auto fn_error =
+                [](epss flag) { throw internal_trivial_exception{flag}; };
 
         archive::context_key scope = {};
 
@@ -83,21 +84,35 @@ class msgpack : public if_protocol_stream
             _read >> type;
 
             switch (type) {
-                break;
-
                 case msgtype::reply: {
-                    verify_recoverable(
+                    fn_verify_recoverable(
                             _read.elem_left() == 3,
                             epss::warning_received_invalid_format);
 
-                    // TODO
+                    int msgid = -1;
+                    _read >> msgid;
+
+                    if (_read.is_null_next()) {
+                        // third argument is null -> it's valid result
+                        _read >> nullptr;
+
+                        // let proxy retrieve single object
+                        proxy.reply_result(msgid, &_read);
+                    } else {
+                        // third argument is non-null -> it's error
+                        proxy.reply_error(msgid, &_read);
+
+                        // skip result
+                        _read >> nullptr;
+                    }
+
                     break;
                 }
 
                 case msgtype::request:
                 case msgtype::notify: {
                     bool const is_request = type == msgtype::request;
-                    verify_recoverable(
+                    fn_verify_recoverable(
                             _read.elem_left() == (is_request ? 3 : 2),
                             epss::warning_received_invalid_format);
 
@@ -126,11 +141,11 @@ class msgpack : public if_protocol_stream
 
                         if (params == nullptr) {
                             fn_rep_err(errstr_method_not_found);
-                            verify_recoverable(false, epss::warning_received_unkown_method_name);
+                            fn_error(epss::warning_received_unkown_method_name);
                         }
                     } else {
                         params = proxy.notify_parameters(method);
-                        verify_recoverable(params, epss::warning_received_unkown_method_name);
+                        fn_verify_recoverable(params, epss::warning_received_unkown_method_name);
                     }
 
                     // Parse parameters
@@ -142,12 +157,19 @@ class msgpack : public if_protocol_stream
                             if (is_request)
                                 fn_rep_err(errstr_invalid_parameter);
 
-                            verify_recoverable(false, epss::warning_received_invalid_number_of_parameters);
+                            fn_error(epss::warning_received_invalid_number_of_parameters);
                         }
 
                         // Parse parameters
-                        for (auto& p : *params)
-                            _read >> p;
+                        try {
+                            for (auto& p : *params)
+                                _read >> p;
+                        } catch (archive::error::reader_recoverable_exception&) {
+                            if (is_request)
+                                fn_rep_err(errstr_invalid_parameter);
+
+                            fn_error(epss::warning_received_invalid_parameter_type);
+                        }
 
                         _read.end_array(scope_params);
                     }
@@ -156,7 +178,7 @@ class msgpack : public if_protocol_stream
                 }
 
                 default:
-                    verify_recoverable(false, epss::warning_received_invalid_format);
+                    fn_error(epss::warning_received_invalid_format);
             }
 
             _read.end_array(scope);
