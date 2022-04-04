@@ -232,23 +232,55 @@ using std::bind_front;
 #else
 
 template <typename Callable_, typename Tuple_>
-struct _bound_functor_t {
+class _bound_functor_t
+{
     Callable_ fn;
     Tuple_    captures;
 
+   public:
     _bound_functor_t(Callable_&& fn, Tuple_&& captures)
             : fn(std::forward<Callable_>(fn)), captures(std::forward<Tuple_>(captures)) {}
 
+   private:
     template <typename... Captures_, typename... Args_>
-    constexpr auto _fn_invoke_result(std::tuple<Captures_...> const&, Args_&&...)
+    constexpr auto _fn_invoke_result(std::tuple<Captures_...> const&, Args_&&...) const
             -> std::invoke_result_t<Callable_, Captures_..., Args_...>;
 
+    auto _get_forwarded() const noexcept
+    {
+        return std::apply(
+                [](auto&&... args) { return std::forward_as_tuple(std::forward<decltype(args)>(args)...); },
+                captures);
+    }
+
+    auto _get_forwarded() noexcept
+    {
+        return std::apply(
+                [](auto&&... args) { return std::forward_as_tuple(std::forward<decltype(args)>(args)...); },
+                captures);
+    }
+
+   public:
     template <typename... Args_>
     auto operator()(Args_&&... args)
             -> decltype(_fn_invoke_result(captures, std::forward<Args_>(args)...))
     {
         auto tuple = std::tuple_cat(
-                std::move(captures),
+                this->_get_forwarded(),
+                std::forward_as_tuple(std::forward<decltype(args)>(args)...));
+
+        if constexpr (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
+            std::apply(fn, tuple);
+        else
+            return std::apply(fn, tuple);
+    }
+
+    template <typename... Args_>
+    auto operator()(Args_&&... args) const
+            -> decltype(_fn_invoke_result(captures, std::forward<Args_>(args)...))
+    {
+        auto tuple = std::tuple_cat(
+                this->_get_forwarded(),
                 std::forward_as_tuple(std::forward<decltype(args)>(args)...));
 
         if constexpr (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
@@ -275,30 +307,43 @@ auto bind_front(Callable_ callable, Captures_&&... captures)
 }
 #endif
 
-template <typename Callable_, typename Tuple_>
-struct _bound_weak_functor_t {
+template <typename Callable_>
+class _bound_weak_functor_t
+{
     std::weak_ptr<void> ptr;
     Callable_           fn;
-    Tuple_              captures;
 
-    _bound_weak_functor_t(std::weak_ptr<void> ptr, Callable_&& fn, Tuple_&& captures)
+   public:
+    _bound_weak_functor_t(std::weak_ptr<void> ptr, Callable_&& fn)
             : ptr(std::move(ptr)),
-              fn(std::forward<Callable_>(fn)),
-              captures(std::forward<Tuple_>(captures)) {}
-
-    template <typename... Captures_, typename... Args_>
-    constexpr auto _fn_invoke_result(std::tuple<Captures_...> const&, Args_&&...)
-            -> std::invoke_result_t<Callable_, Captures_..., Args_...>;
+              fn(std::forward<Callable_>(fn)) {}
 
     template <typename... Args_>
     auto operator()(Args_&&... args)
-            -> decltype(_fn_invoke_result(captures, std::forward<Args_>(args)...))
+            -> std::invoke_result_t<Callable_, Args_...>
     {
-        auto tuple = std::tuple_cat(
-                std::move(captures),
-                std::forward_as_tuple(std::forward<decltype(args)>(args)...));
+        auto tuple = std::forward_as_tuple(std::forward<Args_>(args)...);
+        enum : bool { return_void = std::is_void_v<std::invoke_result_t<Callable_, Args_...>> };
 
-        enum : bool { return_void = std::is_same_v<void, decltype(std::apply(fn, tuple))> };
+        if (auto anchor = ptr.lock()) {
+            if constexpr (return_void)
+                std::apply(fn, tuple);
+            else
+                return std::apply(fn, tuple);
+        } else {
+            if constexpr (return_void)
+                ;
+            else
+                return {};
+        }
+    }
+
+    template <typename... Args_>
+    auto operator()(Args_&&... args) const
+            -> std::invoke_result_t<Callable_, Args_...>
+    {
+        auto tuple = std::forward_as_tuple(std::forward<Args_>(args)...);
+        enum : bool { return_void = std::is_void_v<std::invoke_result_t<Callable_, Args_...>> };
 
         if (auto anchor = ptr.lock()) {
             if constexpr (return_void)
@@ -324,7 +369,29 @@ auto bind_front_weak(Ptr_&& ref, Callable_ callable, Captures_&&... captures)
     using std::decay_t;
     return _bound_weak_functor_t{
             std::forward<Ptr_>(ref),
-            std::move(callable),
-            std::make_tuple(std::forward<Captures_>(captures)...)};
+            bind_front(callable, std::forward<Captures_>(captures)...)};
+}
+
+/**
+ * Bind function with weak pointer
+ */
+template <class Callable, typename Ptr, typename... Captures,
+          typename = std::enable_if_t<std::is_invocable_v<Callable, Captures...>>>
+auto bind_weak(Ptr&& ref, Callable callable, Captures&&... captures)
+{
+    return [ref = std::weak_ptr(ref),
+            callable = std::bind(std::forward<Callable>(callable), std::forward<Captures>(captures)...)] {
+        using result_type = std::invoke_result_t<decltype(callable)>;
+        enum { non_void_return = not std::is_void_v<result_type> };
+
+        if (auto lock = ref.lock()) {
+            if constexpr (non_void_return)
+                return callable();
+            else
+                callable();
+        } else if constexpr (non_void_return) {
+            return result_type{};
+        }
+    };
 }
 }  // namespace CPPHEADERS_NS_
