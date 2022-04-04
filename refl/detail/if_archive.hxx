@@ -417,11 +417,17 @@ class if_reader : public if_archive_base
                 if (elem_left() == ~size_t{})
                     throw error::reader_check_failed{this, "This reader doesn't support object dumping!"};
 
-                target->object_push(elem_left());
+                target->object_push(elem_left() / 2);
                 auto _f1_ = cleanup([&] { target->object_pop(); });
 
-                while (not should_break(key))
+                while (not should_break(key)) {
+                    // Dump key
+                    read_key_next(), target->write_key_next();
                     _dump_once_impl(target, buf);
+
+                    // Dump value
+                    _dump_once_impl(target, buf);
+                }
 
                 // Suppress IDE warnings
                 _f0_, _f1_;

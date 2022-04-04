@@ -93,7 +93,7 @@ struct reader::impl {
         auto elem = &scopes.emplace_back();
         elem->type = t;
         elem->token_pos = pos_next++;
-        elem->elem_left = ntok->size * ((t == reader_scope_type::object) + 1);
+        elem->elem_left = ntok->size * (t == reader_scope_type::object ? 2 : 1);
         elem->context.value = ++context_keygen;
 
         return elem;

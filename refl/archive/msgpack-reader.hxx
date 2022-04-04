@@ -466,7 +466,7 @@ class reader : public archive::if_reader
     {
         auto scope = &_scope.emplace_back();
         scope->type = ty;
-        scope->elems_left = n_elems + n_elems * (ty == scope_t::type_object);
+        scope->elems_left = n_elems * (ty == scope_t::type_object ? 2 : 1);
         scope->reading_key = false;
         scope->ctxkey.index = uint32_t(_scope.size() - 1);
         scope->ctxkey.id = ++_scope_key_gen;
