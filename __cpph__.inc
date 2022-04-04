@@ -31,7 +31,7 @@
  *
  * DO NOT INCLUDE THIS FILE MORE THAN ONCE!
  */
-#include "refl/archive/__cpph__.inc"
+#include "refl/__cpph__.inc"
 
 // DO NOT CHANGE THE ORDER!
 // ASSERTION MUST BE PLACED LAST
