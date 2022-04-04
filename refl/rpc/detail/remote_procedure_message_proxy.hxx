@@ -104,14 +104,20 @@ class remote_procedure_message_proxy
         _rpc_msgid = msgid;
 
         _owner->request_node_lock_begin();
-        cleanup_t finally{[&] { _owner->request_node_lock_end(); }};
+        cleanup_t _cleanup{[&] { _owner->request_node_lock_end(); }};
 
         auto      rval = _owner->find_reply_result_buffer(msgid);
-        if (rval.empty()) { return false; }
+        if (rval == nullptr) {
+            *object >> nullptr;
+            return false;
+        }
+
+        if (rval->empty())  // Handle void-return buffer.
+            *object >> nullptr;
+        else
+            *object >> *rval;
 
         _type = proxy_type::reply_okay;
-        *object >> rval;
-
         return true;
     }
 
@@ -126,27 +132,21 @@ class remote_procedure_message_proxy
         _rpc_msgid = msgid;
 
         _owner->request_node_lock_begin();
-        cleanup_t finally{[&] { _owner->request_node_lock_end(); }};
+        cleanup_t _cleanup{[&] { _owner->request_node_lock_end(); }};
 
         auto      json = _owner->find_reply_error_buffer(msgid);
-        if (json == nullptr) { return false; }
-
-        _type = proxy_type::reply_error;
+        if (json == nullptr) {
+            *object >> nullptr;
+            return false;
+        }
 
         streambuf::stringbuf  buf{json};
         archive::json::writer writer(&buf);
 
         object->dump_single_object(&writer);
-        return true;
-    }
 
-    /**
-     * This MUST BE CALLED before finishing successful reply result copying!
-     */
-    void reply_finish_copying()
-    {
-        assert(_type == proxy_type::notify || _type == proxy_type::request);
-        _owner->request_node_lock_end();
+        _type = proxy_type::reply_error;
+        return true;
     }
 
    private:

@@ -114,7 +114,7 @@ class basic_session_builder
 
     inline auto& enable_request()
     {
-        _session->_rpc = make_unique<session::rpc_context>();
+        _session->_rq = make_unique<session::rpc_context>();
         return _make_ref<opt_request_enabled>();
     }
 
