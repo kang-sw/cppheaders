@@ -110,9 +110,11 @@ enum class protocol_stream_state {
 
     // Errors that are '> recoverable_errors' are just warnings.
     _warnings_ = 1,
+    warning_unknown,
     warning_received_invalid_number_of_parameters,
     warning_received_invalid_parameter_type,
-    warning_received_invalid_method_name,
+    warning_received_unkown_method_name,
+    warning_received_invalid_format,
     warning_received_expired_rpc,
 };
 

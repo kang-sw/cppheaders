@@ -38,12 +38,21 @@ class msgpack : public if_protocol_stream
     enum class msgtype {
         request = 0,
         reply = 1,
-        notify = 2
+        notify = 2,
+
+        INVALID = 999
+    };
+
+    struct internal_trivial_exception : std::exception {
+        protocol_stream_state state;
+        explicit internal_trivial_exception(protocol_stream_state st) noexcept : state(st) {}
     };
 
    private:
     archive::msgpack::writer _write{nullptr, 8};
     archive::msgpack::reader _read{nullptr, 8};
+
+    string                   _buf_tmp;
 
    public:
     void initialize(if_connection_streambuf* streambuf) override
@@ -54,7 +63,113 @@ class msgpack : public if_protocol_stream
 
     protocol_stream_state handle_single_message(remote_procedure_message_proxy& proxy) noexcept override
     {
-        return protocol_stream_state::expired;
+        using epss = protocol_stream_state;
+        static auto verify_recoverable =
+                [](bool cond, epss on_fail) {
+                    if (not cond)
+                        throw internal_trivial_exception{on_fail};
+                };
+
+        archive::context_key scope = {};
+
+        try {
+            scope = _read.begin_array();
+        } catch (std::exception&) {
+            return epss::expired;
+        }
+
+        try {
+            msgtype type = msgtype::INVALID;
+            _read >> type;
+
+            switch (type) {
+                break;
+
+                case msgtype::reply: {
+                    verify_recoverable(
+                            _read.elem_left() == 3,
+                            epss::warning_received_invalid_format);
+
+                    // TODO
+                    break;
+                }
+
+                case msgtype::request:
+                case msgtype::notify: {
+                    bool const is_request = type == msgtype::request;
+                    verify_recoverable(
+                            _read.elem_left() == (is_request ? 3 : 2),
+                            epss::warning_received_invalid_format);
+
+                    service_parameter_buffer* params = nullptr;
+                    int                       msgid = -1;
+
+                    // Reply error, only when it's rpc
+                    auto fn_rep_err =
+                            [&](auto&& errcontent) {
+                                assert(type == msgtype::request);
+
+                                _write.array_push(4);
+                                _write << msgtype::reply;
+                                _write << msgid;
+                                _write << errcontent;
+                                _write << nullptr;
+                                _write.array_pop();
+                            };
+
+                    auto& method = _buf_tmp;
+                    _read >> method;  // read method name
+
+                    if (is_request) {
+                        _read >> msgid;
+                        params = proxy.request_parameters(method, msgid);
+
+                        if (params == nullptr) {
+                            fn_rep_err(errstr_method_not_found);
+                            verify_recoverable(false, epss::warning_received_unkown_method_name);
+                        }
+                    } else {
+                        params = proxy.notify_parameters(method);
+                        verify_recoverable(params, epss::warning_received_unkown_method_name);
+                    }
+
+                    // Parse parameters
+                    {
+                        auto scope_params = _read.begin_array();
+
+                        // Verify element count matches
+                        if (_read.elem_left() != params->size()) {
+                            if (is_request)
+                                fn_rep_err(errstr_invalid_parameter);
+
+                            verify_recoverable(false, epss::warning_received_invalid_number_of_parameters);
+                        }
+
+                        // Parse parameters
+                        for (auto& p : *params)
+                            _read >> p;
+
+                        _read.end_array(scope_params);
+                    }
+
+                    break;
+                }
+
+                default:
+                    verify_recoverable(false, epss::warning_received_invalid_format);
+            }
+
+            _read.end_array(scope);
+            return epss::okay;
+        } catch (internal_trivial_exception& e) {
+            _read.end_array(scope);
+            return e.state;
+        } catch (archive::error::reader_recoverable_exception&) {
+            _read.end_array(scope);
+            return epss::warning_unknown;
+        } catch (...) {
+            return epss::expired;
+        }
     }
 
     bool send_request(std::string_view method, int msgid, array_view<refl::object_view_t> params) noexcept override

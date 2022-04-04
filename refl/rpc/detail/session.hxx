@@ -464,6 +464,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
                     // These should be handled inside
                     _event_proc->post_rpc_completion(std::move(fn_abort_request));
+                    _protocol->release_key_mapping_on_abort(key);
                 }
 
                 _rq->requests.clear();
