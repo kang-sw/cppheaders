@@ -57,7 +57,7 @@ class request_handle
         assert(_msgid > 0);
 
         if (Sptr_ session = _wp.lock())
-            return session->wait_rpc(_msgid, duration);
+            return session->wait_request(_msgid, duration);
         else
             return false;
     }
@@ -68,7 +68,7 @@ class request_handle
         assert(_msgid > 0);
 
         if (Sptr_ session = _wp.lock())
-            return session->abort_rpc(_msgid);
+            return session->abort_request(_msgid);
         else
             return false;
     }

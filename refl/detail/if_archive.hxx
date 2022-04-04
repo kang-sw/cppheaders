@@ -217,7 +217,7 @@ class if_writer : public if_archive_base
 {
    public:
     explicit if_writer(std::streambuf* buf) noexcept : if_archive_base(buf) {}
-    ~if_writer() override = default;
+    ~if_writer() override { flush(); }
 
    public:
     /**

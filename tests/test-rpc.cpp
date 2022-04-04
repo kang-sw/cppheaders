@@ -76,9 +76,19 @@ TEST_CASE("Can compile modules", "[rpc][.]")
         {
             return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
         }
-        rpc::protocol_stream_state send_reply(int msgid, refl::shared_object_ptr retval) noexcept override
+        rpc::protocol_stream_state send_reply_result(int msgid, refl::object_const_view_t retval) noexcept override
         {
-            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
+            return rpc::protocol_stream_state::expired;
+        }
+        rpc::protocol_stream_state send_reply_error(int msgid, refl::object_const_view_t error) noexcept override
+        {
+            return rpc::protocol_stream_state::expired;
+        }
+
+       public:
+        rpc::protocol_stream_state send_reply_error(int msgid, std::string_view content) noexcept override
+        {
+            return rpc::protocol_stream_state::expired;
         }
     };
 

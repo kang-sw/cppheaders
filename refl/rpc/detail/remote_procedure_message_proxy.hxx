@@ -46,7 +46,9 @@ class remote_procedure_message_proxy
         request,
         notify,
         reply_okay,
-        reply_error
+        reply_error,
+
+        reply_expired,
     };
 
    private:
@@ -98,10 +100,13 @@ class remote_procedure_message_proxy
     {
         _verify_clear_state();
 
-        _type = proxy_type::reply_okay;
+        _type = proxy_type::reply_expired;
         _rpc_msgid = msgid;
 
-        return _owner->find_reply_result_buffer(msgid);
+        auto rval = _owner->find_reply_result_buffer(msgid);
+        if (not rval.empty()) { _type = proxy_type::reply_okay; }
+
+        return rval;
     }
 
     /**
@@ -111,18 +116,18 @@ class remote_procedure_message_proxy
     {
         _verify_clear_state();
 
-        _type = proxy_type::reply_error;
+        _type = proxy_type::reply_expired;
         _rpc_msgid = msgid;
 
         auto json = _owner->find_reply_error_buffer(msgid);
         if (json == nullptr) { return false; }
 
+        _type = proxy_type::reply_error;
+
         streambuf::stringbuf  buf{json};
         archive::json::writer writer(&buf);
 
         object->dump_single_object(&writer);
-        writer.flush();
-
         return true;
     }
 

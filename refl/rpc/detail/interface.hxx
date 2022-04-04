@@ -87,7 +87,7 @@ using service_handler_package = if_service_handler::handler_package_type;
 using service_parameter_buffer = decltype(if_service_handler::handler_package_type::params);
 
 /**
- *
+ * All events can be invoked during multithreading context!
  */
 class if_session_monitor
 {
@@ -108,6 +108,11 @@ class if_session_monitor
      * Invoked when recoverable error occurred during receiving
      */
     virtual void on_receive_warning(session_profile_view, protocol_stream_state) {}
+
+    /**
+     * On error occurred during handler invocation
+     */
+    virtual void on_handler_error(session_profile_view, std::exception& e) {}
 };
 
 /**

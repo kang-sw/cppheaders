@@ -84,12 +84,25 @@ class if_protocol_stream
     /**
      * Send reply with given msgid and return value.
      */
-    virtual protocol_stream_state send_reply(int msgid, refl::shared_object_ptr retval) noexcept = 0;
+    virtual protocol_stream_state send_reply_result(int msgid, refl::object_const_view_t retval) noexcept = 0;
 
     /**
-     * This is called on every RPC cleanup(finish, abort) sequence. This function is required
-     *  when send_rpc_request function created internal message identifier mapping.
+     * Send reply as error
      */
-    virtual protocol_stream_state cleanup_key_mapping(int msgid) noexcept { return protocol_stream_state::okay; }
+    virtual protocol_stream_state send_reply_error(int msgid, refl::object_const_view_t error) noexcept = 0;
+
+    /**
+     * Send reply as string
+     */
+    virtual protocol_stream_state send_reply_error(int msgid, std::string_view content) noexcept = 0;
+
+    /**
+     * This is called on RPC abort sequence. This function is required
+     *  when send_rpc_request function created internal message identifier mapping.
+     *
+     * In other cases, such as successful reply handling, releasing key mapping
+     *  should be handled internally by protocol handler itself.
+     */
+    virtual protocol_stream_state release_key_mapping_on_abort(int msgid) noexcept { return protocol_stream_state::okay; }
 };
 }  // namespace CPPHEADERS_NS_::rpc

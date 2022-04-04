@@ -27,6 +27,7 @@
 
 #include "../../../thread/event_wait.hxx"
 #include "../../__namespace__"
+#include "../../detail/primitives.hxx"
 #include "connection.hxx"
 #include "interface.hxx"
 #include "protocol_stream.hxx"
@@ -175,8 +176,22 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
 
     /**
-     * Abort RPC
+     * Abort sent request
      */
+    bool abort_request(int msgid)
+    {
+        // TODO: Find corresponding request, and mark aborted.
+        bool valid_abortion = false;
+
+
+        // msgid should be released
+        if (valid_abortion) {
+            lock_guard _lc_{_mtx_io};
+            _protocol->release_key_mapping_on_abort(msgid);
+        }
+
+        return valid_abortion;
+    }
 
     /**
      * Get total number of received bytes
@@ -299,51 +314,70 @@ class session : public if_session, public std::enable_shared_from_this<session>
                 {
                     std::move(*proxy._handler).invoke(_profile);
                     auto fn_handle_rpc =
-                            [this, handler = move(*proxy._handler)]() mutable {
+                            [this,
+                             msgid = proxy._rpc_msgid,
+                             handler = move(*proxy._handler)]() mutable {
                                 try {
-                                    auto rval = move(handler).invoke(_profile);
+                                    auto       rval = move(handler).invoke(_profile);
 
-                                    // TODO: Send reply with rval
+                                    lock_guard _lc_{_mtx_io};
+                                    _protocol->send_reply_result(msgid, rval.view());
                                 } catch (service_handler_exception& e) {
-                                    // TODO: Send reply with error
+                                    // Send reply with error in object
+                                    _monitor->on_handler_error(&_profile, e);
+
+                                    lock_guard _lc_{_mtx_io};
+                                    _protocol->send_reply_error(msgid, e.data());
                                 } catch (std::exception& e) {
-                                    // TODO: Send reply with error in string
+                                    // Send reply with error in string
+                                    _monitor->on_handler_error(&_profile, e);
+
+                                    lock_guard _lc_{_mtx_io};
+                                    _protocol->send_reply_error(msgid, e.what());
                                 }
                             };
 
-                    fn_handle_rpc;
+                    _event_proc->post_handler_callback(
+                            bind_front_weak(weak_from_this(), move(fn_handle_rpc)));
                 }
                 break;
 
             case proxy_flag::notify:
                 assert(proxy._handler);
                 {
-                    std::move(*proxy._handler).invoke(_profile);
-                    auto fn_handle_rpc =
+                    auto fn_handle_notify =
                             [this, handler = move(*proxy._handler)]() mutable {
                                 try {
-                                    auto rval = move(handler).invoke(_profile);
-
-                                    // TODO: Send reply with rval
-                                } catch (...) {
-                                    ;  // Simply report error to monitor
+                                    // Discard return value, as this is notification call
+                                    move(handler).invoke(_profile);
+                                } catch (std::exception& e) {
+                                    // Simply report error to monitor
+                                    _monitor->on_handler_error(&_profile, e);
                                 }
                             };
 
-                    fn_handle_rpc;
+                    _event_proc->post_handler_callback(
+                            bind_front_weak(weak_from_this(), move(fn_handle_notify)));
                 }
                 break;
 
             case proxy_flag::reply_okay:
+                // TODO: Notify request result is ready.
+                //  * Assumes reply value is already copied during protocol handler invocation
                 break;
 
             case proxy_flag::reply_error:
+                // TODO: Same as above.
+                break;
+
+            case remote_procedure_message_proxy::proxy_type::reply_expired:
+                // Do nothing.
                 break;
 
             default:
             case proxy_flag::in_progress:
             case proxy_flag::none:
-                assert(false && "Invalid flag value value");
+                assert(false && "A logical bug inside of proxy handler");
                 break;
         }
     }

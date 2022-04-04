@@ -92,22 +92,6 @@ class object_metadata;  // forwarding
 /**
  * Object/metadata wrapper for various use
  */
-struct object_view_t {
-    object_metadata_t meta = {};
-    object_data_t*    data = {};
-
-   public:
-    object_view_t() = default;
-    object_view_t(const object_metadata* meta, object_data_t* data) : meta(meta), data(data) {}
-
-    template <typename Ty_>
-    explicit object_view_t(Ty_* p) noexcept;
-
-    bool empty() const noexcept { return data == nullptr; }
-
-   public:
-    auto pair() const noexcept { return std::make_pair(meta, data); }
-};
 
 struct object_const_view_t {
     object_metadata_t    meta = {};
@@ -121,6 +105,24 @@ struct object_const_view_t {
     explicit object_const_view_t(Ty_ const& p) noexcept;
 
     bool empty() const noexcept { return data == nullptr; }
+
+   public:
+    auto pair() const noexcept { return std::make_pair(meta, data); }
+};
+
+struct object_view_t {
+    object_metadata_t meta = {};
+    object_data_t*    data = {};
+
+   public:
+    object_view_t() = default;
+    object_view_t(const object_metadata* meta, object_data_t* data) : meta(meta), data(data) {}
+
+    template <typename Ty_>
+    explicit object_view_t(Ty_* p) noexcept;
+
+    bool empty() const noexcept { return data == nullptr; }
+         operator object_const_view_t() const noexcept { return {meta, data}; }
 
    public:
     auto pair() const noexcept { return std::make_pair(meta, data); }
@@ -180,7 +182,7 @@ struct property_metadata {
     size_t offset = 0;
 
     //! Object descriptor for this property
-    object_metadata_t type;
+    object_metadata_t type = {};
 
     //! index of self
     int index_self = 0;
@@ -1149,18 +1151,19 @@ object_const_view_t::object_const_view_t(const Ty_& p) noexcept : data((object_d
 namespace std {
 inline std::string to_string(CPPHEADERS_NS_::refl::entity_type t)
 {
+    using CPPHEADERS_NS_::refl::entity_type;
     switch (t) {
-        case CPPHEADERS_NS_::refl::entity_type::invalid: return "invalid";
-        case CPPHEADERS_NS_::refl::entity_type::null: return "null";
-        case CPPHEADERS_NS_::refl::entity_type::boolean: return "boolean";
-        case CPPHEADERS_NS_::refl::entity_type::string: return "string";
-        case CPPHEADERS_NS_::refl::entity_type::binary: return "binary";
-        case CPPHEADERS_NS_::refl::entity_type::dictionary: return "dictionary";
-        case CPPHEADERS_NS_::refl::entity_type::array: return "array";
-        case CPPHEADERS_NS_::refl::entity_type::integer: return "integer";
-        case CPPHEADERS_NS_::refl::entity_type::floating_point: return "floating_point";
-        case CPPHEADERS_NS_::refl::entity_type::object: return "object";
-        case CPPHEADERS_NS_::refl::entity_type::tuple: return "tuple";
+        case entity_type::invalid: return "invalid";
+        case entity_type::null: return "null";
+        case entity_type::boolean: return "boolean";
+        case entity_type::string: return "string";
+        case entity_type::binary: return "binary";
+        case entity_type::dictionary: return "dictionary";
+        case entity_type::array: return "array";
+        case entity_type::integer: return "integer";
+        case entity_type::floating_point: return "floating_point";
+        case entity_type::object: return "object";
+        case entity_type::tuple: return "tuple";
         default: return "__NONE__";
     }
 }
