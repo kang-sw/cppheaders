@@ -252,7 +252,16 @@ class circular_queue
         assert(n <= size());
 
         if constexpr (std::is_trivially_destructible_v<Ty_> && std::is_trivially_copyable_v<Ty_>) {
-            std::copy(begin(), begin() + n, oit);
+            if (_tail < _head) {
+                std::copy_n(&_at(_tail), std::min<size_t>(_head - _tail, n), oit);
+            } else if (_head < _tail) {
+                auto nseq1 = std::min<size_t>(_capacity - _tail, n);
+                auto nseq2 = n - nseq1;
+                assert(nseq2 <= _head);
+
+                std::copy_n(&_at(_tail), nseq1, oit);
+                std::copy_n(&_at(0), nseq2, oit);
+            }
             _tail = _jmp(_tail, n);
         } else {
             while (n--) {
@@ -328,10 +337,8 @@ class circular_queue
      * Append given range to buffer. Only trivial types are allowed
      */
     template <typename Iter_>
-    void rotate_append(Iter_ begin, Iter_ end)
+    void enqueue_n(Iter_ begin, size_t total)
     {
-        auto total = std::distance(begin, end);
-
         // If number of elements exceeds
         if (capacity() < total) {
             auto margin = total - capacity();
@@ -343,12 +350,25 @@ class circular_queue
         // Reserve space
         if (auto space = capacity() - size(); space < total) {
             auto required_space{total - space};
-            _tail = _jmp(_tail, required_space);
+
+            if constexpr (std::is_trivially_destructible_v<Ty_>) {
+                _tail = _jmp(_tail, required_space);
+            } else {
+                while (required_space--) { _pop(); }
+            }
         }
 
         // Copy contents to buffer
-        while (total--)
-            _at(std::exchange(_head, _next(_head))) = *(begin++);
+        auto nseq1 = std::min<size_t>(total, _cap() - _head);
+        auto nseq2 = total - nseq1;
+
+        for (auto it = &_at(_head); nseq1; --nseq1)
+            *(it++) = *(begin++);
+
+        for (auto it = &_at(0); nseq1; --nseq2)
+            *(it++) = *(begin++);
+
+        _head = _jmp(_head, total);
     }
 
     ~circular_queue() noexcept(is_safe_dtor) { clear(); }
