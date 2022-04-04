@@ -76,6 +76,10 @@ class service_builder
 
                 std::apply(fn_assign_descriptors, params);
             }
+
+            // As view_buffer refers to local pointer, copying object may cause dangling.
+            param_buf_pack_t(param_buf_pack_t const&) = delete;
+            param_buf_pack_t& operator=(param_buf_pack_t const&) = delete;
         };
 
         weak_ptr<void>         _owner;
