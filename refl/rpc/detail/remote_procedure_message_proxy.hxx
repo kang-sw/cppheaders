@@ -96,17 +96,23 @@ class remote_procedure_message_proxy
     /**
      * Retrieves result buffer of waiting RPC
      */
-    refl::object_view_t reply_result_buffer(int msgid)
+    bool reply_result(int msgid, archive::if_reader* object)
     {
         _verify_clear_state();
 
         _type = proxy_type::reply_expired;
         _rpc_msgid = msgid;
 
-        auto rval = _owner->find_reply_result_buffer(msgid);
-        if (not rval.empty()) { _type = proxy_type::reply_okay; }
+        _owner->request_node_lock_begin();
+        cleanup_t finally{[&] { _owner->request_node_lock_end(); }};
 
-        return rval;
+        auto      rval = _owner->find_reply_result_buffer(msgid);
+        if (rval.empty()) { return false; }
+
+        _type = proxy_type::reply_okay;
+        *object >> rval;
+
+        return true;
     }
 
     /**
@@ -119,7 +125,10 @@ class remote_procedure_message_proxy
         _type = proxy_type::reply_expired;
         _rpc_msgid = msgid;
 
-        auto json = _owner->find_reply_error_buffer(msgid);
+        _owner->request_node_lock_begin();
+        cleanup_t finally{[&] { _owner->request_node_lock_end(); }};
+
+        auto      json = _owner->find_reply_error_buffer(msgid);
         if (json == nullptr) { return false; }
 
         _type = proxy_type::reply_error;
@@ -129,6 +138,15 @@ class remote_procedure_message_proxy
 
         object->dump_single_object(&writer);
         return true;
+    }
+
+    /**
+     * This MUST BE CALLED before finishing successful reply result copying!
+     */
+    void reply_finish_copying()
+    {
+        assert(_type == proxy_type::notify || _type == proxy_type::request);
+        _owner->request_node_lock_end();
     }
 
    private:
