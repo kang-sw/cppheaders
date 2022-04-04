@@ -186,7 +186,8 @@ class event_wait
         op();
     }
 
-    auto lock() const { return ulock_type{_mtx}; }
+    auto  lock() const { return ulock_type{_mtx}; }
+    auto& mutex() const { return _mtx; }
 
    private:
     mutable std::condition_variable _cvar;
