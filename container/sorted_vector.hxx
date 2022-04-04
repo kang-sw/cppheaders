@@ -83,28 +83,29 @@ class sorted_vector
     }
 
    public:
-    auto   size() const noexcept { return _vector.size(); }
-    auto   empty() const noexcept { return _vector.empty(); }
-    auto   shrink_to_fit() { _vector.shrink_to_fit(); }
-    auto   reserve(size_t n) { _vector.reserve(n); }
+    auto size() const noexcept { return _vector.size(); }
+    auto empty() const noexcept { return _vector.empty(); }
+    auto shrink_to_fit() { _vector.shrink_to_fit(); }
+    auto reserve(size_t n) { _vector.reserve(n); }
 
-    auto   begin() noexcept { return _vector.begin(); }
-    auto   begin() const noexcept { return _vector.begin(); }
-    auto   end() noexcept { return _vector.end(); }
-    auto   end() const noexcept { return _vector.end(); }
-    auto   cbegin() const noexcept { return _vector.cbegin(); }
-    auto   cend() const noexcept { return _vector.cend(); }
-    auto   rbegin() const noexcept { return _vector.rbegin(); }
-    auto   rbegin() noexcept { return _vector.rbegin(); }
-    auto   rend() const noexcept { return _vector.rend(); }
-    auto   rend() noexcept { return _vector.rend(); }
+    auto begin() noexcept { return _vector.begin(); }
+    auto begin() const noexcept { return _vector.begin(); }
+    auto end() noexcept { return _vector.end(); }
+    auto end() const noexcept { return _vector.end(); }
+    auto cbegin() const noexcept { return _vector.cbegin(); }
+    auto cend() const noexcept { return _vector.cend(); }
+    auto rbegin() const noexcept { return _vector.rbegin(); }
+    auto rbegin() noexcept { return _vector.rbegin(); }
+    auto rend() const noexcept { return _vector.rend(); }
+    auto rend() noexcept { return _vector.rend(); }
 
-    auto   front() noexcept { return _vector.front(); }
-    auto   back() noexcept { return _vector.front(); }
-    auto   front() const noexcept { return _vector.front(); }
-    auto   back() const noexcept { return _vector.front(); }
+    auto front() noexcept { return _vector.front(); }
+    auto back() noexcept { return _vector.front(); }
+    auto front() const noexcept { return _vector.front(); }
+    auto back() const noexcept { return _vector.front(); }
 
-    auto   erase(const_iterator iter) { return _vector.erase(iter); }
+    auto erase(const_iterator iter) { return _vector.erase(iter); }
+    void clear() { _vector.clear(); }
 
     template <typename Key_>
     auto lower_bound(Key_ const& key) const
