@@ -110,7 +110,7 @@ class service_builder
                         _handler(&profile, &*rv, params...);
                     };
             std::apply(fn_invoke_handler, param_buf->params);
-            return {move(rv).share()};
+            return refl::shared_object_ptr{move(rv).share()};
         }
     };
 
