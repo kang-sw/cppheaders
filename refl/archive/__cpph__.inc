@@ -22,4 +22,4 @@
 //
 // project home: https://github.com/perfkitpp
 
-#include "detail/json.inc"
+#include "detail/json.src.hpp"
