@@ -29,6 +29,7 @@
 //
 #include "refl/object.hxx"
 #include "refl/rpc/connection.hxx"
+#include "refl/rpc/connection/inmemory_pipe.hxx"
 #include "refl/rpc/detail/protocol_stream.hxx"
 #include "refl/rpc/detail/service.hxx"
 #include "refl/rpc/detail/service_builder.hxx"
@@ -99,7 +100,7 @@ TEST_CASE("Can compile modules", "[rpc][.]")
         void initialize() noexcept override
         {
         }
-        void async_wait_data() noexcept override
+        void start_data_receive() noexcept override
         {
         }
         void close() noexcept override

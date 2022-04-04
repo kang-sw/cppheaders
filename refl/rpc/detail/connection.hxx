@@ -55,9 +55,12 @@ class if_connection_streambuf : public std::streambuf
     virtual void initialize() noexcept = 0;
 
     /**
-     * start waiting for new data
+     * Start waiting for new data
+     *
+     * It may call on_data_receive() immediately if there's any data ready, however,
+     *  it must not block for waiting incoming data.
      */
-    virtual void async_wait_data() noexcept = 0;
+    virtual void start_data_receive() noexcept = 0;
 
     /**
      * Close this session
@@ -70,7 +73,7 @@ class if_connection_streambuf : public std::streambuf
     virtual void get_total_rw(size_t* num_read, size_t* num_write) = 0;
 
    protected:
-    void on_data_in() noexcept
+    void on_data_receive() noexcept
     {
         if (auto owner = _wowner.lock())
             owner->on_data_wait_complete();

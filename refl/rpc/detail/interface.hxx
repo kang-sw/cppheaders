@@ -45,8 +45,22 @@ class if_event_proc
    public:
     virtual ~if_event_proc() = default;
 
-    virtual void post_rpc_completion(function<void()>&& fn) { post_handler_callback(std::move(fn)); }
-    virtual void post_handler_callback(function<void()>&&) = 0;
+    /**
+     * Post RPC completion event.
+     *
+     * Low priority.
+     */
+    virtual void post_rpc_completion(function<void()>&& fn) { post_internal_message(std::move(fn)); }
+
+    /**
+     * Post incoming request/notify handler callback. Median priority.
+     */
+    virtual void post_handler_callback(function<void()>&& fn) { post_internal_message(std::move(fn)); };
+
+    /**
+     * Post internal messages. High priority.
+     */
+    virtual void post_internal_message(function<void()>&& fn) = 0;
 };
 
 /**

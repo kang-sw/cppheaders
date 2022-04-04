@@ -337,6 +337,12 @@ class session : public if_session, public std::enable_shared_from_this<session>
     {
         assert(_waiting.exchange(false) == true);
 
+        auto fn = bind_weak(weak_from_this(), [this] { _impl_on_data_wait_complete(); });
+        _event_proc->post_internal_message(std::move(fn));
+    }
+
+    void _impl_on_data_wait_complete() noexcept
+    {
         remote_procedure_message_proxy proxy = {};
         proxy._owner = this;
         proxy._svc = &_service;
@@ -369,7 +375,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
         }
 
         assert(_waiting.exchange(true) == false);
-        _conn->async_wait_data();
+        _conn->start_data_receive();
     }
 
     void request_node_lock_begin() override
@@ -436,7 +442,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
 #endif
 
         _conn->_wowner = weak_from_this();
-        _conn->async_wait_data();
+        _conn->start_data_receive();
     }
 
     bool _set_expired()
