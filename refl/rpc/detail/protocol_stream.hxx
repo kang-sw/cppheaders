@@ -30,6 +30,7 @@
 #include "../../detail/object_core.hxx"
 #include "defs.hxx"
 #include "interface.hxx"
+#include "remote_procedure_message_proxy.hxx"
 #include "request_handle.hxx"
 
 namespace CPPHEADERS_NS_::rpc {

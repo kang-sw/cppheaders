@@ -28,17 +28,12 @@
 
 //
 #include "refl/object.hxx"
-#include "refl/rpc/connection.hxx"
 #include "refl/rpc/connection/inmemory_pipe.hxx"
-#include "refl/rpc/detail/default_event_procedure.hxx"
-#include "refl/rpc/detail/protocol_stream.hxx"
-#include "refl/rpc/detail/service.hxx"
-#include "refl/rpc/detail/service_builder.hxx"
-#include "refl/rpc/detail/session.hxx"
-#include "refl/rpc/detail/session_builder.hxx"
-#include "refl/rpc/protocol.hxx"
+#include "refl/rpc/default_event_procedure.hxx"
 #include "refl/rpc/protocol/msgpack-rpc.hxx"
+#include "refl/rpc/rpc.hxx"
 #include "refl/rpc/service.hxx"
+#include "refl/rpc/session_builder.hxx"
 
 using namespace cpph;
 
@@ -76,4 +71,17 @@ TEST_CASE("Basic RPC Test", "[rpc]")
 
     auto val = sg_add(session_client).request_2(1, 4);
     REQUIRE(val == 5);
+}
+
+TEST_CASE("Inmemory Pipe Test", "[rpc]")
+{
+    auto [conn_a, conn_b] = rpc::connection::inmemory_pipe::create();
+    char const content[] = "hello, world!";
+    conn_a->sputn(content, strlen(content));
+    conn_a->pubsync();
+
+    char buf[sizeof(content)] = {};
+    conn_b->sgetn(buf, strlen(content));
+
+    REQUIRE(strcmp(content, buf) == 0);
 }

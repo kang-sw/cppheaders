@@ -33,6 +33,7 @@
 #include "../../__namespace__"
 #include "../../archive/json-writer.hxx"
 #include "interface.hxx"
+#include "service.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
 class remote_procedure_message_proxy

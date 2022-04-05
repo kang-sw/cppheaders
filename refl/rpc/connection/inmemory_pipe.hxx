@@ -29,7 +29,7 @@
 #include "../../../thread/event_wait.hxx"
 #include "../../../threading.hxx"
 #include "../../__namespace__"
-#include "../connection.hxx"
+#include "../detail/connection.hxx"
 
 namespace CPPHEADERS_NS_::rpc::connection {
 class inmemory_pipe : public if_connection_streambuf
@@ -81,9 +81,9 @@ class inmemory_pipe : public if_connection_streambuf
     }
 
    public:
-    ~inmemory_pipe()
+    ~inmemory_pipe() override
     {
-        close();
+        inmemory_pipe::close();
     }
 
     void initialize() noexcept override
@@ -146,7 +146,7 @@ class inmemory_pipe : public if_connection_streambuf
         auto nread = std::min(sizeof _ibuf, _in->strm.size());
         _in->strm.dequeue_n(nread, _ibuf);
 
-        setp(_ibuf, _ibuf + nread);
+        setg(_ibuf, _ibuf, _ibuf + nread);
         return traits_type::to_int_type(_ibuf[0]);
     }
 

@@ -25,6 +25,4 @@
  ******************************************************************************/
 
 #pragma once
-#include "detail/server.hxx"
-#include "detail/service.hxx"
-#include "detail/session.hxx"
+#include "detail/session_builder.hxx"

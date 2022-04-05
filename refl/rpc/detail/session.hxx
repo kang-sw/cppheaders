@@ -373,7 +373,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
             state = _protocol->handle_single_message(proxy);
             _update_rw_count();
 
-            assert(std::unique_lock(_rq->lock.mutex(), std::try_to_lock));
+            assert(not _rq || std::unique_lock(_rq->lock.mutex(), std::try_to_lock));
         }
 
         switch (state) {

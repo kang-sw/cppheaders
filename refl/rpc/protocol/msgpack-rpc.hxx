@@ -133,10 +133,11 @@ class msgpack : public if_protocol_stream
                             };
 
                     auto& method = _buf_tmp;
+
+                    if (is_request) { _read >> msgid; }
                     _read >> method;  // read method name
 
                     if (is_request) {
-                        _read >> msgid;
                         params = proxy.request_parameters(method, msgid);
 
                         if (params == nullptr) {
