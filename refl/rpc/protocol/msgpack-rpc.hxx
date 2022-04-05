@@ -109,11 +109,42 @@ class msgpack : public if_protocol_stream
                     break;
                 }
 
-                case msgtype::request:
                 case msgtype::notify: {
-                    bool const is_request = type == msgtype::request;
                     fn_verify_recoverable(
-                            _read.elem_left() == (is_request ? 3 : 2),
+                            _read.elem_left() == 2,
+                            epss::warning_received_invalid_format);
+
+                    auto& method = _buf_tmp;
+                    _read >> method;
+
+                    auto params = proxy.notify_parameters(method);
+
+                    if (not params)
+                        fn_error(epss::warning_received_unkown_method_name);
+
+                    {
+                        auto scope_params = _read.begin_array();
+
+                        // Verify element count matches
+                        if (_read.elem_left() != params->size())
+                            fn_error(epss::warning_received_invalid_number_of_parameters);
+
+                        // Parse parameters
+                        try {
+                            for (auto& param : *params)
+                                _read >> param;
+                        } catch (archive::error::reader_recoverable_exception&) {
+                            fn_error(epss::warning_received_invalid_parameter_type);
+                        }
+
+                        _read.end_array(scope_params);
+                    }
+                    break;
+                }
+
+                case msgtype::request: {
+                    fn_verify_recoverable(
+                            _read.elem_left() == 3,
                             epss::warning_received_invalid_format);
 
                     service_parameter_buffer* params = nullptr;
@@ -134,19 +165,14 @@ class msgpack : public if_protocol_stream
 
                     auto& method = _buf_tmp;
 
-                    if (is_request) { _read >> msgid; }
+                    _read >> msgid;
                     _read >> method;  // read method name
 
-                    if (is_request) {
-                        params = proxy.request_parameters(method, msgid);
+                    params = proxy.request_parameters(method, msgid);
 
-                        if (params == nullptr) {
-                            fn_rep_err(errstr_method_not_found);
-                            fn_error(epss::warning_received_unkown_method_name);
-                        }
-                    } else {
-                        params = proxy.notify_parameters(method);
-                        fn_verify_recoverable(params, epss::warning_received_unkown_method_name);
+                    if (params == nullptr) {
+                        fn_rep_err(errstr_method_not_found);
+                        fn_error(epss::warning_received_unkown_method_name);
                     }
 
                     // Parse parameters
@@ -155,20 +181,16 @@ class msgpack : public if_protocol_stream
 
                         // Verify element count matches
                         if (_read.elem_left() != params->size()) {
-                            if (is_request)
-                                fn_rep_err(errstr_invalid_parameter);
-
+                            fn_rep_err(errstr_invalid_parameter);
                             fn_error(epss::warning_received_invalid_number_of_parameters);
                         }
 
                         // Parse parameters
                         try {
-                            for (auto& p : *params)
-                                _read >> p;
+                            for (auto& param : *params)
+                                _read >> param;
                         } catch (archive::error::reader_recoverable_exception&) {
-                            if (is_request)
-                                fn_rep_err(errstr_invalid_parameter);
-
+                            fn_rep_err(errstr_invalid_parameter);
                             fn_error(epss::warning_received_invalid_parameter_type);
                         }
 

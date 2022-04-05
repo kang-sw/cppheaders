@@ -116,48 +116,42 @@ class signature_t<RetVal_, std::tuple<Params_...>>
         }
 
         template <typename CompletionContext_>
-        auto async_rpc(return_type* ret, Params_ const&... args, CompletionContext_&& complete_handler) const
+        auto async_request(return_type* ret, Params_ const&... args, CompletionContext_&& complete_handler) const
         {
-            return _rpc->async_rpc(
-                    ret, _host->name(),
+            return _rpc->async_request(
+                    _host->name(),
                     std::forward<CompletionContext_>(complete_handler),
-                    args...);
+                    ret, args...);
         }
 
-        auto async_rpc(return_type* ret, Params_ const&... args) const
+        auto async_request(return_type* ret, Params_ const&... args) const
         {
-            return _rpc->async_rpc(
-                    ret, _host->name(),
-                    [](auto) {},
-                    args...);
+            return _rpc->async_request(
+                    _host->name(),
+                    default_function,
+                    ret, args...);
         }
 
         template <typename CompletionContext_>
-        auto async_rpc(Params_ const&... args, CompletionContext_&& complete_handler) const
+        auto async_request(Params_ const&... args, CompletionContext_&& complete_handler) const
         {
-            return _rpc->async_rpc(
-                    nullptr, _host->name(),
+            return _rpc->async_request(
+                    _host->name(),
                     std::forward<CompletionContext_>(complete_handler),
-                    args...);
+                    nullptr, args...);
         }
 
         auto async_rpc(Params_ const&... args) const
         {
-            return _rpc->async_rpc(
-                    nullptr, _host->name(),
-                    [](auto) {},
-                    args...);
+            return _rpc->async_request(
+                    _host->name(),
+                    default_function,
+                    nullptr, args...);
         }
 
         void notify(Params_ const&... args) const
         {
             _rpc->notify(_host->name(), args...);
-        }
-
-        template <typename Qualify_>
-        size_t notify(Params_ const&... args, Qualify_&& qualify_function) const
-        {
-            return _rpc->notify(_host->name(), std::forward<Qualify_>(qualify_function), args...);
         }
     };
 

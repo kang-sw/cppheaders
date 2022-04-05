@@ -93,7 +93,7 @@ class inmemory_pipe : public if_connection_streambuf
     {
         lock_guard _lc_{_in->lock.mutex()};
 
-        if (not _in->strm.empty())
+        if (not _in->strm.empty() || in_avail() != 0)
             this->on_data_receive();
         else
             _no_signal.clear();

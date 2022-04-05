@@ -48,6 +48,7 @@ using session_profile_view = session_profile const*;
 class basic_context;
 class session;
 
+using session_ptr = shared_ptr<class session>;
 using error_code = std::error_code;
 
 using std::enable_if_t;

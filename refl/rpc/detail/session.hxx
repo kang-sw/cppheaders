@@ -37,7 +37,6 @@
 #include "session_profile.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-using session_ptr = shared_ptr<class session>;
 using request_complete_handler = function<void(error_code const&, std::string_view json_error)>;
 
 template <int>
@@ -176,9 +175,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     template <typename RetPtr, typename... Params>
     request_handle async_request(
-            string_view              method,
-            request_complete_handler handler,
-            RetPtr                   return_buffer,
+            string_view                method,
+            request_complete_handler&& handler,
+            RetPtr                     return_buffer,
             Params const&... params)
     {
         assert(this->is_request_enabled());

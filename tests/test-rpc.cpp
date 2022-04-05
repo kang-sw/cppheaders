@@ -69,14 +69,28 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             .event_procedure(rpc::default_event_procedure::get())
             .build_to(session_client);
 
-    auto val = sg_add(session_client).request(1, 4);
-    REQUIRE(val == 5);
-    val = sg_add(session_client).request(5, 2);
-    REQUIRE(val == 7);
+    SECTION("Blocking request")
+    {
+        sg_add(session_client).notify(1, 2 * 3);
 
-    for (int i = 0; i < 256; ++i) {
-        val = sg_add(session_client).request(i, i * i);
-        REQUIRE(val == i * i + i);
+        auto val = sg_add(session_client).request(1, 4);
+        REQUIRE(val == 5);
+        val = sg_add(session_client).request(5, 2);
+        REQUIRE(val == 7);
+
+        for (int i = 0; i < 4096; ++i) {
+            val = sg_add(session_client).request(i, i * i);
+            REQUIRE(val == i * i + i);
+
+            auto str = sg_concat(session_client).request("1", "2");
+            REQUIRE(str == "12");
+        }
+    }
+
+    SECTION("Non-blocking request")
+    {
+        std::list<int>                 retbufs;
+        std::list<rpc::request_handle> handles;
     }
 }
 
