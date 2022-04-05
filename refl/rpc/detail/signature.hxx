@@ -83,7 +83,7 @@ class signature_t<RetVal_, std::tuple<Params_...>>
 
        public:
         template <class Duration = nullptr_t>
-        void request(return_type* retval, Params_ const&... args, Duration&& timeout = nullptr) const
+        void request_with(return_type* retval, Params_ const&... args, Duration&& timeout = nullptr) const
         {
             request_result result = {};
             string         errstr;
@@ -100,11 +100,18 @@ class signature_t<RetVal_, std::tuple<Params_...>>
                 throw request_exception{result, &errstr};
         }
 
-        template <class Duration = nullptr_t>
-        return_type request_2(Params_ const&... args, Duration&& timeout = nullptr) const
+        return_type request(Params_ const&... args) const
         {
             return_type retval;
-            this->request(&retval, args..., std::forward<Duration>(timeout));
+            this->request_with(&retval, args...);
+            return retval;
+        }
+
+        template <class Duration>
+        return_type request(Params_ const&... args, Duration&& dur) const
+        {
+            return_type retval;
+            this->request_with(&retval, args..., std::forward<Duration>(dur));
             return retval;
         }
 

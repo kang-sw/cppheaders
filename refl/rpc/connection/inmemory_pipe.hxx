@@ -43,7 +43,6 @@ class inmemory_pipe : public if_connection_streambuf
     };
 
    private:
-    int              _idx = 0;
     shared_ptr<pipe> _in, _out;
 
     char             _ibuf[2048];

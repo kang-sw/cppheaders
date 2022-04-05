@@ -69,19 +69,29 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             .event_procedure(rpc::default_event_procedure::get())
             .build_to(session_client);
 
-    auto val = sg_add(session_client).request_2(1, 4);
+    auto val = sg_add(session_client).request(1, 4);
     REQUIRE(val == 5);
+    val = sg_add(session_client).request(5, 2);
+    REQUIRE(val == 7);
+
+    for (int i = 0; i < 256; ++i) {
+        val = sg_add(session_client).request(i, i * i);
+        REQUIRE(val == i * i + i);
+    }
 }
 
 TEST_CASE("Inmemory Pipe Test", "[rpc]")
 {
     auto [conn_a, conn_b] = rpc::connection::inmemory_pipe::create();
     char const content[] = "hello, world!";
-    conn_a->sputn(content, strlen(content));
-    conn_a->pubsync();
 
-    char buf[sizeof(content)] = {};
-    conn_b->sgetn(buf, strlen(content));
+    for (size_t i = 0; i < 1024; ++i) {
+        conn_a->sputn(content, strlen(content));
+        conn_a->pubsync();
 
-    REQUIRE(strcmp(content, buf) == 0);
+        char buf[sizeof(content)] = {};
+        conn_b->sgetn(buf, strlen(content));
+
+        REQUIRE(strcmp(content, buf) == 0);
+    }
 }

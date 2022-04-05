@@ -92,10 +92,10 @@ TEST_CASE("overall", "[queue_allocator]")
     REQUIRE(buffer.empty());
 }
 
-TEST_CASE("buffer deferred dealloc")
+TEST_CASE("buffer deferred dealloc", "[queue_allocator]")
 {}
 
-TEST_CASE("typed allocator")
+TEST_CASE("typed allocator", "[queue_allocator]")
 {
     cpph::queue_allocator alloc{1024};
     {
