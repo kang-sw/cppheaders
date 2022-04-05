@@ -43,6 +43,24 @@ using request_complete_handler = function<void(error_code const&, std::string_vi
 template <int>
 class basic_session_builder;
 
+namespace detail {
+class empty_session_monitor : public if_session_monitor
+{
+   public:
+    void on_session_expired(session_profile_view view) override {}
+    void on_session_created(session_profile_view view) override {}
+    void on_receive_warning(session_profile_view view, protocol_stream_state state) override {}
+    void on_handler_error(session_profile_view view, std::exception& e) override {}
+
+   public:
+    static auto get() noexcept
+    {
+        auto _value = std::make_shared<empty_session_monitor>();
+        return _value;
+    }
+};
+}  // namespace detail
+
 class session : public if_session, public std::enable_shared_from_this<session>
 {
     template <int>
@@ -434,12 +452,15 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _protocol->initialize(&*_conn);
 
         // Notify client that monitoring has begun
+        if (not _monitor) { _monitor = detail::empty_session_monitor::get(); }
         _monitor->on_session_created(&_profile);
 
         // Start initial receive
 #ifndef NDEBUG
         _waiting.store(true);
 #endif
+
+        _valid.store(true);
 
         _conn->_wowner = weak_from_this();
         _conn->start_data_receive();

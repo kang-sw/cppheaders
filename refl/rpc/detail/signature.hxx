@@ -82,14 +82,30 @@ class signature_t<RetVal_, std::tuple<Params_...>>
         RpcContext_* const       _rpc;
 
        public:
-        template <typename Timeout_>
-        return_type rpc(Params_ const&... args, Timeout_ timeout) const
+        template <class Duration = nullptr_t>
+        void request(return_type* retval, Params_ const&... args, Duration&& timeout = nullptr) const
         {
-            return_type    ret;
-            request_result errc = _rpc->rpc(&ret, _host->name(), timeout, args...);
-            if (errc != request_result::okay) { throw request_exception{make_request_error(errc)}; }
+            request_result result = {};
+            string         errstr;
 
-            return ret;
+            auto           fn_on_complete = [&](error_code const& ec, auto str) { result = (request_result)ec.value(), errstr = str; };
+            auto           handle = _rpc->async_request(_host->name(), static_cast<function<void(const error_code&, string_view)>>(fn_on_complete), retval, args...);
+
+            if constexpr (std::is_null_pointer_v<Duration>)
+                _rpc->wait(handle);
+            else
+                _rpc->wait_for(handle, std::forward<Duration>(timeout));
+
+            if (result != request_result::okay)
+                throw request_exception{result, &errstr};
+        }
+
+        template <class Duration = nullptr_t>
+        return_type request_2(Params_ const&... args, Duration&& timeout = nullptr) const
+        {
+            return_type retval;
+            this->request(&retval, args..., std::forward<Duration>(timeout));
+            return retval;
         }
 
         template <typename CompletionContext_>
@@ -138,12 +154,11 @@ class signature_t<RetVal_, std::tuple<Params_...>>
         }
     };
 
-    template <class RpcContext>
-    auto operator()(RpcContext& rpc) const
-            -> decltype(std::declval<RpcContext>().totals(nullptr, nullptr),
-                        std::declval<invoke_proxy_t<RpcContext>>())
+    template <class Session>
+    auto operator()(Session&& rpc_ptr) const
     {
-        return invoke_proxy_t<RpcContext>{this, &rpc};
+        using session_type = std::decay_t<decltype(*rpc_ptr)>;
+        return invoke_proxy_t<session_type>{this, &*rpc_ptr};
     }
 
     auto&& wrap(serve_signature_full&& signature) const noexcept { return std::move(signature); }

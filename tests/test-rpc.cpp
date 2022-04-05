@@ -30,6 +30,7 @@
 #include "refl/object.hxx"
 #include "refl/rpc/connection.hxx"
 #include "refl/rpc/connection/inmemory_pipe.hxx"
+#include "refl/rpc/detail/default_event_procedure.hxx"
 #include "refl/rpc/detail/protocol_stream.hxx"
 #include "refl/rpc/detail/service.hxx"
 #include "refl/rpc/detail/service_builder.hxx"
@@ -41,82 +42,38 @@
 
 using namespace cpph;
 
-TEST_CASE("Can compile modules", "[rpc][.]")
+TEST_CASE("Basic RPC Test", "[rpc]")
 {
-    auto sig1 = rpc::create_signature<int(int, bool)>("hello");
-    auto sig2 = rpc::create_signature<int(int, bool, std::string)>("hello");
-    auto sig3 = rpc::create_signature<double(double)>("hello");
-    auto svc = rpc::service_builder{};
+    using std::string;
 
-    sig3.wrap([](auto, double*, double&) {});
-    svc.route(sig3, [](double) -> double { return 0; });
-    svc.route(sig3, [](double*, double) { return 0; });
-    svc.route(sig1, [](int*, int&, bool&) {});
-    svc.route(sig2, [](rpc::session_profile_view, int*, int&, bool&, std::string&) {});
+    auto sg_add = rpc::create_signature<int(int, int)>("add");
+    auto sg_concat = rpc::create_signature<string(string, string)>("concat");
 
-    auto dr = [](double) -> double { return 0; };
-    static_assert(std::is_invocable_r_v<double, decltype(dr), double>);
+    auto service = rpc::service::empty_service();
+    rpc::service_builder{}
+            .route(sg_add, std::plus<int>{})
+            .route(sg_concat, std::plus<string>{})
+            .build_to(service);
 
-    decltype(sig3)::serve_signature_0 srr = [](double&) -> double { return 0; };
-    decltype(sig1)::return_type       r;
+    rpc::session_ptr session_server;
+    rpc::session_ptr session_client;
 
-    class proto : public rpc::if_protocol_stream
-    {
-       public:
-        void initialize(rpc::if_connection_streambuf* streambuf) override
-        {
-        }
-        rpc::protocol_stream_state handle_single_message(rpc::remote_procedure_message_proxy& proxy) noexcept override
-        {
-            return rpc::protocol_stream_state::warning_received_invalid_parameter_type;
-        }
-        bool send_request(std::string_view method, int msgid, array_view<refl::object_view_t> params) noexcept override
-        {
-            return false;
-        }
-        bool send_notify(std::string_view method, array_view<refl::object_view_t> params) noexcept override
-        {
-            return false;
-        }
-        bool send_reply_result(int msgid, refl::object_const_view_t retval) noexcept override
-        {
-            return false;
-        }
-        bool send_reply_error(int msgid, refl::object_const_view_t error) noexcept override
-        {
-            return false;
-        }
-        bool send_reply_error(int msgid, std::string_view content) noexcept override
-        {
-            return false;
-        }
-    };
+    auto [conn_a, conn_b] = rpc::connection::inmemory_pipe::create();
 
-    class conn : public rpc::if_connection_streambuf
-    {
-       public:
-        conn(const std::string& peer_name) : if_connection_streambuf(peer_name) {}
-
-        void initialize() noexcept override
-        {
-        }
-        void start_data_receive() noexcept override
-        {
-        }
-        void close() noexcept override
-        {
-        }
-        void get_total_rw(size_t* num_read, size_t* num_write) override
-        {
-        }
-    };
-
-    rpc::session_ptr session;
     rpc::session::builder{}
-            .user_data(nullptr)
-            .event_procedure(nullptr)
-            .protocol(std::make_unique<proto>())
-            .service(std::move(svc).build())
-            .connection(std::make_unique<conn>("hello"))
-            .build_to(session);
+            .connection(std::move(conn_a))
+            .service(service)
+            .protocol(std::make_unique<rpc::protocol::msgpack>())
+            .event_procedure(rpc::default_event_procedure::get())
+            .build_to(session_server);
+
+    rpc::session::builder{}
+            .enable_request()
+            .connection(std::move(conn_b))
+            .protocol(std::make_unique<rpc::protocol::msgpack>())
+            .event_procedure(rpc::default_event_procedure::get())
+            .build_to(session_client);
+
+    auto val = sg_add(session_client).request_2(1, 4);
+    REQUIRE(val == 5);
 }

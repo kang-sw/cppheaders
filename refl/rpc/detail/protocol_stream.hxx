@@ -45,7 +45,7 @@ class if_protocol_stream
     /**
      * Initialize internal stream handler(reader/writer) with given streambuf
      */
-    virtual void initialize(if_connection_streambuf* streambuf) = 0;
+    virtual void initialize(std::streambuf* streambuf) = 0;
 
     /**
      * Handle single message. This will be invoked when owning session
@@ -74,12 +74,12 @@ class if_protocol_stream
      * If internal RPC protocol is compatible with simple integer, this function should only
      *  perform simple transfer operation.
      */
-    virtual bool send_request(std::string_view method, int msgid, array_view<refl::object_view_t> params) noexcept = 0;
+    virtual bool send_request(std::string_view method, int msgid, array_view<refl::object_const_view_t> params) noexcept = 0;
 
     /**
      * Send notify with given parameters.
      */
-    virtual bool send_notify(std::string_view method, array_view<refl::object_view_t> params) noexcept = 0;
+    virtual bool send_notify(std::string_view method, array_view<refl::object_const_view_t> params) noexcept = 0;
 
     /**
      * Send reply with given msgid and return value.

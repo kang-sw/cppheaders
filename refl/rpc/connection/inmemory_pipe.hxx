@@ -26,7 +26,8 @@
 
 #pragma once
 #include "../../../circular_queue.hxx"
-#include "../../../spinlock.hxx"
+#include "../../../thread/event_wait.hxx"
+#include "../../../threading.hxx"
 #include "../../__namespace__"
 #include "../connection.hxx"
 
@@ -34,7 +35,7 @@ namespace CPPHEADERS_NS_::rpc::connection {
 class inmemory_pipe : public if_connection_streambuf
 {
     struct pipe {
-        spinlock             lock;
+        thread::event_wait   lock;
         circular_queue<char> strm{1024};
         size_t               total{0};
 
@@ -80,13 +81,18 @@ class inmemory_pipe : public if_connection_streambuf
     }
 
    public:
+    ~inmemory_pipe()
+    {
+        close();
+    }
+
     void initialize() noexcept override
     {
     }
 
     void start_data_receive() noexcept override
     {
-        lock_guard _lc_{_in->lock};
+        lock_guard _lc_{_in->lock.mutex()};
 
         if (not _in->strm.empty())
             this->on_data_receive();
@@ -96,18 +102,19 @@ class inmemory_pipe : public if_connection_streambuf
 
     void close() noexcept override
     {
-        // TODO: Set pipe's 'receiver' field nullptr.
-        // TODO: Change 'receiver' access atomic, and be checked.
+        // Set pipe's 'receiver' field nullptr.
+        _in->lock.notify_all([&] { _in->receiver = nullptr; });
+        _out->lock.notify_all([&] { _in->receiver = nullptr; });
     }
 
     void get_total_rw(size_t* num_read, size_t* num_write) override
     {
         {
-            lock_guard _{_in->lock};
+            lock_guard _{_in->lock.mutex()};
             *num_read = _in->total;
         }
         {
-            lock_guard _{_out->lock};
+            lock_guard _{_out->lock.mutex()};
             *num_write = _out->total;
         }
     }
@@ -115,7 +122,8 @@ class inmemory_pipe : public if_connection_streambuf
    protected:
     int_type overflow(int_type int_type) override
     {
-        _do_sync();
+        if (not _do_sync())
+            return traits_type::eof();
 
         *_obuf = traits_type::to_char_type(int_type);
         pbump(1);
@@ -125,40 +133,66 @@ class inmemory_pipe : public if_connection_streambuf
 
     int_type underflow() override
     {
-        // TODO: Wait until valid data receive
-        return basic_streambuf::underflow();
+        // Wait until valid data receive
+        bool expired = false;
+
+        auto _lc_ = _in->lock.wait([&] {
+            return (expired = (_in->receiver == nullptr)) || not _in->strm.empty();
+        });
+
+        if (expired)
+            return traits_type::eof();
+
+        auto nread = std::min(sizeof _ibuf, _in->strm.size());
+        _in->strm.dequeue_n(nread, _ibuf);
+
+        setp(_ibuf, _ibuf + nread);
+        return traits_type::to_int_type(_ibuf[0]);
     }
 
     int sync() override
     {
-        _do_sync();
+        if (not _do_sync())
+            return traits_type::eof();
 
         return basic_streambuf::sync();
     }
 
    private:
-    void _do_sync()
+    bool _do_sync()
     {
         auto wbeg = pbase();
         auto wend = pptr();
         auto nwrite = wend - wbeg;
 
         if (nwrite > 0) {
-            lock_guard _lc_{_out->lock};
-            auto       strm = &_out->strm;
+            bool disconnect = false;
 
-            if (strm->capacity() - strm->size() < nwrite)
-                strm->reserve_shrink(std::max(strm->capacity() * 2, strm->capacity() + nwrite));
+            _out->lock.notify_all([&] {
+                auto strm = &_out->strm;
 
-            strm->enqueue_n(wbeg, nwrite);
-            _out->total += nwrite;
+                if (_out->receiver == nullptr) {
+                    disconnect = true;
+                    return;
+                }
 
-            auto recv = _out->receiver;
-            if (not recv->_no_signal.test_and_set())
-                recv->on_data_receive();
+                if (strm->capacity() - strm->size() < nwrite)
+                    strm->reserve_shrink(std::max(strm->capacity() * 2, strm->capacity() + nwrite));
+
+                strm->enqueue_n(wbeg, nwrite);
+                _out->total += nwrite;
+
+                auto recv = _out->receiver;
+                if (not recv->_no_signal.test_and_set())
+                    recv->on_data_receive();
+            });
+
+            if (disconnect)
+                return false;
         }
 
         setp(_obuf, _obuf + sizeof _obuf);
+        return true;
     }
 };
 

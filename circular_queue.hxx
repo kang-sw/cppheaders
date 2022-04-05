@@ -362,13 +362,13 @@ class circular_queue
         auto nseq1 = std::min<size_t>(total, _cap() - _head);
         auto nseq2 = total - nseq1;
 
-        for (auto it = &_at(_head); nseq1; --nseq1)
+        auto head = std::exchange(_head, _jmp(_head, total));
+
+        for (auto it = &_at(head); nseq1; --nseq1)
             *(it++) = *(begin++);
 
         for (auto it = &_at(0); nseq1; --nseq2)
             *(it++) = *(begin++);
-
-        _head = _jmp(_head, total);
     }
 
     ~circular_queue() noexcept(is_safe_dtor) { clear(); }

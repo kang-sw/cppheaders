@@ -55,7 +55,7 @@ class msgpack : public if_protocol_stream
     string                   _buf_tmp;
 
    public:
-    void initialize(if_connection_streambuf* streambuf) override
+    void initialize(std::streambuf* streambuf) override
     {
         _write.rdbuf(streambuf);
         _read.rdbuf(streambuf);
@@ -194,7 +194,7 @@ class msgpack : public if_protocol_stream
         }
     }
 
-    bool send_request(std::string_view method, int msgid, array_view<refl::object_view_t> params) noexcept override
+    bool send_request(std::string_view method, int msgid, array_view<refl::object_const_view_t> params) noexcept override
     {
         try {
             _write.array_push(4);
@@ -215,7 +215,7 @@ class msgpack : public if_protocol_stream
         }
     }
 
-    bool send_notify(std::string_view method, array_view<refl::object_view_t> params) noexcept override
+    bool send_notify(std::string_view method, array_view<refl::object_const_view_t> params) noexcept override
     {
         try {
             _write.array_push(3);

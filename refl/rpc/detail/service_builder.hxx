@@ -45,12 +45,17 @@ class service_builder
     shared_ptr<service_table_t> _table;
 
    public:
-    auto build() && noexcept
+    auto build() noexcept
     {
         service rv;
         rv._service = std::exchange(_table, nullptr);
 
         return rv;
+    }
+
+    void build_to(service& rv) noexcept
+    {
+        rv._service = std::exchange(_table, nullptr);
     }
 
    private:

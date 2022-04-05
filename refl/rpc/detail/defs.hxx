@@ -91,15 +91,23 @@ class request_error_category : public std::error_category
     }
 };
 
-class request_exception : public std::system_error
-{
-    using std::system_error::system_error;
-};
-
 auto make_request_error(request_result errc)
 {
     return std::error_code(int(errc), *request_error_category::instance());
 }
+
+class request_exception : public std::system_error
+{
+   public:
+    string content;
+
+   public:
+    using std::system_error::system_error;
+
+    explicit request_exception(request_result errc, std::string* str = {})
+            : std::system_error(make_request_error(errc)),
+              content(str ? std::string{std::move(*str)} : std::string{}) {}
+};
 
 /**
  * Defines current protocol stream state after operation
