@@ -254,20 +254,18 @@ class circular_queue
         if constexpr (std::is_trivially_destructible_v<Ty_> && std::is_trivially_copyable_v<Ty_>) {
             if (_tail < _head) {
                 std::copy_n(&_at(_tail), std::min<size_t>(_head - _tail, n), oit);
-            } else if (_head < _tail) {
+            } else {
                 auto nseq1 = std::min<size_t>(_capacity - _tail, n);
                 auto nseq2 = n - nseq1;
                 assert(nseq2 <= _head);
 
-                std::copy_n(&_at(_tail), nseq1, oit);
-                std::copy_n(&_at(0), nseq2, oit);
+                for (auto it = &_at(_tail); nseq1--;) { *(oit++) = *(it++); }
+                for (auto it = &_at(0); nseq2--;) { *(oit++) = *(it++); }
             }
             _tail = _jmp(_tail, n);
         } else {
-            while (n--) {
-                *oit++ = std::move(front());
-                pop();
-            }
+            while (n--)
+                *oit++ = dequeue();
         }
     }
 
@@ -367,7 +365,7 @@ class circular_queue
         for (auto it = &_at(head); nseq1; --nseq1)
             *(it++) = *(begin++);
 
-        for (auto it = &_at(0); nseq1; --nseq2)
+        for (auto it = &_at(0); nseq2; --nseq2)
             *(it++) = *(begin++);
     }
 
