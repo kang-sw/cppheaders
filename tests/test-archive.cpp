@@ -239,13 +239,13 @@ static auto ssvd = [] {
     std::cout << "\n\n------- CLASS INTKEY << " << typeid(TestType).name() << " -------\n\n";
     std::stringbuf        strbuf_intkey;
     archive::json::writer writer_intkey{&strbuf_intkey};
-    writer_intkey.use_integer_key = true;
+    writer_intkey.config.use_integer_key = true;
     writer_intkey << arg;
     std::cout << strbuf_intkey.str() << std::endl;
 
     std::cout << "\n\n------- CLASS INTKEY >> " << typeid(TestType).name() << " -------\n\n";
     archive::json::reader reader_intkey{&strbuf_intkey};
-    reader_intkey.use_integer_key = true;
+    reader_intkey.config.use_integer_key = true;
     reader_intkey >> arg;
     writer_intkey.rdbuf(std::cout.rdbuf());
     writer_intkey << arg;
@@ -267,7 +267,7 @@ static auto ssvd = [] {
     streambuf::b64           cvtbase64{msgpack_bufb64.rdbuf()};
 
     archive::msgpack::writer msgwr{&cvtbase64};
-    msgwr.use_integer_key = true;
+    msgwr.config.use_integer_key = true;
     msgwr << TestType{};
 
     cvtbase64.pubsync();
@@ -275,7 +275,7 @@ static auto ssvd = [] {
     std::cout << "\n----------- MSGPACK READING -------------- " << std::endl;
 
     archive::msgpack::reader msgrd{&cvtbase64};
-    msgrd.use_integer_key = true;
+    msgrd.config.use_integer_key = true;
 
     TestType other2{};
     other2.arg = {};

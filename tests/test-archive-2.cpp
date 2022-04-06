@@ -83,7 +83,7 @@ TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
         std::stringstream sstrm;
 
         writer            wr{sstrm.rdbuf()};
-        wr.use_integer_key = intkey;
+        wr.config.use_integer_key = intkey;
 
         child_object enc{};
         enc.fill();
@@ -93,7 +93,7 @@ TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
 
         child_object b;
         reader       rd{sstrm.rdbuf()};
-        rd.use_integer_key = intkey;
+        rd.config.use_integer_key = intkey;
         rd >> b;
 
         sstrm.str(""), wr << b;
@@ -130,7 +130,7 @@ TEST_CASE("Retrieve throw exceptions", "[archive]")
 
     SECTION("No Missing")
     {
-        reader.allow_missing_argument = false;
+        reader.config.allow_missing_argument = false;
 
         SECTION("Child to base")
         {
@@ -151,7 +151,7 @@ TEST_CASE("Retrieve throw exceptions", "[archive]")
 
     SECTION("No Unknown")
     {
-        reader.allow_unknown_argument = false;
+        reader.config.allow_unknown_argument = false;
 
         SECTION("Child to base")
         {
