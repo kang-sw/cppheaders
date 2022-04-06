@@ -53,7 +53,7 @@ class default_event_procedure : public if_event_proc
    public:
     static auto get() noexcept
     {
-        static default_event_procedure _value;
+        static auto _value = std::make_shared<default_event_procedure>();
         return _value;
     }
 };

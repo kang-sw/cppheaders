@@ -110,7 +110,7 @@ class thread_pool
             // Sleep until next awake
             self->event.wait([&] {
                 return self->awake.load(std::memory_order_acquire)
-                    || _pending_invoke_ready.load(std::memory_order_release);
+                    || _pending_invoke_ready.load(std::memory_order_acquire);
             });
         }
     }
@@ -236,7 +236,11 @@ class thread_pool
 
     ~thread_pool()
     {
-        _dispatch.event.notify_one([&] { _close = true; });
+        _dispatch.event.notify_one([&] {
+            _dispatch.state = dispatch_state::waiting;
+            _close = true;
+        });
+
         _dispatch.thread.join();
     }
 
