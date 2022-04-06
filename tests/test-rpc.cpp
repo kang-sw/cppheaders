@@ -167,7 +167,7 @@ TEST_CASE("Basic RPC Test", "[rpc]")
 
     size_t nrd, nwr;
     session_server->totals(&nrd, &nwr);
-    printf("total read: %lu, write: %lu\n", nrd, nwr);
+    printf("total read: %zu, write: %zu\n", nrd, nwr);
     fflush(stdout);
 #endif
 }
