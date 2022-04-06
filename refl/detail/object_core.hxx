@@ -553,7 +553,7 @@ class object_metadata
                               }
                           };
 
-                if (not strm->use_integer_key)
+                if (not strm->config.use_integer_key)
                     for (auto& [key, index] : _keys)
                         do_write(key, index);
                 else
@@ -604,9 +604,9 @@ class object_metadata
                 throw error::invalid_read_state{strm, "'object' expected"};
 
             auto       context_key = strm->begin_object();
-            bool const use_integer_key = strm->use_integer_key,
-                       allow_missing = strm->allow_missing_argument,
-                       allow_unknown = strm->allow_unknown_argument;
+            bool const use_integer_key = strm->config.use_integer_key,
+                       allow_missing = strm->config.allow_missing_argument,
+                       allow_unknown = strm->config.allow_unknown_argument;
 
             int integer_key = -1;
             int num_essential_retrived = 0;
@@ -683,7 +683,7 @@ class object_metadata
                 child->_restore_from(strm, child_data, context, &prop);
             }
 
-            if (not strm->allow_unknown_argument && strm->elem_left() > 0)
+            if (not strm->config.allow_unknown_argument && strm->elem_left() > 0)
                 throw error::missing_entity{strm, "too many arguments!"};
 
             strm->end_array(context_key);

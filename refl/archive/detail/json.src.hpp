@@ -152,7 +152,7 @@ struct reader::impl {
 reader::reader(std::streambuf* buf, bool use_intkey)
         : if_reader(buf), self(new impl{this})
 {
-    use_integer_key = use_intkey;
+    config.use_integer_key = use_intkey;
     reset(), _validate();
 }
 

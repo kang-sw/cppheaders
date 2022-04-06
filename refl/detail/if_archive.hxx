@@ -171,6 +171,21 @@ class error_info
     uint64_t byte_pos() const noexcept { return _byte_pos; }
 };
 
+struct archive_config {
+    bool use_integer_key        : 1;
+    bool allow_missing_argument : 1;
+    bool allow_unknown_argument : 1;
+
+   public:
+    explicit archive_config(
+            bool use_integer_key = false,
+            bool allow_missing_argument = true,
+            bool allow_unknown_argument = true) noexcept
+            : use_integer_key(use_integer_key),
+              allow_missing_argument(allow_missing_argument),
+              allow_unknown_argument(allow_unknown_argument) {}
+};
+
 class if_archive_base
 {
    protected:
@@ -178,17 +193,12 @@ class if_archive_base
     std::streambuf* _buf = {};
 
    public:
-    bool use_integer_key        : 1;
-    bool allow_missing_argument : 1;
-    bool allow_unknown_argument : 1;
+    archive_config config;
 
    public:
     virtual ~if_archive_base() = default;
     explicit if_archive_base(std::streambuf* buf) noexcept
-            : _buf(buf),
-              use_integer_key(false),
-              allow_missing_argument(true),
-              allow_unknown_argument(true)
+            : _buf(buf), config()
     {
     }
 
