@@ -31,7 +31,7 @@
 #pragma once
 #include <atomic>
 #include <cassert>
-#include <queue>
+#include <list>
 #include <thread>
 #include <vector>
 
@@ -39,6 +39,7 @@
 #include "../counter.hxx"
 #include "../functional.hxx"
 #include "event_wait.hxx"
+#include "locked.hxx"
 
 namespace CPPHEADERS_NS_ {
 class thread_pool
@@ -59,18 +60,20 @@ class thread_pool
     };
 
     using worker_container_type = std::vector<std::unique_ptr<worker_node>>;
+    using task_queue_type = locked<std::list<function<void()>>>;
 
    private:
     worker_container_type _threads;
     std::atomic<size_t>   _round = 0;
-    std::atomic<size_t>   _on_use = 0;
+    task_queue_type       _queued;
 
    private:
     void _worker_function(worker_node* self)
     {
         for (;;) {
-            switch (self->state.load(std::memory_order_acquire)) {
-                case worker_state::idle:
+            auto const state = self->state.load(std::memory_order_acquire);
+
+            switch (state) {
                 case worker_state::copying:
                     break;
 
@@ -80,7 +83,36 @@ class thread_pool
                     worker_state state_shouldbe = worker_state::invoke;
                     self->state.compare_exchange_strong(state_shouldbe, worker_state::idle);
 
-                    _on_use.fetch_add(-1);
+                    [[fallthrough]];
+                }
+
+                case worker_state::idle: {
+                    // This may be awoken for queued event flush request
+                    worker_state state_shouldbe = worker_state::idle;
+
+                    // Worker must be in idle state. Otherwise, another request is being copied.
+                    if (self->state.compare_exchange_strong(state_shouldbe, worker_state::invoke)) {
+                        assert(not self->next);
+
+                        for (;;) {
+                            if (auto queue = _queued.lock(); queue->empty()) {
+                                break;
+                            } else {
+                                self->next = std::move(queue->front());
+                                queue->pop_front();
+                            }
+
+                            self->next();
+                        }
+
+                        // Clear function
+                        self->next = {};
+
+                        // Reset state
+                        state_shouldbe = worker_state::invoke;
+                        self->state.compare_exchange_strong(state_shouldbe, worker_state::idle);
+                    }
+
                     break;
                 }
 
@@ -88,11 +120,23 @@ class thread_pool
                     return;
 
                 default:
-                    assert(false);
-                    break;
+                    abort();
             }
 
-            self->event_wait.wait();
+            self->event_wait.wait(
+                    [&] {
+                        switch (self->state.load(std::memory_order_acquire)) {
+                            case worker_state::idle:
+                                return not _queued.lock()->empty();
+
+                            case worker_state::invoke:
+                            case worker_state::expire:
+                                return true;
+
+                            default:
+                                return false;
+                        }
+                    });
         }
     }
 
@@ -117,18 +161,18 @@ class thread_pool
     template <typename Message_>
     void post(Message_&& msg)
     {
-        // Wait if thread pool is too busy
-        while (_threads.size() == _on_use.load())
-            std::this_thread::sleep_for(std::chrono::microseconds{1});
+        // If all threads are busy, just put it to queue
+        size_t       chances = _threads.size();
+        worker_node* node = nullptr;
 
-        for (;;) {
+        for (; chances; --chances) {
             auto round = _round.fetch_add(1);
+            node = _threads[round % _threads.size()].get();
 
-            auto node = _threads[round % _threads.size()].get();
             auto current_state = worker_state::idle;
 
             if (node->state.compare_exchange_strong(current_state, worker_state::copying)) {
-                _on_use.fetch_add(1);
+                assert(not node->next);
 
                 node->next = std::forward<Message_>(msg);
                 node->state.store(worker_state::invoke, std::memory_order_release);
@@ -140,6 +184,20 @@ class thread_pool
             } else {
                 std::this_thread::yield();  // Just wait
             }
+        }
+
+        if (chances == 0) {
+            bool was_empty = false;
+            {
+                auto instance = _queued.lock();
+                was_empty = instance->empty();
+
+                instance->emplace_back(std::forward<Message_>(msg));
+            }
+
+            // To prevent 'already-finished-my-work-and-sleeping'
+            if (was_empty)
+                node->event_wait.notify_one();
         }
     }
 };

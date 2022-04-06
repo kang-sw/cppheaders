@@ -45,7 +45,7 @@ struct singleton_t {
     void create(Args_&&... args) const noexcept(std::is_nothrow_constructible_v<Ty_, Args_...>)
     {
         assert(not _ptr());
-        _ptr() = new Ty_{std::forward<Args_>(args)...};
+        _ptr() = new Ty_(std::forward<Args_>(args)...);
     }
 
     template <typename = void>
