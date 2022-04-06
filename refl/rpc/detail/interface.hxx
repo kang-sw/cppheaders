@@ -106,27 +106,27 @@ using service_parameter_buffer = decltype(if_service_handler::handler_package_ty
 class if_session_monitor
 {
    public:
-    virtual ~if_session_monitor() = default;
+    virtual ~if_session_monitor() noexcept = default;
 
     /**
      * Invoked when session is expired
      */
-    virtual void on_session_expired(session_profile_view) {}
+    virtual void on_session_expired(session_profile_view) noexcept {}
 
     /**
      * Invoked when session created
      */
-    virtual void on_session_created(session_profile_view) {}
+    virtual void on_session_created(session_profile_view) noexcept {}
 
     /**
      * Invoked when recoverable error occurred during receiving
      */
-    virtual void on_receive_warning(session_profile_view, protocol_stream_state) {}
+    virtual void on_receive_warning(session_profile_view, protocol_stream_state) noexcept {}
 
     /**
      * On error occurred during handler invocation
      */
-    virtual void on_handler_error(session_profile_view, std::exception& e) {}
+    virtual void on_handler_error(session_profile_view, std::exception& e) noexcept {}
 };
 
 /**

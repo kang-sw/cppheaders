@@ -257,7 +257,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     bool close()
     {
-        return _set_expired();
+        return _set_expired(false);
     }
 
     /**
@@ -464,10 +464,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _conn->start_data_receive();
     }
 
-    bool _set_expired()
+    bool _set_expired(bool strict = true)
     {
         bool const was_valid = _valid.exchange(false);
-        assert(was_valid && "Expiration logic must be called only for once!");
+        assert((not strict || was_valid) && "Expiration logic must be called only for once!");
 
         if (was_valid) {
             _monitor->on_session_expired(&_profile);
