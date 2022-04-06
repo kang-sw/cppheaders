@@ -52,9 +52,17 @@ class msgpack : public if_protocol_procedure
     archive::msgpack::writer _write{nullptr, 8};
     archive::msgpack::reader _read{nullptr, 8};
 
-    string                   _buf_tmp;
+    // Temporary buffer, usually receives method name temporarily
+    string _buf_tmp;
 
    public:
+    explicit msgpack(archive::archive_config const& rdconf = {},
+                     archive::archive_config const& wrconf = {}) noexcept
+    {
+        _write.config = rdconf;
+        _read.config = wrconf;
+    }
+
     void initialize(std::streambuf* streambuf) override
     {
         _write.rdbuf(streambuf);

@@ -172,18 +172,19 @@ class error_info
 };
 
 struct archive_config {
+    // Writer configurations
     bool use_integer_key        : 1;
+
+    // Reader configurations
     bool allow_missing_argument : 1;
     bool allow_unknown_argument : 1;
 
    public:
-    explicit archive_config(
-            bool use_integer_key = false,
-            bool allow_missing_argument = true,
-            bool allow_unknown_argument = true) noexcept
-            : use_integer_key(use_integer_key),
-              allow_missing_argument(allow_missing_argument),
-              allow_unknown_argument(allow_unknown_argument) {}
+    archive_config() noexcept
+            : use_integer_key(false),
+              allow_missing_argument(true),
+              allow_unknown_argument(true)
+    {}
 };
 
 class if_archive_base
