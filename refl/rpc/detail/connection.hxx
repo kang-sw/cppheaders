@@ -31,23 +31,30 @@
 #include "interface.hxx"
 
 namespace CPPHEADERS_NS_::rpc {
-class if_connection_streambuf : public std::streambuf
+class if_connection
 {
    private:
     friend class session;
     std::weak_ptr<if_session> _wowner;
+    std::streambuf* const     _buf;
 
    public:
     std::string const peer_name;
 
    public:
-    ~if_connection_streambuf() noexcept override = default;
+    virtual ~if_connection() noexcept = default;
 
     /**
      *
      */
-    explicit if_connection_streambuf(std::string peer_name) noexcept
-            : peer_name(std::move(peer_name)) {}
+    explicit if_connection(std::streambuf* buf, std::string peer_name) noexcept
+            : _buf(buf),
+              peer_name(std::move(peer_name)) {}
+
+    /**
+     * Get streambuf
+     */
+    auto* streambuf() const noexcept { return _buf; }
 
     /**
      * Initialize this connection. Must not throw.

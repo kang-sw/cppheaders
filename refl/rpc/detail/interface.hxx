@@ -134,7 +134,7 @@ class if_session_monitor
  */
 class if_session
 {
-    friend class if_connection_streambuf;
+    friend class if_connection;
     friend class remote_procedure_message_proxy;
 
    public:

@@ -29,11 +29,11 @@
 #include "../../archive/msgpack-reader.hxx"
 #include "../../archive/msgpack-writer.hxx"
 #include "../../detail/primitives.hxx"
-#include "../detail/protocol_stream.hxx"
+#include "../detail/protocol_procedure.hxx"
 
 namespace CPPHEADERS_NS_::rpc::protocol {
 
-class msgpack : public if_protocol_stream
+class msgpack : public if_protocol_procedure
 {
     enum class msgtype {
         request = 0,

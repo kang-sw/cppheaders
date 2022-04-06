@@ -37,10 +37,10 @@ namespace CPPHEADERS_NS_::rpc {
 /**
  * All of methods in this class will be called in critical section.
  */
-class if_protocol_stream
+class if_protocol_procedure
 {
    public:
-    virtual ~if_protocol_stream() = default;
+    virtual ~if_protocol_procedure() = default;
 
    public:
     /**

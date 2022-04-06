@@ -35,11 +35,13 @@
 #include "refl/rpc/rpc.hxx"
 #include "refl/rpc/service.hxx"
 #include "refl/rpc/session_builder.hxx"
+using namespace cpph;
 
 //
-#include "asio/post.hpp"
-
-using namespace cpph;
+#if __has_include("asio.hpp")
+#    include "asio/ip/tcp.hpp"
+#    include "asio/post.hpp"
+#    include "refl/rpc/connection/asio.hxx"
 
 class asio_event_proc : public rpc::if_event_proc
 {
@@ -57,9 +59,13 @@ class asio_event_proc : public rpc::if_event_proc
         asio::post(std::move(fn));
     }
 };
+#endif
 
 TEST_CASE("Basic RPC Test", "[rpc]")
 {
+    asio::io_context                            ioc;
+    asio::ip::tcp::socket                       sock{ioc};
+
     using std::string;
 
     auto sg_add = rpc::create_signature<int(int, int)>("add");
@@ -74,7 +80,11 @@ TEST_CASE("Basic RPC Test", "[rpc]")
     rpc::session_ptr session_server;
     rpc::session_ptr session_client;
 
+#if __has_include("asio.hpp")
+
     auto [conn_a, conn_b] = rpc::connection::inmemory_pipe::create();
+#else
+#endif
 
     rpc::session::builder{}
             .connection(std::move(conn_a))

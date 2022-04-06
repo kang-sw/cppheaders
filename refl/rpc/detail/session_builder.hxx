@@ -98,14 +98,14 @@ class basic_session_builder
         return _make_ref<slot_event_proc>();
     }
 
-    inline auto& connection(unique_ptr<if_connection_streambuf> ptr)
+    inline auto& connection(unique_ptr<if_connection> ptr)
     {
         assert(ptr);
         _session->_conn = std::move(ptr);
         return _make_ref<slot_connection>();
     }
 
-    inline auto& protocol(unique_ptr<if_protocol_stream> ptr)
+    inline auto& protocol(unique_ptr<if_protocol_procedure> ptr)
     {
         assert(ptr);
         _session->_protocol = std::move(ptr);

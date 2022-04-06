@@ -31,7 +31,7 @@
 #include "../../__namespace__"
 #include "connection.hxx"
 #include "interface.hxx"
-#include "protocol_stream.hxx"
+#include "protocol_procedure.hxx"
 #include "remote_procedure_message_proxy.hxx"
 #include "service.hxx"
 #include "session_profile.hxx"
@@ -76,10 +76,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
     shared_ptr<if_session_monitor> _monitor;
 
     // Owning connection
-    unique_ptr<if_connection_streambuf> _conn;
+    unique_ptr<if_connection> _conn;
 
     // Current protocol
-    unique_ptr<if_protocol_stream> _protocol;
+    unique_ptr<if_protocol_procedure> _protocol;
 
     // Service description
     service _service = service::empty_service();
@@ -447,7 +447,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _profile.peer_name = _conn->peer_name;
 
         // Initialize protocol with given client
-        _protocol->initialize(&*_conn);
+        _protocol->initialize(_conn->streambuf());
 
         // Notify client that monitoring has begun
         if (not _monitor) { _monitor = detail::empty_session_monitor::get(); }

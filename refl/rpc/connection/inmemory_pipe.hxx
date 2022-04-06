@@ -32,7 +32,7 @@
 #include "../detail/connection.hxx"
 
 namespace CPPHEADERS_NS_::rpc::connection {
-class inmemory_pipe : public if_connection_streambuf
+class inmemory_pipe : public if_connection, public std::streambuf
 {
     struct pipe {
         thread::event_wait   lock;
@@ -52,7 +52,7 @@ class inmemory_pipe : public if_connection_streambuf
 
    private:
     inmemory_pipe()
-            : if_connection_streambuf("INMEMORY" + std::to_string((intptr_t)this))
+            : if_connection(this, "INMEMORY" + std::to_string((intptr_t)this))
     {
         _no_signal.test_and_set();
     }
