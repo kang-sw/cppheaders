@@ -44,176 +44,192 @@
 namespace CPPHEADERS_NS_ {
 class thread_pool
 {
-    enum class worker_state {
-        idle,
-        copying,
-        invoke,
-        expire,
+    struct worker_context_t {
+        std::thread        thread;
+        thread::event_wait event;
+        std::atomic_bool   awake = false;
     };
 
-    struct worker_node {
-        std::atomic<worker_state> state = worker_state::idle;
-        std::thread               thread;
-        thread::event_wait        event_wait;
+    using worker_container_type = std::vector<std::unique_ptr<worker_context_t>>;
+    using task_type = function<void()>;
+    using task_queue_type = std::list<task_type>;
 
-        function<void()>          next;
+    enum class dispatch_state {
+        sleeping,
+        ready,
+        waiting,
     };
 
-    using worker_container_type = std::vector<std::unique_ptr<worker_node>>;
-    using task_queue_type = locked<std::list<function<void()>>>;
+   private:
+    struct {
+        std::thread                 thread;
+        thread::event_wait          event;
+        locked<task_queue_type>     commits;
+        std::atomic<dispatch_state> state = dispatch_state::sleeping;
+    } _dispatch;
+
+    locked<task_queue_type> _pending_invoke;
+    std::atomic_bool        _pending_invoke_ready = false;
+
+    // Make cache line remain untouched as long as possible
+    alignas(64) worker_container_type _workers;
+    alignas(64) std::atomic_bool _close = false;
 
    private:
-    worker_container_type _threads;
-    std::atomic<size_t>   _round = 0;
-
-    // Quick check without locking queue
-    std::atomic<size_t> _num_queued_unsafe = 0;
-    task_queue_type     _queued;
-
-   private:
-    void _worker_function(worker_node* self)
+    void _worker_fn(worker_context_t* self)
     {
-        for (;;) {
-            auto const state = self->state.load(std::memory_order_acquire);
-            bool       set_hot = false;
+        task_queue_type fetched;
 
-            switch (state) {
-                case worker_state::copying:
-                    break;
+        while (not _close.load(std::memory_order_acquire)) {
+            if (_pending_invoke_ready.load(std::memory_order_acquire)) {
+                // Retrive single callback from task queue, and invoke.
+                _pending_invoke.access([&](auto&& list) {
+                    if (list.empty()) { return; }
+                    fetched.splice(fetched.begin(), list, list.begin());
+                    _pending_invoke_ready.store(not list.empty(), std::memory_order_release);
+                });
 
-                case worker_state::invoke: {
-                    std::exchange(self->next, {})();
+                // It can fail if multiple threads access on same flag
+                if (not fetched.empty()) {
+                    assert(fetched.size() == 1);
 
-                    worker_state state_shouldbe = worker_state::invoke;
-                    self->state.compare_exchange_strong(state_shouldbe, worker_state::idle);
-
-                    [[fallthrough]];
+                    fetched.front()();
+                    fetched.clear();
                 }
 
-                case worker_state::idle: {
-                    // This may be awoken for queued event flush request
-                    worker_state state_shouldbe = worker_state::idle;
+                continue;
+            }
 
-                    // Worker must be in idle state. Otherwise, another request is being copied.
-                    if (self->state.compare_exchange_strong(state_shouldbe, worker_state::invoke)) {
-                        assert(not self->next);
-                        using namespace std::literals;
-                        using std::chrono::steady_clock;
+            // If this should be kept awaken, just yield once.
+            if (self->awake.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+                continue;
+            }
 
-                        // Remain hot for 1 millisecond
-                        auto now = steady_clock::now();
-                        auto hot_until = now + 1ms;
+            // Sleep until next awake
+            self->event.wait([&] { return self->awake || _pending_invoke_ready; });
+        }
+    }
 
-                        for (; now < hot_until; now = steady_clock::now()) {
-                            if (_num_queued_unsafe == 0) {
-                                std::this_thread::yield();
-                                break;
-                            }
+    void _dispatch_fn()
+    {
+        using std::chrono::steady_clock;
+        using namespace std::literals;
 
-                            if (auto queue = _queued.lock(); not queue->empty()) {
-                                _num_queued_unsafe.fetch_add(-1);
-                                self->next = std::move(queue->front());
-                                queue->pop_front();
-                            } else {
-                                std::this_thread::yield();
-                                break;
-                            }
+        auto            self = &_dispatch;
+        task_queue_type bucket;
 
-                            std::exchange(self->next, {})();
-                        }
+        auto            now = steady_clock::now();
+        auto            until = now;
 
-                        // Reset state
-                        state_shouldbe = worker_state::invoke;
-                        self->state.compare_exchange_strong(state_shouldbe, worker_state::idle);
+        size_t          num_awake = 0;
+        auto const      num_workers = _workers.size();
+
+        // Primary loop
+        while (not _close.load(std::memory_order_acquire)) {
+            now = steady_clock::now();
+
+            // Check for input buffer
+            switch (self->state.exchange(dispatch_state::waiting)) {
+                case dispatch_state::ready: {
+                    until = now + 50us;  // Refresh sleep timeout
+
+                    // Retrieve queued tasks
+                    self->commits.access([&](auto&& l) {
+                        bucket.splice(bucket.begin(), l);
+                    });
+
+                    size_t ntask = 0;
+
+                    // Copy to actual invoke queue
+                    _pending_invoke.access([&](auto&& l) {
+                        l.splice(l.end(), bucket);
+                        ntask = l.size();
+
+                        // Refresh ready state
+                        _pending_invoke_ready = ntask != 0;
+                    });
+
+                    // Wakeup required number of workers
+                    ntask = std::min(ntask, num_workers);
+
+                    for (; num_awake < ntask; ++num_awake) {
+                        auto& work = _workers[num_awake];
+                        work->awake = true;
+                        work->event.notify_one();
                     }
 
-                    break;
+                    continue;
                 }
 
-                case worker_state::expire:
-                    return;
+                case dispatch_state::sleeping:
+                case dispatch_state::waiting: {
+                    if (now < until) {
+                        std::this_thread::yield();
+                        continue;
+                    }
+
+                    // As other thread may switch state to ready between this gap, use CAS.
+                    auto state = dispatch_state::waiting;
+                    _dispatch.state.compare_exchange_strong(state, dispatch_state::sleeping);
+
+                    break;
+                }
 
                 default:
                     abort();
             }
 
-            self->event_wait.wait(
-                    [&] {
-                        switch (self->state.load()) {
-                            case worker_state::idle:
-                                return not _queued.lock()->empty();
+            // Mark all workers sleeping
+            for (size_t i = 0; i < num_awake; ++i) {
+                auto& work = _workers[i];
+                work->awake = false;
+            }
 
-                            case worker_state::invoke:
-                            case worker_state::expire:
-                                return true;
+            num_awake = 0;
 
-                            default:
-                                return false;
-                        }
-                    });
+            // Turn to sleeping state
+            self->event.wait([&] {
+                return self->state != dispatch_state::sleeping;
+            });
         }
+
+        // Cleanup worker threads
+        for (auto& t : _workers) { t->awake = true; }
+        for (auto& t : _workers) { t->event.notify_one(); }
+        for (auto& t : _workers) { t->thread.join(); }
     }
 
    public:
     explicit thread_pool(size_t num_threads = std::thread::hardware_concurrency())
     {
-        _threads.reserve(num_threads);
+        _workers.reserve(num_threads);
+        for (auto i : counter(num_threads)) {
+            auto& pref = _workers.emplace_back();
+            pref = std::make_unique<worker_context_t>();
 
-        while (num_threads--) {
-            auto& node = _threads.emplace_back(std::make_unique<worker_node>());
-            node->thread = std::thread(&thread_pool::_worker_function, this, node.get());
+            pref->thread = std::thread{&thread_pool::_worker_fn, this, pref.get()};
         }
+
+        _dispatch.thread = std::thread{&thread_pool::_dispatch_fn, this};
     }
 
     ~thread_pool()
     {
-        for (auto& t : _threads) { t->state.store(worker_state::expire, std::memory_order_release); }
-        for (auto& t : _threads) { t->event_wait.notify_one(); }
-        for (auto& t : _threads) { t->thread.join(); }
+        _dispatch.event.notify_one([&] { _close = true; });
+        _dispatch.thread.join();
     }
 
     template <typename Message_>
     void post(Message_&& msg)
     {
-        // If all threads are busy, just put it to queue
-        size_t       chances = _threads.size();
-        worker_node* node = nullptr;
+        assert(not _close.load(std::memory_order_acquire));
 
-        for (; chances--; _round.fetch_add(1)) {
-            size_t round = _round;
-            node = _threads[round % _threads.size()].get();
+        _dispatch.commits.lock()->emplace_back(std::forward<Message_>(msg));
 
-            auto current_state = worker_state::idle;
-
-            if (node->state.compare_exchange_strong(current_state, worker_state::copying)) {
-                assert(not node->next);
-
-                node->next = std::forward<Message_>(msg);
-                node->state.store(worker_state::invoke);
-
-                node->event_wait.notify_all();
-                node = nullptr;
-                break;
-            } else if (current_state == worker_state::expire) {
-                throw std::logic_error{"Call to post() after expiration!"};
-            }
-        }
-
-        if (node) {
-            bool was_empty = false;
-            {
-                auto queue = _queued.lock();
-                was_empty = queue->empty();
-
-                queue->emplace_back(std::forward<Message_>(msg));
-            }
-
-            _num_queued_unsafe.fetch_add(1);
-
-            // To prevent 'already-finished-my-work-and-sleeping'
-            if (was_empty)
-                node->event_wait.notify_all();
-        }
+        // Only notify when dispatcher is not sleeping.
+        if (_dispatch.state.exchange(dispatch_state::ready) == dispatch_state::sleeping)
+            _dispatch.event.notify_one();
     }
 };
 }  // namespace CPPHEADERS_NS_
