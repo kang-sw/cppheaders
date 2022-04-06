@@ -46,6 +46,9 @@ class service
     friend class service_builder;
     shared_ptr<service_table_t const> _service;
 
+   public:
+    using builder = class service_builder;
+
    private:
     service() noexcept
     {

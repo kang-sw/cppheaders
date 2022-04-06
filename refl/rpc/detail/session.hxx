@@ -46,10 +46,10 @@ namespace detail {
 class empty_session_monitor : public if_session_monitor
 {
    public:
-    void on_session_expired(session_profile_view view) override {}
-    void on_session_created(session_profile_view view) override {}
-    void on_receive_warning(session_profile_view view, protocol_stream_state state) override {}
-    void on_handler_error(session_profile_view view, std::exception& e) override {}
+    void on_session_expired(session_profile_view view) noexcept override {}
+    void on_session_created(session_profile_view view) noexcept override {}
+    void on_receive_warning(session_profile_view view, protocol_stream_state state) noexcept override {}
+    void on_handler_error(session_profile_view view, std::exception& e) noexcept override {}
 
    public:
     static auto get() noexcept
@@ -257,7 +257,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     bool close()
     {
-        return _set_expired(false);
+        lock_guard _{_mtx_protocol};
+        if (expired()) { return false; }
+
+        return true;
     }
 
     /**
@@ -464,10 +467,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _conn->start_data_receive();
     }
 
-    bool _set_expired(bool strict = true)
+    void _set_expired()
     {
         bool const was_valid = _valid.exchange(false);
-        assert((not strict || was_valid) && "Expiration logic must be called only for once!");
+        assert(was_valid && "Expiration logic must be called only for once!");
 
         if (was_valid) {
             _monitor->on_session_expired(&_profile);
@@ -495,8 +498,6 @@ class session : public if_session, public std::enable_shared_from_this<session>
                 _rq->requests.clear();
             } while (false);
         }
-
-        return was_valid;
     }
 
     void _update_rw_count()
