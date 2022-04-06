@@ -93,5 +93,11 @@ class session_group
         lock_guard _{_mtx};
         return _sessions.erase(ptr) != 0;
     }
+
+    auto release()
+    {
+        lock_guard _{_mtx};
+        return std::exchange(_sessions, {});
+    }
 };
 }  // namespace CPPHEADERS_NS_::rpc
