@@ -95,7 +95,7 @@ class request_error_category : public std::error_category
     }
 };
 
-auto make_request_error(request_result errc)
+inline auto make_request_error(request_result errc)
 {
     return std::error_code(int(errc), *request_error_category::instance());
 }

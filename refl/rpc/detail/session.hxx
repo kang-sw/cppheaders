@@ -220,6 +220,8 @@ class session : public if_session, public std::enable_shared_from_this<session>
                 //  won't be invoked.
                 _rq->lock.critical_section([&] { _rq->requests.erase(handle._msgid); });
                 throw request_exception(make_request_error(request_result::invalid_connection));
+            } else {
+                _update_rw_count();
             }
         }
 
@@ -351,6 +353,14 @@ class session : public if_session, public std::enable_shared_from_this<session>
     bool expired() const noexcept
     {
         return not _valid.load(std::memory_order_acquire);
+    }
+
+    /**
+     * Get profile of self
+     */
+    session_profile_view profile() const noexcept
+    {
+        return &_profile;
     }
 
    private:

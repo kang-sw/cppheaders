@@ -67,7 +67,7 @@ class session_group
 
                     // Erase from list
                     iter = _sessions.erase(iter);
-                } else if (fn(&**iter))
+                } else if (fn((**iter).profile()))
                     parr->emplace_back(*iter++);
             }
         }
