@@ -32,7 +32,7 @@
 namespace CPPHEADERS_NS_::rpc {
 class default_event_procedure : public if_event_proc
 {
-    thread_pool* _tpool = nullptr;
+    thread_pool* _tpool = &default_singleton<thread_pool>();
 
    public:
     void post_rpc_completion(function<void()>&& fn) override
@@ -53,15 +53,7 @@ class default_event_procedure : public if_event_proc
    public:
     static auto get() noexcept
     {
-        static auto _value = [] {
-            auto instance = std::make_shared<default_event_procedure>();
-            auto tpool = singleton<thread_pool, default_event_procedure>;
-            tpool.create(1);
-
-            instance->_tpool = &tpool.get();
-            return instance;
-        }();
-
+        static default_event_procedure _value;
         return _value;
     }
 };

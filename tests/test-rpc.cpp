@@ -36,7 +36,27 @@
 #include "refl/rpc/service.hxx"
 #include "refl/rpc/session_builder.hxx"
 
+//
+#include "asio/post.hpp"
+
 using namespace cpph;
+
+class asio_event_proc : public rpc::if_event_proc
+{
+   public:
+    void post_rpc_completion(function<void()>&& fn) override
+    {
+        asio::post(std::move(fn));
+    }
+    void post_handler_callback(function<void()>&& fn) override
+    {
+        asio::post(std::move(fn));
+    }
+    void post_internal_message(function<void()>&& fn) override
+    {
+        asio::post(std::move(fn));
+    }
+};
 
 TEST_CASE("Basic RPC Test", "[rpc]")
 {
@@ -60,6 +80,7 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             .connection(std::move(conn_a))
             .service(service)
             .protocol(std::make_unique<rpc::protocol::msgpack>())
+            //            .event_procedure(std::make_shared<asio_event_proc>())
             .event_procedure(rpc::default_event_procedure::get())
             .build_to(session_server);
 
@@ -67,6 +88,7 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             .enable_request()
             .connection(std::move(conn_b))
             .protocol(std::make_unique<rpc::protocol::msgpack>())
+            //            .event_procedure(std::make_shared<asio_event_proc>())
             .event_procedure(rpc::default_event_procedure::get())
             .build_to(session_client);
 
