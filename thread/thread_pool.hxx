@@ -32,6 +32,7 @@
 #include <atomic>
 #include <cassert>
 #include <list>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -107,7 +108,10 @@ class thread_pool
             }
 
             // Sleep until next awake
-            self->event.wait([&] { return self->awake || _pending_invoke_ready; });
+            self->event.wait([&] {
+                return self->awake.load(std::memory_order_acquire)
+                    || _pending_invoke_ready.load(std::memory_order_release);
+            });
         }
     }
 
@@ -132,46 +136,56 @@ class thread_pool
             // Check for input buffer
             switch (self->state.exchange(dispatch_state::waiting)) {
                 case dispatch_state::ready: {
-                    until = now + 50us;  // Refresh sleep timeout
+                    until = now + 200us;  // Refresh sleep timeout
 
                     // Retrieve queued tasks
-                    self->commits.access([&](auto&& l) {
-                        bucket.splice(bucket.begin(), l);
+                    self->commits.access([&](auto&& list) {
+                        bucket.splice(bucket.begin(), list);
                     });
 
                     size_t ntask = 0;
 
                     // Copy to actual invoke queue
-                    _pending_invoke.access([&](auto&& l) {
-                        l.splice(l.end(), bucket);
-                        ntask = l.size();
+                    _pending_invoke.access([&](auto&& list) {
+                        list.splice(list.end(), bucket);
+                        ntask = list.size();
 
                         // Refresh ready state
-                        _pending_invoke_ready = ntask != 0;
+                        _pending_invoke_ready.store(true, std::memory_order_release);
                     });
 
-                    // Wakeup required number of workers
+                    // Clamp task count to number of maximum concurrences ...
                     ntask = std::min(ntask, num_workers);
 
+                    // Sleep overly awoken workers
+                    if (ntask < num_awake) {
+                        for (auto i : count(ntask, num_awake)) {
+                            auto& work = _workers[i];
+                            work->awake.store(false, std::memory_order_release);
+                        }
+
+                        num_awake = ntask;
+                    }
+
+                    // Wakeup
                     for (; num_awake < ntask; ++num_awake) {
                         auto& work = _workers[num_awake];
-                        work->awake = true;
-                        work->event.notify_one();
+                        work->event.notify_one([&] {
+                            work->awake.store(true, std::memory_order_release);
+                        });
                     }
 
                     continue;
                 }
 
                 case dispatch_state::sleeping:
+                    break;
+
                 case dispatch_state::waiting: {
                     if (now < until) {
                         std::this_thread::yield();
                         continue;
                     }
-
-                    // As other thread may switch state to ready between this gap, use CAS.
-                    auto state = dispatch_state::waiting;
-                    _dispatch.state.compare_exchange_strong(state, dispatch_state::sleeping);
 
                     break;
                 }
@@ -181,7 +195,7 @@ class thread_pool
             }
 
             // Mark all workers sleeping
-            for (size_t i = 0; i < num_awake; ++i) {
+            for (auto i : counter(num_awake)) {
                 auto& work = _workers[i];
                 work->awake = false;
             }
@@ -189,9 +203,15 @@ class thread_pool
             num_awake = 0;
 
             // Turn to sleeping state
-            self->event.wait([&] {
-                return self->state != dispatch_state::sleeping;
-            });
+            self->event.wait_pp(
+                    [&] {
+                        // As other thread may switch state to ready between this gap, use CAS.
+                        auto state = dispatch_state::waiting;
+                        self->state.compare_exchange_strong(state, dispatch_state::sleeping);
+                    },
+                    [&] {
+                        return self->state != dispatch_state::sleeping;
+                    });
         }
 
         // Cleanup worker threads
@@ -224,12 +244,14 @@ class thread_pool
     void post(Message_&& msg)
     {
         assert(not _close.load(std::memory_order_acquire));
-
         _dispatch.commits.lock()->emplace_back(std::forward<Message_>(msg));
 
         // Only notify when dispatcher is not sleeping.
-        if (_dispatch.state.exchange(dispatch_state::ready) == dispatch_state::sleeping)
-            _dispatch.event.notify_one();
+        if (_dispatch.state.exchange(dispatch_state::ready) == dispatch_state::sleeping) {
+            _dispatch.event.notify_one([&] {
+                _dispatch.state.store(dispatch_state::ready, std::memory_order_release);
+            });
+        }
     }
 };
 }  // namespace CPPHEADERS_NS_
