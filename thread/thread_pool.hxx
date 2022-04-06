@@ -29,6 +29,8 @@
 //
 
 #pragma once
+#include <atomic>
+#include <cassert>
 #include <queue>
 #include <thread>
 #include <vector>
@@ -41,53 +43,103 @@
 namespace CPPHEADERS_NS_ {
 class thread_pool
 {
-    volatile bool                _is_alive{true};
-    std::vector<std::thread>     _threads;
+    enum class worker_state {
+        idle,
+        copying,
+        invoke,
+        expire,
+    };
 
-    std::deque<function<void()>> _event_queue;
-    thread::event_wait           _event_wait;
+    struct worker_node {
+        std::atomic<worker_state> state = worker_state::idle;
+        std::thread               thread;
+        thread::event_wait        event_wait;
+
+        function<void()>          next;
+    };
+
+    using worker_container_type = std::vector<std::unique_ptr<worker_node>>;
+
+   private:
+    worker_container_type _threads;
+    std::atomic<size_t>   _round = 0;
+    std::atomic<size_t>   _on_use = 0;
+
+   private:
+    void _worker_function(worker_node* self)
+    {
+        for (;;) {
+            switch (self->state.load(std::memory_order_acquire)) {
+                case worker_state::idle:
+                case worker_state::copying:
+                    break;
+
+                case worker_state::invoke: {
+                    std::exchange(self->next, {})();
+
+                    worker_state state_shouldbe = worker_state::invoke;
+                    self->state.compare_exchange_strong(state_shouldbe, worker_state::idle);
+
+                    _on_use.fetch_add(-1);
+                    break;
+                }
+
+                case worker_state::expire:
+                    return;
+
+                default:
+                    assert(false);
+                    break;
+            }
+
+            self->event_wait.wait();
+        }
+    }
 
    public:
     explicit thread_pool(size_t num_threads = std::thread::hardware_concurrency())
     {
-        while (num_threads--)
-            _threads.emplace_back(bind_front(&thread_pool::_worker_loop, this));
+        _threads.reserve(num_threads);
+
+        while (num_threads--) {
+            auto& node = _threads.emplace_back(std::make_unique<worker_node>());
+            node->thread = std::thread(&thread_pool::_worker_function, this, node.get());
+        }
     }
 
     ~thread_pool()
     {
-        _event_wait.notify_all([&] { _is_alive = false; });
-        for (auto& thr : _threads) { thr.join(); }
-
-        _threads.clear();
+        for (auto& t : _threads) { t->state.store(worker_state::expire, std::memory_order_release); }
+        for (auto& t : _threads) { t->event_wait.notify_one(); }
+        for (auto& t : _threads) { t->thread.join(); }
     }
 
     template <typename Message_>
     void post(Message_&& msg)
     {
-        // TODO: use custom allocator?
-        _event_wait.notify_one([&] {
-            _event_queue.emplace_back(std::forward<Message_>(msg));
-        });
-    }
-
-   private:
-    void _worker_loop()
-    {
-        function<void()> fn;
+        // Wait if thread pool is too busy
+        while (_threads.size() == _on_use.load())
+            std::this_thread::sleep_for(std::chrono::microseconds{1});
 
         for (;;) {
-            _event_wait.wait([&] {
-                if (not _is_alive) { return true; }
-                if (_event_queue.empty()) { return false; }
+            auto round = _round.fetch_add(1);
 
-                fn = std::move(_event_queue.front());
-                _event_queue.pop_front();
-                return true;
-            });
+            auto node = _threads[round % _threads.size()].get();
+            auto current_state = worker_state::idle;
 
-            if (not fn) { return; }
-            std::exchange(fn, {})();
+            if (node->state.compare_exchange_strong(current_state, worker_state::copying)) {
+                _on_use.fetch_add(1);
+
+                node->next = std::forward<Message_>(msg);
+                node->state.store(worker_state::invoke, std::memory_order_release);
+
+                node->event_wait.notify_one();
+                break;
+            } else if (current_state == worker_state::expire) {
+                throw std::logic_error{"Call to post() after expiration!"};
+            } else {
+                std::this_thread::yield();  // Just wait
+            }
         }
     }
 };
