@@ -32,7 +32,6 @@
 #include <atomic>
 #include <cassert>
 #include <list>
-#include <set>
 #include <thread>
 #include <vector>
 

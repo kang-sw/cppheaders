@@ -153,6 +153,12 @@ class signature_t<RetVal_, std::tuple<Params_...>>
         {
             _rpc->notify(_host->name(), args...);
         }
+
+        template <typename Filter>
+        size_t notify(Params_ const&... args, Filter&& fn) const
+        {
+            return _rpc->notify_filter(_host->name(), std::forward<Filter>(fn), args...);
+        }
     };
 
     template <class Session>

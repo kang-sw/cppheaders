@@ -25,6 +25,6 @@
  ******************************************************************************/
 
 #pragma once
-#include "detail/server.hxx"
+#include "detail/group.hxx"
 #include "detail/service.hxx"
 #include "detail/session.hxx"
