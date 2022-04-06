@@ -56,9 +56,6 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             .route(sg_concat, std::plus<string>{})
             .build_to(service);
 
-    rpc::session_ptr session_server;
-    rpc::session_ptr session_client;
-
 #if __has_include("asio.hpp")
     using asio::ip::tcp;
     asio::io_context ioc;
@@ -101,6 +98,9 @@ TEST_CASE("Basic RPC Test", "[rpc]")
 #else
     auto [conn_a, conn_b] = rpc::conn::inmemory_pipe::create();
 #endif
+
+    rpc::session_ptr session_server;
+    rpc::session_ptr session_client;
 
     rpc::session::builder{}
             .connection(std::move(conn_a))

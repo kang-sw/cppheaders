@@ -146,6 +146,12 @@ class session : public if_session, public std::enable_shared_from_this<session>
         // Uninstall request features.
         // This automatically waits for pool_ptr instance disposal.
         _rq.reset();
+
+        // Expire protocol
+        _protocol.reset();
+
+        // Expire connection
+        _conn.reset();
     }
 
    private:
