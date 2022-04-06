@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #include "catch.hpp"
+#undef NDEBUG
 
 //
 #include "refl/object.hxx"
