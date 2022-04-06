@@ -89,6 +89,74 @@ class event_wait
         std::notify_all_at_thread_exit(_cvar, std::move(lc));
     }
 
+    template <typename Pp_, typename Pred_>
+    auto wait_pp(Pp_&& preproc, Pred_&& predicate) const
+    {
+        ulock_type lc{_mtx};
+        preproc();
+        _cvar.wait(lc, std::forward<Pred_>(predicate));
+
+        return lc;
+    }
+
+    template <typename Pp_>
+    auto wait_pp(Pp_&& preproc) const
+    {
+        ulock_type lc{_mtx};
+        preproc();
+        _cvar.wait(lc);
+
+        return lc;
+    }
+
+    template <typename Pp_, typename Pred_, typename Dur_>
+    auto wait_pp_for(Dur_&& duration, Pp_&& preproc, Pred_&& predicate) const
+    {
+        ulock_type lc{_mtx};
+        preproc();
+
+        if (not _cvar.wait_for(lc, std::forward<Dur_>(duration), std::forward<Pred_>(predicate)))
+            lc.unlock();
+
+        return lc;
+    }
+
+    template <typename Pp_, typename Dur_>
+    auto wait_pp_for(Dur_&& duration, Pp_&& preproc) const
+    {
+        ulock_type lc{_mtx};
+        preproc();
+
+        if (not _cvar.wait_for(lc, std::forward<Dur_>(duration)))
+            lc.unlock();
+
+        return lc;
+    }
+
+    template <typename Pp_, typename Pred_, typename Dur_>
+    auto wait_pp_until(Dur_&& timeout, Pp_&& preproc, Pred_&& predicate) const
+    {
+        ulock_type lc{_mtx};
+        preproc();
+
+        if (not _cvar.wait_until(lc, std::forward<Dur_>(timeout), std::forward<Pred_>(predicate)))
+            lc.unlock();
+
+        return lc;
+    }
+
+    template <typename Pp_, typename Dur_>
+    auto wait_pp_until(Dur_&& timeout, Pp_&& preproc) const
+    {
+        ulock_type lc{_mtx};
+        preproc();
+
+        if (not _cvar.wait_until(lc, std::forward<Dur_>(timeout)))
+            lc.unlock();
+
+        return lc;
+    }
+
     template <typename Pred_>
     auto wait(Pred_&& predicate) const
     {
