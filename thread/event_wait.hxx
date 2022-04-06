@@ -75,13 +75,11 @@ class event_wait
 
     void notify_one()
     {
-        ulock_type lc{_mtx};
         _cvar.notify_one();
     }
 
     void notify_all()
     {
-        ulock_type lc{_mtx};
         _cvar.notify_all();
     }
 
