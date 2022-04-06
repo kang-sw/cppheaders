@@ -65,19 +65,25 @@ class thread_pool
    private:
     worker_container_type _threads;
     std::atomic<size_t>   _round = 0;
-    task_queue_type       _queued;
+    std::atomic<size_t>   _num_hot = 0;
+
+    // Quick check without locking queue
+    std::atomic<size_t> _num_queued_unsafe = 0;
+    task_queue_type     _queued;
 
    private:
     void _worker_function(worker_node* self)
     {
         for (;;) {
             auto const state = self->state.load(std::memory_order_acquire);
+            bool       set_hot = false;
 
             switch (state) {
                 case worker_state::copying:
                     break;
 
                 case worker_state::invoke: {
+                    ++_num_hot, set_hot = true;
                     std::exchange(self->next, {})();
 
                     worker_state state_shouldbe = worker_state::invoke;
@@ -92,26 +98,43 @@ class thread_pool
 
                     // Worker must be in idle state. Otherwise, another request is being copied.
                     if (self->state.compare_exchange_strong(state_shouldbe, worker_state::invoke)) {
-                        assert(not self->next);
+                        if (not std::exchange(set_hot, true))
+                            ++_num_hot;
 
-                        for (;;) {
-                            if (auto queue = _queued.lock(); queue->empty()) {
-                                break;
-                            } else {
-                                self->next = std::move(queue->front());
-                                queue->pop_front();
+                        assert(not self->next);
+                        using namespace std::literals;
+                        using std::chrono::steady_clock;
+
+                        // Remain hot for 1 millisecond
+                        auto now = steady_clock::now();
+                        auto until = now + 1ms;
+
+                        for (; now < until; now = steady_clock::now()) {
+                            if (false && _num_queued_unsafe == 0) {
+                                std::this_thread::yield();
+                                continue;
                             }
 
-                            self->next();
-                        }
+                            if (auto queue = _queued.lock(); not queue->empty()) {
+                                --_num_queued_unsafe;
 
-                        // Clear function
-                        self->next = {};
+                                self->next = std::move(queue->front());
+                                queue->pop_front();
+                            } else {
+                                std::this_thread::yield();
+                                continue;
+                            }
+
+                            std::exchange(self->next, {})();
+                        }
 
                         // Reset state
                         state_shouldbe = worker_state::invoke;
                         self->state.compare_exchange_strong(state_shouldbe, worker_state::idle);
                     }
+
+                    if (set_hot)
+                        --_num_hot;
 
                     break;
                 }
@@ -127,7 +150,7 @@ class thread_pool
                     [&] {
                         switch (self->state.load(std::memory_order_acquire)) {
                             case worker_state::idle:
-                                return not _queued.lock()->empty();
+                                return _num_queued_unsafe > 0;
 
                             case worker_state::invoke:
                             case worker_state::expire:
@@ -165,7 +188,10 @@ class thread_pool
         size_t       chances = _threads.size();
         worker_node* node = nullptr;
 
-        for (; chances; --chances) {
+        // Push directly to queue if all threads are hot.
+        if (_num_hot == _threads.size()) { chances = 1; }
+
+        for (; chances--;) {
             auto round = _round.fetch_add(1);
             node = _threads[round % _threads.size()].get();
 
@@ -178,21 +204,20 @@ class thread_pool
                 node->state.store(worker_state::invoke, std::memory_order_release);
 
                 node->event_wait.notify_one();
+                node = nullptr;
                 break;
             } else if (current_state == worker_state::expire) {
                 throw std::logic_error{"Call to post() after expiration!"};
-            } else {
-                std::this_thread::yield();  // Just wait
             }
         }
 
-        if (chances == 0) {
+        if (node) {
             bool was_empty = false;
             {
                 auto instance = _queued.lock();
-                was_empty = instance->empty();
 
                 instance->emplace_back(std::forward<Message_>(msg));
+                was_empty = 0 == _num_queued_unsafe++;
             }
 
             // To prevent 'already-finished-my-work-and-sleeping'
