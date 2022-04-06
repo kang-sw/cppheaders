@@ -57,7 +57,18 @@ class request_handle
         assert(_msgid > 0);
 
         if (Sptr_ session = _wp.lock())
-            return session->wait_request(_msgid, duration);
+            return session->wait_for(*this, duration);
+        else
+            return false;
+    }
+
+    template <typename Sptr_ = std::shared_ptr<session>>
+    bool wait() const noexcept
+    {
+        assert(_msgid > 0);
+
+        if (Sptr_ session = _wp.lock())
+            return session->wait(*this), true;
         else
             return false;
     }
@@ -68,7 +79,7 @@ class request_handle
         assert(_msgid > 0);
 
         if (Sptr_ session = _wp.lock())
-            return session->abort_request(_msgid);
+            return session->abort_request(*this);
         else
             return false;
     }

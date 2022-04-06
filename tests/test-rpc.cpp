@@ -78,9 +78,11 @@ TEST_CASE("Basic RPC Test", "[rpc]")
         val = sg_add(session_client).request(5, 2);
         REQUIRE(val == 7);
 
-        for (int i = 0; i < 4096; ++i) {
+        for (int i = 0; i < 8192; ++i) {
             val = sg_add(session_client).request(i, i * i);
             REQUIRE(val == i * i + i);
+
+            sg_add(session_client).notify(1, 2 * 3);
 
             auto str = sg_concat(session_client).request("1", "2");
             REQUIRE(str == "12");
@@ -89,8 +91,25 @@ TEST_CASE("Basic RPC Test", "[rpc]")
 
     SECTION("Non-blocking request")
     {
-        std::list<int>                 retbufs;
+        std::list<std::pair<int, int>> retbufs;
         std::list<rpc::request_handle> handles;
+
+        for (int i = 0; i < 32767; ++i) {
+            auto rbuf = &retbufs.emplace_back();
+            auto h = sg_add(session_client).async_request(&rbuf->first, i << 24, i * i);
+            rbuf->second = (i << 24) + i * i;
+
+            handles.emplace_back(h);
+        }
+
+        while (not retbufs.empty()) {
+            auto& h = handles.front();
+
+            REQUIRE(h.wait());
+            REQUIRE(retbufs.front().first == retbufs.front().second);
+
+            retbufs.pop_front(), handles.pop_front();
+        }
     }
 }
 

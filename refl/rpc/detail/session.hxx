@@ -297,9 +297,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
     /**
      * Abort sent request
      */
-    bool abort_request(int msgid)
+    bool abort_request(request_handle const& h)
     {
         assert(this->is_request_enabled());
+        int  msgid = h._msgid;
         bool valid_abortion = false;
 
         // Find corresponding request, and mark aborted.
@@ -371,8 +372,6 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
             state = _protocol->handle_single_message(proxy);
             _update_rw_count();
-
-            assert(not _rq || std::unique_lock(_rq->lock.mutex(), std::try_to_lock));
         }
 
         switch (state) {

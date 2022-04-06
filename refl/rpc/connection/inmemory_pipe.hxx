@@ -133,17 +133,21 @@ class inmemory_pipe : public if_connection_streambuf
     int_type underflow() override
     {
         // Wait until valid data receive
-        bool expired = false;
+        size_t nread = 0;
 
-        auto _lc_ = _in->lock.wait([&] {
-            return (expired = (_in->receiver == nullptr)) || not _in->strm.empty();
-        });
+        {
+            bool expired = false;
 
-        if (expired)
-            return traits_type::eof();
+            auto _lc_ = _in->lock.wait([&] {
+                return (expired = (_in->receiver == nullptr)) || not _in->strm.empty();
+            });
 
-        auto nread = std::min(sizeof _ibuf, _in->strm.size());
-        _in->strm.dequeue_n(nread, _ibuf);
+            if (expired)
+                return traits_type::eof();
+
+            nread = std::min(sizeof _ibuf, _in->strm.size());
+            _in->strm.dequeue_n(nread, _ibuf);
+        }
 
         setg(_ibuf, _ibuf, _ibuf + nread);
         return traits_type::to_int_type(_ibuf[0]);
@@ -165,9 +169,10 @@ class inmemory_pipe : public if_connection_streambuf
         auto nwrite = wend - wbeg;
 
         if (nwrite > 0) {
-            bool disconnect = false;
+            bool           disconnect = false;
+            decltype(this) recv = nullptr;
 
-            _out->lock.notify_all([&] {
+            _out->lock.notify_one([&] {
                 auto strm = &_out->strm;
 
                 if (_out->receiver == nullptr) {
@@ -181,10 +186,12 @@ class inmemory_pipe : public if_connection_streambuf
                 strm->enqueue_n(wbeg, nwrite);
                 _out->total += nwrite;
 
-                auto recv = _out->receiver;
-                if (not recv->_no_signal.test_and_set())
-                    recv->on_data_receive();
+                if (not _out->receiver->_no_signal.test_and_set())
+                    recv = _out->receiver;
             });
+
+            if (recv)
+                recv->on_data_receive();
 
             if (disconnect)
                 return false;
