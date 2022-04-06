@@ -41,9 +41,11 @@ class session_group
     using array_type = std::vector<session_ptr>;
 
    private:
-    container_type   _sessions;
-    std::mutex       _mtx;
-    pool<array_type> _tmp_pool;
+    mutable std::mutex _mtx;
+    container_type     _sessions;
+    pool<array_type>   _tmp_pool;
+
+    size_t             _rt_off = 0, _wt_off = 0;
 
    public:
     template <typename... Params, typename Filter>
@@ -56,9 +58,16 @@ class session_group
             parr->reserve(_sessions.size());
 
             for (auto iter = _sessions.begin(); iter != _sessions.end();) {
-                if ((**iter).expired())
+                if ((**iter).expired()) {
+                    // Accumulate total rw bytes
+                    size_t rt, wt;
+                    (**iter).totals(&rt, &wt);
+
+                    _rt_off += rt, _wt_off += wt;
+
+                    // Erase from list
                     iter = _sessions.erase(iter);
-                else if (fn(&**iter))
+                } else if (fn(&**iter))
                     parr->emplace_back(*iter++);
             }
         }
@@ -82,22 +91,76 @@ class session_group
         assert(ptr);
         if (ptr->expired()) { return false; }
 
-        lock_guard _{_mtx};
-        auto [iter, is_new] = _sessions.insert(std::move(ptr));
+        bool is_new;
+        {
+            lock_guard _{_mtx};
+            is_new = _sessions.insert(ptr).second;
+        }
+
+        // Offset start value
+        if (is_new) {
+            size_t rd, wr;
+            ptr->totals(&rd, &wr);
+            _rt_off -= rd, _wt_off -= wr;
+        }
 
         return is_new;
     }
 
-    bool remove_session(session_ptr ptr)
+    bool remove_session(weak_ptr<session> const& ptr)
     {
         lock_guard _{_mtx};
-        return _sessions.erase(ptr) != 0;
+        auto       iter = _sessions.find(ptr);
+
+        if (iter == _sessions.end())
+            return false;
+
+        // Offset end value
+        size_t rd, wr;
+        (**iter).totals(&rd, &wr);
+        _rt_off += rd, _wt_off += wr;
+
+        _sessions.erase(iter);
+
+        return true;
     }
 
     auto release()
     {
         lock_guard _{_mtx};
+
+        // Recalculate accumulated I/O byte counts
+        size_t wt, rt;
+        _totals_impl(&rt, &wt);
+        _rt_off = rt, _wt_off = wt;
+
         return std::exchange(_sessions, {});
+    }
+
+    size_t size() const noexcept
+    {
+        lock_guard _{_mtx};
+        return _sessions.size();
+    }
+
+    void totals(size_t* nread, size_t* nwrite) const
+    {
+        lock_guard _{_mtx};
+        _totals_impl(nread, nwrite);
+    }
+
+   private:
+    void _totals_impl(size_t* nread, size_t* nwrite) const
+    {
+        size_t rt = 0, wt = 0;
+        for (auto& sess : _sessions) {
+            size_t r, w;
+            sess->totals(&r, &w);
+            rt += r, wt += w;
+        }
+
+        *nread = rt + _rt_off;
+        *nwrite = wt + _wt_off;
     }
 };
 }  // namespace CPPHEADERS_NS_::rpc
