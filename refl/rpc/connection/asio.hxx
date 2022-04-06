@@ -29,44 +29,99 @@
 #include "../detail/interface.hxx"
 #include "asio/basic_socket_streambuf.hpp"
 
-namespace CPPHEADERS_NS_::rpc::connection {
+namespace CPPHEADERS_NS_::rpc::conn {
+class _asio_count_adapter_streambuf : public std::streambuf
+{
+   public:
+    std::streambuf* _owner;
+    size_t          _rt = 0, _wt = 0;
 
-template <typename StreamSock>
+   public:
+    explicit _asio_count_adapter_streambuf(std::streambuf* owner) : _owner(owner) {}
+
+   protected:
+    int sync() override
+    {
+        return _owner->pubsync();
+    }
+
+    std::streamsize xsgetn(char_type* buf, std::streamsize n) override
+    {
+        auto nread = _owner->sgetn(buf, n);
+        _rt += nread;
+        return nread;
+    }
+
+    int underflow() override
+    {
+        return _owner->sgetc();
+    }
+
+    int uflow() override
+    {
+        _rt += 1;
+        return _owner->sbumpc();
+    }
+
+    std::streamsize xsputn(const char_type* buf, std::streamsize n) override
+    {
+        auto nwrite = _owner->sputn(buf, n);
+        _wt += nwrite;
+        return nwrite;
+    }
+
+    int overflow(int_type c) override
+    {
+        _wt += 1;
+        return _owner->sputc(c);
+    }
+};
+
+template <typename Protocol>
 class asio_stream : public if_connection
 {
-    using protocol_type = typename StreamSock::protocol_type;
+    using protocol_type = Protocol;
+    using socket_type = typename Protocol::socket;
     using streambuf_type = asio::basic_socket_streambuf<protocol_type>;
 
    private:
-    streambuf_type _buf;
-    size_t         _rt = 0, _wt = 0;
+    streambuf_type                _buf;
+    _asio_count_adapter_streambuf _adapter{&_buf};
 
    public:
-    explicit asio_stream(StreamSock&& socket)
-            : if_connection(&_buf, _ep_to_string(socket)),
+    explicit asio_stream(socket_type&& socket)
+            : if_connection(&_adapter, _ep_to_string(socket)),
               _buf(std::move(socket))
     {
     }
 
    public:
-    void initialize() noexcept override
-    {
-    }
-
     void start_data_receive() noexcept override
     {
+        if (_buf.in_avail())
+            on_data_receive();
+        else
+            _buf.socket().async_wait(
+                    asio::socket_base::wait_read,
+                    [this](auto&& ec) {
+                        if (ec) { return; }
+                        on_data_receive();
+                    });
     }
 
     void close() noexcept override
     {
+        _buf.close();
     }
 
     void get_total_rw(size_t* num_read, size_t* num_write) override
     {
+        *num_read = _adapter._rt;
+        *num_write = _adapter._wt;
     }
 
    private:
-    static std::string _ep_to_string(StreamSock const& socket)
+    static std::string _ep_to_string(socket_type const& socket)
     {
         auto ep = socket.remote_endpoint();
         return ep.address().to_string() + ":" + std::to_string(ep.port());
@@ -74,6 +129,6 @@ class asio_stream : public if_connection
 };
 
 template <typename StreamSock>
-asio_stream(StreamSock&& sock) -> asio_stream<StreamSock>;
+asio_stream(StreamSock&& sock) -> asio_stream<typename StreamSock::protocol_type>;
 
-}  // namespace CPPHEADERS_NS_::rpc::connection
+}  // namespace CPPHEADERS_NS_::rpc::conn

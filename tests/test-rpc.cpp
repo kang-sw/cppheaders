@@ -40,32 +40,11 @@ using namespace cpph;
 //
 #if __has_include("asio.hpp")
 #    include "asio/ip/tcp.hpp"
-#    include "asio/post.hpp"
 #    include "refl/rpc/connection/asio.hxx"
-
-class asio_event_proc : public rpc::if_event_proc
-{
-   public:
-    void post_rpc_completion(function<void()>&& fn) override
-    {
-        asio::post(std::move(fn));
-    }
-    void post_handler_callback(function<void()>&& fn) override
-    {
-        asio::post(std::move(fn));
-    }
-    void post_internal_message(function<void()>&& fn) override
-    {
-        asio::post(std::move(fn));
-    }
-};
 #endif
 
 TEST_CASE("Basic RPC Test", "[rpc]")
 {
-    asio::io_context                            ioc;
-    asio::ip::tcp::socket                       sock{ioc};
-
     using std::string;
 
     auto sg_add = rpc::create_signature<int(int, int)>("add");
@@ -81,9 +60,46 @@ TEST_CASE("Basic RPC Test", "[rpc]")
     rpc::session_ptr session_client;
 
 #if __has_include("asio.hpp")
+    using asio::ip::tcp;
+    asio::io_context ioc;
+    auto             work = asio::require(ioc.get_executor(), asio::execution::outstanding_work.tracked);
 
-    auto [conn_a, conn_b] = rpc::connection::inmemory_pipe::create();
+    tcp::socket      sock1{ioc};
+    tcp::socket      sock2{ioc};
+
+    tcp::acceptor    acpt{ioc};
+    auto             acpt_ep = tcp::endpoint{asio::ip::make_address("0.0.0.0"), 5151};
+    acpt.open(acpt_ep.protocol());
+    acpt.set_option(asio::socket_base::reuse_address{true});
+    acpt.bind(acpt_ep);
+
+    volatile bool ready = false;
+    acpt.listen();
+    acpt.async_accept(sock1,
+                      [&](auto&& ec) {
+                          printf("sock1 open, %s:%d ...\n",
+                                 sock1.remote_endpoint().address().to_string().c_str(),
+                                 sock1.remote_endpoint().port());
+                          ready = true;
+                      });
+
+    auto conn_ep = tcp::endpoint{asio::ip::make_address("127.0.0.1"), 5151};
+    sock2.open(conn_ep.protocol());
+    sock2.connect(conn_ep);
+
+    printf("sock2 open, %s:%d ...\n",
+           sock2.remote_endpoint().address().to_string().c_str(),
+           sock2.remote_endpoint().port());
+    fflush(stdout);
+
+    std::thread ioc_thread{[&] { ioc.run(); }};
+    while (not ready) { std::this_thread::yield(); }
+    //
+    auto conn_b = std::make_unique<rpc::conn::asio_stream<tcp>>(std::move(sock2));
+    auto conn_a = std::make_unique<rpc::conn::asio_stream<tcp>>(std::move(sock1));
+
 #else
+    auto [conn_a, conn_b] = rpc::conn::inmemory_pipe::create();
 #endif
 
     rpc::session::builder{}
@@ -144,11 +160,21 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             retbufs.pop_front(), handles.pop_front();
         }
     }
+
+#if __has_include("asio.hpp")
+    ioc.stop();
+    ioc_thread.join();
+
+    size_t nrd, nwr;
+    session_server->totals(&nrd, &nwr);
+    printf("total read: %lu, write: %lu\n", nrd, nwr);
+    fflush(stdout);
+#endif
 }
 
 TEST_CASE("Inmemory Pipe Test", "[rpc]")
 {
-    auto [conn_a, conn_b] = rpc::connection::inmemory_pipe::create();
+    auto [conn_a, conn_b] = rpc::conn::inmemory_pipe::create();
     char const content[] = "hello, world!";
 
     for (size_t i = 0; i < 1024; ++i) {

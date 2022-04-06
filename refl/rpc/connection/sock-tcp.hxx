@@ -27,6 +27,6 @@
 #pragma once
 #include "../../__namespace__"
 
-namespace CPPHEADERS_NS_::rpc::connection {
+namespace CPPHEADERS_NS_::rpc::conn {
 
 }

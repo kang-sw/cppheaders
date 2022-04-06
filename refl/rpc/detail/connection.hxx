@@ -59,7 +59,7 @@ class if_connection
     /**
      * Initialize this connection. Must not throw.
      */
-    virtual void initialize() noexcept = 0;
+    virtual void initialize() noexcept {}
 
     /**
      * Start waiting for new data

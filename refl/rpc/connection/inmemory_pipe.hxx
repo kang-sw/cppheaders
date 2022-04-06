@@ -31,7 +31,7 @@
 #include "../../__namespace__"
 #include "../detail/connection.hxx"
 
-namespace CPPHEADERS_NS_::rpc::connection {
+namespace CPPHEADERS_NS_::rpc::conn {
 class inmemory_pipe : public if_connection, public std::streambuf
 {
     struct pipe {
@@ -202,4 +202,4 @@ class inmemory_pipe : public if_connection, public std::streambuf
     }
 };
 
-}  // namespace CPPHEADERS_NS_::rpc::connection
+}  // namespace CPPHEADERS_NS_::rpc::conn
