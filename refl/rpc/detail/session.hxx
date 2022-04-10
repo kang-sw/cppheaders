@@ -469,6 +469,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
         // Initialize protocol with given client
         _protocol->initialize(_conn->streambuf());
 
+        // Session is currently valid
+        _valid.store(true);
+
         // Notify client that monitoring has begun
         if (not _monitor) { _monitor = detail::empty_session_monitor::get(); }
         _monitor->on_session_created(&_profile);
@@ -477,7 +480,6 @@ class session : public if_session, public std::enable_shared_from_this<session>
 #ifndef NDEBUG
         _waiting.store(true);
 #endif
-        _valid.store(true);
         _conn->start_data_receive();
     }
 

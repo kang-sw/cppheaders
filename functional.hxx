@@ -369,7 +369,7 @@ auto bind_front_weak(Ptr_&& ref, Callable_ callable, Captures_&&... captures)
     using std::decay_t;
     return _bound_weak_functor_t{
             std::forward<Ptr_>(ref),
-            bind_front(callable, std::forward<Captures_>(captures)...)};
+            bind_front(std::move(callable), std::forward<Captures_>(captures)...)};
 }
 
 /**

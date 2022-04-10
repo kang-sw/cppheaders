@@ -23,6 +23,5 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "detail/interface.hxx"
 #include "detail/request_handle.hxx"
 #include "detail/signature.hxx"

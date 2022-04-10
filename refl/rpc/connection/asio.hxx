@@ -171,4 +171,29 @@ asio_event_procedure(Executor&) -> asio_event_procedure<Executor>;
 template <class Executor>
 asio_event_procedure(std::unique_ptr<Executor>) -> asio_event_procedure<Executor>;
 
+inline auto asio_global_event_procedure()
+{
+    class procedure_t : public if_event_proc
+    {
+       public:
+        void post_rpc_completion(function<void()>&& fn) override
+        {
+            asio::post(std::move(fn));
+        }
+
+        void post_handler_callback(function<void()>&& fn) override
+        {
+            asio::post(std::move(fn));
+        }
+
+        void post_internal_message(function<void()>&& fn) override
+        {
+            asio::post(std::move(fn));
+        }
+    };
+
+    static auto _procedure = std::make_shared<procedure_t>();
+    return _procedure;
+}
+
 }  // namespace CPPHEADERS_NS_::rpc
