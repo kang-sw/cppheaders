@@ -88,7 +88,7 @@ class basic_session_builder
     {
         assert(ptr);
         _session->_service = std::move(ptr);
-        return _make_ref<opt_slot_monitor>();
+        return _make_ref<opt_slot_service>();
     }
 
     inline auto& event_procedure(shared_ptr<if_event_proc> ptr)

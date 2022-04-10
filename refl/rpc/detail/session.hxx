@@ -564,7 +564,6 @@ class session : public if_session, public std::enable_shared_from_this<session>
             case proxy_flag::request:
                 assert(proxy._handler);
                 {
-                    std::move(*proxy._handler).invoke(_profile);
                     auto fn_handle_rpc =
                             [this,
                              msgid = proxy._rpc_msgid,

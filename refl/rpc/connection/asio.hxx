@@ -26,6 +26,7 @@
 
 #pragma once
 #include "../../__namespace__"
+#include "../detail/connection.hxx"
 #include "../detail/interface.hxx"
 #include "asio/basic_socket_streambuf.hpp"
 #include "asio/post.hpp"

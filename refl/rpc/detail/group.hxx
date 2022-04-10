@@ -67,14 +67,15 @@ class session_group
 
                     // Erase from list
                     iter = _sessions.erase(iter);
-                } else if (fn((**iter).profile()))
+                } else {
                     parr->emplace_back(*iter++);
+                }
             }
         }
 
-        for (auto& session : *parr) {
-            session->notify(method, params...);
-        }
+        for (auto& session : *parr)
+            if (fn(session->profile()))
+                session->notify(method, params...);
 
         return parr->size();
     }
@@ -84,6 +85,25 @@ class session_group
     {
         return notify_filter(
                 method, [](auto&&) { return true; }, params...);
+    }
+
+    void gc()
+    {
+        lock_guard _{_mtx};
+
+        for (auto iter = _sessions.begin(); iter != _sessions.end();)
+            if ((**iter).expired()) {
+                // Accumulate total rw bytes
+                size_t rt, wt;
+                (**iter).totals(&rt, &wt);
+
+                _rt_off += rt, _wt_off += wt;
+
+                // Erase from list
+                iter = _sessions.erase(iter);
+            } else {
+                ++iter;
+            }
     }
 
     bool add_session(session_ptr ptr)
