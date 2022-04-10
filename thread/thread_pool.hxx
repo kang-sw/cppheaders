@@ -135,7 +135,7 @@ class thread_pool
             // Check for input buffer
             switch (self->state.exchange(dispatch_state::waiting)) {
                 case dispatch_state::ready: {
-                    until = now + 200us;  // Refresh sleep timeout
+                    until = now + 10us;  // Refresh sleep timeout
 
                     // Retrieve queued tasks
                     self->commits.access([&](auto&& list) {
