@@ -30,6 +30,45 @@
 #include "__namespace__"
 
 namespace CPPHEADERS_NS_ {
+inline namespace stdfwd {
+using std::forward_as_tuple;
+using std::make_from_tuple;
+using std::make_pair;
+using std::make_tuple;
+
+using std::make_shared;
+using std::make_unique;
+
+using std::exchange;
+using std::swap;
+
+using std::as_const;
+using std::forward;
+using std::get;
+using std::move;
+using std::ref;
+
+using std::distance;
+using std::size;
+
+using std::is_base_of_v;
+using std::pair;
+using std::shared_ptr;
+using std::tuple;
+using std::unique_ptr;
+using std::weak_ptr;
+
+using std::enable_if;
+using std::enable_if_t;
+
+using std::is_invocable_r_v;
+using std::is_invocable_v;
+using std::is_same_v;
+using std::is_void_v;
+
+using std::declval;
+}  // namespace stdfwd
+
 /**
  * @see https://stackoverflow.com/questions/1198260/how-can-you-iterate-over-the-elements-of-an-stdtuple
  * Iterate over tempalte
