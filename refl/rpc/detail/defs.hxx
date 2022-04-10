@@ -42,6 +42,10 @@ using std::string_view;
 using std::unique_ptr;
 using std::weak_ptr;
 
+class if_session_monitor;
+class if_connection;
+class if_protocol_procedure;
+
 struct session_profile;
 using session_profile_view = session_profile const*;
 

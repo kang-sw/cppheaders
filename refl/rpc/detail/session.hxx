@@ -139,9 +139,8 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     ~session() override
     {
-        // Perform expiration
-        if (lock_guard _lc_{_mtx_protocol}; not expired())
-            _set_expired();
+        // Close session first.
+        close();
 
         // Uninstall request features.
         // This automatically waits for pool_ptr instance disposal.
@@ -268,6 +267,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
         lock_guard _{_mtx_protocol};
         if (expired()) { return false; }
 
+        _set_expired();
         return true;
     }
 
@@ -463,6 +463,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _profile.local_id = ++_idgen;
         _profile.peer_name = _conn->peer_name;
 
+        // Validate connection
+        _conn->_wowner = weak_from_this();
+
         // Initialize protocol with given client
         _protocol->initialize(_conn->streambuf());
 
@@ -474,19 +477,18 @@ class session : public if_session, public std::enable_shared_from_this<session>
 #ifndef NDEBUG
         _waiting.store(true);
 #endif
-
         _valid.store(true);
-
-        _conn->_wowner = weak_from_this();
         _conn->start_data_receive();
     }
 
     void _set_expired()
     {
+#ifndef NDEBUG
         bool const was_valid = _valid.exchange(false);
         assert(was_valid && "Expiration logic must be called only for once!");
 
         if (was_valid) {
+#endif
             _monitor->on_session_expired(&_profile);
             _conn->close();
 
@@ -511,7 +513,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
                 _rq->requests.clear();
             } while (false);
+#ifndef NDEBUG
         }
+#endif
     }
 
     void _update_rw_count()
