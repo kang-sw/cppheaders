@@ -41,13 +41,15 @@ using std::string, std::string_view, std::tuple;
 using service_table_t
         = std::map<string, unique_ptr<if_service_handler>, std::less<>>;
 
+class service_builder;
+
 class service
 {
     friend class service_builder;
     shared_ptr<service_table_t const> _service;
 
    public:
-    using builder = class service_builder;
+    using builder = service_builder;
 
    private:
     service() noexcept
