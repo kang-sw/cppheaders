@@ -347,8 +347,6 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     void totals(size_t* nread, size_t* nwrite)
     {
-        lock_guard _lc_{_mtx_protocol};
-
         *nread = _profile.total_read;
         *nwrite = _profile.total_write;
     }
