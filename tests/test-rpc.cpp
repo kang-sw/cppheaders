@@ -92,11 +92,13 @@ TEST_CASE("Basic RPC Test", "[rpc]")
     std::thread ioc_thread{[&] { ioc.run(); }};
     while (not ready) { std::this_thread::yield(); }
     //
-    auto conn_b = std::make_unique<rpc::conn::asio_stream<tcp>>(std::move(sock2));
-    auto conn_a = std::make_unique<rpc::conn::asio_stream<tcp>>(std::move(sock1));
+    auto conn_b = std::make_unique<rpc::asio_stream<tcp>>(std::move(sock2));
+    auto conn_a = std::make_unique<rpc::asio_stream<tcp>>(std::move(sock1));
 
+    auto event_proc = std::make_shared<rpc::asio_event_procedure<asio::io_context>>(ioc);
 #else
     auto [conn_a, conn_b] = rpc::conn::inmemory_pipe::create();
+    auto event_proc = rpc::default_event_procedure::get();
 #endif
 
     rpc::session_ptr session_server;
@@ -107,7 +109,7 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             .service(service)
             .protocol(std::make_unique<rpc::protocol::msgpack>())
             //            .event_procedure(std::make_shared<asio_event_proc>())
-            .event_procedure(rpc::default_event_procedure::get())
+            .event_procedure(event_proc)
             .build_to(session_server);
 
     rpc::session::builder{}
@@ -115,7 +117,7 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             .connection(std::move(conn_b))
             .protocol(std::make_unique<rpc::protocol::msgpack>())
             //            .event_procedure(std::make_shared<asio_event_proc>())
-            .event_procedure(rpc::default_event_procedure::get())
+            .event_procedure(event_proc)
             .build_to(session_client);
 
     SECTION("Blocking request")

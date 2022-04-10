@@ -28,8 +28,9 @@
 #include "../../__namespace__"
 #include "../detail/interface.hxx"
 #include "asio/basic_socket_streambuf.hpp"
+#include "asio/post.hpp"
 
-namespace CPPHEADERS_NS_::rpc::conn {
+namespace CPPHEADERS_NS_::rpc {
 class _asio_count_adapter_streambuf : public std::streambuf
 {
    public:
@@ -131,4 +132,42 @@ class asio_stream : public if_connection
 template <typename StreamSock>
 asio_stream(StreamSock&& sock) -> asio_stream<typename StreamSock::protocol_type>;
 
-}  // namespace CPPHEADERS_NS_::rpc::conn
+template <class Executor>
+class asio_event_procedure : public if_event_proc
+{
+    std::unique_ptr<Executor> _ref_autorelease;
+    Executor*                 _ref;
+
+   public:
+    explicit asio_event_procedure(Executor& exec) : _ref(&exec) {}
+    explicit asio_event_procedure(std::unique_ptr<Executor> exec)
+            : _ref_autorelease(std::move(exec)),
+              _ref(_ref_autorelease.get()) {}
+
+   public:
+    auto executor() const noexcept { return _ref; }
+
+   public:
+    void post_rpc_completion(function<void()>&& fn) override
+    {
+        asio::post(*_ref, std::move(fn));
+    }
+
+    void post_handler_callback(function<void()>&& fn) override
+    {
+        asio::post(*_ref, std::move(fn));
+    }
+
+    void post_internal_message(function<void()>&& fn) override
+    {
+        asio::post(*_ref, std::move(fn));
+    }
+};
+
+template <class Executor>
+asio_event_procedure(Executor&) -> asio_event_procedure<Executor>;
+
+template <class Executor>
+asio_event_procedure(std::unique_ptr<Executor>) -> asio_event_procedure<Executor>;
+
+}  // namespace CPPHEADERS_NS_::rpc
