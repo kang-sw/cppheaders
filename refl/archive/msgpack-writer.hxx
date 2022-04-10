@@ -45,12 +45,12 @@ class writer : public archive::if_writer
         for (auto i = 0; i < sizeof(ValTy_); ++i)
             inv[sizeof(ValTy_) - 1 - i] = ((char const*)&val)[i];
 
-        _buf->sputn(inv, sizeof inv);
+        sputn(inv, sizeof inv);
     }
 
     void _ap(typecode code)
     {
-        _buf->sputc(char(code));
+        sputc(char(code));
     }
 
     // for str, bin, ext
@@ -70,7 +70,7 @@ class writer : public archive::if_writer
 
     void _apoff(typecode code, int ofst)
     {
-        _buf->sputc(char(code) + ofst);
+        sputc(char(code) + ofst);
     }
 
     template <size_t MaskBits_>
@@ -78,7 +78,7 @@ class writer : public archive::if_writer
     {
         static_assert(MaskBits_ < 8);
         constexpr uint8_t mask = (1u << MaskBits_) - 1;
-        _buf->sputc(uint8_t(code) | value & mask);
+        sputc(uint8_t(code) | value & mask);
     }
 
     if_writer& _write_int(int64_t value)
@@ -165,7 +165,7 @@ class writer : public archive::if_writer
         else
             _apsize_1(typecode::str8, v.size());
 
-        _buf->sputn(v.data(), v.size());
+        sputn(v.data(), v.size());
         return *this;
     }
 
@@ -207,7 +207,7 @@ class writer : public archive::if_writer
     if_writer& binary_write_some(const_buffer_view view) override
     {
         _ctx.binary_write_some(view.size());
-        _buf->sputn(view.data(), view.size());
+        sputn(view.data(), view.size());
         return *this;
     }
 

@@ -57,7 +57,7 @@ class writer : public archive::if_writer
     {
         _on_write();
 
-        _buf->sputn("null", 4);
+        sputn("null", 4);
         return *this;
     }
 
@@ -71,14 +71,14 @@ class writer : public archive::if_writer
         auto r = std::to_chars(buf, buf + sizeof buf, v);
 
         if (d.is_key) {
-            _buf->sputc('"');
-            _buf->sputn(buf, r.ptr - buf);
-            _buf->sputc('"');
+            sputc('"');
+            sputn(buf, r.ptr - buf);
+            sputc('"');
 
-            _buf->sputc(':');
-            if (indent >= 0) { _buf->sputc(' '); }
+            sputc(':');
+            if (indent >= 0) { sputc(' '); }
         } else {
-            _buf->sputn(buf, r.ptr - buf);
+            sputn(buf, r.ptr - buf);
         }
 
         return *this;
@@ -91,7 +91,7 @@ class writer : public archive::if_writer
         char buf[32];
         auto r = snprintf(buf, sizeof buf, "%.14g", v);
 
-        _buf->sputn(buf, r);
+        sputn(buf, r);
         return *this;
     }
 
@@ -100,9 +100,9 @@ class writer : public archive::if_writer
         _on_write();
 
         if (v)
-            _buf->sputn("true", 4);
+            sputn("true", 4);
         else
-            _buf->sputn("false", 5);
+            sputn("false", 5);
 
         return *this;
     }
@@ -113,14 +113,14 @@ class writer : public archive::if_writer
         if (d.need_comma) { _append_comma(); }
         if (d.need_indent) { _brk_indent(); }
 
-        _buf->sputc('"');
-        auto inserter = adapt_inserter([&](char ch) { _buf->sputc(ch); });
+        sputc('"');
+        auto inserter = adapt_inserter([&](char ch) { sputc(ch); });
         strutil::escape(v.begin(), v.end(), inserter);
-        _buf->sputc('"');
+        sputc('"');
 
         if (d.is_key) {
-            _buf->sputc(':');
-            if (indent >= 0) { _buf->sputc(' '); }
+            sputc(':');
+            if (indent >= 0) { sputc(' '); }
         }
         return *this;
     }
@@ -130,7 +130,7 @@ class writer : public archive::if_writer
         _on_write();
 
         _ctx.push_binary(total);
-        _buf->sputc('"');
+        sputc('"');
 
         _base64.reset(_buf);
         return *this;
@@ -147,7 +147,7 @@ class writer : public archive::if_writer
     {
         _ctx.pop_binary();
         _base64.pubsync();
-        _buf->sputc('"');
+        sputc('"');
         return *this;
     }
 
@@ -156,7 +156,7 @@ class writer : public archive::if_writer
         _on_write();
 
         _ctx.push_object(num_elems);
-        _buf->sputc('{');
+        sputc('{');
 
         return *this;
     }
@@ -164,7 +164,7 @@ class writer : public archive::if_writer
     if_writer& object_pop() override
     {
         if (_ctx.pop_object() > 0) { _brk_indent(); }
-        _buf->sputc('}');
+        sputc('}');
 
         return *this;
     }
@@ -174,7 +174,7 @@ class writer : public archive::if_writer
         _on_write();
 
         _ctx.push_array(num_elems);
-        _buf->sputc('[');
+        sputc('[');
 
         return *this;
     }
@@ -182,7 +182,7 @@ class writer : public archive::if_writer
     if_writer& array_pop() override
     {
         if (_ctx.pop_array() > 0) { _brk_indent(); }
-        _buf->sputc(']');
+        sputc(']');
 
         return *this;
     }
@@ -203,7 +203,7 @@ class writer : public archive::if_writer
 
     void _append_comma()
     {
-        _buf->sputc(',');
+        sputc(',');
     }
 
     void _throw_invalid_key_type()
@@ -216,8 +216,8 @@ class writer : public archive::if_writer
         // no indent
         if (indent < 0) { return; }
 
-        _buf->sputc('\n');
-        for (int i = 0; i < indent * _ctx.depth(); ++i) { _buf->sputc(' '); }
+        sputc('\n');
+        for (int i = 0; i < indent * _ctx.depth(); ++i) { sputc(' '); }
     }
 };
 
