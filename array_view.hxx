@@ -284,6 +284,6 @@ constexpr auto view_array(Range_&& array)
 namespace ranges {
 template <typename Ty_>
 RANGES_INLINE_VAR constexpr bool
-        enable_borrowed_range<KANGSW_TEMPLATE_NAMESPACE::array_view<Ty_>> = true;
+        enable_borrowed_range<CPPHEADERS_NS_::array_view<Ty_>> = true;
 }
 #endif
