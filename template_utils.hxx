@@ -31,6 +31,8 @@
 
 namespace CPPHEADERS_NS_ {
 inline namespace stdfwd {
+using namespace std::literals;
+
 using std::forward_as_tuple;
 using std::make_from_tuple;
 using std::make_pair;
