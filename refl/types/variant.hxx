@@ -44,7 +44,7 @@ void assign_jump_table(visitor_table_t<Args_...>& table)
     if constexpr (Int_ + 1 < sizeof...(Args_)) { assign_jump_table<Int_ + 1>(table); }
     table[Int_] =
             [](archive::if_reader* strm, std::variant<Args_...>* data) {
-                *strm >> std::get<Int_>(*data);
+                *strm >> data->emplace<Int_>();
             };
 }
 
