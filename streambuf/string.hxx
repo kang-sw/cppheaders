@@ -117,7 +117,13 @@ class stringbuf : public std::streambuf
     int sync() override
     {
         assert(_read_end <= _buf->size());
+
+        _read_end += pptr() - pbase();
         _buf->resize(_read_end);
+
+        setp(_buf->data() + _read_end, _buf->data() + _buf->size());
+        stringbuf::underflow();
+
         return basic_streambuf::sync();
     }
 };
