@@ -84,23 +84,13 @@ class basic_resource_pool
         {
             return _owner;
         }
-
-        Ty_* operator->() noexcept
+        
+        Ty_* operator->() const noexcept
         {
             return &*_ref;
         }
 
-        Ty_ const* operator->() const noexcept
-        {
-            return &*_ref;
-        }
-
-        Ty_& operator*() noexcept
-        {
-            return *_ref;
-        }
-
-        Ty_ const& operator*() const noexcept
+        Ty_& operator*() const noexcept
         {
             return *_ref;
         }
