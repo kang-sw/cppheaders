@@ -27,7 +27,8 @@
 #include <tuple>
 
 namespace std {
-inline namespace literals {}
+inline namespace literals {
+}
 }  // namespace std
 
 //
@@ -64,6 +65,8 @@ using std::tuple;
 using std::unique_ptr;
 using std::weak_ptr;
 
+using std::decay_t;
+
 using std::enable_if;
 using std::enable_if_t;
 
@@ -82,7 +85,8 @@ using std::declval;
 template <std::size_t I = 0, typename FuncT, typename... Tp>
 inline typename std::enable_if<I == sizeof...(Tp), void>::type
 tuple_for_each(std::tuple<Tp...>&, FuncT&&)  // Unused arguments are given no names.
-{}
+{
+}
 
 template <std::size_t I = 0, typename FuncT, typename... Tp>
         inline typename std::enable_if < I<sizeof...(Tp), void>::type
@@ -99,7 +103,8 @@ template <std::size_t I = 0, typename FuncT, typename... Tp>
 template <std::size_t I = 0, typename FuncT, typename... Tp>
 inline typename std::enable_if<I == sizeof...(Tp), void>::type
 tuple_for_each(std::tuple<Tp...> const&, FuncT&&)  // Unused arguments are given no names.
-{}
+{
+}
 
 template <std::size_t I = 0, typename FuncT, typename... Tp>
         inline typename std::enable_if < I<sizeof...(Tp), void>::type
@@ -156,7 +161,8 @@ struct function_traits;
 
 // function pointer
 template <class R, class... Args>
-struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)> {};
+struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)> {
+};
 
 template <class R, class... Args>
 struct function_traits<R(Args...)> {
@@ -173,15 +179,18 @@ struct function_traits<R(Args...)> {
 
 // member function pointer
 template <class C, class R, class... Args>
-struct function_traits<R (C::*)(Args...)> : public function_traits<R(C&, Args...)> {};
+struct function_traits<R (C::*)(Args...)> : public function_traits<R(C&, Args...)> {
+};
 
 // const member function pointer
 template <class C, class R, class... Args>
-struct function_traits<R (C::*)(Args...) const> : public function_traits<R(C&, Args...)> {};
+struct function_traits<R (C::*)(Args...) const> : public function_traits<R(C&, Args...)> {
+};
 
 // member object pointer
 template <class C, class R>
-struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
+struct function_traits<R(C::*)> : public function_traits<R(C&)> {
+};
 
 // functor
 template <class F>
@@ -202,10 +211,12 @@ struct function_traits {
 };
 
 template <class F>
-struct function_traits<F&> : public function_traits<F> {};
+struct function_traits<F&> : public function_traits<F> {
+};
 
 template <class F>
-struct function_traits<F&&> : public function_traits<F> {};
+struct function_traits<F&&> : public function_traits<F> {
+};
 
 template <typename Ptr1_, typename Ptr2_>
 bool ptr_equals(Ptr1_&& lhs, Ptr2_&& rhs)
@@ -263,10 +274,12 @@ constexpr bool is_any_of_v = ((std::is_same_v<Ty_, Args_>) || ...);
 // is_specialization
 // @see https://stackoverflow.com/questions/16337610/how-to-know-if-a-type-is-a-specialization-of-stdvector
 template <typename Test, template <typename...> class Ref>
-struct is_template_instance_of : std::false_type {};
+struct is_template_instance_of : std::false_type {
+};
 
 template <template <typename...> class Ref, typename... Args>
-struct is_template_instance_of<Ref<Args...>, Ref> : std::true_type {};
+struct is_template_instance_of<Ref<Args...>, Ref> : std::true_type {
+};
 
 template <typename Ty_>
 using remove_cvr_t = std::remove_cv_t<std::remove_reference_t<Ty_>>;

@@ -38,24 +38,35 @@ using std::chrono::duration_cast;
 using std::chrono::nanoseconds;
 using std::chrono::seconds;
 
-class time_t
+#pragma pack(push, 4)
+class time_info
 {
     int64_t  _sec;
     uint32_t _ns;
 
    public:
-    constexpr time_t() noexcept : _sec{}, _ns{} {}
+    constexpr time_info() noexcept : _sec{}, _ns{} {}
 
     template <typename Ref_, typename Ratio_>
-    constexpr time_t(duration<Ref_, Ratio_> duration)
+    constexpr time_info(duration<Ref_, Ratio_> duration)
             : _sec(_retrieve_sec(duration)),
               _ns(_retrieve_ns(duration))
     {
     }
 
-    constexpr time_t(int64_t sec, uint32_t ns) noexcept
+    constexpr time_info(int64_t sec, uint32_t ns) noexcept
             : _sec(sec), _ns(ns % unsigned(1e9))
     {
+    }
+
+    template <typename Ref_, typename Ratio_>
+    void retrieve(duration<Ref_, Ratio_>& out)
+    {
+        using out_t = decay_t<decltype(out)>;
+        auto delta_ns = duration_cast<out_t>(int64_t(_ns) * 1ns);
+
+        out = duration_cast<out_t>(_sec * 1s);
+        out += delta_ns * (_sec > 0 ? 1 : -1);
     }
 
    private:
@@ -83,10 +94,43 @@ class time_t
         return uint32_t(duration_cast<nanoseconds>(mod < dur_t(0) ? -mod : mod).count());
     }
 };
+static_assert(sizeof(time_info) == 12);
+#pragma pack(pop)
 
-INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::chrono::duration>::value))
+INTERNAL_CPPH_define_(ValueType, (is_template_instance_of<ValueType, std::chrono::duration>::value))
 {
-    return detail::get_list_like_descriptor<ValTy_>();
+    static struct ctrl_t : refl::templated_primitive_control<ValueType> {
+        entity_type type() const noexcept override
+        {
+            return entity_type::binary;
+        }
+
+       protected:
+        void impl_archive(archive::if_writer* strm, const ValueType& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            time_info t{data};
+            strm->binary_push(sizeof t);
+            strm->binary_write_some({&t, 1});
+            strm->binary_pop();
+        }
+
+        void impl_restore(archive::if_reader* strm, ValueType* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
+        {
+            time_info t;
+            {
+                auto n = strm->begin_binary();
+                CPPH_TMPVAR = cleanup([&] { strm->end_binary(); });
+
+                if (n != sizeof(time_info)) { throw archive::error::reader_check_failed{strm}; }
+                strm->binary_read_some({&t, 1});
+            }
+
+            t.retrieve(*pvdata);
+        }
+    } ctrl;
+
+    static auto _ = object_metadata::primitive_factory::define(sizeof(ValueType), &ctrl);
+    return _.get();
 }
 }  // namespace CPPHEADERS_NS_::refl
 
