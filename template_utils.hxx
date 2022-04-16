@@ -26,6 +26,10 @@
 #include <memory>
 #include <tuple>
 
+namespace std {
+inline namespace literals {}
+}  // namespace std
+
 //
 #include "__namespace__"
 
