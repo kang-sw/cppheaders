@@ -226,6 +226,8 @@ class basic_event
                         return callable();
                     else if constexpr (std::is_invocable_v<Callable_>)
                         return callable(), event_control::ok;
+                    else
+                        return ((args.INVALID), ...);
                 },
                 priority,
                 value);
