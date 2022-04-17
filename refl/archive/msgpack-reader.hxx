@@ -181,7 +181,7 @@ class reader : public archive::if_reader
     if_reader& read(nullptr_t) override
     {
         // skip single item
-        if (_skip_once() > 0) { _step_context(); }
+        _skip_once();
         return *this;
     }
 
@@ -369,7 +369,7 @@ class reader : public archive::if_reader
    private:
     void _break_scope()
     {
-        for (auto scope = &_scope_ref(); scope->elems_left > 0; --scope->elems_left)
+        for (auto scope = &_scope_ref(); scope->elems_left > 0;)
             _skip_once();
 
         _scope.pop_back();
@@ -379,6 +379,7 @@ class reader : public archive::if_reader
     {
         // intentionally uses getc instead of bumpc
         auto     header = _verify_eof(_buf->sgetc());
+        bool     require_step_context = true;
         uint32_t skip_bytes = 0;
         switch (_typecode(header)) {
             case typecode::positive_fixint:
@@ -414,12 +415,14 @@ class reader : public archive::if_reader
             case typecode::fixarray:
             case typecode::array16:
             case typecode::array32:
+                require_step_context = false;
                 end_array(begin_array());
                 break;
 
             case typecode::fixmap:
             case typecode::map16:
             case typecode::map32:
+                require_step_context = false;
                 end_object(begin_object());
                 break;
 
@@ -443,6 +446,9 @@ class reader : public archive::if_reader
             case typecode::error:
                 throw error::reader_parse_failed{this, "unsupported format: %02x", header};
         }
+
+        if (require_step_context)
+            _step_context_on_skip();
 
         _discard_n_bytes(skip_bytes);
         return skip_bytes;
@@ -511,6 +517,15 @@ class reader : public archive::if_reader
         }
 
         if (scope->elems_left-- == 0)
+            throw error::reader_check_failed{this, "all elements read"};
+    }
+
+    void _step_context_on_skip()
+    {
+        if (_scope.empty()) { return; }
+
+        // On skipping context, do not validate object key-array context
+        if (_scope.back().elems_left-- == 0)
             throw error::reader_check_failed{this, "all elements read"};
     }
 
