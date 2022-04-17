@@ -45,6 +45,11 @@ class service_builder
     shared_ptr<service_table_t> _table;
 
    public:
+    service_builder() noexcept = default;
+    service_builder(service_builder&&) noexcept = default;
+    service_builder& operator=(service_builder&&) noexcept = default;
+
+   public:
     auto build() noexcept
     {
         service rv;
@@ -133,7 +138,7 @@ class service_builder
 
         auto [iter, is_new] = _table->try_emplace(
                 move(method_name),
-                std::make_unique<handler_impl_type<RetVal, Params...>>(_table, move(handler)));
+                std::make_shared<handler_impl_type<RetVal, Params...>>(_table, move(handler)));
 
         if (not is_new) { throw std::logic_error{"method name duplication: " + method_name}; }
         return *this;

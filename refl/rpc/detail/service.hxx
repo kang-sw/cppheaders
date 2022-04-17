@@ -39,7 +39,7 @@ using std::move, std::forward;
 using std::string, std::string_view, std::tuple;
 
 using service_table_t
-        = std::map<string, unique_ptr<if_service_handler>, std::less<>>;
+        = std::map<string, shared_ptr<if_service_handler>, std::less<>>;
 
 class service_builder;
 
@@ -64,6 +64,19 @@ class service
     service& operator=(service&&) noexcept = default;
 
    public:
+    friend service merge(service const& base, service const& other)
+    {
+        auto table = make_shared<service_table_t>();
+        table->insert(base._service->begin(), base._service->end());
+        table->insert(other._service->begin(), other._service->end());
+
+        service svc;
+        svc._service = std::move(table);
+
+        return svc;
+    }
+
+   public:
     static inline service empty_service()
     {
         static service _instance = [] {
@@ -80,7 +93,7 @@ class service
     find_handler(string_view method_name) const noexcept
     {
         if (auto iter = _service->find(method_name); iter != _service->end())
-            return shared_ptr<if_service_handler>{_service, iter->second.get()};
+            return iter->second;
         else
             return nullptr;
     }

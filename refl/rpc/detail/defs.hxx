@@ -58,6 +58,9 @@ using error_code = std::error_code;
 using std::enable_if_t;
 using std::is_same_v;
 
+class service;
+class service_builder;
+
 /**
  * Type of errors can occur
  */
