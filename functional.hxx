@@ -231,6 +231,9 @@ class function<Ret_(Args_...)>
 using std::bind_front;
 #else
 
+// Just forward STL bind
+using std::bind;
+
 template <typename Callable_, typename Tuple_>
 class _bound_functor_t
 {
