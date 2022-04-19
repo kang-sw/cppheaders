@@ -64,7 +64,7 @@ namespace CPPHEADERS_NS_::refl {
 template <typename ValTy_>
 auto get_object_metadata_t<ValTy_, std::enable_if_t<detail::is_cpph_refl_object_v<ValTy_>>>::operator()() const
 {
-    static object_metadata_ptr inst = ((ValTy_*)nullptr)->initialize_object_metadata();
+    static object_metadata_ptr inst = ((ValTy_*)1)->initialize_object_metadata();
 
     return &*inst;
 }
