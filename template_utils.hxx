@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include <algorithm>
 #include <memory>
 #include <tuple>
 
@@ -48,6 +49,12 @@ using std::make_unique;
 
 using std::exchange;
 using std::swap;
+
+using std::clamp;
+using std::max;
+using std::min;
+using std::minmax;
+using std::tie;
 
 using std::as_const;
 using std::forward;
