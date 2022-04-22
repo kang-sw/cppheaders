@@ -29,7 +29,10 @@
 #include <thread>
 
 #include "../__namespace__"
+#include "../circular_queue.hxx"
 #include "../memory/queue_allocator.hxx"
+#include "../thread/event_wait.hxx"
+#include "../thread/locked.hxx"
 
 namespace CPPHEADERS_NS_ {
 /**
@@ -37,9 +40,66 @@ namespace CPPHEADERS_NS_ {
  */
 class message_procedure
 {
-    std::thread _worker;
+   private:
+    struct callable_pair {
+        void (*fn)(void*);
+        void* body;
+    };
+
+   private:
+    locked<queue_allocator>               _queue_alloc;
+    locked<circular_queue<callable_pair>> _messages;
 
    public:
+    explicit message_procedure(size_t num_max_message, size_t num_queue_buffer)
+            : _queue_alloc(num_queue_buffer), _messages(num_max_message) {}
 
+   public:
+    size_t run()
+    {
+    }
+
+    template <typename Duration>
+    size_t run_for(Duration&& dur)
+    {
+    }
+
+    template <typename Timestamp>
+    size_t run_until(Timestamp&& until)
+    {
+    }
+
+    void run_once()
+    {
+        callable_pair msg = {};
+    }
+
+    template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
+    void post(Message&& message)
+    {
+        bool okay = false;
+
+        do {
+            try {
+                auto constexpr fn = [](void* ptr) { (*(Message*)ptr)(); };
+                void* ptr = _queue_alloc.lock()->template construct<Message>(std::move(message));
+                auto  msg = callable_pair{fn, ptr};
+
+                do {
+                    _messages.access([&msg, &okay](decltype(_messages)::value_type& v) {
+                        if (not v.is_full()) {
+                            v.push_back(msg);
+                            okay = true;
+                        } else {
+                            std::this_thread::yield();
+                        }
+                    });
+                } while (not okay);
+            } catch (queue_out_of_memory&) {
+                std::this_thread::yield();
+                continue;  // Just do it again until ready.
+            }
+        } while (not okay);
+    }
 };
 }  // namespace CPPHEADERS_NS_

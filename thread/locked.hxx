@@ -82,6 +82,13 @@ class locked
     using lock_type = Mutex_;
 
    public:
+    template <typename... Args>
+    explicit locked(Args&&... args) noexcept(std::is_nothrow_constructible_v<Ty_, Args...>)
+            : _value(std::forward<Args>(args)...)
+    {
+    }
+
+   public:
     auto lock()
     {
         return locked_reference{&_value, std::unique_lock{_mut}};
