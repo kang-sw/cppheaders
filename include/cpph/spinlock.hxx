@@ -33,6 +33,18 @@
 //
 
 namespace cpph {
+//! Atomic utility
+template <typename ValTy>
+ValTy acquire(std::atomic<ValTy> const& value) noexcept
+{
+    return value.load(std::memory_order_acquire);
+}
+
+template <typename ValTy, typename Rhs>
+void release(std::atomic<ValTy>& value, Rhs&& other) noexcept
+{
+    value.store(other, std::memory_order_release);
+}
 
 //! @see https://rigtorp.se/spinlock/
 //! Applied slight modification to use atomic_flag

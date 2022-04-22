@@ -28,11 +28,11 @@
 #include <atomic>
 #include <thread>
 
-#include "../circular_queue.hxx"
-#include "../memory/queue_allocator.hxx"
-#include "../template_utils.hxx"
-#include "../thread/event_wait.hxx"
-#include "../thread/locked.hxx"
+#include "cpph/circular_queue.hxx"
+#include "cpph/memory/queue_allocator.hxx"
+#include "cpph/template_utils.hxx"
+#include "cpph/thread/event_wait.hxx"
+#include "cpph/thread/locked.hxx"
 
 namespace cpph {
 /**
@@ -44,19 +44,71 @@ class message_procedure
     struct callable_pair {
         void (*fn)(void*);
         void* body;
+        void* alloc_new;  // Head allocated due to lack of memory
     };
 
    private:
     locked<queue_allocator> _queue_alloc;
     locked<circular_queue<callable_pair>> _messages;
-    std::atomic_size_t _num_active_runner = 0;
+    thread::event_wait _event_wait;
+    std::atomic_bool _stopped = false;
+    std::atomic_size_t _num_jobs = 0;
+    volatile size_t _num_waiting_runner = 0;
 
    public:
     explicit message_procedure(size_t num_max_message, size_t num_queue_buffer)
             : _queue_alloc(num_queue_buffer), _messages(num_max_message) {}
 
+   private:
+    template <typename WaitFn>
+    bool _run_one_impl(WaitFn&& wait)
+    {
+        callable_pair msg = {};
+
+        // Do quick check
+        _messages.access([&](decltype(_messages)::value_type& v) {
+            if (v.empty()) {
+                ++_num_waiting_runner;
+            } else {
+                _num_jobs.fetch_sub(1);
+                msg = v.dequeue();
+            }
+        });
+
+        for (; not msg.fn;) {
+            // Function couldn't be found. Wait for next post.
+            // semaphore must be decreased.
+            if (not wait()) {
+                _messages.access([&](auto&&) { --_num_waiting_runner; });
+                return false;
+            }
+
+            // If wait succeeds, try access messages queue again.
+            _messages.access([&](decltype(_messages)::value_type& v) {
+                if (not v.empty()) {
+                    --_num_waiting_runner;
+
+                    _num_jobs.fetch_sub(1);
+                    msg = v.dequeue();
+                }
+            });
+        }
+
+        // Invoke and exit.
+        msg.fn(msg.body);
+        return true;
+    }
+
    public:
     size_t run()
+    {
+        size_t num_ran = 0;
+        for (; run_one(); ++num_ran) {}
+        return num_ran;
+    }
+
+    template <typename Timestamp>
+    size_t run_until(Timestamp&& until)
     {
     }
 
@@ -65,42 +117,54 @@ class message_procedure
     {
     }
 
-    template <typename Timestamp>
-    size_t run_until(Timestamp&& until)
+    void stop()
     {
+        release(_stopped, true);
     }
 
-    void run_once()
+    void restart()
     {
-        callable_pair msg = {};
+        release(_stopped, false);
+    }
+
+    bool run_one()
+    {
+        return _run_one_impl([&] {
+            bool stopped = false;
+            _event_wait.wait([&] { return (acquire(_num_jobs) != 0 || (stopped = acquire(_stopped))); });
+            return not stopped;
+        });
     }
 
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
     void post(Message&& message)
     {
-        bool okay = false;
+        auto constexpr fn =
+                [](callable_pair* arg) {
+                    (*(Message*)arg->fn)();
+                    if (arg->alloc_new) { delete (Message*)arg->alloc_new; }
+                };
 
-        do {
-            try {
-                auto constexpr fn = [](void* ptr) { (*(Message*)ptr)(); };
-                void* ptr = _queue_alloc.lock()->template construct<Message>(std::move(message));
-                auto msg = callable_pair{fn, ptr};
+        callable_pair msg = {fn, nullptr, nullptr};
 
-                do {
-                    _messages.access([&msg, &okay](decltype(_messages)::value_type& v) {
-                        if (not v.is_full()) {
-                            v.push_back(msg);
-                            okay = true;
-                        } else {
-                            std::this_thread::yield();
-                        }
-                    });
-                } while (not okay);
-            } catch (queue_out_of_memory&) {
-                std::this_thread::yield();
-                continue;  // Just do it again until ready.
-            }
-        } while (not okay);
+        try {
+            msg.body = _queue_alloc.lock()->template construct<Message>(std::forward<Message>(message));
+        } catch (queue_out_of_memory&) {
+            msg.alloc_new = msg.body = new Message(std::forward<Message>(message));
+        }
+
+        bool should_wakeup_any = false;
+        _messages.access([&](decltype(_messages)::value_type& v) {
+            if (v.is_full())
+                v.reserve_shrink(v.capacity() * 2);
+
+            v.push(msg);
+            _num_jobs.fetch_add(1);
+            should_wakeup_any = (_num_waiting_runner != 0);
+        });
+
+        if (should_wakeup_any)
+            _event_wait.notify_one();
     }
 };
 }  // namespace cpph
