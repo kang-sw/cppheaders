@@ -31,6 +31,7 @@
 #include "../__namespace__"
 #include "../circular_queue.hxx"
 #include "../memory/queue_allocator.hxx"
+#include "../template_utils.hxx"
 #include "../thread/event_wait.hxx"
 #include "../thread/locked.hxx"
 
@@ -49,6 +50,7 @@ class message_procedure
    private:
     locked<queue_allocator>               _queue_alloc;
     locked<circular_queue<callable_pair>> _messages;
+    std::atomic_size_t                    _num_active_runner = 0;
 
    public:
     explicit message_procedure(size_t num_max_message, size_t num_queue_buffer)
