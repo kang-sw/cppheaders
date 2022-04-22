@@ -1,13 +1,39 @@
 cmake_minimum_required(VERSION 3.16)
 
-if (NOT PROJECT_NAME)
-    message("Configuring CppHeaders as standalone project ...")
+# -------------------------------------------------------------------------------------------------
+project(cppheaders)
+add_library(${PROJECT_NAME} STATIC)
 
-    project(cppheaders)
-endif ()
+target_sources(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        src/json.cpp
+)
+
+target_compile_features(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        cxx_std_17
+)
+
+target_include_directories(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        include
+)
 
 if (MSVC)
-    add_compile_options(/utf-8)
+    target_compile_options(
+            ${PROJECT_NAME}
+
+            PUBLIC
+            /utf-8
+            /FIciso646
+    )
 endif ()
 
+# -------------------------------------------------------------------------------------------------
 add_subdirectory(tests)

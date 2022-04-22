@@ -93,7 +93,8 @@ TEST_CASE("overall", "[queue_allocator]")
 }
 
 TEST_CASE("buffer deferred dealloc", "[queue_allocator]")
-{}
+{
+}
 
 TEST_CASE("typed allocator", "[queue_allocator]")
 {

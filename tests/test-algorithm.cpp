@@ -35,7 +35,7 @@ template <size_t N_>
 static void identical(char const (&S)[N_], std::string_view enc)
 {
     std::string_view str{S};
-    auto             encoded{std::array<char, cpph::base64::encoded_size(N_ - 1)>{}};
+    auto encoded{std::array<char, cpph::base64::encoded_size(N_ - 1)>{}};
 
     cpph::base64::encode(str, encoded.begin());
 
@@ -72,7 +72,7 @@ TEST_CASE("base64 correctly converted", "base64")
 #if __has_include("nlohmann/json.hpp")
 
 struct my_serialized {
-    std::string        s;
+    std::string s;
     std::optional<int> k;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(

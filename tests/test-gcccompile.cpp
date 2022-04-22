@@ -53,7 +53,8 @@ void main_1()
 }
 
 template <typename T, typename = void>
-struct test_strt {};
+struct test_strt {
+};
 
 template <typename T>
 auto test_strt_a()

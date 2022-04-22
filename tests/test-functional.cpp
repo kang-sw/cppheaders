@@ -64,7 +64,7 @@ TEST_CASE("overall operation", "[functional]")
 struct lambda_t {
     std::array<char, 40> bf;
 
-    void                 operator()()
+    void operator()()
     {
         volatile int s = 0;
         s = 1;
@@ -77,7 +77,7 @@ TEST_CASE("benchmark")
     return;
 
     cpph::function<void()> test1 = lambda_t{};
-    std::function<void()>  test2 = lambda_t{};
+    std::function<void()> test2 = lambda_t{};
 
     using clk = std::chrono::system_clock;
 
@@ -105,8 +105,8 @@ TEST_CASE("benchmark")
 
 TEST_CASE("release")
 {
-    auto                  s = std::make_shared<int>();
-    std::weak_ptr<int>    w = s;
+    auto s = std::make_shared<int>();
+    std::weak_ptr<int> w = s;
 
     cpph::function<int()> f{
             [s = std::move(s)] {

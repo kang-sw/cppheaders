@@ -59,13 +59,13 @@ TEST_CASE("Basic RPC Test", "[rpc]")
 #if __has_include("asio.hpp")
     using asio::ip::tcp;
     asio::io_context ioc;
-    auto             work = asio::require(ioc.get_executor(), asio::execution::outstanding_work.tracked);
+    auto work = asio::require(ioc.get_executor(), asio::execution::outstanding_work.tracked);
 
-    tcp::socket      sock1{ioc};
-    tcp::socket      sock2{ioc};
+    tcp::socket sock1{ioc};
+    tcp::socket sock2{ioc};
 
-    tcp::acceptor    acpt{ioc};
-    auto             acpt_ep = tcp::endpoint{asio::ip::make_address("0.0.0.0"), 5151};
+    tcp::acceptor acpt{ioc};
+    auto acpt_ep = tcp::endpoint{asio::ip::make_address("0.0.0.0"), 5151};
     acpt.open(acpt_ep.protocol());
     acpt.set_option(asio::socket_base::reuse_address{true});
     acpt.bind(acpt_ep);

@@ -31,11 +31,11 @@
 #include "refl/core.hxx"
 
 struct base_object {
-    std::optional<double>           opt_double;
-    std::list<int>                  list_int;
+    std::optional<double> opt_double;
+    std::list<int> list_int;
     cpph::binary<std::vector<char>> bin_vec_chars;
 
-    auto&                           fill()
+    auto& fill()
     {
         opt_double = 31314.;
         list_int = {1, 2, 34};
@@ -82,7 +82,7 @@ TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
     for (int intkey = 0; intkey < 2; ++intkey) {
         std::stringstream sstrm;
 
-        writer            wr{sstrm.rdbuf()};
+        writer wr{sstrm.rdbuf()};
         wr.config.use_integer_key = intkey;
 
         child_object enc{};
@@ -92,7 +92,7 @@ TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
         INFO(content_1);
 
         child_object b;
-        reader       rd{sstrm.rdbuf()};
+        reader rd{sstrm.rdbuf()};
         rd.config.use_integer_key = intkey;
         rd >> b;
 
@@ -105,7 +105,7 @@ TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
 
 TEST_CASE("Retrieve throw exceptions", "[archive]")
 {
-    std::stringbuf           sbuf;
+    std::stringbuf sbuf;
     archive::msgpack::writer writer{&sbuf};
     archive::msgpack::reader reader{&sbuf};
 

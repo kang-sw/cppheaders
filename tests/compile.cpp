@@ -23,7 +23,6 @@
 // project home: https://github.com/perfkitpp
 
 #define CPPHEADERS_ENABLE_BACKWARD 1
-#include "__cpph__.inc"
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"

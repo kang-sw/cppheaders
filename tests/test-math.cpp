@@ -32,17 +32,17 @@ using namespace cpph::math;
 void foofoo()
 {
     constexpr matx33i m = matx33i::eye(), n = matx33i::create(1, 2, 3, 4, 5, 6, 7, 8, 9);
-    auto              c = m + (-n);
+    auto c = m + (-n);
 
-    constexpr auto    cc = matx33i{}.row(2);
+    constexpr auto cc = matx33i{}.row(2);
     static_assert(decltype(cc)::length == 3);
 
-    constexpr int  r = cc(0, 1);
-    auto           gk = cc(4, 1);
+    constexpr int r = cc(0, 1);
+    auto gk = cc(4, 1);
 
     constexpr bool kk = m == n;
 
-    matx33i        g = {};
+    matx33i g = {};
     g += c;
 
     g.col(3).x();
@@ -92,7 +92,7 @@ TEST_CASE("rodrigues", "[math.matrix]")
 
 TEST_CASE("inv", "[math.matrix]")
 {
-    auto           s = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1);
+    auto s = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1);
     constexpr auto k = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1).inv();
     INFO(s.inv());
     REQUIRE(s.inv().equals({0.2, 0.2, 0, -0.2, 0.3, 1, 0.2, -0.3, 0}, 1e-4));

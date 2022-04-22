@@ -48,12 +48,12 @@ enum class my_enum {
 
 namespace ns {
 struct inner_arg_1 {
-    std::string         str1 = (char const*)u8"str1-value\r\t\n\\n";
-    std::string         str2 = "str2-value";
-    int                 var = 133;
-    bool                k = true;
+    std::string str1 = (char const*)u8"str1-value\r\t\n\\n";
+    std::string str2 = "str2-value";
+    int var = 133;
+    bool k = true;
     std::array<bool, 4> bools = {false, false, true, false};
-    double              g = 3.14;
+    double g = 3.14;
 
     CPPH_REFL_DEFINE_OBJECT_inline((), (str1), (str2),
                                    (var), (k), (bools), (g));
@@ -61,10 +61,10 @@ struct inner_arg_1 {
 
 struct inner_arg_2 {
     inner_arg_1 rtt = {};
-    nullptr_t   nothing = nullptr;
-    nullptr_t   nothing2 = nullptr;
+    nullptr_t nothing = nullptr;
+    nullptr_t nothing2 = nullptr;
 
-    int         ints[3] = {1, 23, 4};
+    int ints[3] = {1, 23, 4};
 
     CPPH_REFL_DEFINE_TUPLE_inline((), rtt, nothing, nothing2, ints);
 };
@@ -79,14 +79,14 @@ struct abcd {
 };
 
 struct outer {
-    inner_arg_1                          arg1;
-    inner_arg_2                          arg2;
-    std::pair<int, bool>                 arg = {3, false};
+    inner_arg_1 arg1;
+    inner_arg_2 arg2;
+    std::pair<int, bool> arg = {3, false};
     std::tuple<int, double, std::string> bb = {5, 1.14, "hello"};
 
-    binary<abcd>                         r;
+    binary<abcd> r;
 
-    std::map<std::string, abcd>          afs = {
+    std::map<std::string, abcd> afs = {
             {"aa", {1, 2, 3, 4}},
             {"bb", {1, 3, 2, 5}},
     };
@@ -122,13 +122,13 @@ auto initialize_object_metadata(cpph::refl::type_tag<values_0<S, T>>)
 }
 
 static auto pp_ptr = refl::get_object_metadata<values_0<int, double>>();
-static_assert(perfkit::is_binary_compatible_v<abcd>);
+static_assert(is_binary_compatible_v<abcd>);
 
 struct some_other {
-    int         a, b, c;
-    float       f, t, r;
+    int a, b, c;
+    float f, t, r;
 
-    outer       e;
+    outer e;
     inner_arg_2 ff;
 
     CPPH_REFL_DECLARE_c;
@@ -143,24 +143,24 @@ struct vectors {
     std::vector<std::list<double>> f2
             = {{1., 2., 3.}, {4., 5, 6}};
 
-    binary<std::vector<int>>             f3{1, 2, 3, 4};
-    binary<std::list<int>>               f4{0x5abbccdd, 0x12213456, 0x31315142};
-    binary<abcd>                         f5;
+    binary<std::vector<int>> f3{1, 2, 3, 4};
+    binary<std::list<int>> f4{0x5abbccdd, 0x12213456, 0x31315142};
+    binary<abcd> f5;
 
-    my_enum                              my_enum_value = my_enum::test3;
+    my_enum my_enum_value = my_enum::test3;
 
-    std::pair<int, bool>                 arg = {3, false};
+    std::pair<int, bool> arg = {3, false};
     std::tuple<int, double, std::string> bb = {5, 1.14, "hell금방갈게요o"};
 
-    outer                                some_outer;
+    outer some_outer;
 
-    std::optional<int>                   no_val;
-    std::optional<int>                   has_val = 1;
+    std::optional<int> no_val;
+    std::optional<int> has_val = 1;
 
-    variant_type                         vt1 = 3;
-    variant_type                         vt2 = 3.14;
-    variant_type                         vt3 = std::string{"hello!"};
-    variant_type                         vt4 = false;
+    variant_type vt1 = 3;
+    variant_type vt2 = 3.14;
+    variant_type vt3 = std::string{"hello!"};
+    variant_type vt4 = false;
 
     CPPH_REFL_DEFINE_OBJECT_inline((), (bb, "BB", 0x7fffffff), (f), (f2), (f3), (f4), (f5), (my_enum_value), (arg), (some_outer),
                                    (no_val), (has_val),
@@ -168,10 +168,10 @@ struct vectors {
 };
 
 struct some_other_2 {
-    int         a, b, c;
-    float       f, t, r;
+    int a, b, c;
+    float f, t, r;
 
-    outer       e;
+    outer e;
     inner_arg_2 ff;
 
     CPPH_REFL_DECLARE_c;
@@ -195,7 +195,7 @@ std::string g_debugstr_2;
 class stream_debug_adapter : public std::streambuf
 {
     std::streambuf* _other;
-    std::string*    _str;
+    std::string* _str;
 
    public:
     stream_debug_adapter(std::streambuf& other, std::string* str) : _other(&other), _str(str) {}
@@ -226,10 +226,10 @@ class stream_debug_adapter : public std::streambuf
 
 static auto ssvd = [] {
     using TestType = ns::vectors;
-    std::stringbuf        strbuf;
+    std::stringbuf strbuf;
     archive::json::writer writer{&strbuf};
 
-    TestType              arg{};
+    TestType arg{};
 
     std::cout << "\n\n------- CLASS " << typeid(TestType).name() << " -------\n\n";
     writer << arg;
@@ -237,7 +237,7 @@ static auto ssvd = [] {
     std::cout.flush();
 
     std::cout << "\n\n------- CLASS INTKEY << " << typeid(TestType).name() << " -------\n\n";
-    std::stringbuf        strbuf_intkey;
+    std::stringbuf strbuf_intkey;
     archive::json::writer writer_intkey{&strbuf_intkey};
     writer_intkey.config.use_integer_key = true;
     writer_intkey << arg;
@@ -252,7 +252,7 @@ static auto ssvd = [] {
 
     std::cout << "\n\n------- PARSE " << typeid(TestType).name() << " -------\n\n";
     archive::json::reader reader{&strbuf};
-    TestType              other;
+    TestType other;
     reader.deserialize(other);
 
     archive::json::writer wr2{std::cout.rdbuf()};
@@ -263,8 +263,8 @@ static auto ssvd = [] {
     std::string str;
     reader >> str;
 
-    std::stringstream        msgpack_bufb64;
-    streambuf::b64           cvtbase64{msgpack_bufb64.rdbuf()};
+    std::stringstream msgpack_bufb64;
+    streambuf::b64 cvtbase64{msgpack_bufb64.rdbuf()};
 
     archive::msgpack::writer msgwr{&cvtbase64};
     msgwr.config.use_integer_key = true;
@@ -338,7 +338,7 @@ struct bintest {
 
 TEST_CASE("base64 restoration", "[archive]")
 {
-    std::stringbuf        strbuf;
+    std::stringbuf strbuf;
     archive::json::writer writer{&strbuf};
     writer.indent = 4;
 

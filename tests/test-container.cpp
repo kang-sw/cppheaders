@@ -10,7 +10,7 @@ TEST_CASE("Circular queue functions", "[container.circular_queue]")
     for (size_t i = 0; i < 8192; ++i) {
         constexpr char content[] = "hello, world!";
 
-        volatile auto  sequence = i * sizeof content;
+        volatile auto sequence = i * sizeof content;
         queue.enqueue_n(content, sizeof content);
 
         char buf[sizeof content] = {};

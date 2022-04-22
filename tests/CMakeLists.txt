@@ -19,26 +19,18 @@ add_executable(
         test-message_procedure.cpp
 )
 
-
-target_compile_definitions(
+target_link_libraries(
         ${PROJECT_NAME}
 
         PRIVATE
-        -Dcpph=CPPHEADERS_NS_
-)
-
-target_compile_features(
-        ${PROJECT_NAME}
-
-        PRIVATE
-        cxx_std_17
+        cppheaders
 )
 
 target_include_directories(
         ${PROJECT_NAME}
 
         PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/..
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include/cpph
 )
 
 
@@ -89,13 +81,6 @@ if (FALSE)
             ${PROJECT_NAME}
 
             test-gcccompile.cpp
-    )
-
-    target_compile_definitions(
-            ${PROJECT_NAME}
-
-            PRIVATE
-            -Dcpph=CPPHEADERS_NS_
     )
 
     target_compile_features(
