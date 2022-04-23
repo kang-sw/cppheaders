@@ -43,7 +43,7 @@ class message_procedure
 {
    private:
     struct callable_pair {
-        void (*fn)(void*);
+        void (*fn)(callable_pair const*);
         void (*dispose)(message_procedure*, void*);
         void* body;
     };
@@ -53,7 +53,6 @@ class message_procedure
     locked<circular_queue<callable_pair>> _messages;
     thread::event_wait _event_wait;
     std::atomic_bool _stopped = false;
-    std::atomic_size_t _num_jobs = 0;
     volatile size_t _num_waiting_runner = 0;
 
    public:
@@ -79,11 +78,7 @@ class message_procedure
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
     callable_pair _allocate_token(Message&& message)
     {
-        auto constexpr fn =
-                [](callable_pair* arg) {
-                    (*(Message*)arg->fn)();
-                };
-
+        auto constexpr fn = [](callable_pair const* arg) { (*(Message*)arg->fn)(); };
         callable_pair msg = {fn, nullptr, nullptr};
 
         try {
@@ -117,47 +112,14 @@ class message_procedure
         return _inst;
     }
 
-    template <typename WaitFn>
-    bool _run_one_impl(WaitFn&& wait)
+    void _invoke(callable_pair const& msg)
     {
-        callable_pair msg = {};
-
-        // Do quick check
-        _messages.access([&](decltype(_messages)::value_type& v) {
-            if (v.empty()) {
-                ++_num_waiting_runner;
-            } else {
-                _num_jobs.fetch_sub(1);
-                msg = v.dequeue();
-            }
-        });
-
-        for (; not msg.fn;) {
-            // Function couldn't be found. Wait for next post.
-            // semaphore must be decreased.
-            if (not wait()) {
-                _messages.access([&](auto&&) { --_num_waiting_runner; });
-                return false;
-            }
-
-            // If wait succeeds, try access messages queue again.
-            _messages.access([&](decltype(_messages)::value_type& v) {
-                if (not v.empty()) {
-                    --_num_waiting_runner;
-
-                    _num_jobs.fetch_sub(1);
-                    msg = v.dequeue();
-                }
-            });
-        }
-
-        // Invoke and exit.
         _active_executor() = this;
-        msg.fn(msg.body);
+        msg.fn(&msg);
         msg.dispose(this, msg.body);
         _active_executor() = nullptr;
 
-        // Flush deferred list
+        // Flush deferred list after invocation
         if (auto deferred = _deferred_list(); not deferred->empty()) {
             bool should_wakeup_other_thread = false;
             _messages.access([&](decltype(_messages)::value_type& e) {
@@ -167,7 +129,6 @@ class message_procedure
                 auto num_deferred_jobs = deferred->size();
                 should_wakeup_other_thread = _num_waiting_runner > 0 && num_deferred_jobs > 1;
                 e.enqueue_n(deferred->begin(), num_deferred_jobs);
-                _num_jobs += num_deferred_jobs;
             });
 
             // May other thread's executor will wake up.
@@ -176,29 +137,69 @@ class message_procedure
 
             deferred->clear();
         }
+    }
+
+    template <typename WaitFn>
+    bool _exec_one_impl(WaitFn&& fn_wait)
+    {
+        callable_pair msg = {};
+
+        // Do quick check
+        _messages.access([&](decltype(_messages)::value_type& v) {
+            if (v.empty()) {
+                ++_num_waiting_runner;
+            } else {
+                msg = v.dequeue();
+            }
+        });
+
+        for (; msg.fn == nullptr;) {
+            // Function couldn't be found. Wait for next post.
+            // semaphore must be decreased.
+            if (not fn_wait()) {
+                _messages.access([&](auto&&) { --_num_waiting_runner; });
+                return false;
+            } else {
+                // If wait succeeds, try access messages queue again.
+                _messages.access([&](decltype(_messages)::value_type& v) {
+                    if (not v.empty()) {
+                        --_num_waiting_runner;
+                        msg = v.dequeue();
+                    }
+                });
+            }
+        }
+
+        // Invoke and exit.
+        _invoke(msg);
 
         return true;
     }
 
-   public:
-    bool run_one()
+    bool _has_any_job_locked()
     {
-        return _run_one_impl([&] {
+        return not _messages.lock()->empty();
+    }
+
+   public:
+    bool exec_one()
+    {
+        return _exec_one_impl([&] {
             bool stopped = false;
-            _event_wait.wait([&] { return (acquire(_num_jobs) != 0 || (stopped = acquire(_stopped))); });
+            _event_wait.wait([&] { return (_has_any_job_locked() || (stopped = acquire(_stopped))); });
             return not stopped;
         });
     }
 
     template <typename Timestamp>
-    bool run_one_until(Timestamp&& until)
+    bool exec_one_until(Timestamp&& until)
     {
-        return _run_one_impl([&] {
+        return _exec_one_impl([&] {
             bool stopped = false;
             bool timeout = not _event_wait.wait_until(
                     std::forward<Timestamp>(until),
                     [&] {
-                        return (acquire(_num_jobs) != 0 || (stopped = acquire(_stopped)));
+                        return (_has_any_job_locked() || (stopped = acquire(_stopped)));
                     });
 
             return not stopped && not timeout;
@@ -206,15 +207,39 @@ class message_procedure
     }
 
     template <typename Duration>
-    bool run_one_for(Duration&& dur)
+    bool exec_one_for(Duration&& dur)
     {
-        return run_one_until(std::chrono::steady_clock::now() + dur);
+        return exec_one_until(std::chrono::steady_clock::now() + dur);
     }
 
-    size_t run()
+    size_t exec()
     {
         size_t num_ran = 0;
-        for (; run_one(); ++num_ran) {}
+        for (; not acquire(_stopped) && exec_one(); ++num_ran) {}
+        return num_ran;
+    }
+
+    size_t flush()
+    {
+        size_t num_ran = 0;
+
+        for (;;) {
+            callable_pair msg = {};
+
+            // Do quick check
+            _messages.access([&](decltype(_messages)::value_type& v) {
+                if (not v.empty() && not acquire(_stopped)) {
+                    msg = v.dequeue();
+                }
+            });
+
+            if (msg.fn == nullptr)
+                break;
+
+            _invoke(msg);
+            ++num_ran;
+        }
+
         return num_ran;
     }
 
@@ -222,7 +247,7 @@ class message_procedure
     size_t run_until(Timestamp&& until)
     {
         size_t num_ran = 0;
-        for (; run_one_until(until); ++num_ran) {}
+        for (; not acquire(_stopped) && exec_one_until(until); ++num_ran) {}
         return num_ran;
     }
 
@@ -232,13 +257,13 @@ class message_procedure
         size_t num_ran = 0;
         auto until = std::chrono::steady_clock::now() + dur;
 
-        for (; run_one_until(until); ++num_ran) {}
+        for (; not acquire(_stopped) && exec_one_until(until); ++num_ran) {}
         return num_ran;
     }
 
     void stop()
     {
-        release(_stopped, true);
+        _event_wait.notify_all([&] { release(_stopped, true); });
     }
 
     void restart()
@@ -250,7 +275,6 @@ class message_procedure
     {
         decltype(_messages)::value_type queue{0};
         _messages.access([&](decltype(queue)& v) {
-            release(_num_jobs, 0);
             queue = std::move(v);
         });
 
@@ -271,7 +295,6 @@ class message_procedure
                 v.reserve_shrink(v.capacity() * 2);
 
             v.push(msg);
-            _num_jobs.fetch_add(1);
             should_wakeup_any = (_num_waiting_runner != 0);
         });
 
