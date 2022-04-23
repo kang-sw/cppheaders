@@ -26,6 +26,7 @@
 
 #pragma once
 #include <atomic>
+#include <list>
 #include <thread>
 
 #include "cpph/circular_queue.hxx"
@@ -43,8 +44,8 @@ class message_procedure
    private:
     struct callable_pair {
         void (*fn)(void*);
+        void (*dispose)(message_procedure*, void*);
         void* body;
-        void* alloc_new;  // Head allocated due to lack of memory
     };
 
    private:
@@ -56,10 +57,65 @@ class message_procedure
     volatile size_t _num_waiting_runner = 0;
 
    public:
-    explicit message_procedure(size_t num_max_message, size_t num_queue_buffer)
-            : _queue_alloc(num_queue_buffer), _messages(num_max_message) {}
+    /**
+     * Creates new message procedure.
+     *
+     * @param num_queue_buffer
+     *    Queue buffer size. As it does not resized, set this value big enough on construction.
+     *
+     * @param num_initial_message_queue_size
+     *    Number of initial image queue size. As this circular queue resizes on demand,
+     *     determining this value is less important than setting \c num_queue_buffer correctly.
+     */
+    explicit message_procedure(size_t num_queue_buffer, size_t num_initial_message_queue_size = 32)
+            : _queue_alloc(num_queue_buffer), _messages(num_initial_message_queue_size) {}
+
+    /**
+     * Destruct this message procedure
+     */
+    ~message_procedure() { clear(); }
 
    private:
+    template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
+    callable_pair _allocate_token(Message&& message)
+    {
+        auto constexpr fn =
+                [](callable_pair* arg) {
+                    (*(Message*)arg->fn)();
+                };
+
+        callable_pair msg = {fn, nullptr, nullptr};
+
+        try {
+            msg.body = _queue_alloc.lock()->template construct<Message>(std::forward<Message>(message));
+            msg.dispose =
+                    [](message_procedure* self, void* body) {
+                        self->_queue_alloc.lock()->destruct(body);
+                    };
+        } catch (queue_out_of_memory&) {
+            msg.body = new Message(std::forward<Message>(message));
+            msg.dispose =
+                    [](auto, void* body) {
+                        delete (Message*)body;
+                    };
+        }
+
+        return msg;
+    }
+
+   private:
+    static auto _deferred_list() noexcept
+    {
+        thread_local static std::vector<callable_pair> _list;
+        return &_list;
+    }
+
+    static auto _active_executor() -> void const*&
+    {
+        thread_local static void const* _inst = nullptr;
+        return _inst;
+    }
+
     template <typename WaitFn>
     bool _run_one_impl(WaitFn&& wait)
     {
@@ -95,11 +151,65 @@ class message_procedure
         }
 
         // Invoke and exit.
+        _active_executor() = this;
         msg.fn(msg.body);
+        msg.dispose(this, msg.body);
+        _active_executor() = nullptr;
+
+        // Flush deferred list
+        if (auto deferred = _deferred_list(); not deferred->empty()) {
+            bool should_wakeup_other_thread = false;
+            _messages.access([&](decltype(_messages)::value_type& e) {
+                if (e.capacity() - e.size() < deferred->size())
+                    e.reserve_shrink(std::max(e.capacity() + deferred->size(), e.size() * 2));
+
+                auto num_deferred_jobs = deferred->size();
+                should_wakeup_other_thread = _num_waiting_runner > 0 && num_deferred_jobs > 1;
+                e.enqueue_n(deferred->begin(), num_deferred_jobs);
+                _num_jobs += num_deferred_jobs;
+            });
+
+            // May other thread's executor will wake up.
+            if (should_wakeup_other_thread)
+                _event_wait.notify_one();
+
+            deferred->clear();
+        }
+
         return true;
     }
 
    public:
+    bool run_one()
+    {
+        return _run_one_impl([&] {
+            bool stopped = false;
+            _event_wait.wait([&] { return (acquire(_num_jobs) != 0 || (stopped = acquire(_stopped))); });
+            return not stopped;
+        });
+    }
+
+    template <typename Timestamp>
+    bool run_one_until(Timestamp&& until)
+    {
+        return _run_one_impl([&] {
+            bool stopped = false;
+            bool timeout = not _event_wait.wait_until(
+                    std::forward<Timestamp>(until),
+                    [&] {
+                        return (acquire(_num_jobs) != 0 || (stopped = acquire(_stopped)));
+                    });
+
+            return not stopped && not timeout;
+        });
+    }
+
+    template <typename Duration>
+    bool run_one_for(Duration&& dur)
+    {
+        return run_one_until(std::chrono::steady_clock::now() + dur);
+    }
+
     size_t run()
     {
         size_t num_ran = 0;
@@ -110,11 +220,19 @@ class message_procedure
     template <typename Timestamp>
     size_t run_until(Timestamp&& until)
     {
+        size_t num_ran = 0;
+        for (; run_one_until(until); ++num_ran) {}
+        return num_ran;
     }
 
     template <typename Duration>
     size_t run_for(Duration&& dur)
     {
+        size_t num_ran = 0;
+        auto until = std::chrono::steady_clock::now() + dur;
+
+        for (; run_one_until(until); ++num_ran) {}
+        return num_ran;
     }
 
     void stop()
@@ -127,31 +245,24 @@ class message_procedure
         release(_stopped, false);
     }
 
-    bool run_one()
+    void clear()
     {
-        return _run_one_impl([&] {
-            bool stopped = false;
-            _event_wait.wait([&] { return (acquire(_num_jobs) != 0 || (stopped = acquire(_stopped))); });
-            return not stopped;
+        decltype(_messages)::value_type queue{0};
+        _messages.access([&](decltype(queue)& v) {
+            release(_num_jobs, 0);
+            queue = std::move(v);
         });
+
+        for (auto& e : queue) {
+            e.dispose(this, e.body);
+        }
     }
 
+   public:
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
     void post(Message&& message)
     {
-        auto constexpr fn =
-                [](callable_pair* arg) {
-                    (*(Message*)arg->fn)();
-                    if (arg->alloc_new) { delete (Message*)arg->alloc_new; }
-                };
-
-        callable_pair msg = {fn, nullptr, nullptr};
-
-        try {
-            msg.body = _queue_alloc.lock()->template construct<Message>(std::forward<Message>(message));
-        } catch (queue_out_of_memory&) {
-            msg.alloc_new = msg.body = new Message(std::forward<Message>(message));
-        }
+        auto msg = _allocate_token(std::forward<Message>(message));
 
         bool should_wakeup_any = false;
         _messages.access([&](decltype(_messages)::value_type& v) {
@@ -165,6 +276,27 @@ class message_procedure
 
         if (should_wakeup_any)
             _event_wait.notify_one();
+    }
+
+    template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
+    void defer(Message&& message)
+    {
+        if (this == _active_executor()) {
+            auto msg = _allocate_token(std::forward<Message>(message));
+            _deferred_list()->emplace_back(msg);
+        } else {
+            post(std::forward<Message>(message));
+        }
+    }
+
+    template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
+    void dispatch(Message&& message)
+    {
+        if (this == _active_executor()) {
+            message();
+        } else {
+            post(std::forward<Message>(message));
+        }
     }
 };
 }  // namespace cpph
