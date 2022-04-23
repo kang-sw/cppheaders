@@ -90,7 +90,8 @@ class message_procedure
             msg.body = _queue_alloc.lock()->template construct<Message>(std::forward<Message>(message));
             msg.dispose =
                     [](message_procedure* self, void* body) {
-                        self->_queue_alloc.lock()->destruct(body);
+                        queue_allocator::call_destructor(body);
+                        self->_queue_alloc.lock()->deallocate(body);
                     };
         } catch (queue_out_of_memory&) {
             msg.body = new Message(std::forward<Message>(message));

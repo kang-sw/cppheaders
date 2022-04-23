@@ -107,6 +107,16 @@ class locked
         return locked_const_reference{&_value, std::unique_lock{_mut, std::try_to_lock}};
     }
 
+    auto unsafe_access() const
+    {
+        return &_value;
+    }
+
+    auto unsafe_access()
+    {
+        return &_value;
+    }
+
     template <typename Visitor_>
     [[deprecated]] void use(Visitor_&& visitor)
     {
