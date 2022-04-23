@@ -37,9 +37,9 @@
 
 #include "../counter.hxx"
 #include "../functional.hxx"
+#include "event_queue.hxx"
 #include "event_wait.hxx"
 #include "locked.hxx"
-#include "event_queue.hxx"
 
 namespace cpph {
 class thread_pool
@@ -82,6 +82,11 @@ class thread_pool
     void dispatch(Message_&& msg)
     {
         _proc.dispatch(std::forward<Message_>(msg));
+    }
+
+    auto queue()
+    {
+        return &_proc;
     }
 };
 }  // namespace cpph

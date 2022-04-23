@@ -25,18 +25,62 @@
  ******************************************************************************/
 
 #pragma once
+#include "cpph/functional.hxx"
+#include "cpph/thread/event_wait.hxx"
 #include "event_queue.hxx"
 
 namespace cpph::thread {
 /**
  * Indicates single pipe
  */
-template <typename SharedContext, typename InputType>
-class pipe
+template <typename SharedContext, typename InputType, typename EventProc = event_queue>
+class pipe_mono
 {
-    event_queue* _ioc;
+    EventProc* const _ioc;
+    shared_ptr<SharedContext> _buf_shared = nullptr;
+
+    function<void(shared_ptr<SharedContext>, InputType&)> const _procedure;
+    InputType _next_input = {};
+
+    bool _busy = false;
+
+    event_wait _wait;
+    shared_ptr<void> _anchor = make_shared<nullptr_t>();
 
    public:
+    template <typename Callable, typename... Args>
+    explicit pipe_mono(EventProc* ioc, Callable&& callable, Args&&... args)
+            : _ioc(ioc),
+              _procedure(bind_front(std::forward<Callable>(callable), std::forward<Args>(args)...))
+    {
+    }
 
+    ~pipe_mono() noexcept
+    {
+        _anchor.reset();
+    }
+
+   public:
+    template <typename CommitFn, typename Timeout>
+    bool commit(CommitFn&& fn, shared_ptr<SharedContext> shared, Timeout&& timeout)
+    {
+        if (not _wait.wait_for(timeout, [&] { return not _busy; }))
+            return false;
+
+        // Critical section not required as host callback is already disposed.
+        _buf_shared = std::move(shared);
+        fn(_next_input);
+
+        // Call next fence
+        _busy = true;
+        _ioc->post(bind_front_weak(_anchor, &pipe_mono::_fn_invoke, this));
+    }
+
+   private:
+    void _fn_invoke()
+    {
+        _procedure(std::move(_buf_shared), _next_input);
+        _wait.notify_one([&] { _busy = false; });
+    }
 };
 }  // namespace cpph::thread
