@@ -26,7 +26,7 @@
 
 #include "catch.hpp"
 #include "counter.hxx"
-#include "thread/message_procedure.hxx"
+#include "thread/event_queue.hxx"
 
 static std::atomic_size_t invoked = 0;
 static std::atomic_size_t destructed = 0;
@@ -75,9 +75,9 @@ struct test_invocable_t {
     }
 };
 
-TEST_CASE("Test message procedure features", "[message_procedure]")
+TEST_CASE("Test message procedure features", "[event_queue]")
 {
-    cpph::message_procedure mproc{10 << 20};
+    cpph::event_queue mproc{10 << 20};
     using invocable_t = test_invocable_t<std::array<int, 1024>>;
     int N = 10'000;
 

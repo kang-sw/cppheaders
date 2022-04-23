@@ -39,12 +39,12 @@ namespace cpph {
 /**
  *
  */
-class message_procedure
+class event_queue
 {
    private:
     struct callable_pair {
         void (*fn)(callable_pair const*);
-        void (*dispose)(message_procedure*, void*);
+        void (*dispose)(event_queue*, void*);
         void* body;
     };
 
@@ -66,13 +66,13 @@ class message_procedure
      *    Number of initial image queue size. As this circular queue resizes on demand,
      *     determining this value is less important than setting \c num_queue_buffer correctly.
      */
-    explicit message_procedure(size_t num_queue_buffer, size_t num_initial_message_queue_size = 32)
+    explicit event_queue(size_t num_queue_buffer, size_t num_initial_message_queue_size = 32)
             : _queue_alloc(num_queue_buffer), _messages(num_initial_message_queue_size) {}
 
     /**
      * Destruct this message procedure
      */
-    ~message_procedure() { clear(); }
+    ~event_queue() { clear(); }
 
    private:
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
@@ -84,7 +84,7 @@ class message_procedure
         try {
             msg.body = _queue_alloc.lock()->template construct<Message>(std::forward<Message>(message));
             msg.dispose =
-                    [](message_procedure* self, void* body) {
+                    [](event_queue* self, void* body) {
                         queue_allocator::call_destructor(body);
                         self->_queue_alloc.lock()->deallocate(body);
                     };

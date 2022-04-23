@@ -35,7 +35,7 @@
 #include "refl/rpc/rpc.hxx"
 #include "refl/rpc/service.hxx"
 #include "refl/rpc/session_builder.hxx"
-#include "thread/message_procedure.hxx"
+#include "thread/event_queue.hxx"
 using namespace cpph;
 
 //

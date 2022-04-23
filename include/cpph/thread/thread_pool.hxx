@@ -39,12 +39,12 @@
 #include "../functional.hxx"
 #include "event_wait.hxx"
 #include "locked.hxx"
-#include "message_procedure.hxx"
+#include "event_queue.hxx"
 
 namespace cpph {
 class thread_pool
 {
-    message_procedure _proc;
+    event_queue _proc;
     std::vector<std::thread> _workers;
 
    public:
@@ -54,7 +54,7 @@ class thread_pool
             : _proc(allocator_memory ? allocator_memory : (10 << 10))
     {
         _workers.reserve(num_threads);
-        for (auto _ : count(num_threads)) { _workers.emplace_back(&message_procedure::exec, &_proc); }
+        for (auto _ : count(num_threads)) { _workers.emplace_back(&event_queue::exec, &_proc); }
     }
 
     ~thread_pool()
