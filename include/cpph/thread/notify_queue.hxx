@@ -28,7 +28,7 @@
 #include <mutex>
 #include <optional>
 
-#include "../macros.hxx"
+#include "cpph/functional.hxx"
 
 //
 
@@ -77,7 +77,7 @@ class notify_queue
         _lc_t lc{_mtx};
         std::optional<Ty_> value;
 
-        if (_cvar.wait_for(lc, wait, CPPH_BIND(_not_empty))) {
+        if (_cvar.wait_for(lc, wait, bind_front(&notify_queue::_not_empty, this))) {
             value.emplace(std::move(_queue.front()));
             _queue.pop_front();
         }

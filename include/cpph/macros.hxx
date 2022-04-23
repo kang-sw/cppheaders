@@ -38,13 +38,13 @@
 #define CPPH_TMPVAR auto INTERNAL_CPPH_CONCAT(_internal_cpph_tmpvar_, __LINE__)
 
 /* generic      ***********************************************************************************/
-#define CPPH_BIND(Function)                                                                            \
-    [this](auto&&... args) {                                                                           \
-        if constexpr (std::is_same_v<void,                                                             \
-                                     decltype(this->Function(std::forward<decltype(args)>(args)...))>) \
-            this->Function(std::forward<decltype(args)>(args)...);                                     \
-        else                                                                                           \
-            return this->Function(std::forward<decltype(args)>(args)...);                              \
+#define CPPH_BIND(Function)                                                                     \
+    [this](auto&&... args) {                                                                    \
+        if constexpr (std::is_void_v<                                                           \
+                              decltype(this->Function(std::forward<decltype(args)>(args)...))>) \
+            this->Function(std::forward<decltype(args)>(args)...);                              \
+        else                                                                                    \
+            return this->Function(std::forward<decltype(args)>(args)...);                       \
     }
 
 #define CPPH_BIND_WEAK(Function)                                                          \
