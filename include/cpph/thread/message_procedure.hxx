@@ -100,6 +100,12 @@ class message_procedure
     }
 
    private:
+    static bool& _deferred_wakeup_flag() noexcept
+    {
+        thread_local static bool _flag = false;
+        return _flag;
+    }
+
     static auto _deferred_list() noexcept
     {
         thread_local static std::vector<callable_pair> _list;
@@ -131,11 +137,11 @@ class message_procedure
                 e.enqueue_n(deferred->begin(), num_deferred_jobs);
             });
 
-            // May other thread's executor will wake up.
-            if (should_wakeup_other_thread)
-                _event_wait.notify_one();
-
+            // Defer waking up other threads.
+            _deferred_wakeup_flag() = should_wakeup_other_thread;
             deferred->clear();
+        } else {
+            _deferred_wakeup_flag() = false;
         }
     }
 
@@ -144,14 +150,25 @@ class message_procedure
     {
         callable_pair msg = {};
 
+        // Wakeup other threads to process deferred jobs.
+        size_t num_wakeup_count = 0;
+
         // Do quick check
         _messages.access([&](decltype(_messages)::value_type& v) {
             if (v.empty()) {
                 ++_num_waiting_runner;
             } else {
                 msg = v.dequeue();
+                auto num_jobs = v.size();
+
+                if (exchange(_deferred_wakeup_flag(), false) && num_jobs > 0) {
+                    num_wakeup_count = std::min(num_jobs, size_t(_num_waiting_runner));
+                }
             }
         });
+
+        while (num_wakeup_count--)
+            _event_wait.notify_one();  // wakeup other thread to process
 
         for (; msg.fn == nullptr;) {
             // Function couldn't be found. Wait for next post.
