@@ -17,6 +17,7 @@ add_executable(
         test-archive-2.cpp
         test-container.cpp
         test-event_queue.cpp
+        test-pipeline.cpp
 )
 
 target_link_libraries(
