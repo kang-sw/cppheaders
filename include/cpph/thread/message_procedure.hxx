@@ -78,7 +78,7 @@ class message_procedure
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
     callable_pair _allocate_token(Message&& message)
     {
-        auto constexpr fn = [](callable_pair const* arg) { (*(Message*)arg->fn)(); };
+        auto constexpr fn = [](callable_pair const* arg) { (*(Message*)arg->body)(); };
         callable_pair msg = {fn, nullptr, nullptr};
 
         try {

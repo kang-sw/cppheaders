@@ -40,6 +40,12 @@ using namespace cpph;
 
 //
 #if __has_include("asio.hpp")
+#    define ASIO_TEST 0
+#else
+#    define ASIO_TEST 0
+#endif
+
+#if ASIO_TEST
 #    include "asio/ip/tcp.hpp"
 #    include "refl/rpc/connection/asio.hxx"
 #endif
@@ -57,7 +63,7 @@ TEST_CASE("Basic RPC Test", "[rpc]")
             .route(sg_concat, std::plus<string>{})
             .build_to(service);
 
-#if __has_include("asio.hpp")
+#if ASIO_TEST
     using asio::ip::tcp;
     asio::io_context ioc;
     auto work = asio::require(ioc.get_executor(), asio::execution::outstanding_work.tracked);
@@ -164,7 +170,7 @@ TEST_CASE("Basic RPC Test", "[rpc]")
         }
     }
 
-#if __has_include("asio.hpp")
+#if ASIO_TEST
     ioc.stop();
     ioc_thread.join();
 
