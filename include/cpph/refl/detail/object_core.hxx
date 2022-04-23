@@ -38,6 +38,18 @@
 #include "../../counter.hxx"
 #include "if_archive.hxx"
 
+namespace cpph {
+using std::make_shared;
+using std::make_unique;
+using std::optional;
+using std::shared_ptr;
+using std::string;
+using std::string_view;
+using std::unique_ptr;
+using std::vector;
+using std::weak_ptr;
+}  // namespace cpph
+
 namespace cpph::refl {
 class object_metadata;
 
@@ -45,7 +57,7 @@ using std::shared_ptr;
 using std::weak_ptr;
 
 using object_metadata_t = object_metadata const*;
-using object_metadata_ptr = std::unique_ptr<object_metadata const>;
+using object_metadata_ptr = unique_ptr<object_metadata const>;
 using optional_property_metadata = struct property_metadata const*;
 
 namespace error {
@@ -57,7 +69,7 @@ struct object_archive_exception : object_exception {
     object_archive_exception&& set(archive::if_archive_base* archive)
     {
         error = archive->dump_error();
-        return std::move(*this);
+        return move(*this);
     }
 
     template <typename... Args_>
@@ -106,7 +118,7 @@ struct object_const_view_t {
     bool empty() const noexcept { return data == nullptr; }
 
    public:
-    auto pair() const noexcept { return std::make_pair(meta, data); }
+    auto pair() const noexcept { return make_pair(meta, data); }
 };
 
 struct object_view_t {
@@ -124,7 +136,7 @@ struct object_view_t {
     operator object_const_view_t() const noexcept { return {meta, data}; }
 
    public:
-    auto pair() const noexcept { return std::make_pair(meta, data); }
+    auto pair() const noexcept { return make_pair(meta, data); }
 };
 
 struct shared_object_ptr {
@@ -143,7 +155,7 @@ struct shared_object_ptr {
     shared_object_ptr(
             decltype(_meta) a,
             decltype(_data) b) noexcept
-            : _meta(a), _data(std::move(b)) {}
+            : _meta(a), _data(move(b)) {}
 
     operator object_view_t() noexcept { return view(); }
     operator object_const_view_t() const noexcept { return view(); }
@@ -190,7 +202,7 @@ struct property_metadata {
     int name_key_self = -1;
 
     //! name if this is property of 'object'
-    std::string name;
+    string name;
 
    public:
     object_metadata_t _owner_type = {};
@@ -392,7 +404,7 @@ class object_metadata
     bool _is_object = false;
 
     // if _is_object is true, this indicates name of properties
-    sorted_vector<std::string_view, int> _keys;
+    sorted_vector<string_view, int> _keys;
 
     // if _is_object is true, this indicates set of indices which is used for fast-access key
     sorted_vector<int, int> _key_indices;
@@ -480,7 +492,7 @@ class object_metadata
     /**
      * Find property by string key
      */
-    property_metadata const* property(std::string_view key) const
+    property_metadata const* property(string_view key) const
     {
         if (not _is_object) { return nullptr; }  // this is not object.
 
@@ -584,7 +596,7 @@ class object_metadata
     }
 
     struct restore_context {
-        std::string keybuf;
+        string keybuf;
     };
 
     void _restore_from(archive::if_reader* strm,
@@ -745,8 +757,8 @@ class object_metadata
         basic_factory& operator=(basic_factory&&) noexcept = default;
 
        protected:
-        std::unique_ptr<object_metadata> _current
-                = std::make_unique<object_metadata>();
+        unique_ptr<object_metadata> _current
+                = make_unique<object_metadata>();
 
        protected:
         size_t add_property_impl(property_metadata info)
@@ -941,7 +953,7 @@ class object_metadata
             return *this;
         }
 
-        auto& add_property(std::string key, property_metadata info)
+        auto& add_property(string key, property_metadata info)
         {
             info.name = std::move(key);
             auto index = add_property_impl(std::move(info));
@@ -956,7 +968,7 @@ class object_metadata
 
             for (auto prop : meta->_props) {
                 prop.offset += base_offset;
-                add_property(std::string{prop.name}, prop);
+                add_property(string{prop.name}, prop);
             }
 
             return *this;
@@ -988,7 +1000,7 @@ class object_metadata
         }
 
         template <typename MemVar_>
-        auto& property(MemVar_ Class_::*mem_ptr, std::string name, int name_key = -1)
+        auto& property(MemVar_ Class_::*mem_ptr, string name, int name_key = -1)
         {
             auto info = create_property_metadata(mem_ptr);
             info.name_key_self = name_key;
@@ -1003,7 +1015,7 @@ class object_metadata
         }
 
         template <typename KeyStr_, typename MemVar_>
-        auto& _property_3(MemVar_ Class_::*mem_ptr, KeyStr_&&, std::string name, int name_key = -1)
+        auto& _property_3(MemVar_ Class_::*mem_ptr, KeyStr_&&, string name, int name_key = -1)
         {
             return property(mem_ptr, std::move(name), name_key);
         }
@@ -1152,7 +1164,7 @@ object_const_view_t::object_const_view_t(const Ty_& p) noexcept : data((object_d
 }  // namespace cpph::refl
 
 namespace std {
-inline std::string to_string(cpph::refl::entity_type t)
+inline string to_string(cpph::refl::entity_type t)
 {
     using cpph::refl::entity_type;
     switch (t) {
