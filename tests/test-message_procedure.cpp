@@ -39,7 +39,7 @@ struct test_invocable_t {
     void operator()()
     {
         invoked.fetch_add(1, std::memory_order_relaxed);
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 10000; ++i) {
             std::this_thread::yield();
         }
     }
@@ -77,41 +77,111 @@ struct test_invocable_t {
 
 TEST_CASE("Test message procedure features", "[message_procedure]")
 {
-    cpph::message_procedure mproc{512 << 10};
+    cpph::message_procedure mproc{10 << 20};
+    using invocable_t = test_invocable_t<std::array<int, 1024>>;
+    int N = 10'000;
+
     invoked = destructed = 0;
 
     SECTION("Execution count equality")
     {
-        constexpr int N = 100'000;
-        using invocable_t = test_invocable_t<std::array<int, 1024>>;
 
-        for (int i = 0; i < N; ++i) {
+        for (int i = 0; i < N; ++i)
             mproc.post(invocable_t{});
-        }
 
         SECTION("ST")
         {
             mproc.flush();
-
-            REQUIRE(invoked == N);
-            REQUIRE(destructed == N);
         }
 
         SECTION("MT")
         {
             std::vector<std::thread> pool;
-            for (auto i : cpph::count(std::thread::hardware_concurrency())) {
+            for (auto i : cpph::count(std::thread::hardware_concurrency()))
                 pool.emplace_back(std::thread{&decltype(mproc)::exec, &mproc});
-            }
 
             while (destructed != N)
                 std::this_thread::yield();
 
             mproc.stop();
             for (auto& th : pool) { th.join(); }
-
-            REQUIRE(invoked == N);
-            REQUIRE(destructed == N);
         }
+
+        REQUIRE(invoked == N);
+        REQUIRE(destructed == N);
+    }
+
+    SECTION("Provider")
+    {
+        std::vector<std::thread> pool;
+
+        SECTION("SPSC")
+        {
+            pool.emplace_back(std::thread{&decltype(mproc)::exec, &mproc});
+
+            for (int i = 0; i < N; ++i)
+                mproc.post(invocable_t{});
+
+            while (destructed != N)
+                std::this_thread::yield();
+        }
+
+        SECTION("SPMC")
+        {
+            for (auto i : cpph::count(std::thread::hardware_concurrency()))
+                pool.emplace_back(std::thread{&decltype(mproc)::exec, &mproc});
+
+            for (int i = 0; i < N; ++i)
+                mproc.post(invocable_t{});
+
+            while (destructed != N)
+                std::this_thread::yield();
+        }
+
+        SECTION("MPSC")
+        {
+            pool.emplace_back(std::thread{&decltype(mproc)::exec, &mproc});
+
+            N /= std::thread::hardware_concurrency();
+
+            for (auto i : cpph::count(std::thread::hardware_concurrency()))
+                pool.emplace_back([&mproc, N] {
+                    for (auto k : cpph::count(N)) {
+                        mproc.post(invocable_t{});
+                    }
+                });
+
+            N *= std::thread::hardware_concurrency();
+
+            while (destructed != N)
+                std::this_thread::yield();
+        }
+
+        SECTION("MPMC")
+        {
+            for (auto i : cpph::count(std::thread::hardware_concurrency()))
+                pool.emplace_back(std::thread{&decltype(mproc)::exec, &mproc});
+
+            N /= std::thread::hardware_concurrency();
+
+            for (auto i : cpph::count(std::thread::hardware_concurrency()))
+                pool.emplace_back([&mproc, N] {
+                    for (auto k : cpph::count(N)) {
+                        mproc.post(invocable_t{});
+                    }
+                });
+
+            N *= std::thread::hardware_concurrency();
+
+            while (destructed != N)
+                std::this_thread::yield();
+        }
+
+        // Join all
+        mproc.stop();
+        for (auto& th : pool) { th.join(); }
+
+        REQUIRE(invoked == N);
+        REQUIRE(destructed == N);
     }
 }
