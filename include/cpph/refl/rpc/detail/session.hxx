@@ -490,7 +490,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
         if (was_valid) {
 #endif
-            _monitor->on_session_expired(&_profile);
+            _event_proc->post_internal_message([this, self = shared_from_this()] { _monitor->on_session_expired(&_profile); });
             _conn->close();
 
             do {
