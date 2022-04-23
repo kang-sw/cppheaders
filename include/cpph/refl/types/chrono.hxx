@@ -66,7 +66,7 @@ class time_info
         auto delta_ns = duration_cast<out_t>(int64_t(_ns) * 1ns);
 
         out = duration_cast<out_t>(_sec * 1s);
-        out += delta_ns * (_sec > 0 ? 1 : -1);
+        out += delta_ns * (_sec >= 0 ? 1 : -1);
     }
 
    private:
