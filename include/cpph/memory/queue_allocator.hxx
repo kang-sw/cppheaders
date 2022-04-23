@@ -298,6 +298,8 @@ class basic_queue_allocator_impl
     struct alignas(8) node_type {
         void (*node_dtor)(void*, size_t n);
         size_t n = 0;
+
+        char data[0];
     };
 
     static_assert(sizeof(node_type) == 16);
@@ -471,6 +473,17 @@ class basic_queue_allocator_impl
         _impl->deallcoate(node);
     }
 
+    static void call_destructor(void* ptr) noexcept
+    {
+        auto node = _node_of(ptr);
+        node->node_dtor(ptr, node->n);
+    }
+
+    void deallocate(void* ptr) noexcept
+    {
+        _impl->deallcoate(_node_of(ptr));
+    }
+
     size_t arraylen(void* ptr) const noexcept
     {
         auto node = _node_of(ptr);
@@ -479,12 +492,12 @@ class basic_queue_allocator_impl
 
     void* next(void* ptr) const noexcept
     {
-        return (node_type*)_impl->next(_node_of(ptr)) + 1;
+        return ((node_type*)_impl->next(_node_of(ptr)))->data;
     }
 
     void* front() const noexcept
     {
-        return (node_type*)_impl->front() + 1;
+        return ((node_type*)_impl->front())->data;
     }
 
     size_t size() const noexcept
@@ -500,8 +513,7 @@ class basic_queue_allocator_impl
     ~basic_queue_allocator_impl() noexcept
     {
         while (not _impl->empty()) {
-            destruct((node_type*)_impl->front() + 1);
-            _impl->deallcoate(_impl->front());
+            destruct(((node_type*)_impl->front())->data);
         }
     }
 
