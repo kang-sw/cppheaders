@@ -263,10 +263,13 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     bool close()
     {
+        // NOTE: shared_from_this() is not permitted to be called from destructor.
+        _monitor->on_session_expired(&_profile);
+
         lock_guard _{_mtx_protocol};
         if (expired()) { return false; }
 
-        _set_expired();
+        _set_expired(false);
         return true;
     }
 
@@ -482,7 +485,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _conn->start_data_receive();
     }
 
-    void _set_expired()
+    void _set_expired(bool call_monitor = true)
     {
 #ifndef NDEBUG
         bool const was_valid = _valid.exchange(false);
@@ -490,7 +493,6 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
         if (was_valid) {
 #endif
-            _event_proc->post_internal_message([this, self = shared_from_this()] { _monitor->on_session_expired(&_profile); });
             _conn->close();
 
             do {
@@ -514,6 +516,19 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
                 _rq->requests.clear();
             } while (false);
+
+            // NOTE: Added call_monitor selection flag, since calling shared_from_this() from
+            //   destructor causes crash.
+            if (call_monitor) {
+                // NOTE: As _set_expired() method is only called when _mtx_protocol is occupied,
+                //  calling monitor callback inside of this can easily cause deadlock. Thus invoking
+                //  monitor callback was moved to outside of function scope.
+                _event_proc->post_internal_message(
+                        [this, self = shared_from_this()] {
+                            _monitor->on_session_expired(&_profile);
+                        });
+            }
+
 #ifndef NDEBUG
         }
 #endif
