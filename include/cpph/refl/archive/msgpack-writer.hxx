@@ -31,7 +31,7 @@ namespace cpph::archive::msgpack {
 class writer : public archive::if_writer
 {
    private:
-    detail::write_context_helper _ctx;
+    _detail::write_context_helper _ctx;
 
    public:
     void clear() override { if_writer::clear(), _ctx.clear(); }

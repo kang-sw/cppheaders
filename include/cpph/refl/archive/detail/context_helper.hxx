@@ -33,7 +33,7 @@ CPPH_DECLARE_EXCEPTION(writer_out_of_range, writer_invalid_state);
 /**
  * Provides generic key-value based object archive context management
  */
-namespace cpph::archive::detail {
+namespace cpph::archive::_detail {
 
 class write_context_helper
 {
@@ -272,4 +272,4 @@ class read_context_helper
    public:
 };
 
-}  // namespace cpph::archive::detail
+}  // namespace cpph::archive::_detail

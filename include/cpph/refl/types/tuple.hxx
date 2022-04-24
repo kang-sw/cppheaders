@@ -36,7 +36,7 @@
  * Tuple access
  */
 namespace cpph::refl {
-namespace detail {
+namespace _detail {
 template <typename... Args_>
 auto get_tuple_descriptor(type_tag<std::tuple<Args_...>>)
 {
@@ -63,11 +63,11 @@ auto get_tuple_descriptor(type_tag<std::tuple<Args_...>>)
 
     return object_metadata::primitive_factory::define(sizeof(std::tuple<Args_...>), &manip);
 }
-}  // namespace detail
+}  // namespace _detail
 
 INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::tuple>::value))
 {
-    static auto inst = detail::get_tuple_descriptor(type_tag_v<ValTy_>);
+    static auto inst = _detail::get_tuple_descriptor(type_tag_v<ValTy_>);
     return &*inst;
 }
 

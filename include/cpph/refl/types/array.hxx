@@ -33,17 +33,17 @@
 #include "../detail/_init_macros.hxx"
 
 namespace cpph::refl {
-namespace detail {
+namespace _detail {
 template <typename>
 constexpr bool is_stl_array_v = false;
 
 template <typename Ty_, size_t N_>
 constexpr bool is_stl_array_v<std::array<Ty_, N_>> = true;
-}  // namespace detail
+}  // namespace _detail
 
-INTERNAL_CPPH_define_(ValTy_, detail::is_stl_array_v<ValTy_>)
+INTERNAL_CPPH_define_(ValTy_, _detail::is_stl_array_v<ValTy_>)
 {
-    return detail::fixed_size_descriptor<typename ValTy_::value_type>(
+    return _detail::fixed_size_descriptor<typename ValTy_::value_type>(
             sizeof(ValTy_),
             std::size(*(ValTy_*)0));
 }

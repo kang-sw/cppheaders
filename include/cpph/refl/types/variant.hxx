@@ -31,7 +31,7 @@
 #include "../detail/_init_macros.hxx"
 
 namespace cpph::refl {
-namespace detail::variant {
+namespace _detail::variant {
 template <typename... Args_>
 using visit_fn = void (*)(archive::if_reader*, std::variant<Args_...>*);
 
@@ -99,11 +99,11 @@ auto get_metadata(type_tag<std::variant<Args_...>>)
     static auto inst = object_metadata::primitive_factory::define(sizeof(variant_type), &manip);
     return &*inst;
 }
-}  // namespace detail::variant
+}  // namespace _detail::variant
 
 INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::variant>::value))
 {
-    return detail::variant::get_metadata(type_tag_v<ValTy_>);
+    return _detail::variant::get_metadata(type_tag_v<ValTy_>);
 }
 }  // namespace cpph::refl
 

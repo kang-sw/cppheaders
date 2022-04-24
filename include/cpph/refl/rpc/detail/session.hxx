@@ -41,7 +41,7 @@ using request_complete_handler = function<void(error_code const&, std::string_vi
 template <int>
 class basic_session_builder;
 
-namespace detail {
+namespace _detail {
 class empty_session_monitor : public if_session_monitor
 {
    public:
@@ -57,7 +57,7 @@ class empty_session_monitor : public if_session_monitor
         return _value;
     }
 };
-}  // namespace detail
+}  // namespace _detail
 
 class session : public if_session, public std::enable_shared_from_this<session>
 {
@@ -475,7 +475,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _valid.store(true);
 
         // Notify client that monitoring has begun
-        if (not _monitor) { _monitor = detail::empty_session_monitor::get(); }
+        if (not _monitor) { _monitor = _detail::empty_session_monitor::get(); }
         _monitor->on_session_created(&_profile);
 
         // Start initial receive

@@ -82,7 +82,7 @@
 
 //
 namespace cpph {
-namespace detail {
+namespace _detail {
 struct queue_buffer_block {
     uint32_t defferred : 1;
     uint32_t _padding  : 31;
@@ -108,11 +108,11 @@ struct queue_buffer_default_allocator {
         free(p);
     }
 };
-}  // namespace detail
+}  // namespace _detail
 
 struct queue_out_of_memory : std::bad_alloc {};
 
-namespace detail {
+namespace _detail {
 class queue_buffer_impl
 {
    public:
@@ -121,7 +121,7 @@ class queue_buffer_impl
     };
 
    private:
-    using memblk = detail::queue_buffer_block;
+    using memblk = _detail::queue_buffer_block;
     static_assert(sizeof(memblk) == block_size);
 
    public:
@@ -291,7 +291,7 @@ class queue_buffer_impl
 class basic_queue_allocator_impl
 {
    public:
-    explicit basic_queue_allocator_impl(detail::queue_buffer_impl* impl) noexcept
+    explicit basic_queue_allocator_impl(_detail::queue_buffer_impl* impl) noexcept
             : _impl(impl) {}
 
    private:
@@ -524,20 +524,20 @@ class basic_queue_allocator_impl
     }
 
    private:
-    detail::queue_buffer_impl* _impl;
+    _detail::queue_buffer_impl* _impl;
 };
 
-}  // namespace detail
+}  // namespace _detail
 
 template <typename Alloc_>
-class basic_queue_buffer : public detail::queue_buffer_impl
+class basic_queue_buffer : public _detail::queue_buffer_impl
 {
    public:
     using allocator_type = Alloc_;
 
    public:
     basic_queue_buffer(size_t capacity, Alloc_ allocator) noexcept
-            : detail::queue_buffer_impl(
+            : _detail::queue_buffer_impl(
                     capacity,
                     allocator.allocate(to_block_size(capacity))),
               _alloc{std::move(allocator)}
@@ -568,7 +568,7 @@ class basic_queue_buffer : public detail::queue_buffer_impl
    private:
     void _assign(basic_queue_buffer&& other) noexcept
     {
-        std::swap<detail::queue_buffer_impl>(*this, other);
+        std::swap<_detail::queue_buffer_impl>(*this, other);
         std::swap(_alloc, other._alloc);
     }
 
@@ -577,7 +577,7 @@ class basic_queue_buffer : public detail::queue_buffer_impl
 };
 
 template <typename Alloc_>
-class basic_queue_allocator : public detail::basic_queue_allocator_impl
+class basic_queue_allocator : public _detail::basic_queue_allocator_impl
 {
    public:
     explicit basic_queue_allocator(size_t capacity, Alloc_ allocator = {}) noexcept
@@ -594,11 +594,11 @@ class basic_queue_allocator : public detail::basic_queue_allocator_impl
 };
 
 using queue_buffer = basic_queue_buffer<
-        detail::queue_buffer_default_allocator<
-                detail::queue_buffer_block>>;
+        _detail::queue_buffer_default_allocator<
+                _detail::queue_buffer_block>>;
 
 using queue_allocator = basic_queue_allocator<
-        detail::queue_buffer_default_allocator<
-                detail::queue_buffer_block>>;
+        _detail::queue_buffer_default_allocator<
+                _detail::queue_buffer_block>>;
 
 }  // namespace cpph

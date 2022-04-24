@@ -1065,17 +1065,17 @@ auto define_tuple()
 /*
  * User type definition
  */
-namespace detail {
+namespace _detail {
 template <typename Ty_, class = void>
 constexpr bool is_cpph_refl_object_v = false;
 
 template <typename Ty_>
 constexpr bool is_cpph_refl_object_v<
         Ty_, std::void_t<decltype(std::declval<Ty_>().initialize_object_metadata())>> = true;
-}  // namespace detail
+}  // namespace _detail
 
 template <typename ValTy_>
-struct get_object_metadata_t<ValTy_, std::enable_if_t<detail::is_cpph_refl_object_v<ValTy_>>> {
+struct get_object_metadata_t<ValTy_, std::enable_if_t<_detail::is_cpph_refl_object_v<ValTy_>>> {
     auto operator()() const;
 };
 
@@ -1096,7 +1096,7 @@ struct type_tag {
 template <typename ValTy_>
 constexpr type_tag<ValTy_> type_tag_v = {};
 
-namespace detail {
+namespace _detail {
 template <typename ValTy_>
 auto initialize_object_metadata(type_tag<ValTy_>)
         -> object_sfinae_t<std::is_same_v<void, ValTy_>>;
@@ -1109,11 +1109,11 @@ struct initialize_object_metadata_fn {
         return initialize_object_metadata(type_tag_v<ValTy_>);
     }
 };
-}  // namespace detail
+}  // namespace _detail
 
 namespace {
 static constexpr auto initialize_object_metadata
-        = static_const<detail::initialize_object_metadata_fn>::value;
+        = static_const<_detail::initialize_object_metadata_fn>::value;
 }
 
 template <typename ValTy_>

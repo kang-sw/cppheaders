@@ -30,7 +30,7 @@
 //
 
 namespace cpph::type_traits {
-namespace detail {
+namespace _detail {
 template <class Default, class AlwaysVoid,
           template <class...> class Op, class... Args>
 struct detector {
@@ -51,17 +51,17 @@ struct nonesuch {
     nonesuch(nonesuch const&) = delete;
     void operator=(nonesuch const&) = delete;
 };
-}  // namespace detail
+}  // namespace _detail
 
 template <template <class...> class Op, class... Args>
-using is_detected = typename detail::detector<detail::nonesuch, void, Op, Args...>::value_t;
+using is_detected = typename _detail::detector<_detail::nonesuch, void, Op, Args...>::value_t;
 
 template <template <class...> class Op, class... Args>
 constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 
 template <template <class...> class Op, class... Args>
-using detected_t = typename detail::detector<detail::nonesuch, void, Op, Args...>::type;
+using detected_t = typename _detail::detector<_detail::nonesuch, void, Op, Args...>::type;
 
 template <class Default, template <class...> class Op, class... Args>
-using detected_or = detail::detector<Default, void, Op, Args...>;
+using detected_or = _detail::detector<Default, void, Op, Args...>;
 }  // namespace cpph::type_traits

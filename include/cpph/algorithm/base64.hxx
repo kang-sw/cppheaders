@@ -33,7 +33,7 @@
 // assert always
 
 namespace cpph::base64 {
-namespace detail {
+namespace _detail {
 constexpr std::string_view tb_encode
         = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
           "abcdefghijklmnopqrstuvwxyz"
@@ -148,7 +148,7 @@ constexpr int decode_last_frame(frame_t frame, bytes_t* bytes) noexcept
 
     return success * len;
 }
-}  // namespace detail
+}  // namespace _detail
 
 constexpr size_t encoded_size(size_t data_length) noexcept
 {
@@ -167,10 +167,10 @@ constexpr size_t decoded_size(String_ const& data) noexcept
 template <typename OutIt_>
 constexpr void encode_bytes(void const* data, size_t len, OutIt_ out) noexcept
 {
-    auto src = (detail::bytes_t const*)data;
+    auto src = (_detail::bytes_t const*)data;
 
     for (; len >= 3; len -= 3, ++src) {
-        auto encoded = detail::encode_single_frame(src);
+        auto encoded = _detail::encode_single_frame(src);
         *(out++) = encoded[0];
         *(out++) = encoded[1];
         *(out++) = encoded[2];
@@ -178,8 +178,8 @@ constexpr void encode_bytes(void const* data, size_t len, OutIt_ out) noexcept
     }
 
     if (len > 0) {
-        auto encoded = detail::encode_single_frame_with_padding(
-                src->data(), (detail::bytes_length)len);
+        auto encoded = _detail::encode_single_frame_with_padding(
+                src->data(), (_detail::bytes_length)len);
 
         *(out++) = encoded[0];
         *(out++) = encoded[1];
@@ -209,20 +209,20 @@ constexpr bool decode_bytes(char const* data, size_t size, OutIt_ out)
     if ((size & 0b11) != 0)
         throw std::logic_error("data size must be multiplicand of 4!");
 
-    detail::bytes_t decoded{};
-    auto it = (detail::frame_t const*)data,
-         end_1 = (detail::frame_t const*)(data + size) - 1;
+    _detail::bytes_t decoded{};
+    auto it = (_detail::frame_t const*)data,
+         end_1 = (_detail::frame_t const*)(data + size) - 1;
 
     bool has_error = false;
 
     for (; it < end_1; ++it) {
-        has_error |= detail::decode_single_frame(*it, &decoded);
+        has_error |= _detail::decode_single_frame(*it, &decoded);
         *(out++) = decoded[0];
         *(out++) = decoded[1];
         *(out++) = decoded[2];
     }
 
-    auto len = detail::decode_last_frame(*it, &decoded);
+    auto len = _detail::decode_last_frame(*it, &decoded);
     has_error |= len == 0;
 
     for (auto i = 0; i < len; ++i)

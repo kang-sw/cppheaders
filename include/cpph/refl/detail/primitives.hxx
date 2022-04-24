@@ -62,7 +62,7 @@ namespace cpph::refl {
  * Object descriptor
  */
 template <typename ValTy_>
-auto get_object_metadata_t<ValTy_, std::enable_if_t<detail::is_cpph_refl_object_v<ValTy_>>>::operator()() const
+auto get_object_metadata_t<ValTy_, std::enable_if_t<_detail::is_cpph_refl_object_v<ValTy_>>>::operator()() const
 {
     static object_metadata_ptr inst = ((ValTy_*)1)->initialize_object_metadata();
 
@@ -115,7 +115,7 @@ INTERNAL_CPPH_define_(
 /*
  * Fixed size arrays
  */
-namespace detail {
+namespace _detail {
 template <typename ElemTy_>
 object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
 {
@@ -162,11 +162,11 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
     return &*desc;
 }
 
-}  // namespace detail
+}  // namespace _detail
 
 INTERNAL_CPPH_define_(ValTy_, std::is_array_v<ValTy_>)
 {
-    return detail::fixed_size_descriptor<std::remove_extent_t<ValTy_>>(
+    return _detail::fixed_size_descriptor<std::remove_extent_t<ValTy_>>(
             sizeof(ValTy_),
             std::size(*(ValTy_*)0));
 }
@@ -176,7 +176,7 @@ INTERNAL_CPPH_define_(ValTy_, std::is_array_v<ValTy_>)
  *
  * (set, map, vector ...)
  */
-namespace detail {
+namespace _detail {
 template <typename Container_>
 auto get_list_like_descriptor() -> object_metadata_t
 {
@@ -238,13 +238,13 @@ auto get_list_like_descriptor() -> object_metadata_t
     return &*desc;
 }
 
-}  // namespace detail
+}  // namespace _detail
 
 INTERNAL_CPPH_define_(
         ValTy_,
         (is_template_instance_of<ValTy_, std::vector>::value))
 {
-    return detail::get_list_like_descriptor<ValTy_>();
+    return _detail::get_list_like_descriptor<ValTy_>();
 }
 }  // namespace cpph::refl
 
@@ -252,7 +252,7 @@ INTERNAL_CPPH_define_(
  * Map like access
  */
 namespace cpph::refl {
-namespace detail {
+namespace _detail {
 template <typename Map_>
 auto get_dictionary_descriptor() -> object_metadata_ptr
 {
@@ -300,11 +300,11 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
 
     return object_metadata::primitive_factory::define(sizeof(Map_), &manip);
 }
-}  // namespace detail
+}  // namespace _detail
 
 INTERNAL_CPPH_define_(MapTy_, (is_template_instance_of<MapTy_, std::map>::value))
 {
-    static auto inst = detail::get_dictionary_descriptor<MapTy_>();
+    static auto inst = _detail::get_dictionary_descriptor<MapTy_>();
     return &*inst;
 }
 }  // namespace cpph::refl

@@ -34,7 +34,7 @@
 namespace cpph::refl {
 INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::list>::value))
 {
-    return detail::get_list_like_descriptor<ValTy_>();
+    return _detail::get_list_like_descriptor<ValTy_>();
 }
 }  // namespace cpph::refl
 

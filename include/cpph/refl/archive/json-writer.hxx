@@ -40,7 +40,7 @@ CPPH_DECLARE_EXCEPTION(invalid_key_type, error::writer_exception);
 class writer : public archive::if_writer
 {
    private:
-    detail::write_context_helper _ctx;
+    _detail::write_context_helper _ctx;
 
    public:
     int indent = -1;

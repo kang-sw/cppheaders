@@ -36,12 +36,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 namespace cpph::futils {
-namespace detail {
+namespace _detail {
 struct _freleae {
     using pointer = FILE*;
     void operator()(pointer p) const noexcept { ::fclose(p); }
 };
-}  // namespace detail
+}  // namespace _detail
 
 /**
  * unsafe printf which returns thread-local storage
@@ -86,7 +86,7 @@ struct file_read_error : std::exception {
     }
 };
 
-using file_ptr = std::unique_ptr<FILE, detail::_freleae>;
+using file_ptr = std::unique_ptr<FILE, _detail::_freleae>;
 
 inline auto readin(char const* path)
 {

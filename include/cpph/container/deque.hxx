@@ -31,7 +31,7 @@
 #include "buffer.hxx"
 
 namespace cpph {
-namespace detail {
+namespace _detail {
 constexpr inline size_t _nearlest_llog2(size_t value)
 {
     if (value == ~size_t{}) { return 0; }
@@ -48,15 +48,15 @@ constexpr inline bool _is_pow2(size_t value)
     for (; value > 0; value >>= 1) { n_one += value & 1; }
     return n_one == 1;
 }
-}  // namespace detail
+}  // namespace _detail
 
 template <typename Ty_,
-          size_t BlockSize_ = size_t{1} << detail::_nearlest_llog2(1024 / sizeof(Ty_) * 2 - 1),
+          size_t BlockSize_ = size_t{1} << _detail::_nearlest_llog2(1024 / sizeof(Ty_) * 2 - 1),
           typename Alloc_ = std::allocator<Ty_>>
 class deque : Alloc_  // zero_size optimization
 {
     // block size must be power of 2 for optimization
-    static_assert(detail::_is_pow2(BlockSize_));
+    static_assert(_detail::_is_pow2(BlockSize_));
 
    public:
     using value_type = Ty_;
@@ -80,7 +80,7 @@ class deque : Alloc_  // zero_size optimization
         _cp_triv = std::is_trivially_copyable_v<value_type>,
         _dt_triv = std::is_trivially_destructible_v<value_type>,
 
-        _shift = detail::_nearlest_llog2(block_size),
+        _shift = _detail::_nearlest_llog2(block_size),
         _mask = block_size - 1,
     };
 
