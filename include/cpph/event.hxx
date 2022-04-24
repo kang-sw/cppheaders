@@ -78,13 +78,13 @@ class basic_event
 
         bool operator<(_entity_type const& rhs) const noexcept
         {
-            // send pending-remove elements to back
+            // send remove candidates to back
             if (not id && rhs.id)
                 return false;
             if (id && not rhs.id)
                 return true;
 
-            return priority < rhs.priority;
+            return priority > rhs.priority;
         }
     };
 

@@ -10,7 +10,7 @@ OutIter generate_random_characters(OutIter o, size_t n, Generator&& gen)
 {
     auto constexpr charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"sv;
     std::uniform_int_distribution<size_t> distr{0, size(charset) - 1};
-    while (n--) { *o++ = distr(gen); }
+    while (n--) { *o++ = charset[distr(gen)]; }
     return o;
 }
 
