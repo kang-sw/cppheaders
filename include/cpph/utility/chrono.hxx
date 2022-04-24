@@ -26,4 +26,24 @@ double to_seconds(duration<Rep, Ratio> const& dur)
 {
     return duration_cast<duration<double>>(dur).count();
 }
+
+//! @see https://stackoverflow.com/a/44063597
+inline duration<double> timezone_offset()
+{
+    time_t gmt, rawtime = time(NULL);
+    struct tm* ptm;
+
+#if !defined(WIN32)
+    struct tm gbuf;
+    ptm = gmtime_r(&rawtime, &gbuf);
+#else
+    struct tm gbuf;
+    gmtime_s(ptm = &gbuf, &rawtime);
+#endif
+    // Request that mktime() looksup dst in timezone database
+    ptm->tm_isdst = -1;
+    gmt = mktime(ptm);
+
+    return 1.s * difftime(rawtime, gmt);
+}
 }  // namespace cpph
