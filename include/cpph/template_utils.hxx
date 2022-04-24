@@ -78,6 +78,17 @@ using std::decay_t;
 using std::enable_if;
 using std::enable_if_t;
 
+using std::conditional_t;
+using std::integral_constant;
+
+using std::is_enum_v;
+using std::is_integral_v;
+using std::is_null_pointer_v;
+
+using std::is_base_of_v;
+using std::is_convertible_v;
+
+using std::is_const_v;
 using std::is_invocable_r_v;
 using std::is_invocable_v;
 using std::is_same_v;
