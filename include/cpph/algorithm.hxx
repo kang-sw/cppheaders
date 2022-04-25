@@ -26,5 +26,4 @@
 
 #pragma once
 
-CPPHEADERS_DEPRECATED_HEADER("algorithm/std.hxx")
-#include "algorithm/std.hxx"
+#include "cpph/algorithm/std.hxx"
