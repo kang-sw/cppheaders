@@ -219,5 +219,16 @@ class sorted_vector
             return 1;
         }
     }
+
+    template <typename KTy_>
+    auto& operator[](KTy_&& key)
+    {
+        return try_emplace(std::forward<KTy_>(key)).first->second;
+    }
+
+    auto& operator[](KeyTy_ const& key) const
+    {
+        return at(key);
+    }
 };
 }  // namespace cpph
