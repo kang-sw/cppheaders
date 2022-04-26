@@ -32,6 +32,7 @@
 namespace cpph {
 
 template <typename KeyTy_, typename MapTy_,
+          typename Comparator_ = std::less<KeyTy_>,
           typename Alloc_ = std::allocator<std::pair<KeyTy_, MapTy_>>>
 class sorted_vector
 {
@@ -46,6 +47,8 @@ class sorted_vector
     using const_iterator = typename vector_type::const_iterator;
     using reverse_iterator = typename vector_type::reverse_iterator;
     using const_reverse_iterator = typename vector_type::const_reverse_iterator;
+
+    using comparator_type = Comparator_;
 
    private:
     vector_type _vector;
@@ -71,13 +74,13 @@ class sorted_vector
 
     static bool _sort_fn(value_type const& a, value_type const& b) noexcept
     {
-        return a.first < b.first;
+        return Comparator_{}(a.first, b.first);
     }
 
     template <class Iter1_, class Iter2_>
     static bool _less(Iter1_ const& a, Iter2_ const& b) noexcept
     {
-        return a->first < b->first;
+        return Comparator_{}(a->first, b->first);
     }
 
    public:
@@ -121,14 +124,14 @@ class sorted_vector
     auto find(Key_ const& key) const
     {
         auto it = _lower_bound(key);
-        return it != _vector.end() && key < it->first ? _vector.end() : it;
+        return it != _vector.end() && Comparator_{}(key, it->first) ? _vector.end() : it;
     }
 
     template <typename Key_>
     auto find(Key_ const& key)
     {
         auto it = _lower_bound(key);
-        return it != _vector.end() && key < it->first ? _vector.end() : it;
+        return it != _vector.end() && Comparator_{}(key, it->first) ? _vector.end() : it;
     }
 
     template <typename Key_>
@@ -153,7 +156,7 @@ class sorted_vector
     auto try_emplace(Key_&& key, Args_&&... args)
     {
         auto it = _lower_bound(key);
-        if (it != _vector.end() && not(key < it->first)) { return std::make_pair(it, false); }
+        if (it != _vector.end() && not Comparator_{}(key, it->first)) { return std::make_pair(it, false); }
 
         it = _vector.insert(
                 it, value_type{
@@ -175,11 +178,11 @@ class sorted_vector
             wrong_hint = (idx_hint != 0);
         else if (hint == _vector.end() && not(_vector.back().first < key))
             wrong_hint = true;
-        else if (hint == _vector.begin() && not(key < _vector.front().first))
+        else if (hint == _vector.begin() && not Comparator_(key, _vector.front().first))
             wrong_hint = true;
-        else if (not(hint[0].first < key))
+        else if (not Comparator_{}(hint[0].first, key))
             wrong_hint = true;
-        else if (hint + 1 != _vector.end() && not(key < (hint + 1)->first))
+        else if (hint + 1 != _vector.end() && not Comparator_{}(key, (hint + 1)->first))
             wrong_hint = true;
 
         if (wrong_hint) {
