@@ -137,7 +137,7 @@ class sorted_vector
     template <typename Key_>
     auto& at(Key_ const& key) const
     {
-        auto it = _find(key);
+        auto it = this->find(key);
         if (it == _vector.end()) { throw std::out_of_range{"key not exist"}; }
 
         return it->second;
@@ -146,7 +146,7 @@ class sorted_vector
     template <typename Key_>
     auto& at(Key_ const& key)
     {
-        auto it = _find(key);
+        auto it = this->find(key);
         if (it == _vector.end()) { throw std::out_of_range{"key not exist"}; }
 
         return it->second;
