@@ -30,16 +30,11 @@
 
 #pragma once
 #include <atomic>
-#include <cassert>
-#include <list>
 #include <thread>
 #include <vector>
 
 #include "../counter.hxx"
-#include "../functional.hxx"
 #include "event_queue.hxx"
-#include "event_wait.hxx"
-#include "locked.hxx"
 
 namespace cpph {
 class thread_pool
