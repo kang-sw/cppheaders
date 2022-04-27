@@ -52,6 +52,12 @@ class binary<
         : public Container_
 {
    public:
+    Container_& ref() noexcept { return *this; }
+    Container_ const& ref() const noexcept { return *this; }
+    Container_&& move() && noexcept { return std::move(*this); }
+    void swap(Container_& other) noexcept { std::swap(*this, other); }
+
+   public:
     using Container_::Container_;
 
     enum {
@@ -67,6 +73,12 @@ class binary<Container_,
                              remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
         : public Container_
 {
+   public:
+    Container_& ref() noexcept { return *this; }
+    Container_ const& ref() const noexcept { return *this; }
+    Container_&& move() && noexcept { return std::move(*this); }
+    void swap(Container_& other) noexcept { std::swap(*this, other); }
+
    public:
     using Container_::Container_;
 
