@@ -54,7 +54,17 @@ class thread_pool
 
     ~thread_pool()
     {
+        stop();
+        join();
+    }
+
+    void stop()
+    {
         _proc.stop();
+    }
+
+    void join()
+    {
         for (auto& th : _workers) { th.join(); }
 
         _proc.clear();
