@@ -43,9 +43,8 @@ constexpr bool is_stl_array_v<std::array<Ty_, N_>> = true;
 
 INTERNAL_CPPH_define_(ValTy_, _detail::is_stl_array_v<ValTy_>)
 {
-    return _detail::fixed_size_descriptor<typename ValTy_::value_type>(
-            sizeof(ValTy_),
-            std::size(*(ValTy_*)0));
+    return _detail::fixed_size_descriptor<typename ValTy_::value_type, sizeof(ValTy_) / sizeof(std::declval<ValTy_>()[0])>(
+            sizeof(ValTy_));
 }
 }  // namespace cpph::refl
 

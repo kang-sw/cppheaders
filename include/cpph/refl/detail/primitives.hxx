@@ -116,8 +116,9 @@ INTERNAL_CPPH_define_(
  * Fixed size arrays
  */
 namespace _detail {
+
 template <typename ElemTy_>
-object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
+object_metadata_ptr fixed_size_descriptor_impl(size_t extent, size_t num_elems)
 {
     static struct manip_t : templated_primitive_control<ElemTy_> {
         entity_type type() const noexcept override
@@ -158,7 +159,13 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
         }
     } manip;
 
-    static auto desc = object_metadata::primitive_factory::define(extent, &manip);
+    return object_metadata::primitive_factory::define(extent, &manip);
+}
+
+template <typename ElemTy, size_t NElems>
+object_metadata_t fixed_size_descriptor(size_t extent)
+{
+    static auto desc = fixed_size_descriptor_impl<ElemTy>(extent, NElems);
     return &*desc;
 }
 
@@ -166,9 +173,9 @@ object_metadata_t fixed_size_descriptor(size_t extent, size_t num_elems)
 
 INTERNAL_CPPH_define_(ValTy_, std::is_array_v<ValTy_>)
 {
-    return _detail::fixed_size_descriptor<std::remove_extent_t<ValTy_>>(
-            sizeof(ValTy_),
-            std::size(*(ValTy_*)0));
+    return _detail::fixed_size_descriptor<
+            std::remove_extent_t<ValTy_>, sizeof(ValTy_) / sizeof(std::declval<ValTy_>()[0])>(
+            sizeof(ValTy_));
 }
 
 /*
