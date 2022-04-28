@@ -84,8 +84,8 @@
 namespace cpph {
 namespace _detail {
 struct queue_buffer_block {
-    uint32_t defferred : 1;
-    uint32_t _padding  : 31;
+    uint32_t deferred : 1;
+    uint32_t _padding : 31;
 
     // there's no field to indicate next pos.
     // ((_blk_type*)_mem + size) will point next memory block header.
@@ -125,9 +125,9 @@ class queue_buffer_impl
     static_assert(sizeof(memblk) == block_size);
 
    public:
-    queue_buffer_impl(size_t capacity, memblk* buffer)
+    queue_buffer_impl(size_t capacity, void* buffer)
             : _capacity{to_block_size(capacity)},
-              _mem{buffer}
+              _mem{(memblk*)buffer}
     {
         memset(buffer, 0, capacity);
     }
@@ -241,7 +241,7 @@ class queue_buffer_impl
         assert(p && not empty());
 
         if (auto* _node = (memblk*)p - 1; _node != _tail) {
-            _node->defferred = true;
+            _node->deferred = true;
         } else {
             do  // perform all deferred deallocations
             {
@@ -250,7 +250,7 @@ class queue_buffer_impl
                 _tail = next;
 
                 --_num_alloc;
-            } while (_tail && _tail->occupied() && _tail->defferred);
+            } while (_tail && _tail->occupied() && _tail->deferred);
 
             if (_tail == nullptr)
                 _head = nullptr;
@@ -600,5 +600,7 @@ using queue_buffer = basic_queue_buffer<
 using queue_allocator = basic_queue_allocator<
         _detail::queue_buffer_default_allocator<
                 _detail::queue_buffer_block>>;
+
+using viewed_queue_buffer = _detail::queue_buffer_impl;
 
 }  // namespace cpph
