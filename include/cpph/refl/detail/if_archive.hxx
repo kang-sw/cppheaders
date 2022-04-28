@@ -261,6 +261,7 @@ class if_writer : public if_archive_base
     virtual if_writer& write(nullptr_t) = 0;
 
     virtual if_writer& write(bool v) { return this->write((int64_t)v); }
+    inline if_writer& write(char v) { return this->write((int8_t)v); }
 
     virtual if_writer& write(int8_t v) { return this->write((int64_t)v); }
     virtual if_writer& write(int16_t v) { return this->write((int64_t)v); }
@@ -360,6 +361,7 @@ class if_reader : public if_archive_base
 
     virtual if_reader& read(bool& v) { return _upcast<int64_t>(v); }
 
+    inline if_reader& read(char& v) { return read((int8_t&)v); }
     virtual if_reader& read(int8_t& v) { return _upcast<int64_t>(v); }
     virtual if_reader& read(int16_t& v) { return _upcast<int64_t>(v); }
     virtual if_reader& read(int32_t& v) { return _upcast<int64_t>(v); }
