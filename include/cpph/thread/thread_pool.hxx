@@ -114,8 +114,7 @@ class event_queue_worker
 
     ~event_queue_worker()
     {
-        stop();
-        join();
+        shutdown();
     }
 
    public:
@@ -127,7 +126,23 @@ class event_queue_worker
     void join()
     {
         if (_worker.joinable()) { _worker.join(); }
+    }
 
+    void relaunch()
+    {
+        if (_worker.joinable()) { throw std::logic_error{"You may not relaunch running thread!"}; }
+        _proc.restart();
+        _worker = std::thread{&event_queue::exec, &_proc};
+    }
+
+    void shutdown()
+    {
+        stop();
+        join();
+    }
+
+    void clear()
+    {
         _proc.clear();
     }
 
