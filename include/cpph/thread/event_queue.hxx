@@ -293,6 +293,7 @@ class event_queue
         decltype(_messages)::value_type queue{0};
         _messages.access([&](decltype(queue)& v) {
             queue = std::move(v);
+            v.reserve_shrink(queue.capacity());
         });
 
         for (auto& e : queue) {
