@@ -94,4 +94,62 @@ class thread_pool
         return &_proc;
     }
 };
+
+class event_queue_worker
+{
+    event_queue _proc;
+    std::thread _worker;
+
+   public:
+    explicit event_queue_worker(size_t allocator_memory)
+            : _proc(allocator_memory),
+              _worker(&event_queue::exec, &_proc)
+    {
+    }
+
+    event_queue_worker()
+            : event_queue_worker(10 << 10)
+    {
+    }
+
+    ~event_queue_worker()
+    {
+        stop();
+        join();
+    }
+
+   public:
+    void stop()
+    {
+        _proc.stop();
+    }
+
+    void join()
+    {
+        if (_worker.joinable()) { _worker.join(); }
+
+        _proc.clear();
+    }
+
+   public:
+    auto& queue() { return _proc; }
+
+    template <typename Message_>
+    void post(Message_&& msg)
+    {
+        _proc.post(std::forward<Message_>(msg));
+    }
+
+    template <typename Message_>
+    void defer(Message_&& msg)
+    {
+        _proc.defer(std::forward<Message_>(msg));
+    }
+
+    template <typename Message_>
+    void dispatch(Message_&& msg)
+    {
+        _proc.dispatch(std::forward<Message_>(msg));
+    }
+};
 }  // namespace cpph
