@@ -55,7 +55,6 @@ class asio_stream : public if_connection, public std::streambuf
             : if_connection(this, _ep_to_string(socket)),
               _socket(std::move(socket))
     {
-        _socket.set_option(asio::ip::tcp::no_delay{true});
     }
 
    public:
