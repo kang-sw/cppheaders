@@ -48,6 +48,8 @@ class asio_stream : public if_connection, public std::streambuf
     size_t _total_read = 0;
     size_t _total_write = 0;
 
+    bool _closed = false;
+
    public:
     explicit asio_stream(socket_type&& socket)
             : if_connection(this, _ep_to_string(socket)),
@@ -112,6 +114,8 @@ class asio_stream : public if_connection, public std::streambuf
 
     std::streamsize xsgetn(char* buf, std::streamsize len) override
     {
+        if (_closed) { return 0; }
+
         if (len < sizeof _rdbuf) {
             return basic_streambuf::xsgetn(buf, len);
         } else {
@@ -133,6 +137,8 @@ class asio_stream : public if_connection, public std::streambuf
 
     std::streamsize xsputn(const char* data, std::streamsize len) override
     {
+        if (_closed) { return 0; }
+
         if (len < sizeof _wrbuf) {
             return basic_streambuf::xsputn(data, len);
         } else {
@@ -153,7 +159,9 @@ class asio_stream : public if_connection, public std::streambuf
 
     int sync() override
     {
-        _write_all();
+        if (~size_t{} == _write_all()) {
+            return -1;
+        }
 
 #if defined(ASIO_IP_TCP_HPP)  // Only when TCP header is included
         try {
@@ -178,6 +186,7 @@ class asio_stream : public if_connection, public std::streambuf
             num_send -= n, _total_write += n;
 
             if (ec) {
+                _closed = true;
                 return ~size_t{};
             }
         }
