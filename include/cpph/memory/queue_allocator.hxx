@@ -145,6 +145,11 @@ class queue_buffer_impl
         return _alloc(n);
     }
 
+    void* allocate_nothrow(size_t n) noexcept
+    {
+        return _alloc_nothrow(n);
+    }
+
     void deallcoate(void* p) noexcept
     {
         _dealloc(p);
@@ -226,6 +231,54 @@ class queue_buffer_impl
 
                 if (candidate->occupied())
                     throw queue_out_of_memory{};
+            }
+
+            candidate->size = num_block;
+            _head = candidate;
+        }
+
+        ++_num_alloc;
+        return _head + 1;
+    }
+
+    void* _alloc_nothrow(size_t n) noexcept
+    {
+        if (n == 0)
+            return nullptr;
+
+        auto num_block = to_block_size(n);
+
+        if (not _head) {
+            if (num_block + 1 > _capacity)
+                return nullptr;
+
+            _head = _tail = _refer(0);
+            _head->size = num_block;
+        } else {
+            // 1.   if there's not enough space to allocate new memory block,
+            //       fill tail memory to end, and insert new item at first.
+            // 2.   otherwise, simply allocate new item at candidate place.
+
+            auto candidate = _head + _head->size + 1;
+
+            if (_head >= _tail) {
+                if (candidate + num_block >= _border()) {
+                    _head->size = _border() - _head - 1;
+                    candidate = _refer(0);
+
+                    if (candidate + 1 + num_block >= _tail)
+                        return nullptr;
+                }
+
+                if (candidate->occupied())
+                    return nullptr;
+
+            } else {
+                if (candidate + num_block >= _tail)
+                    return nullptr;
+
+                if (candidate->occupied())
+                    return nullptr;
             }
 
             candidate->size = num_block;
@@ -399,11 +452,15 @@ class basic_queue_allocator_impl
 
     template <typename Ty_,
               typename... Args_>
-    Ty_* construct(Args_&&... args)
+    Ty_* construct(Args_&&... args) noexcept(std::is_nothrow_constructible_v<Ty_, Args_...>)
     {
         constexpr size_t alloc_size = sizeof(Ty_) + sizeof(node_type);
-        auto node = (node_type*)_impl->allocate(alloc_size);
+        auto node = (node_type*)_impl->allocate_nothrow(alloc_size);
         auto memory = (Ty_*)(node + 1);
+
+        if (node == nullptr) {
+            return nullptr;
+        }
 
         if constexpr (std::is_trivial_v<Ty_>) {
             node->n = 0;

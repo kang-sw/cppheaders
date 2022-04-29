@@ -81,14 +81,15 @@ class event_queue
         auto constexpr fn = [](callable_pair const* arg) { (*(Message*)arg->body)(); };
         callable_pair msg = {fn, nullptr, nullptr};
 
-        try {
-            msg.body = _queue_alloc.lock()->template construct<Message>(std::forward<Message>(message));
+        msg.body = _queue_alloc.lock()->template construct<Message>(std::forward<Message>(message));
+
+        if (msg.body) {
             msg.dispose =
                     [](event_queue* self, void* body) {
                         queue_allocator::call_destructor(body);
                         self->_queue_alloc.lock()->deallocate(body);
                     };
-        } catch (queue_out_of_memory&) {
+        } else {
             msg.body = new Message(std::forward<Message>(message));
             msg.dispose =
                     [](auto, void* body) {
@@ -290,10 +291,9 @@ class event_queue
 
     void clear()
     {
-        decltype(_messages)::value_type queue{0};
+        decltype(_messages)::value_type queue{32};
         _messages.access([&](decltype(queue)& v) {
-            queue = std::move(v);
-            v.reserve_shrink(queue.capacity());
+            swap(queue, v);
         });
 
         for (auto& e : queue) {
