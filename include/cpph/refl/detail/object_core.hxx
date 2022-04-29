@@ -1250,3 +1250,16 @@ if_reader& if_reader::read(Ty_& other)
 }
 
 }  // namespace cpph::archive
+
+namespace cpph::refl {
+/**
+ * Object descriptor
+ */
+template <typename ValTy_>
+auto get_object_metadata_t<ValTy_, std::enable_if_t<_detail::is_cpph_refl_object_v<ValTy_>>>::operator()() const
+{
+    static object_metadata_ptr inst = ((ValTy_*)1)->initialize_object_metadata();
+
+    return &*inst;
+}
+}  // namespace cpph::refl

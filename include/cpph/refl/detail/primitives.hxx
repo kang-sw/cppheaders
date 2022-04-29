@@ -58,17 +58,6 @@ static_assert(has_reserve_v<std::vector<int>>);
 
 namespace cpph::refl {
 
-/**
- * Object descriptor
- */
-template <typename ValTy_>
-auto get_object_metadata_t<ValTy_, std::enable_if_t<_detail::is_cpph_refl_object_v<ValTy_>>>::operator()() const
-{
-    static object_metadata_ptr inst = ((ValTy_*)1)->initialize_object_metadata();
-
-    return &*inst;
-}
-
 INTERNAL_CPPH_define_(
         ValTy_,
         (is_any_of_v<ValTy_, bool, nullptr_t, std::string>)
