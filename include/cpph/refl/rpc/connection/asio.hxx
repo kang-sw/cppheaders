@@ -32,53 +32,6 @@
 #include "asio/post.hpp"
 
 namespace cpph::rpc {
-class _asio_count_adapter_streambuf : public std::streambuf
-{
-   public:
-    std::streambuf* _owner;
-    size_t _rt = 0, _wt = 0;
-
-   public:
-    explicit _asio_count_adapter_streambuf(std::streambuf* owner) : _owner(owner) {}
-
-   protected:
-    int sync() override
-    {
-        return _owner->pubsync();
-    }
-
-    std::streamsize xsgetn(char_type* buf, std::streamsize n) override
-    {
-        auto nread = _owner->sgetn(buf, n);
-        _rt += nread;
-        return nread;
-    }
-
-    int underflow() override
-    {
-        return _owner->sgetc();
-    }
-
-    int uflow() override
-    {
-        _rt += 1;
-        return _owner->sbumpc();
-    }
-
-    std::streamsize xsputn(const char_type* buf, std::streamsize n) override
-    {
-        auto nwrite = _owner->sputn(buf, n);
-        _wt += nwrite;
-        return nwrite;
-    }
-
-    int overflow(int_type c) override
-    {
-        _wt += 1;
-        return _owner->sputc(c);
-    }
-};
-
 template <typename Protocol>
 class asio_stream : public if_connection, public std::streambuf
 {
@@ -87,11 +40,13 @@ class asio_stream : public if_connection, public std::streambuf
     using streambuf_type = asio::basic_socket_streambuf<protocol_type>;
 
    private:
-    _asio_count_adapter_streambuf _adapter{this};
     socket_type _socket;
 
-    char _wrbuf[9000];
-    char _rdbuf[9000];
+    char _wrbuf[1500];
+    char _rdbuf[1500];
+
+    size_t _total_read = 0;
+    size_t _total_write = 0;
 
    public:
     explicit asio_stream(socket_type&& socket)
@@ -123,14 +78,14 @@ class asio_stream : public if_connection, public std::streambuf
 
     void get_total_rw(size_t* num_read, size_t* num_write) override
     {
-        *num_read = _adapter._rt;
-        *num_write = _adapter._wt;
+        *num_read = _total_read;
+        *num_write = _total_write;
     }
 
    protected:
     int_type overflow(int_type c) override
     {
-        if (_write_all()) {
+        if (_write_all() != ~size_t{}) {
             _wrbuf[0] = traits_type::to_char_type(c);
             pbump(1);
 
@@ -145,12 +100,54 @@ class asio_stream : public if_connection, public std::streambuf
         asio::error_code ec;
 
         auto nread = _socket.receive(asio::buffer(_rdbuf), {}, ec);
+        _total_read += nread;
         setg(_rdbuf, _rdbuf, _rdbuf + nread);
 
         if (ec) {
             return traits_type::eof();
         } else {
             return traits_type::to_int_type(_rdbuf[0]);
+        }
+    }
+
+    std::streamsize xsgetn(char* buf, std::streamsize len) override
+    {
+        if (len < sizeof _rdbuf) {
+            return basic_streambuf::xsgetn(buf, len);
+        } else {
+            // Read from cache first
+            std::streamsize nread = egptr() - gptr();
+            memcpy(buf, gptr(), nread);
+
+            setg(nullptr, nullptr, nullptr);
+            asio::error_code ec;
+
+            do {
+                nread += _socket.receive(asio::buffer(buf + nread, len - nread), {}, ec);
+            } while (not ec && nread < len);
+
+            _total_read += nread;
+            return nread;
+        }
+    }
+
+    std::streamsize xsputn(const char* data, std::streamsize len) override
+    {
+        if (len < sizeof _wrbuf) {
+            return basic_streambuf::xsputn(data, len);
+        } else {
+            _write_all();  // First, flush current buffer
+
+            std::streamsize nwrite = 0;
+            asio::error_code ec;
+
+            do {
+                auto n = _socket.send(asio::buffer(data, len - nwrite), {}, ec);
+                data += n, nwrite += n;
+            } while (not ec && nwrite < len);
+
+            _total_write += nwrite;
+            return nwrite;
         }
     }
 
@@ -171,21 +168,22 @@ class asio_stream : public if_connection, public std::streambuf
     }
 
    private:
-    bool _write_all()
+    size_t _write_all()
     {
         asio::error_code ec;
         auto num_send = pptr() - pbase();
 
         while (num_send > 0) {
-            num_send -= _socket.send(asio::buffer(_wrbuf, num_send), {}, ec);
+            auto n = _socket.send(asio::buffer(_wrbuf, num_send), {}, ec);
+            num_send -= n, _total_write += n;
 
             if (ec) {
-                return false;
+                return ~size_t{};
             }
         }
 
         setp(_wrbuf, _wrbuf + sizeof _wrbuf);
-        return true;
+        return num_send;
     }
 
    private:
