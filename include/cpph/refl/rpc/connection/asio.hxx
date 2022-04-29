@@ -80,46 +80,112 @@ class _asio_count_adapter_streambuf : public std::streambuf
 };
 
 template <typename Protocol>
-class asio_stream : public if_connection
+class asio_stream : public if_connection, public std::streambuf
 {
     using protocol_type = Protocol;
     using socket_type = typename Protocol::socket;
     using streambuf_type = asio::basic_socket_streambuf<protocol_type>;
 
    private:
-    streambuf_type _buf;
-    _asio_count_adapter_streambuf _adapter{&_buf};
+    _asio_count_adapter_streambuf _adapter{this};
+    socket_type _socket;
+
+    char _wrbuf[9000];
+    char _rdbuf[9000];
 
    public:
     explicit asio_stream(socket_type&& socket)
-            : if_connection(&_adapter, _ep_to_string(socket)),
-              _buf(std::move(socket))
+            : if_connection(this, _ep_to_string(socket)),
+              _socket(std::move(socket))
     {
+        _socket.set_option(asio::ip::tcp::no_delay{true});
     }
 
    public:
     void start_data_receive() noexcept override
     {
-        if (_buf.in_avail())
+        if (in_avail()) {
             on_data_receive();
-        else
-            _buf.socket().async_wait(
-                    asio::socket_base::wait_read,
-                    [this](auto&& ec) {
+        } else {
+            _socket.async_read_some(
+                    asio::null_buffers{},
+                    [this](auto&& ec, auto) {
                         if (ec) { return; }
                         on_data_receive();
                     });
+        }
     }
 
     void close() noexcept override
     {
-        _buf.close();
+        _socket.close();
     }
 
     void get_total_rw(size_t* num_read, size_t* num_write) override
     {
         *num_read = _adapter._rt;
         *num_write = _adapter._wt;
+    }
+
+   protected:
+    int_type overflow(int_type c) override
+    {
+        if (_write_all()) {
+            _wrbuf[0] = traits_type::to_char_type(c);
+            pbump(1);
+
+            return c;
+        } else {
+            return traits_type::eof();
+        }
+    }
+
+    int_type underflow() override
+    {
+        asio::error_code ec;
+
+        auto nread = _socket.receive(asio::buffer(_rdbuf), {}, ec);
+        setg(_rdbuf, _rdbuf, _rdbuf + nread);
+
+        if (ec) {
+            return traits_type::eof();
+        } else {
+            return traits_type::to_int_type(_rdbuf[0]);
+        }
+    }
+
+    int sync() override
+    {
+        _write_all();
+
+#if defined(ASIO_IP_TCP_HPP)  // Only when TCP header is included
+        try {
+            //! Force flushing data
+            _socket.set_option(asio::ip::tcp::no_delay{true});
+            _socket.set_option(asio::ip::tcp::no_delay{false});
+        } catch (asio::system_error&) {
+            return -1;
+        }
+#endif
+        return basic_streambuf::sync();
+    }
+
+   private:
+    bool _write_all()
+    {
+        asio::error_code ec;
+        auto num_send = pptr() - pbase();
+
+        while (num_send > 0) {
+            num_send -= _socket.send(asio::buffer(_wrbuf, num_send), {}, ec);
+
+            if (ec) {
+                return false;
+            }
+        }
+
+        setp(_wrbuf, _wrbuf + sizeof _wrbuf);
+        return true;
     }
 
    private:
