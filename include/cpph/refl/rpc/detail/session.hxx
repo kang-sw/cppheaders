@@ -138,8 +138,11 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     ~session() override
     {
-        // Close session first.
-        close();
+        // Try close session first.
+        if (lock_guard{_mtx_protocol}, _set_expired(false)) {
+            // NOTE: shared_from_this() is not permitted to be called from destructor.
+            _monitor->on_session_expired(&_profile);
+        }
 
         // Uninstall request features.
         // This automatically waits for pool_ptr instance disposal.
@@ -263,13 +266,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     bool close()
     {
-        // NOTE: shared_from_this() is not permitted to be called from destructor.
-        _monitor->on_session_expired(&_profile);
-
         lock_guard _{_mtx_protocol};
         if (expired()) { return false; }
 
-        _set_expired(false);
+        _set_expired();
         return true;
     }
 
@@ -485,14 +485,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
         _conn->start_data_receive();
     }
 
-    void _set_expired(bool call_monitor = true)
+    bool _set_expired(bool call_monitor = true)
     {
-#ifndef NDEBUG
-        bool const was_valid = _valid.exchange(false);
-        assert(was_valid && "Expiration logic must be called only for once!");
-
-        if (was_valid) {
-#endif
+        if (_valid.exchange(false)) {
             _conn->close();
 
             do {
@@ -529,9 +524,10 @@ class session : public if_session, public std::enable_shared_from_this<session>
                         });
             }
 
-#ifndef NDEBUG
+            return true;
+        } else {
+            return false;
         }
-#endif
     }
 
     void _update_rw_count()
