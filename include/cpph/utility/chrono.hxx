@@ -27,6 +27,12 @@ double to_seconds(duration<Rep, Ratio> const& dur)
     return duration_cast<duration<double>>(dur).count();
 }
 
+template <typename ToClock, typename Clock, typename Duration>
+auto to_clock(time_point<Clock, Duration> tp) -> typename ToClock::time_point
+{
+    return ToClock::now() + duration_cast<typename ToClock::duration>(tp - Clock::now());
+}
+
 //! @see https://stackoverflow.com/a/44063597
 inline duration<double> timezone_offset()
 {
