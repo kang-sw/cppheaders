@@ -48,7 +48,7 @@ template <typename Ty_>
 constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base = FNV_OFFSET_BASE);
 
 template <typename It_>
-constexpr inline uint64_t fnv1a_64(It_ begin, It_&& end, uint64_t base = FNV_OFFSET_BASE)
+constexpr inline uint64_t fnv1a_64(It_ begin, It_ end, uint64_t base = FNV_OFFSET_BASE)
 {
     for (; begin != end; ++begin) {
         if constexpr (sizeof(*begin) == 1)
@@ -73,6 +73,13 @@ constexpr inline uint64_t fnv1a_64(Ty_ const& val, uint64_t base)
         val.GENERATE_STATIC_ASSERT();
     }
 }
+
+template <size_t N_>
+constexpr inline uint64_t fnv1a_64(char const (&s)[N_], uint64_t base = FNV_OFFSET_BASE)
+{
+    return fnv1a_64(s, s + N_, base);
+}
+
 }  // namespace hasher
 
 template <typename Label_>
