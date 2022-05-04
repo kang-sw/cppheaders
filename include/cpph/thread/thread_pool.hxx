@@ -95,6 +95,10 @@ class thread_pool
     }
 };
 
+namespace thread {
+struct lazy {};
+}  // namespace thread
+
 class event_queue_worker
 {
     event_queue _proc;
@@ -104,6 +108,11 @@ class event_queue_worker
     explicit event_queue_worker(size_t allocator_memory)
             : _proc(allocator_memory),
               _worker(&event_queue::exec, &_proc)
+    {
+    }
+
+    explicit event_queue_worker(thread::lazy, size_t allocator_memory)
+            : _proc(allocator_memory)
     {
     }
 
@@ -128,7 +137,7 @@ class event_queue_worker
         if (_worker.joinable()) { _worker.join(); }
     }
 
-    void relaunch()
+    void launch()
     {
         if (_worker.joinable()) { throw std::logic_error{"You may not relaunch running thread!"}; }
         _proc.restart();
