@@ -96,7 +96,8 @@ class thread_pool
 };
 
 namespace thread {
-struct lazy {};
+struct lazy_t {};
+constexpr lazy_t lazy;
 }  // namespace thread
 
 class event_queue_worker
@@ -111,7 +112,7 @@ class event_queue_worker
     {
     }
 
-    explicit event_queue_worker(thread::lazy, size_t allocator_memory)
+    explicit event_queue_worker(thread::lazy_t, size_t allocator_memory)
             : _proc(allocator_memory)
     {
     }
