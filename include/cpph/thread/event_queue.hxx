@@ -289,9 +289,9 @@ class event_queue
         release(_stopped, false);
     }
 
-    void clear()
+    void clear(size_t next_size = 32)
     {
-        decltype(_messages)::value_type queue{32};
+        decltype(_messages)::value_type queue{next_size};
         _messages.access([&](decltype(queue)& v) {
             swap(queue, v);
         });

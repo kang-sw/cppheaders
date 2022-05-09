@@ -124,6 +124,7 @@ class event_queue_worker
 
     ~event_queue_worker()
     {
+        _proc.clear(0);
         shutdown();
     }
 
