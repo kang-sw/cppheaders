@@ -79,6 +79,7 @@
 #include <utility>
 
 #include "../array_view.hxx"
+#include "../template_utils.hxx"
 
 //
 namespace cpph {
@@ -180,14 +181,12 @@ class queue_buffer_impl
         return size() == 0;
     }
 
-   protected:
     memblk* release() noexcept
     {
-        auto ref = _mem;
-        _mem = nullptr;
-        return ref;
+        return exchange(_mem, nullptr);
     }
 
+   protected:
     constexpr static size_t to_block_size(size_t n) noexcept
     {
         return ((n + block_size - 1) / block_size);
