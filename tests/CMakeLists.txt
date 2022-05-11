@@ -23,7 +23,8 @@ if (NOT TARGET doctest_with_main)
 
     include(FetchContent)
     FetchContent_Declare(doctest URL https://github.com/doctest/doctest/archive/refs/tags/v2.4.8.zip)
-    FetchContent_MakeAvailable(doctest)
+    FetchContent_Populate(doctest)
+    add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
 
 target_link_libraries(
