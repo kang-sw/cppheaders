@@ -53,60 +53,63 @@ void foofoo()
     g* g;
 }
 
-TEST_CASE("arithmetic", "[math.matrix]")
+TEST_SUITE("math")
 {
-    auto s = matx23i::create(1, 2, 3, 4, 5, 6);
+    TEST_CASE("matrix arithmetic")
+    {
+        auto s = matx23i::create(1, 2, 3, 4, 5, 6);
 
-    REQUIRE(s.row(0) == matx23i::row_type::create(1, 2, 3));
-    REQUIRE(s.row(1) == matx23i::row_type::create(4, 5, 6));
-    REQUIRE(s.col(0) == matx23i::column_type::create(1, 4));
-    REQUIRE(s.col(1) == matx23i::column_type::create(2, 5));
-    REQUIRE(s.col(2) == matx23i::column_type::create(3, 6));
+        REQUIRE(s.row(0) == matx23i::row_type::create(1, 2, 3));
+        REQUIRE(s.row(1) == matx23i::row_type::create(4, 5, 6));
+        REQUIRE(s.col(0) == matx23i::column_type::create(1, 4));
+        REQUIRE(s.col(1) == matx23i::column_type::create(2, 5));
+        REQUIRE(s.col(2) == matx23i::column_type::create(3, 6));
 
-    REQUIRE((matrix{s}.set_diag(s.col(0))) == matx23i::create(1, 2, 3, 4, 4, 6));
+        REQUIRE((matrix{s}.set_diag(s.col(0))) == matx23i::create(1, 2, 3, 4, 4, 6));
 
-    REQUIRE(s == matx23i::create(1, 2, 3, 4, 5, 6));
-    REQUIRE(s * 2 == matx23i::create(2, 4, 6, 8, 10, 12));
-    REQUIRE(2 * s == matx23i::create(2, 4, 6, 8, 10, 12));
-    REQUIRE(s / 2 == matx23i::create(0, 1, 1, 2, 2, 3));
+        REQUIRE(s == matx23i::create(1, 2, 3, 4, 5, 6));
+        REQUIRE(s * 2 == matx23i::create(2, 4, 6, 8, 10, 12));
+        REQUIRE(2 * s == matx23i::create(2, 4, 6, 8, 10, 12));
+        REQUIRE(s / 2 == matx23i::create(0, 1, 1, 2, 2, 3));
 
-    REQUIRE(s + s == matx23i::create(2, 4, 6, 8, 10, 12));
-    REQUIRE(s - s == matx23i::zeros());
-    REQUIRE(s.mul(s) == matx23i::create(1, 4, 9, 16, 25, 36));
-    REQUIRE(s.div(s) == matx23i::all(1));
+        REQUIRE(s + s == matx23i::create(2, 4, 6, 8, 10, 12));
+        REQUIRE(s - s == matx23i::zeros());
+        REQUIRE(s.mul(s) == matx23i::create(1, 4, 9, 16, 25, 36));
+        REQUIRE(s.div(s) == matx23i::all(1));
 
-    REQUIRE(s.t() == matx32i::create(1, 4, 2, 5, 3, 6));
-    REQUIRE(s * s.t() == matx22i::create(14, 32, 32, 77));
-    REQUIRE(s.t() * s == matx33i::create(17, 22, 27, 22, 29, 36, 27, 36, 45));
+        REQUIRE(s.t() == matx32i::create(1, 4, 2, 5, 3, 6));
+        REQUIRE(s * s.t() == matx22i::create(14, 32, 32, 77));
+        REQUIRE(s.t() * s == matx33i::create(17, 22, 27, 22, 29, 36, 27, 36, 45));
 
-    REQUIRE(norm_sqr(s) == 91);
-    REQUIRE(normalize(s) == matx23i::zeros());
-}
+        REQUIRE(norm_sqr(s) == 91);
+        REQUIRE(normalize(s) == matx23i::zeros());
+    }
 
-TEST_CASE("rodrigues", "[math.matrix]")
-{
-    auto s = vec3f::create(0, pi_v<>(), 0);
-    INFO(rodrigues(s));
-    REQUIRE(rodrigues(rodrigues(s)) == s);
-}
+    TEST_CASE("matrix rodrigues")
+    {
+        auto s = vec3f::create(0, pi_v<>(), 0);
+        INFO(rodrigues(s));
+        REQUIRE(rodrigues(rodrigues(s)) == s);
+    }
 
-TEST_CASE("inv", "[math.matrix]")
-{
-    auto s = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1);
-    constexpr auto k = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1).inv();
-    INFO(s.inv());
-    REQUIRE(s.inv().equals({0.2, 0.2, 0, -0.2, 0.3, 1, 0.2, -0.3, 0}, 1e-4));
-    REQUIRE((s.inv() * s).equals(matx33f::eye(), 1e-4));
-}
+    TEST_CASE("matrix inv")
+    {
+        auto s = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1);
+        constexpr auto k = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1).inv();
+        INFO(s.inv());
+        REQUIRE(s.inv().equals({0.2, 0.2, 0, -0.2, 0.3, 1, 0.2, -0.3, 0}, 1e-4));
+        REQUIRE((s.inv() * s).equals(matx33f::eye(), 1e-4));
+    }
 
-TEST_CASE("arithmentic", "[math.type]")
-{
-    using rect = rectangle;
-    constexpr rect s1 = {0, 0, 100, 100};
-    constexpr rect s2 = rect::from_tl_br({50, 50}, {150, 150});
-    static_assert((s1 & s2) == rect{50, 50, 50, 50});
-    static_assert((s1 | s2) == rect{0, 0, 150, 150});
-    static_assert((s1 & s2).contains({75, 75}));
-    static_assert(not(s1 & s2).contains({25, 75}));
-    static_assert(not(s1 & s2).contains({55, 25}));
+    TEST_CASE("matrix arithmentic")
+    {
+        using rect = rectangle;
+        constexpr rect s1 = {0, 0, 100, 100};
+        constexpr rect s2 = rect::from_tl_br({50, 50}, {150, 150});
+        static_assert((s1 & s2) == rect{50, 50, 50, 50});
+        static_assert((s1 | s2) == rect{0, 0, 150, 150});
+        static_assert((s1 & s2).contains({75, 75}));
+        static_assert(not(s1 & s2).contains({25, 75}));
+        static_assert(not(s1 & s2).contains({55, 25}));
+    }
 }

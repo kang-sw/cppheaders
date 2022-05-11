@@ -72,101 +72,105 @@ using namespace cpph;
 CPPH_REFL_DEFINE_OBJECT(base_object, (), (opt_double), (list_int), (bin_vec_chars));
 CPPH_REFL_DEFINE_OBJECT_c(child_object, (.extend<base_object>()), (placeholder));
 
-TEMPLATE_TEST_CASE("marshalling, deserialize", "[archive]",
-                   (std::pair<archive::json::writer, archive::json::reader>),
-                   (std::pair<archive::msgpack::writer, archive::msgpack::reader>))
+using test_templ_type_1 = std::pair<archive::json::writer, archive::json::reader>;
+using test_templ_type_2 = std::pair<archive::msgpack::writer, archive::msgpack::reader>;
+
+TEST_SUITE("refl.archive")
 {
-    using writer = typename TestType::first_type;
-    using reader = typename TestType::second_type;
-
-    for (int intkey = 0; intkey < 2; ++intkey) {
-        std::stringstream sstrm;
-
-        writer wr{sstrm.rdbuf()};
-        wr.config.use_integer_key = intkey;
-
-        child_object enc{};
-        enc.fill();
-        wr << enc;
-        auto content_1 = sstrm.str();
-        INFO(content_1);
-
-        child_object b;
-        reader rd{sstrm.rdbuf()};
-        rd.config.use_integer_key = intkey;
-        rd >> b;
-
-        sstrm.str(""), wr << b;
-        auto content_2 = sstrm.str();
-
-        REQUIRE(content_1 == content_2);
-    }
-}
-
-TEST_CASE("Retrieve throw exceptions", "[archive]")
-{
-    std::stringbuf sbuf;
-    archive::msgpack::writer writer{&sbuf};
-    archive::msgpack::reader reader{&sbuf};
-
-    SECTION("Tolerant")
+    TEST_CASE_TEMPLATE("marshalling, deserialize", TestType, test_templ_type_1, test_templ_type_2)
     {
-        SECTION("Child to base")
-        {
-            writer << child_object{};
+        using writer = typename TestType::first_type;
+        using reader = typename TestType::second_type;
 
-            base_object target;
-            REQUIRE_NOTHROW(reader >> target);
-        }
+        for (int intkey = 0; intkey < 2; ++intkey) {
+            std::stringstream sstrm;
 
-        SECTION("Base to child")
-        {
-            writer << base_object{};
+            writer wr{sstrm.rdbuf()};
+            wr.config.use_integer_key = intkey;
 
-            child_object child;
-            REQUIRE_NOTHROW(reader >> child);
+            child_object enc{};
+            enc.fill();
+            wr << enc;
+            auto content_1 = sstrm.str();
+            INFO(content_1);
+
+            child_object b;
+            reader rd{sstrm.rdbuf()};
+            rd.config.use_integer_key = intkey;
+            rd >> b;
+
+            sstrm.str(""), wr << b;
+            auto content_2 = sstrm.str();
+
+            REQUIRE(content_1 == content_2);
         }
     }
 
-    SECTION("No Missing")
+    TEST_CASE("Retrieve throw exceptions")
     {
-        reader.config.allow_missing_argument = false;
+        std::stringbuf sbuf;
+        archive::msgpack::writer writer{&sbuf};
+        archive::msgpack::reader reader{&sbuf};
 
-        SECTION("Child to base")
+        SUBCASE("Tolerant")
         {
-            writer << child_object{};
+            SUBCASE("Child to base")
+            {
+                writer << child_object{};
 
-            base_object target;
-            REQUIRE_NOTHROW(reader >> target);
+                base_object target;
+                REQUIRE_NOTHROW(reader >> target);
+            }
+
+            SUBCASE("Base to child")
+            {
+                writer << base_object{};
+
+                child_object child;
+                REQUIRE_NOTHROW(reader >> child);
+            }
         }
 
-        SECTION("Base to child")
+        SUBCASE("No Missing")
         {
-            writer << base_object{};
+            reader.config.allow_missing_argument = false;
 
-            child_object child;
-            REQUIRE_THROWS_AS(reader >> child, refl::error::missing_entity);
+            SUBCASE("Child to base")
+            {
+                writer << child_object{};
+
+                base_object target;
+                REQUIRE_NOTHROW(reader >> target);
+            }
+
+            SUBCASE("Base to child")
+            {
+                writer << base_object{};
+
+                child_object child;
+                REQUIRE_THROWS_AS(reader >> child, refl::error::missing_entity);
+            }
         }
-    }
 
-    SECTION("No Unknown")
-    {
-        reader.config.allow_unknown_argument = false;
-
-        SECTION("Child to base")
+        SUBCASE("No Unknown")
         {
-            writer << child_object{};
+            reader.config.allow_unknown_argument = false;
 
-            base_object target;
-            REQUIRE_THROWS_AS(reader >> target, refl::error::unkown_entity);
-        }
+            SUBCASE("Child to base")
+            {
+                writer << child_object{};
 
-        SECTION("Base to child")
-        {
-            writer << base_object{};
+                base_object target;
+                REQUIRE_THROWS_AS(reader >> target, refl::error::unkown_entity);
+            }
 
-            child_object child;
-            REQUIRE_NOTHROW(reader >> child);
+            SUBCASE("Base to child")
+            {
+                writer << base_object{};
+
+                child_object child;
+                REQUIRE_NOTHROW(reader >> child);
+            }
         }
     }
 }

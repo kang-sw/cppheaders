@@ -26,6 +26,7 @@
 
 #pragma once
 #include <list>
+#include <chrono>
 
 #include "../detail/primitives.hxx"
 

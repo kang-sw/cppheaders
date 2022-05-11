@@ -50,149 +50,152 @@ using namespace cpph;
 #    include "refl/rpc/connection/asio.hxx"
 #endif
 
-TEST_CASE("Basic RPC Test", "[rpc]")
+TEST_SUITE("refl.rpc")
 {
-    using std::string;
+    TEST_CASE("Basic RPC Test")
+    {
+        using std::string;
 
-    auto sg_add = rpc::create_signature<int(int, int)>("add");
-    auto sg_concat = rpc::create_signature<string(string, string)>("concat");
+        auto sg_add = rpc::create_signature<int(int, int)>("add");
+        auto sg_concat = rpc::create_signature<string(string, string)>("concat");
 
-    auto service = rpc::service::empty_service();
-    rpc::service_builder{}
-            .route(sg_add, std::plus<int>{})
-            .route(sg_concat, std::plus<string>{})
-            .build_to(service);
+        auto service = rpc::service::empty_service();
+        rpc::service_builder{}
+                .route(sg_add, std::plus<int>{})
+                .route(sg_concat, std::plus<string>{})
+                .build_to(service);
 
 #if ASIO_TEST
-    using asio::ip::tcp;
-    asio::io_context ioc;
-    auto work = asio::require(ioc.get_executor(), asio::execution::outstanding_work.tracked);
+        using asio::ip::tcp;
+        asio::io_context ioc;
+        auto work = asio::require(ioc.get_executor(), asio::execution::outstanding_work.tracked);
 
-    tcp::socket sock1{ioc};
-    tcp::socket sock2{ioc};
+        tcp::socket sock1{ioc};
+        tcp::socket sock2{ioc};
 
-    tcp::acceptor acpt{ioc};
-    auto acpt_ep = tcp::endpoint{asio::ip::make_address("0.0.0.0"), 5151};
-    acpt.open(acpt_ep.protocol());
-    acpt.set_option(asio::socket_base::reuse_address{true});
-    acpt.bind(acpt_ep);
+        tcp::acceptor acpt{ioc};
+        auto acpt_ep = tcp::endpoint{asio::ip::make_address("0.0.0.0"), 5151};
+        acpt.open(acpt_ep.protocol());
+        acpt.set_option(asio::socket_base::reuse_address{true});
+        acpt.bind(acpt_ep);
 
-    volatile bool ready = false;
-    acpt.listen();
-    acpt.async_accept(sock1,
-                      [&](auto&& ec) {
-                          printf("sock1 open, %s:%d ...\n",
-                                 sock1.remote_endpoint().address().to_string().c_str(),
-                                 sock1.remote_endpoint().port());
-                          ready = true;
-                      });
+        volatile bool ready = false;
+        acpt.listen();
+        acpt.async_accept(sock1,
+                          [&](auto&& ec) {
+                              printf("sock1 open, %s:%d ...\n",
+                                     sock1.remote_endpoint().address().to_string().c_str(),
+                                     sock1.remote_endpoint().port());
+                              ready = true;
+                          });
 
-    auto conn_ep = tcp::endpoint{asio::ip::make_address("127.0.0.1"), 5151};
-    sock2.open(conn_ep.protocol());
-    sock2.connect(conn_ep);
+        auto conn_ep = tcp::endpoint{asio::ip::make_address("127.0.0.1"), 5151};
+        sock2.open(conn_ep.protocol());
+        sock2.connect(conn_ep);
 
-    printf("sock2 open, %s:%d ...\n",
-           sock2.remote_endpoint().address().to_string().c_str(),
-           sock2.remote_endpoint().port());
-    fflush(stdout);
+        printf("sock2 open, %s:%d ...\n",
+               sock2.remote_endpoint().address().to_string().c_str(),
+               sock2.remote_endpoint().port());
+        fflush(stdout);
 
-    std::thread ioc_thread{[&] { ioc.run(); }};
-    while (not ready) { std::this_thread::yield(); }
-    //
-    auto conn_b = std::make_unique<rpc::asio_stream<tcp>>(std::move(sock2));
-    auto conn_a = std::make_unique<rpc::asio_stream<tcp>>(std::move(sock1));
+        std::thread ioc_thread{[&] { ioc.run(); }};
+        while (not ready) { std::this_thread::yield(); }
+        //
+        auto conn_b = std::make_unique<rpc::asio_stream<tcp>>(std::move(sock2));
+        auto conn_a = std::make_unique<rpc::asio_stream<tcp>>(std::move(sock1));
 
-    auto event_proc = std::make_shared<rpc::asio_event_procedure<asio::io_context>>(ioc);
+        auto event_proc = std::make_shared<rpc::asio_event_procedure<asio::io_context>>(ioc);
 #else
-    auto [conn_a, conn_b] = rpc::conn::inmemory_pipe::create();
-    auto event_proc = rpc::default_event_procedure::get();
+        auto [conn_a, conn_b] = rpc::conn::inmemory_pipe::create();
+        auto event_proc = rpc::default_event_procedure::get();
 #endif
 
-    rpc::session_ptr session_server;
-    rpc::session_ptr session_client;
+        rpc::session_ptr session_server;
+        rpc::session_ptr session_client;
 
-    rpc::session::builder{}
-            .connection(std::move(conn_a))
-            .service(service)
-            .protocol(std::make_unique<rpc::protocol::msgpack>())
-            //            .event_procedure(std::make_shared<asio_event_proc>())
-            .event_procedure(event_proc)
-            .build_to(session_server);
+        rpc::session::builder{}
+                .connection(std::move(conn_a))
+                .service(service)
+                .protocol(std::make_unique<rpc::protocol::msgpack>())
+                //            .event_procedure(std::make_shared<asio_event_proc>())
+                .event_procedure(event_proc)
+                .build_to(session_server);
 
-    rpc::session::builder{}
-            .enable_request()
-            .connection(std::move(conn_b))
-            .protocol(std::make_unique<rpc::protocol::msgpack>())
-            //            .event_procedure(std::make_shared<asio_event_proc>())
-            .event_procedure(event_proc)
-            .build_to(session_client);
+        rpc::session::builder{}
+                .enable_request()
+                .connection(std::move(conn_b))
+                .protocol(std::make_unique<rpc::protocol::msgpack>())
+                //            .event_procedure(std::make_shared<asio_event_proc>())
+                .event_procedure(event_proc)
+                .build_to(session_client);
 
-    SECTION("Blocking request")
-    {
-        sg_add(session_client).notify(1, 2 * 3);
-
-        auto val = sg_add(session_client).request(1, 4);
-        REQUIRE(val == 5);
-        val = sg_add(session_client).request(5, 2);
-        REQUIRE(val == 7);
-
-        for (int i = 0; i < 8192; ++i) {
-            val = sg_add(session_client).request(i, i * i);
-            REQUIRE(val == i * i + i);
-
+        SUBCASE("Blocking request")
+        {
             sg_add(session_client).notify(1, 2 * 3);
 
-            auto str = sg_concat(session_client).request("1", "2");
-            REQUIRE(str == "12");
-        }
-    }
+            auto val = sg_add(session_client).request(1, 4);
+            REQUIRE(val == 5);
+            val = sg_add(session_client).request(5, 2);
+            REQUIRE(val == 7);
 
-    SECTION("Non-blocking request")
-    {
-        std::list<std::pair<int, int>> retbufs;
-        std::list<rpc::request_handle> handles;
+            for (int i = 0; i < 512; ++i) {
+                val = sg_add(session_client).request(i, i * i);
+                REQUIRE(val == i * i + i);
 
-        for (int i = 0; i < 32767; ++i) {
-            auto rbuf = &retbufs.emplace_back();
-            auto h = sg_add(session_client).async_request(&rbuf->first, i << 24, i * i);
-            rbuf->second = (i << 24) + i * i;
+                sg_add(session_client).notify(1, 2 * 3);
 
-            handles.emplace_back(h);
+                auto str = sg_concat(session_client).request("1", "2");
+                REQUIRE(str == "12");
+            }
         }
 
-        while (not retbufs.empty()) {
-            auto& h = handles.front();
+        SUBCASE("Non-blocking request")
+        {
+            std::list<std::pair<int, int>> retbufs;
+            std::list<rpc::request_handle> handles;
 
-            REQUIRE(h.wait());
-            REQUIRE(retbufs.front().first == retbufs.front().second);
+            for (int i = 0; i < 512; ++i) {
+                auto rbuf = &retbufs.emplace_back();
+                auto h = sg_add(session_client).async_request(&rbuf->first, i << 24, i * i);
+                rbuf->second = (i << 24) + i * i;
 
-            retbufs.pop_front(), handles.pop_front();
+                handles.emplace_back(h);
+            }
+
+            while (not retbufs.empty()) {
+                auto& h = handles.front();
+
+                REQUIRE(h.wait());
+                REQUIRE(retbufs.front().first == retbufs.front().second);
+
+                retbufs.pop_front(), handles.pop_front();
+            }
         }
-    }
 
 #if ASIO_TEST
-    ioc.stop();
-    ioc_thread.join();
+        ioc.stop();
+        ioc_thread.join();
 
-    size_t nrd, nwr;
-    session_server->totals(&nrd, &nwr);
-    printf("total read: %zu, write: %zu\n", nrd, nwr);
-    fflush(stdout);
+        size_t nrd, nwr;
+        session_server->totals(&nrd, &nwr);
+        printf("total read: %zu, write: %zu\n", nrd, nwr);
+        fflush(stdout);
 #endif
-}
+    }
 
-TEST_CASE("Inmemory Pipe Test", "[rpc]")
-{
-    auto [conn_a, conn_b] = rpc::conn::inmemory_pipe::create();
-    char const content[] = "hello, world!";
+    TEST_CASE("Inmemory Pipe Test")
+    {
+        auto [conn_a, conn_b] = rpc::conn::inmemory_pipe::create();
+        char const content[] = "hello, world!";
 
-    for (size_t i = 0; i < 1024; ++i) {
-        conn_a->sputn(content, strlen(content));
-        conn_a->pubsync();
+        for (size_t i = 0; i < 1024; ++i) {
+            conn_a->sputn(content, strlen(content));
+            conn_a->pubsync();
 
-        char buf[sizeof(content)] = {};
-        conn_b->sgetn(buf, strlen(content));
+            char buf[sizeof(content)] = {};
+            conn_b->sgetn(buf, strlen(content));
 
-        REQUIRE(strcmp(content, buf) == 0);
+            REQUIRE(strcmp(content, buf) == 0);
+        }
     }
 }

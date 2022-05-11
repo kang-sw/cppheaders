@@ -29,62 +29,65 @@
 
 using namespace std::literals;
 
-TEST_CASE("works well?", "[thread.local_async]")
+TEST_SUITE("thread")
 {
-    using namespace cpph::thread;
-    auto fut = local_task<int>();
-
-    REQUIRE_THROWS(fut.get());
-    REQUIRE_THROWS(fut.wait());
-    REQUIRE_THROWS(fut.wait_for(1ms));
-
-    auto promise = fut.promise();
-    REQUIRE_THROWS(fut.promise());
-
-    REQUIRE(not fut.wait_for(1ms));
-
-    SECTION("Valid wait")
+    TEST_CASE("local_async.works well?")
     {
-        std::thread work{
-                [promise = std::move(promise)] {
-                    promise.set_value(100);
-                }};
+        using namespace cpph::thread;
+        auto fut = local_task<int>();
 
-        work.join();
+        REQUIRE_THROWS(fut.get());
+        REQUIRE_THROWS(fut.wait());
+        REQUIRE_THROWS(fut.wait_for(1ms));
 
-        int got_value = 0;
-        REQUIRE_NOTHROW(got_value = fut.get());
-    }
-    SECTION("Exception set")
-    {
-        std::thread work{
-                [promise = std::move(promise)] {
-                    promise.set_exception(std::make_exception_ptr(std::runtime_error{"hello"}));
-                }};
+        auto promise = fut.promise();
+        REQUIRE_THROWS(fut.promise());
 
-        work.join();
+        REQUIRE(not fut.wait_for(1ms));
 
-        try {
-            fut.get();
-            FAIL("Exception not thrown");
-        } catch (std::runtime_error&) {
-            // OK.
-        } catch (std::exception& e) {
-            FAIL("Wrong exception thrown: " << e.what());
+        SUBCASE("Valid wait")
+        {
+            std::thread work{
+                    [promise = std::move(promise)] {
+                        promise.set_value(100);
+                    }};
+
+            work.join();
+
+            int got_value = 0;
+            REQUIRE_NOTHROW(got_value = fut.get());
         }
-    }
-    SECTION("Invalid dispose")
-    {
-        std::thread work{[promise = std::move(promise)] {}};
+        SUBCASE("Exception set")
+        {
+            std::thread work{
+                    [promise = std::move(promise)] {
+                        promise.set_exception(std::make_exception_ptr(std::runtime_error{"hello"}));
+                    }};
 
-        work.join();
-        try {
-            fut.get();
-            FAIL("Exception not thrown");
-        } catch (cpph::thread::future_error&) {
-            // OK.
-        } catch (std::exception& e) {
-            FAIL("Wrong exception thrown: " << e.what());
+            work.join();
+
+            try {
+                fut.get();
+                FAIL("Exception not thrown");
+            } catch (std::runtime_error&) {
+                // OK.
+            } catch (std::exception& e) {
+                FAIL("Wrong exception thrown: " << e.what());
+            }
+        }
+        SUBCASE("Invalid dispose")
+        {
+            std::thread work{[promise = std::move(promise)] {}};
+
+            work.join();
+            try {
+                fut.get();
+                FAIL("Exception not thrown");
+            } catch (cpph::thread::future_error&) {
+                // OK.
+            } catch (std::exception& e) {
+                FAIL("Wrong exception thrown: " << e.what());
+            }
         }
     }
 }

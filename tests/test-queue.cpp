@@ -28,41 +28,40 @@
 
 #include "catch.hpp"
 
-TEST_CASE("overall", "[queue_allocator]")
+TEST_SUITE("memory")
 {
-    enum {
-        BUFLEN = 1024,
-        NMAX = BUFLEN / 8 / 2
-    };
-
-    cpph::ring_allocator buffer{BUFLEN};
-    REQUIRE(buffer.capacity() == BUFLEN);
-    REQUIRE_THROWS(buffer.allocate(BUFLEN));
-
+    TEST_CASE("overall")
     {
-        void* ptr;
-        REQUIRE_NOTHROW(ptr = buffer.allocate(BUFLEN - 8));
-        buffer.deallocate(ptr);
+        enum {
+            BUFLEN = 1024,
+            NMAX = BUFLEN / 8 / 2
+        };
+
+        cpph::ring_allocator buffer{BUFLEN};
+        REQUIRE(buffer.capacity() == BUFLEN);
+        REQUIRE_THROWS(buffer.allocate(BUFLEN));
+
+        {
+            void* ptr;
+            REQUIRE_NOTHROW(ptr = buffer.allocate(BUFLEN - 8));
+            buffer.deallocate(ptr);
+            REQUIRE(buffer.empty());
+        }
+
+        // Allocate full times (max)
+        for (int i = 0; i < NMAX; ++i) {
+            REQUIRE_NOTHROW(*(int*)buffer.allocate(4) = i + 1);
+        }
+
+        // Must be full
+        REQUIRE_THROWS(buffer.allocate(0));
+
+        // Deallocate half
+        for (int i = 0; i < NMAX; ++i) {
+            REQUIRE(*(int*)buffer.front() == i + 1);
+            buffer.deallocate(buffer.front());
+        }
+
         REQUIRE(buffer.empty());
     }
-
-    // Allocate full times (max)
-    for (int i = 0; i < NMAX; ++i) {
-        REQUIRE_NOTHROW(*(int*)buffer.allocate(4) = i + 1);
-    }
-
-    // Must be full
-    REQUIRE_THROWS(buffer.allocate(0));
-
-    // Deallocate half
-    for (int i = 0; i < NMAX; ++i) {
-        REQUIRE(*(int*)buffer.front() == i + 1);
-        buffer.deallocate(buffer.front());
-    }
-
-    REQUIRE(buffer.empty());
-}
-
-TEST_CASE("buffer deferred dealloc", "[queue_allocator]")
-{
 }

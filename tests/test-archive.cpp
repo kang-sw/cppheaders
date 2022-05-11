@@ -291,22 +291,25 @@ static auto ssvd = [] {
     return nullptr;
 };
 
-TEST_CASE("archive", "[.]")
+TEST_SUITE("refl.archive")
 {
-    ssvd();
+    TEST_CASE("archive")
+    {
+        ssvd();
 
-    std::stringbuf strbuf;
-    strbuf.sputn("1234", 4);
+        std::stringbuf strbuf;
+        strbuf.sputn("1234", 4);
 
-    strbuf.sbumpc();
-    strbuf.sbumpc();
-    strbuf.sbumpc();
-    strbuf.sbumpc();
+        strbuf.sbumpc();
+        strbuf.sbumpc();
+        strbuf.sbumpc();
+        strbuf.sbumpc();
 
-    REQUIRE(strbuf.sbumpc() == EOF);
-    strbuf.sputc('4');
-    REQUIRE(strbuf.sbumpc() == '4');
-    REQUIRE(strbuf.sbumpc() == EOF);
+        REQUIRE(strbuf.sbumpc() == EOF);
+        strbuf.sputc('4');
+        REQUIRE(strbuf.sbumpc() == '4');
+        REQUIRE(strbuf.sbumpc() == EOF);
+    }
 }
 
 #define property_  CPPH_PROP_TUPLE
@@ -336,25 +339,28 @@ struct bintest {
     CPPH_REFL_DEFINE_OBJECT_inline((), (binstr));
 };
 
-TEST_CASE("base64 restoration", "[archive]")
+TEST_SUITE("refl.archive")
 {
-    std::stringbuf strbuf;
-    archive::json::writer writer{&strbuf};
-    writer.indent = 4;
+    TEST_CASE("base64 restoration")
+    {
+        std::stringbuf strbuf;
+        archive::json::writer writer{&strbuf};
+        writer.indent = 4;
 
-    writer.serialize(bintest{});
+        writer.serialize(bintest{});
 
-    INFO("---- ARCHIVED ----\n"
-         << strbuf.str());
+        INFO("---- ARCHIVED ----\n"
+             << strbuf.str());
 
-    bintest restored;
-    restored.binstr = {};
+        bintest restored;
+        restored.binstr = {};
 
-    archive::json::reader reader{&strbuf};
-    reader.deserialize(restored);
+        archive::json::reader reader{&strbuf};
+        reader.deserialize(restored);
 
-    INFO("---- RESTORED.binstr ----\n"
-         << restored.binstr);
+        INFO("---- RESTORED.binstr ----\n"
+             << restored.binstr);
 
-    REQUIRE(restored.binstr == bintest{}.binstr);
+        REQUIRE(restored.binstr == bintest{}.binstr);
+    }
 }

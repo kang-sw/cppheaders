@@ -22,4 +22,4 @@
 //
 // project home: https://github.com/perfkitpp
 
-#include "third/catch.hpp"
+#include "doctest/doctest.h"
