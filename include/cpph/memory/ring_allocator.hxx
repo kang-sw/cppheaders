@@ -70,6 +70,7 @@
  */
 #pragma once
 #include <cassert>
+#include <cstring>
 #include <stdexcept>
 
 #include "../template_utils.hxx"
