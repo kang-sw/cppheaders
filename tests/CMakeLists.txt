@@ -42,14 +42,14 @@ target_include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/../include/cpph
 )
 
-if (TARGET nlohmann::json)
-    message("[${PROJECT_NAME}] nlhomann::json found. linking dependency ...")
+if (TARGET nlohmann_json::nlohmann_json)
+    message("[${PROJECT_NAME}] nlohmann_json::nlohmann_json found. linking dependency ...")
 
     target_link_libraries(
             ${PROJECT_NAME}
 
             PRIVATE
-            nlohmann::json
+            nlohmann_json::nlohmann_json
     )
 endif ()
 
