@@ -41,6 +41,7 @@
 namespace cpph {
 using std::make_shared;
 using std::make_unique;
+using std::map;
 using std::optional;
 using std::shared_ptr;
 using std::string;
