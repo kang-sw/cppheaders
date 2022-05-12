@@ -33,22 +33,19 @@
 #include <utility>
 #include <vector>
 
-#include "../../algorithm/std.hxx"
-#include "../../container/sorted_vector.hxx"
-#include "../../counter.hxx"
+#include "cpph/algorithm/std.hxx"
+#include "cpph/container/sorted_vector.hxx"
+#include "cpph/counter.hxx"
+#include "cpph/helper/alias_memory.hxx"
 #include "if_archive.hxx"
 
 namespace cpph {
-using std::make_shared;
-using std::make_unique;
+
 using std::map;
 using std::optional;
-using std::shared_ptr;
 using std::string;
 using std::string_view;
-using std::unique_ptr;
 using std::vector;
-using std::weak_ptr;
 }  // namespace cpph
 
 namespace cpph::refl {
