@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #pragma once
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <vector>
