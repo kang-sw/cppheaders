@@ -25,8 +25,7 @@
  ******************************************************************************/
 
 #pragma once
-
-//
+#include <atomic>
 
 namespace cpph {
 // lock guard utility
@@ -74,4 +73,16 @@ static_assert(noexcept(std::declval<null_mutex>().lock()));
 static_assert(noexcept(std::declval<null_mutex>().try_lock()));
 static_assert(noexcept(std::declval<null_mutex>().unlock()));
 
+//! Atomic utility
+template <typename ValTy>
+ValTy acquire(std::atomic<ValTy> const& value) noexcept
+{
+    return value.load(std::memory_order_acquire);
+}
+
+template <typename ValTy, typename Rhs>
+void release(std::atomic<ValTy>& value, Rhs&& other) noexcept
+{
+    value.store(other, std::memory_order_release);
+}
 }  // namespace cpph
