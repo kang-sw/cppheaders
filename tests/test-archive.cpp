@@ -363,4 +363,12 @@ TEST_SUITE("refl.archive")
 
         REQUIRE(restored.binstr == bintest{}.binstr);
     }
+
+    TEST_CASE("object view get ptr")
+    {
+        refl::shared_object_ptr p{make_shared<int>(4)};
+
+        REQUIRE(refl::get_ptr<int>(p) != nullptr);
+        REQUIRE(*refl::get_ptr<int>(p) == 4);
+    }
 }

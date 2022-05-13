@@ -144,7 +144,9 @@ struct shared_object_ptr {
 
    public:
     shared_object_ptr() noexcept = default;
+    shared_object_ptr(shared_object_ptr const&) noexcept = default;
     shared_object_ptr(shared_object_ptr&&) noexcept = default;
+    shared_object_ptr& operator=(shared_object_ptr const&) noexcept = default;
     shared_object_ptr& operator=(shared_object_ptr&&) noexcept = default;
 
     template <typename Ty_>
@@ -155,11 +157,10 @@ struct shared_object_ptr {
             decltype(_data) b) noexcept
             : _meta(a), _data(move(b)) {}
 
-    operator object_view_t() noexcept { return view(); }
+    operator object_view_t() const noexcept { return view(); }
     operator object_const_view_t() const noexcept { return view(); }
-    object_view_t view() { return {_meta, &*_data}; }
-    object_const_view_t view() const { return {_meta, &*_data}; }
-
+    object_view_t view() const { return {_meta, &*_data}; }
+    auto pair() const noexcept { return view().pair(); }
     explicit operator bool() const noexcept { return !!_data; }
 };
 
@@ -243,6 +244,11 @@ class if_primitive_control
     virtual entity_type type() const noexcept = 0;
 
     /**
+     * Retrieve typeid
+     */
+    virtual std::type_info const* type_info() const noexcept = 0;
+
+    /**
      * Underlying element type if this primitive is sort of container
      * This descriptor may not be used for actual data manipulation, but only for
      *  descriptive operations like validation/documentation/schema-generation.
@@ -308,6 +314,11 @@ class templated_primitive_control : public if_primitive_control
     requirement_status_tag status(void const* pvdata) const noexcept final
     {
         return impl_status((Ty_ const*)pvdata);
+    }
+
+    const std::type_info* type_info() const noexcept override
+    {
+        return &typeid(Ty_);
     }
 
    protected:
@@ -407,6 +418,9 @@ class object_metadata
     // if _is_object is true, this indicates set of indices which is used for fast-access key
     sorted_vector<int, int> _key_indices;
 
+    // compares validity
+    std::type_info const* _typeid = nullptr;
+
    private:
     /*  Transients  */
     // Sorted array for property address ~ index mapping
@@ -420,6 +434,11 @@ class object_metadata
     bool is_object() const noexcept { return _is_object; }
     bool is_tuple() const noexcept { return not is_primitive() && not is_object(); }
     bool is_optional() const noexcept { return is_primitive() && _primitive->status() != requirement_status_tag::required; }
+
+    auto type_info() const noexcept
+    {
+        return _typeid;
+    }
 
     entity_type type() const noexcept
     {
@@ -781,6 +800,8 @@ class object_metadata
             auto& generated = *result;
             auto lookup = &generated._offset_lookup;
 
+            assert(result->_typeid != nullptr);
+
             auto const n_props = generated._props.size();
             lookup->reserve(n_props);
 
@@ -886,6 +907,7 @@ class object_metadata
 
             _current->_extent = extent;
             _current->_primitive = ref;
+            _current->_typeid = ref->type_info();
 
             return *this;
         }
@@ -904,7 +926,7 @@ class object_metadata
         template <typename Class_>
         Ty_ const& define_class()
         {
-            define_basic(sizeof(Class_));
+            define_basic(sizeof(Class_), &typeid(Class_));
 
             // TODO: add construct/move/copy/invoke manipulators ...
             //       DESIGN HOW TO DO IT!
@@ -912,10 +934,11 @@ class object_metadata
             return _self();
         }
 
-        virtual Ty_ const& define_basic(size_t extent)
+        virtual Ty_ const& define_basic(size_t extent, std::type_info const* p)
         {
             *_current = {};
             _current->_extent = extent;
+            _current->_typeid = p;
 
             return _self();
         }
@@ -943,9 +966,9 @@ class object_metadata
         using super = object_factory_base<object_factory>;
 
        protected:
-        object_factory const& define_basic(size_t extent) override
+        object_factory const& define_basic(size_t extent, std::type_info const* ty) override
         {
-            object_factory_base::define_basic(extent);
+            object_factory_base::define_basic(extent, ty);
             _current->_is_object = true;
 
             return *this;
@@ -1058,6 +1081,38 @@ template <typename Class_>
 auto define_tuple()
 {
     return object_metadata::template_tuple_factory<Class_>::define();
+}
+
+/**
+ * Getters
+ */
+
+template <typename Ty, typename HolderTy>
+Ty* _get_ptr_impl(HolderTy&& view)
+{
+    auto [meta, data] = view.pair();
+    if (meta->type_info() == &typeid(Ty))
+        return reinterpret_cast<Ty*>(data);
+    else
+        return nullptr;
+}
+
+template <typename Ty>
+Ty* get_ptr(object_view_t const& view) noexcept
+{
+    return _get_ptr_impl<Ty>(view);
+}
+
+template <typename Ty>
+Ty* get_ptr(object_const_view_t const& view) noexcept
+{
+    return _get_ptr_impl<Ty>(view);
+}
+
+template <typename Ty>
+Ty* get_ptr(shared_object_ptr const& view) noexcept
+{
+    return _get_ptr_impl<Ty>(view);
 }
 
 /*
