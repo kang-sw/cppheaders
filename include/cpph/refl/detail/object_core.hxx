@@ -165,6 +165,12 @@ struct shared_object_ptr {
 
     void reset() noexcept { _meta = {}, _data = {}; }
 
+    template <typename Ty_>
+    void reset(shared_ptr<Ty_> pointer)
+    {
+        *this = shared_object_ptr(pointer);
+    }
+
     object_view_t view() const { return {_meta, &*_data}; }
     auto pair() const noexcept { return view().pair(); }
     explicit operator bool() const noexcept { return !!_data; }
@@ -184,6 +190,12 @@ struct weak_object_ptr {
 
     template <typename Ty_>
     explicit weak_object_ptr(weak_ptr<Ty_> pointer);
+
+    template <typename Ty_>
+    explicit weak_object_ptr(shared_ptr<Ty_> pointer)
+            : weak_object_ptr(weak_ptr{pointer})
+    {
+    }
 
     void reset() noexcept { _meta = {}, _data = {}; }
 
