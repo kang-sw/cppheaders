@@ -159,6 +159,12 @@ struct shared_object_ptr {
 
     operator object_view_t() const noexcept { return view(); }
     operator object_const_view_t() const noexcept { return view(); }
+
+    bool operator==(nullptr_t) const noexcept { return _data == nullptr; }
+    bool operator!=(nullptr_t) const noexcept { return _data != nullptr; }
+
+    void reset() noexcept { _meta = {}, _data = {}; }
+
     object_view_t view() const { return {_meta, &*_data}; }
     auto pair() const noexcept { return view().pair(); }
     explicit operator bool() const noexcept { return !!_data; }
@@ -173,9 +179,13 @@ struct weak_object_ptr {
     weak_object_ptr() noexcept = default;
     weak_object_ptr(weak_object_ptr&&) noexcept = default;
     weak_object_ptr& operator=(weak_object_ptr&&) noexcept = default;
+    weak_object_ptr(weak_object_ptr const&) noexcept = default;
+    weak_object_ptr& operator=(weak_object_ptr const&) noexcept = default;
 
     template <typename Ty_>
     explicit weak_object_ptr(weak_ptr<Ty_> pointer);
+
+    void reset() noexcept { _meta = {}, _data = {}; }
 
     auto expired() const noexcept { return _data.expired(); }
     shared_object_ptr lock() const noexcept { return shared_object_ptr{_meta, _data.lock()}; }
