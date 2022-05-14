@@ -165,7 +165,7 @@ struct basic_shared_object_ptr {
     template <typename Ty_>
     void reset(shared_ptr<Ty_> pointer)
     {
-        *this = shared_object_ptr(pointer);
+        *this = basic_shared_object_ptr(pointer);
     }
 
     auto view() const -> view_type { return {_meta, &*_data}; }
@@ -201,6 +201,18 @@ struct basic_weak_object_ptr {
     explicit basic_weak_object_ptr(shared_ptr<Ty_> pointer)
             : basic_weak_object_ptr(weak_ptr{pointer})
     {
+    }
+
+    template <typename Ty_>
+    void reset(weak_ptr<Ty_> pointer)
+    {
+        *this = basic_weak_object_ptr(pointer);
+    }
+
+    template <typename Ty_>
+    void reset(shared_ptr<Ty_> pointer)
+    {
+        *this = basic_weak_object_ptr(pointer);
     }
 
     void reset() noexcept { _meta = {}, _data = {}; }
@@ -1254,7 +1266,7 @@ constexpr bool has_object_metadata_initializer_v<
 template <bool IsMutable>
 template <typename Ty_, class>
 basic_shared_object_ptr<IsMutable>::basic_shared_object_ptr(shared_ptr<Ty_> pointer) noexcept
-        : _meta(get_object_metadata<Ty_>()),
+        : _meta(get_object_metadata<decay_t<Ty_>>()),
           _data(std::reinterpret_pointer_cast<data_type>(pointer))
 {
 }
@@ -1262,7 +1274,7 @@ basic_shared_object_ptr<IsMutable>::basic_shared_object_ptr(shared_ptr<Ty_> poin
 template <bool IsMutable>
 template <typename Ty_>
 basic_weak_object_ptr<IsMutable>::basic_weak_object_ptr(weak_ptr<Ty_> pointer)
-        : _meta(get_object_metadata<Ty_>()),
+        : _meta(get_object_metadata<decay_t<Ty_>>()),
           _data(std::reinterpret_pointer_cast<data_type>(pointer))
 {
 }
