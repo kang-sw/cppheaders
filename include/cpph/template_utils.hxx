@@ -26,8 +26,8 @@
 
 #pragma once
 #include <algorithm>
-#include <memory>
 #include <limits>
+#include <memory>
 #include <tuple>
 
 namespace std {
@@ -47,6 +47,9 @@ using std::forward_as_tuple;
 using std::make_from_tuple;
 using std::make_pair;
 using std::make_tuple;
+
+using std::apply;
+using std::invoke;
 
 using std::make_shared;
 using std::make_unique;

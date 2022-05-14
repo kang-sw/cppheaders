@@ -24,6 +24,7 @@
 
 #pragma once
 #include <list>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -33,11 +34,13 @@
 //
 
 namespace cpph {
+using std::list;
+
 template <typename Ty_, typename Mutex_ = null_mutex>
 class basic_resource_pool
 {
    public:
-    using buffer_type = std::list<Ty_>;
+    using buffer_type = list<Ty_>;
     using buffer_iterator = typename buffer_type::iterator;
 
    public:
@@ -49,7 +52,7 @@ class basic_resource_pool
            public:
             using pointer = Ty_*;
 
-            deleter(handle_type&& h) noexcept : _handle(std::move(h)) {}
+            deleter(handle_type&& h) noexcept : _handle(move(h)) {}
             void operator()(pointer) { _handle.checkin(); }
         };
 
@@ -58,13 +61,13 @@ class basic_resource_pool
 
         handle_type(handle_type&& r) noexcept
         {
-            _assign(std::move(r));
+            _assign(move(r));
         }
 
         handle_type& operator=(handle_type&& r) noexcept
         {
             this->~handle_type();
-            _assign(std::move(r));
+            _assign(move(r));
             return *this;
         }
 
@@ -75,7 +78,7 @@ class basic_resource_pool
 
         void checkin()
         {
-            _owner->checkin(std::move(*this));
+            _owner->checkin(move(*this));
         }
 
         bool valid() const noexcept
@@ -103,16 +106,16 @@ class basic_resource_pool
             // Backup pointer before move 'this' reference
             auto pointer = &**this;
 
-            return std::shared_ptr<Ty_>{
-                    pointer, deleter{std::move(*this)}};
+            return shared_ptr<Ty_>{
+                    pointer, deleter{move(*this)}};
         }
 
         auto unique() && noexcept
         {
             auto pointer = &**this;
 
-            return std::unique_ptr<Ty_, deleter>{
-                    pointer, deleter{std::move(*this)}};
+            return unique_ptr<Ty_, deleter>{
+                    pointer, deleter{move(*this)}};
         }
 
        private:
@@ -128,7 +131,7 @@ class basic_resource_pool
         friend class basic_resource_pool;
 
         basic_resource_pool* _owner = nullptr;
-        typename std::list<Ty_>::iterator _ref{};
+        typename list<Ty_>::iterator _ref{};
     };
 
    public:
@@ -195,12 +198,12 @@ class basic_resource_pool
     explicit basic_resource_pool(Args_&&... args)
     {
         _fn_construct_back =
-                [this, tup_args = std::forward_as_tuple(args...)] {
-                    std::apply(
+                [this, tup_args = forward_as_tuple(args...)] {
+                    auto fn_apply =
                             [this](auto&&... args) {
-                                _free.emplace_back(std::forward<decltype(args)>(args)...);
-                            },
-                            tup_args);
+                                _free.emplace_back(forward<decltype(args)>(args)...);
+                            };
+                    apply(fn_apply, tup_args);
                 };
     }
 
@@ -208,8 +211,8 @@ class basic_resource_pool
     Mutex_ _mut;
 
     function<void()> _fn_construct_back;
-    std::list<Ty_> _pool;
-    std::list<Ty_> _free;
+    list<Ty_> _pool;
+    list<Ty_> _free;
 };
 
 template <typename Ty_>
