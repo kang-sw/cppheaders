@@ -37,6 +37,7 @@
 #include "cpph/container/sorted_vector.hxx"
 #include "cpph/counter.hxx"
 #include "cpph/helper/alias_memory.hxx"
+#include "cpph/macros.hxx"
 #include "if_archive.hxx"
 
 namespace cpph {
@@ -101,64 +102,60 @@ class object_metadata;  // forwarding
 /**
  * Object/metadata wrapper for various use
  */
+template <bool IsMutable>
+struct basic_object_view_t {
+    template <bool IsOtherMutable>
+    friend struct basic_object_view_t;
 
-struct object_const_view_t {
-    object_metadata_t meta = {};
-    object_data_t const* data = {};
+    using data_type = conditional_t<IsMutable, object_data_t, object_data_t const>;
 
    public:
-    object_const_view_t() = default;
-    object_const_view_t(const object_metadata* meta, const object_data_t* data) : meta(meta), data(data) {}
+    object_metadata_t meta = {};
+    data_type* data = {};
 
-    template <typename Ty_>
-    explicit object_const_view_t(Ty_ const& p) noexcept;
+   public:
+    basic_object_view_t() = default;
+    basic_object_view_t(const object_metadata* meta, data_type* data) : meta(meta), data(data) {}
+
+    template <bool IsOtherMutable, CPPH_REQUIRE(not IsMutable || IsOtherMutable == IsMutable)>
+    basic_object_view_t(basic_object_view_t<IsOtherMutable> other)
+            : basic_object_view_t(other.meta, other.data)
+    {
+    }
+
+    template <typename Ty, CPPH_REQUIRE(not IsMutable || IsMutable == not is_const_v<Ty>)>
+    explicit basic_object_view_t(Ty& p) noexcept;
 
     bool empty() const noexcept { return data == nullptr; }
-
-   public:
     auto pair() const noexcept { return make_pair(meta, data); }
 };
 
-struct object_view_t {
-    object_metadata_t meta = {};
-    object_data_t* data = {};
+template <bool IsMutable>
+struct basic_shared_object_ptr {
+    template <bool IsOtherMutable>
+    friend struct basic_shared_object_ptr;
 
-   public:
-    object_view_t() = default;
-    object_view_t(const object_metadata* meta, object_data_t* data) : meta(meta), data(data) {}
+    using data_type = conditional_t<IsMutable, object_data_t, object_data_t const>;
+    using view_type = basic_object_view_t<IsMutable>;
 
-    template <typename Ty_>
-    explicit object_view_t(Ty_* p) noexcept;
-
-    bool empty() const noexcept { return data == nullptr; }
-    operator object_const_view_t() const noexcept { return {meta, data}; }
-
-   public:
-    auto pair() const noexcept { return make_pair(meta, data); }
-};
-
-struct shared_object_ptr {
    private:
     object_metadata_t _meta = {};
-    shared_ptr<object_data_t> _data = {};
+    shared_ptr<data_type> _data = {};
 
    public:
-    shared_object_ptr() noexcept = default;
-    shared_object_ptr(shared_object_ptr const&) noexcept = default;
-    shared_object_ptr(shared_object_ptr&&) noexcept = default;
-    shared_object_ptr& operator=(shared_object_ptr const&) noexcept = default;
-    shared_object_ptr& operator=(shared_object_ptr&&) noexcept = default;
+    basic_shared_object_ptr() noexcept = default;
 
-    template <typename Ty_>
-    explicit shared_object_ptr(shared_ptr<Ty_> pointer) noexcept;
-
-    shared_object_ptr(
-            decltype(_meta) a,
-            decltype(_data) b) noexcept
+    basic_shared_object_ptr(decltype(_meta) a, decltype(_data) b) noexcept
             : _meta(a), _data(move(b)) {}
 
-    operator object_view_t() const noexcept { return view(); }
-    operator object_const_view_t() const noexcept { return view(); }
+    template <bool IsOtherMutable, CPPH_REQUIRE(not IsMutable || IsOtherMutable == IsMutable)>
+    basic_shared_object_ptr(basic_shared_object_ptr<IsOtherMutable> other)
+            : basic_shared_object_ptr(move(other._meta), move(other._data))
+    {
+    }
+
+    template <typename Ty, CPPH_REQUIRE(not IsMutable || IsMutable == not is_const_v<Ty>)>
+    basic_shared_object_ptr(shared_ptr<Ty> pointer) noexcept;
 
     bool operator==(nullptr_t) const noexcept { return _data == nullptr; }
     bool operator!=(nullptr_t) const noexcept { return _data != nullptr; }
@@ -171,37 +168,53 @@ struct shared_object_ptr {
         *this = shared_object_ptr(pointer);
     }
 
-    object_view_t view() const { return {_meta, &*_data}; }
+    auto view() const -> view_type { return {_meta, &*_data}; }
     auto pair() const noexcept { return view().pair(); }
     explicit operator bool() const noexcept { return !!_data; }
 };
 
-struct weak_object_ptr {
+template <bool IsMutable>
+struct basic_weak_object_ptr {
+    template <bool IsOtherMutable>
+    friend struct basic_weak_object_ptr;
+
+    using data_type = conditional_t<IsMutable, object_data_t, object_data_t const>;
+    using shared_ptr_type = basic_shared_object_ptr<IsMutable>;
+
    private:
     object_metadata_t _meta = {};
-    weak_ptr<object_data_t> _data = {};
+    weak_ptr<data_type> _data = {};
 
    public:
-    weak_object_ptr() noexcept = default;
-    weak_object_ptr(weak_object_ptr&&) noexcept = default;
-    weak_object_ptr& operator=(weak_object_ptr&&) noexcept = default;
-    weak_object_ptr(weak_object_ptr const&) noexcept = default;
-    weak_object_ptr& operator=(weak_object_ptr const&) noexcept = default;
+    basic_weak_object_ptr() noexcept = default;
+
+    template <bool IsOtherMutable, CPPH_REQUIRE(not IsMutable || IsOtherMutable == IsMutable)>
+    basic_weak_object_ptr(basic_weak_object_ptr<IsOtherMutable> other)
+            : _meta(move(other._meta)), _data(move(other._data))
+    {
+    }
 
     template <typename Ty_>
-    explicit weak_object_ptr(weak_ptr<Ty_> pointer);
+    explicit basic_weak_object_ptr(weak_ptr<Ty_> pointer);
 
     template <typename Ty_>
-    explicit weak_object_ptr(shared_ptr<Ty_> pointer)
-            : weak_object_ptr(weak_ptr{pointer})
+    explicit basic_weak_object_ptr(shared_ptr<Ty_> pointer)
+            : basic_weak_object_ptr(weak_ptr{pointer})
     {
     }
 
     void reset() noexcept { _meta = {}, _data = {}; }
 
     auto expired() const noexcept { return _data.expired(); }
-    shared_object_ptr lock() const noexcept { return shared_object_ptr{_meta, _data.lock()}; }
+    auto lock() const noexcept -> shared_ptr_type { return shared_ptr_type{_meta, _data.lock()}; }
 };
+
+using object_view_t = basic_object_view_t<true>;
+using object_const_view_t = basic_object_view_t<false>;
+using shared_object_ptr = basic_shared_object_ptr<true>;
+using shared_object_const_ptr = basic_shared_object_ptr<false>;
+using weak_object_ptr = basic_weak_object_ptr<true>;
+using weak_object_const_ptr = basic_weak_object_ptr<false>;
 
 // alias
 using object_metadata_fn = std::function<object_metadata_t()>;
@@ -1231,30 +1244,28 @@ template <typename ValTy_>
 constexpr bool has_object_metadata_initializer_v<
         ValTy_, std::void_t<decltype(initialize_object_metadata(type_tag_v<ValTy_>))>> = true;
 
-template <typename Ty_>
-shared_object_ptr::shared_object_ptr(shared_ptr<Ty_> pointer) noexcept
+template <bool IsMutable>
+template <typename Ty_, class>
+basic_shared_object_ptr<IsMutable>::basic_shared_object_ptr(shared_ptr<Ty_> pointer) noexcept
         : _meta(get_object_metadata<Ty_>()),
-          _data(std::reinterpret_pointer_cast<object_data_t>(pointer))
+          _data(std::reinterpret_pointer_cast<data_type>(pointer))
 {
 }
 
+template <bool IsMutable>
 template <typename Ty_>
-weak_object_ptr::weak_object_ptr(weak_ptr<Ty_> pointer)
+basic_weak_object_ptr<IsMutable>::basic_weak_object_ptr(weak_ptr<Ty_> pointer)
         : _meta(get_object_metadata<Ty_>()),
-          _data(std::reinterpret_pointer_cast<object_data_t>(pointer))
+          _data(std::reinterpret_pointer_cast<data_type>(pointer))
 {
 }
 
-template <typename Ty_>
-object_view_t::object_view_t(Ty_* p) noexcept : data((object_data_t*)p)
+template <bool IsMutable>
+template <typename Ty, class>
+basic_object_view_t<IsMutable>::basic_object_view_t(Ty& p) noexcept
+        : meta(get_object_metadata<decay_t<Ty>>()),
+          data(reinterpret_cast<data_type*>(&p))
 {
-    meta = get_object_metadata<Ty_>();
-}
-
-template <typename Ty_>
-object_const_view_t::object_const_view_t(const Ty_& p) noexcept : data((object_data_t const*)&p)
-{
-    meta = get_object_metadata<Ty_>();
 }
 
 }  // namespace cpph::refl
@@ -1335,7 +1346,7 @@ if_writer& if_writer::write(const Ty_& other)
 template <typename ValTy_>
 if_reader& if_reader::deserialize(ValTy_& out)
 {
-    refl::object_view_t view{&out};
+    refl::object_view_t view{out};
     return *this >> view;
 }
 

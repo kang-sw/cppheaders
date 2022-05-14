@@ -80,7 +80,7 @@ class service_builder
                 auto fn_assign_descriptors
                         = [this](auto&... arg) {
                               size_t n = 0;
-                              ((view_buffer[n++] = refl::object_view_t{&arg}), ...);
+                              ((view_buffer[n++] = refl::object_view_t{arg}), ...);
                           };
 
                 std::apply(fn_assign_descriptors, params);

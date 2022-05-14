@@ -592,7 +592,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
                                     _monitor->on_handler_error(&_profile, e);
 
                                     if (lock_guard _lc_{_mtx_protocol}; not expired())
-                                        _protocol->send_reply_error(msgid, e.data());
+                                        _protocol->send_reply_error(msgid, e.data().view());
                                 } catch (std::exception& e) {
                                     // Send reply with error in string
                                     _monitor->on_handler_error(&_profile, e);

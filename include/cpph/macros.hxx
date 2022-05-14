@@ -88,4 +88,5 @@
     template <typename TParam>                                                 \
     constexpr bool INTERNAL_CPPH_CONCAT(Name, _v) = Name<TParam>::value;
 
+#define CPPH_REQUIRE(TemplateCond) class = std::enable_if_t<(TemplateCond)>
 #endif
