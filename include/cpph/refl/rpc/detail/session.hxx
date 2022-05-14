@@ -200,7 +200,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
         if constexpr (no_return)
             request->return_buffer = {};
         else
-            request->return_buffer = refl::object_view_t{return_buffer};
+            request->return_buffer = refl::object_view_t{*return_buffer};
 
         _rq->lock.critical_section([&] {
             handle._wp = weak_from_this();
