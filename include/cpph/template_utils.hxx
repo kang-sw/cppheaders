@@ -27,6 +27,7 @@
 #pragma once
 #include <algorithm>
 #include <memory>
+#include <limits>
 #include <tuple>
 
 namespace std {
@@ -76,6 +77,7 @@ using std::unique_ptr;
 using std::weak_ptr;
 
 using std::decay_t;
+using std::remove_pointer_t;
 
 using std::enable_if;
 using std::enable_if_t;
@@ -95,6 +97,8 @@ using std::is_invocable_r_v;
 using std::is_invocable_v;
 using std::is_same_v;
 using std::is_void_v;
+
+using std::numeric_limits;
 
 using std::declval;
 }  // namespace stdfwd

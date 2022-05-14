@@ -194,8 +194,8 @@ class session : public if_session, public std::enable_shared_from_this<session>
         request->handler = std::move(handler);
 
         bool constexpr no_return
-                = (std::is_void_v<std::remove_pointer_t<RetPtr>>)
-               || (std::is_same_v<RetPtr, nullptr_t>);
+                = (is_void_v<remove_pointer_t<RetPtr>>)
+               || (is_same_v<RetPtr, nullptr_t>);
 
         if constexpr (no_return)
             request->return_buffer = {};
