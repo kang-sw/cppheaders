@@ -1171,6 +1171,13 @@ Ty& get(shared_object_ptr const& view) noexcept
     return assert(ptr), *ptr;
 }
 
+template <typename Ty>
+Ty const& get(shared_object_const_ptr const& view) noexcept
+{
+    auto ptr = _get_ptr_impl<Ty const>(view);
+    return assert(ptr), *ptr;
+}
+
 /*
  * User type definition
  */
