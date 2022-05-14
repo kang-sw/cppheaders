@@ -27,6 +27,25 @@
 #pragma once
 #include <atomic>
 
+#if _MSVC_LANG
+void __cdecl _Thrd_yield();
+#elif linux
+extern int sched_yield(void) __THROW;
+#endif
+
+namespace cpph::_detail {
+
+inline void thread_yield()
+{
+#if _MSVC_LANG
+    _Thrd_yield();
+#elif linux
+    sched_yield();
+#endif
+}
+
+}  // namespace cpph::_detail
+
 namespace cpph {
 // lock guard utility
 template <typename Mutex_>

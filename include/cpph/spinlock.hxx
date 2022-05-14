@@ -26,7 +26,6 @@
 
 #pragma once
 #include <atomic>
-#include <thread>
 
 #include "threading.hxx"
 
@@ -48,7 +47,7 @@ struct spinlock {
             while (lock_.load(std::memory_order_relaxed)) {
                 // Issue X86 PAUSE or ARM YIELD instruction to reduce contention between
                 // hyper-threads
-                std::this_thread::yield();
+                _detail::thread_yield();
             }
         }
     }

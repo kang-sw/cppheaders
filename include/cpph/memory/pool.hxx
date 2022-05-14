@@ -25,7 +25,6 @@
 #pragma once
 #include <list>
 #include <stdexcept>
-#include <thread>
 #include <vector>
 
 #include "../functional.hxx"
@@ -189,7 +188,7 @@ class basic_resource_pool
 
         // Yield for long time, since if following empty() call returns true, it normally
         //  indicates async process is running from another thread,
-        while (not empty()) { std::this_thread::sleep_for(std::chrono::milliseconds(1)); }
+        while (not empty()) { _detail::thread_yield(); }
     }
 
     template <typename... Args_>
