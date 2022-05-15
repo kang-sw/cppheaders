@@ -60,15 +60,15 @@ class event_queue
     /**
      * Creates new message procedure.
      *
-     * @param num_queue_buffer
+     * @param queue_buffer_size
      *    Queue buffer size. As it does not resized, set this value big enough on construction.
      *
      * @param num_initial_message_queue_size
      *    Number of initial image queue size. As this circular queue resizes on demand,
      *     determining this value is less important than setting \c num_queue_buffer correctly.
      */
-    explicit event_queue(size_t num_queue_buffer, size_t num_initial_message_queue_size = 32)
-            : _queue_alloc(num_queue_buffer), _messages(num_initial_message_queue_size) {}
+    explicit event_queue(size_t queue_buffer_size, size_t num_initial_message_queue_size = 32)
+            : _queue_alloc(queue_buffer_size), _messages(num_initial_message_queue_size) {}
 
     /**
      * Destruct this message procedure

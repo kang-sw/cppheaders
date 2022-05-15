@@ -128,7 +128,7 @@ class ring_allocator
     }
 
     explicit ring_allocator(size_t size) noexcept
-            : ring_allocator(malloc(size), size, [](void* p) { free(p); })
+            : ring_allocator(malloc(_node_size_ceil(size)), _node_size_ceil(size), [](void* p) { free(p); })
     {
     }
 
