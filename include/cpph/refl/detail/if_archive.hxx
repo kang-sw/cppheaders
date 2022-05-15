@@ -179,12 +179,14 @@ struct archive_config {
     // Reader configurations
     bool allow_missing_argument : 1;
     bool allow_unknown_argument : 1;
+    bool merge_on_read : 1;  // TODO: Implement merge mode on other elements!
 
    public:
     archive_config() noexcept
             : use_integer_key(false),
               allow_missing_argument(true),
-              allow_unknown_argument(true)
+              allow_unknown_argument(true),
+              merge_on_read(false)
     {
     }
 };
@@ -424,6 +426,10 @@ class if_reader : public if_archive_base
     //! Get next type
     virtual entity_type type_next() const = 0;
 
+    //! Helper for quick value retrieval
+    template <typename T>
+    T read();
+
    public:
     //! Dump single object to target writer
     virtual void dump_single_object(if_writer* target)
@@ -608,6 +614,14 @@ inline if_reader& operator>>(if_reader& reader, nullptr_t nil)
 inline if_reader& operator>>(if_reader&& reader, nullptr_t nil)
 {
     return reader.read(nil);
+}
+
+template <typename T>
+T if_reader::read()
+{
+    T value;
+    *this >> value;
+    return value;
 }
 
 }  // namespace cpph::archive

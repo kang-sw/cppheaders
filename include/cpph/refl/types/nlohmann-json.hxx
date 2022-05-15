@@ -41,31 +41,118 @@ class nlohmann_json_manip_t : public templated_primitive_control<nlohmann::json>
    public:
     entity_type type() const noexcept override
     {
-        return entity_type::string;
+        return entity_type::object;
     }
 
    protected:
     void impl_archive(archive::if_writer* strm, const nlohmann::json& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
     {
-        _recurse_archive(strm, data);
+        _archive_recursive(strm, data);
     }
 
     void impl_restore(archive::if_reader* strm, nlohmann::json* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
     {
-        _recurse_restore(strm, pvdata);
+        string tmp_keybuf;
+        _restore_recursive(strm, pvdata, &tmp_keybuf);
     }
 
    private:
-    void _recurse_archive(archive::if_writer* strm, const nlohmann::json& data) const
+    static void _archive_recursive(archive::if_writer* strm, const nlohmann::json& data)
     {
-        // TODO
+        switch (data.type()) {
+            case nlohmann::detail::value_t::null: strm->write(nullptr); break;
+            case nlohmann::detail::value_t::string: strm->write(data.get_ref<string const&>()); break;
+            case nlohmann::detail::value_t::boolean: strm->write(data.get<bool>()); break;
+            case nlohmann::detail::value_t::number_integer: strm->write(data.get<int64_t>()); break;
+            case nlohmann::detail::value_t::number_unsigned: strm->write(data.get<uint64_t>()); break;
+            case nlohmann::detail::value_t::number_float: strm->write(data.get<double>()); break;
 
-        for (auto& [key, value] : data.items()) {
+            case nlohmann::detail::value_t::binary: {
+                auto& bin = data.get_ref<nlohmann::json::binary_t const&>();
+                strm->binary_push(bin.size());
+                strm->binary_write_some({bin.data(), bin.size()});
+                strm->binary_pop();
+            } break;
+
+            case nlohmann::detail::value_t::object: {
+                strm->object_push(data.size());
+                for (auto& [key, value] : data.items()) {
+                    strm->write_key_next();
+                    strm->write(key);
+                    _archive_recursive(strm, value);
+                }
+                strm->object_pop();
+            } break;
+
+            case nlohmann::detail::value_t::array: {
+                strm->array_push(data.size());
+                for (auto& value : data) {
+                    _archive_recursive(strm, value);
+                }
+                strm->array_pop();
+            } break;
+
+            default:
+            case nlohmann::detail::value_t::discarded:
+                throw std::logic_error{"Tried to write invalid json type"};
         }
     }
 
-    void _recurse_restore(archive::if_reader* strm, nlohmann::json* pdata) const
+    static void _restore_recursive(archive::if_reader* strm, nlohmann::json* pdata, string* keybuf)
     {
+        switch (strm->type_next()) {
+            case entity_type::object:
+            case entity_type::dictionary: {
+                if (not strm->config.merge_on_read || not pdata->is_object())
+                    *pdata = nlohmann::json::object();
+
+                auto key = strm->begin_object();
+                while (not strm->should_break(key)) {
+                    strm->read_key_next();
+                    strm->read(*keybuf);
+
+                    _restore_recursive(strm, &(*pdata)[*keybuf], keybuf);
+                }
+                strm->end_object(key);
+            } break;
+
+            case entity_type::tuple:
+            case entity_type::array: {
+                if (not strm->config.merge_on_read || not pdata->is_array())
+                    *pdata = nlohmann::json::array();
+
+                auto key = strm->begin_array();
+                while (not strm->should_break(key)) {
+                    _restore_recursive(strm, &pdata->emplace_back(), keybuf);
+                }
+                strm->end_array(key);
+            } break;
+
+            case entity_type::binary: {
+                if (not pdata->is_binary())
+                    *pdata = nlohmann::json::binary({});
+
+                auto nread = strm->begin_binary();
+                auto& bin = pdata->get_ref<nlohmann::json::binary_t&>();
+                bin.resize(nread);
+
+                strm->binary_read_some({bin.data(), bin.size()});
+                strm->end_binary();
+            } break;
+
+            case entity_type::null: *pdata = nullptr; break;
+            case entity_type::boolean: *pdata = strm->read<bool>(); break;
+            case entity_type::integer: *pdata = strm->read<int64_t>(); break;
+            case entity_type::floating_point: *pdata = strm->read<double>(); break;
+
+            case entity_type::string: {
+                if (not pdata->is_string()) { *pdata = ""; }
+                strm->read(pdata->get_ref<string&>());
+            } break;
+
+            case entity_type::invalid:
+                throw archive::error::reader_invalid_context{strm};
+        }
     }
 };
 }  // namespace _detail

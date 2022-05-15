@@ -215,13 +215,13 @@ auto get_list_like_descriptor() -> object_metadata_t
                     container->reserve(n);
 
             while (not strm->should_break(key)) {
-                if constexpr (has_emplace_back<Container_>)  // maybe vector, list, deque ...
+                if constexpr (has_emplace_back<Container_>) {  // maybe vector, list, deque ...
                     *strm >> container->emplace_back();
-                else if constexpr (has_emplace_front<Container_>)  // maybe forward_list
+                } else if constexpr (has_emplace_front<Container_>) {  // maybe forward_list
                     *strm >> container->emplace_front();
-                else if constexpr (has_emplace<Container_>)  // maybe set
-                    *strm >> *container->emplace().first;
-                else
+                } else if constexpr (has_emplace<Container_>) {  // maybe set
+                    *container->emplace(strm->read<value_type>());
+                } else
                     Container_::ERROR_INVALID_CONTAINER;
             }
 
