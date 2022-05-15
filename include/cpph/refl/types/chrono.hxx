@@ -25,8 +25,8 @@
  ******************************************************************************/
 
 #pragma once
-#include <list>
 #include <chrono>
+#include <list>
 
 #include "../detail/primitives.hxx"
 
@@ -97,42 +97,34 @@ class time_info
 };
 static_assert(sizeof(time_info) == 12);
 #pragma pack(pop)
-
-INTERNAL_CPPH_define_(ValueType, (is_template_instance_of<ValueType, std::chrono::duration>::value))
-{
-    static struct ctrl_t : refl::templated_primitive_control<ValueType> {
-        entity_type type() const noexcept override
-        {
-            return entity_type::binary;
-        }
-
-       protected:
-        void impl_archive(archive::if_writer* strm, const ValueType& data, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
-        {
-            time_info t{data};
-            strm->binary_push(sizeof t);
-            strm->binary_write_some({&t, 1});
-            strm->binary_pop();
-        }
-
-        void impl_restore(archive::if_reader* strm, ValueType* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
-        {
-            time_info t;
-            {
-                auto n = strm->begin_binary();
-                CPPH_TMPVAR = cleanup([&] { strm->end_binary(); });
-
-                if (n != sizeof(time_info)) { throw archive::error::reader_check_failed{strm}; }
-                strm->binary_read_some({&t, 1});
-            }
-
-            t.retrieve(*pvdata);
-        }
-    } ctrl;
-
-    static auto _ = object_metadata::primitive_factory::define(sizeof(ValueType), &ctrl);
-    return _.get();
-}
 }  // namespace cpph::refl
+
+CPPH_REFL_DEF_begin(ValueType, is_template_instance_of<ValueType, std::chrono::duration>::value)
+{
+    CPPH_REFL_DEF_type(binary);
+
+    CPPH_REFL_DEF_archive(strm, data)
+    {
+        time_info t{data};
+        strm->binary_push(sizeof t);
+        strm->binary_write_some({&t, 1});
+        strm->binary_pop();
+    }
+
+    CPPH_REFL_DEF_restore(strm, pvdata)
+    {
+        time_info t;
+        {
+            auto n = strm->begin_binary();
+            CPPH_FINALLY(strm->end_binary());
+
+            if (n != sizeof(time_info)) { throw archive::error::reader_check_failed{strm}; }
+            strm->binary_read_some({&t, 1});
+        }
+
+        t.retrieve(*pvdata);
+    }
+}
+CPPH_REFL_DEF_end();
 
 #include "../detail/_deinit_macros.hxx"

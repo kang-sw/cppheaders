@@ -41,34 +41,40 @@
             auto get_object_metadata_t < ValT,                                                         \
             std::enable_if_t < INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) < ValT >>> ::operator()() const
 
-#define CPPH_REFL_DEF_begin(Type, Cond)                                      \
-    namespace cpph::refl {                                                   \
-    template <typename ValT>                                                 \
-    struct get_object_metadata_t<                                            \
-            ValT, enable_if_t<(Cond)>> {                                     \
-        object_metadata_t operator()() const noexcept                        \
-        {                                                                    \
-            static class _manip_t : public templated_primitive_control<ValT> \
-            {                                                                \
-               public:                                                       \
-                entity_type type() const noexcept override                   \
-                {                                                            \
-                    return entity_type::object;                              \
-                }
+#define CPPH_REFL_DEF_begin(Type, ...)                \
+    namespace cpph::refl {                            \
+    template <typename Type>                          \
+    struct get_object_metadata_t<                     \
+            Type, enable_if_t<__VA_ARGS__>> {         \
+        using value_type = Type;                      \
+        object_metadata_t operator()() const noexcept \
+        {                                             \
+            static struct _manip_t : public templated_primitive_control<Type>
+
+#define CPPH_REFL_DEF_type(TypeVal)            \
+    entity_type type() const noexcept override \
+    {                                          \
+        return entity_type::TypeVal;           \
+    }
+
+#define CPPH_REFL_DEF_status(Param0) \
+    requirement_status_tag impl_status(const value_type* Param0) const noexcept override
+
+#define CPPH_REFL_DEF_type_dynamic() \
+    entity_type type() const noexcept override
 
 #define CPPH_REFL_DEF_archive(Param0, Param1) \
-    void impl_archive(archive::if_writer* Param0, const ValT& Param1, object_metadata_t Param2, optional_property_metadata Param3) const override
+    void impl_archive(archive::if_writer* Param0, const value_type& Param1, object_metadata_t Param2, optional_property_metadata Param3) const override
 
 #define CPPH_REFL_DEF_restore(Param0, Param1) \
-    void impl_restore(archive::if_reader* Param0, ValT* Param1, object_metadata_t Param2, optional_property_metadata Param3) const override
+    void impl_restore(archive::if_reader* Param0, value_type* Param1, object_metadata_t Param2, optional_property_metadata Param3) const override
 
-#define CPPH_REFL_DEF_end()                                                            \
-    }                                                                                  \
-    _manip;                                                                            \
-                                                                                       \
-    static auto _ = object_metadata::primitive_factory::define(sizeof(ValT), &_manip); \
-    return _.get();                                                                    \
-    }                                                                                  \
-    }                                                                                  \
-    ;                                                                                  \
+#define CPPH_REFL_DEF_end()                                                                  \
+    _manip;                                                                                  \
+                                                                                             \
+    static auto _ = object_metadata::primitive_factory::define(sizeof(value_type), &_manip); \
+    return _.get();                                                                          \
+    }                                                                                        \
+    }                                                                                        \
+    ;                                                                                        \
     }

@@ -70,11 +70,11 @@
             INTERNAL_CPPH_CONCAT(class LABEL0##CPPH_NAMESPACE0##TYPE##II, __LINE__)>
 
 /* "cleanup.hxx" **********************************************************************************/
-#define CPPH_CLEANUP(Callable) \
-    [[maybe_unused]] auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = cpph::cleanup(Callable)
+#define CPPH_CLEANUP(...) \
+    [[maybe_unused]] auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = cpph::cleanup(__VA_ARGS__)
 
-#define CPPH_FINALLY(Expr) \
-    [[maybe_unused]] auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = cpph::cleanup([&] { Expr; })
+#define CPPH_FINALLY(...) \
+    [[maybe_unused]] auto INTERNAL_CPPH_CONCAT(INTERNAL_CPPH_FINALLY_, __LINE__) = cpph::cleanup([&] { __VA_ARGS__; })
 
 /* "template_utils.hxx" ***************************************************************************/
 #define CPPH_SFINAE_EXPR(Name, TParam, ...)                                    \
