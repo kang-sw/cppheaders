@@ -61,7 +61,7 @@ class sorted_vector
         return std::lower_bound(
                 _vector.begin(), _vector.end(),
                 key,
-                [](value_type const& a, auto const& b) { return a.first < b; });
+                [](value_type const& a, auto const& b) { return Comparator_{}(a.first, b); });
     }
 
     template <typename Key_>
@@ -70,7 +70,7 @@ class sorted_vector
         return std::lower_bound(
                 _vector.begin(), _vector.end(),
                 key,
-                [](value_type const& a, auto const& b) { return a.first < b; });
+                [](value_type const& a, auto const& b) { return Comparator_{}(a.first, b); });
     }
 
     static bool _sort_fn(value_type const& a, value_type const& b) noexcept
