@@ -41,6 +41,7 @@
             auto get_object_metadata_t < ValT,                                                         \
             std::enable_if_t < INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) < ValT >>> ::operator()() const
 
+// Define new primitive type by template pattern
 #define CPPH_REFL_DEF_begin(Type, ...)                \
     namespace cpph::refl {                            \
     template <typename Type>                          \
@@ -51,23 +52,23 @@
         {                                             \
             static struct _manip_t : public templated_primitive_control<Type>
 
-#define CPPH_REFL_DEF_type(TypeVal)            \
-    entity_type type() const noexcept override \
-    {                                          \
-        return entity_type::TypeVal;           \
+#define CPPH_REFL_DEF_type(TypeVal)                           \
+    cpph::archive::entity_type type() const noexcept override \
+    {                                                         \
+        return cpph::archive::entity_type::TypeVal;           \
     }
 
 #define CPPH_REFL_DEF_status(Param0) \
-    requirement_status_tag impl_status(const value_type* Param0) const noexcept override
+    cpph::refl::requirement_status_tag impl_status(const value_type* Param0) const noexcept override
 
 #define CPPH_REFL_DEF_type_dynamic() \
-    entity_type type() const noexcept override
+    cpph::archive::entity_type type() const noexcept override
 
 #define CPPH_REFL_DEF_archive(Param0, Param1) \
-    void impl_archive(archive::if_writer* Param0, const value_type& Param1, object_metadata_t Param2, optional_property_metadata Param3) const override
+    void impl_archive(cpph::archive::if_writer* Param0, const value_type& Param1, cpph::refl::object_metadata_t Param2, cpph::refl::optional_property_metadata Param3) const override
 
 #define CPPH_REFL_DEF_restore(Param0, Param1) \
-    void impl_restore(archive::if_reader* Param0, value_type* Param1, object_metadata_t Param2, optional_property_metadata Param3) const override
+    void impl_restore(cpph::archive::if_reader* Param0, value_type* Param1, cpph::refl::object_metadata_t Param2, cpph::refl::optional_property_metadata Param3) const override
 
 #define CPPH_REFL_DEF_end()                                                                  \
     _manip;                                                                                  \
@@ -77,4 +78,21 @@
     }                                                                                        \
     }                                                                                        \
     ;                                                                                        \
+    }
+
+#define CPPH_REFL_DEF_begin_single(Type) \
+    cpph::refl::object_metadata_ptr      \
+    initialize_object_metadata(          \
+            cpph::refl::type_tag<Type>)  \
+    {                                    \
+        using value_type = Type;         \
+        static struct _manip_t : public cpph::refl::templated_primitive_control<Type>
+
+#define CPPH_REFL_DEF_begin_single_inline(Type) \
+    inline CPPH_REFL_DEF_begin_single(Type)
+
+#define CPPH_REFL_DEF_end_single()                                                              \
+    _manip;                                                                                     \
+                                                                                                \
+    return cpph::refl::object_metadata::primitive_factory::define(sizeof(value_type), &_manip); \
     }
