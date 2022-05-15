@@ -33,11 +33,14 @@
 //
 #include "../detail/_init_macros.hxx"
 
-namespace cpph::refl {
+namespace cpph {
 using std::chrono::duration;
 using std::chrono::duration_cast;
 using std::chrono::nanoseconds;
 using std::chrono::seconds;
+}  // namespace cpph
+
+namespace cpph::refl {
 
 #pragma pack(push, 4)
 class time_info

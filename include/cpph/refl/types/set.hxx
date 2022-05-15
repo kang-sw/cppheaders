@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * MIT License
  *
@@ -25,18 +26,18 @@
  ******************************************************************************/
 
 #pragma once
-#include <list>
+#include <set>
 
 #include "../detail/primitives.hxx"
 //
 #include "../detail/_init_macros.hxx"
 
 namespace cpph {
-using std::list;
+using std::set;
 }
 
 namespace cpph::refl {
-INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::list>::value))
+INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::set>::value))
 {
     return _detail::get_list_like_descriptor<ValTy_>();
 }

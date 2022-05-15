@@ -29,6 +29,11 @@
 //
 #include "../detail/_init_macros.hxx"
 
+namespace cpph {
+using std::unordered_map;
+using std::unordered_set;
+}  // namespace cpph
+
 namespace cpph::refl {
 INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::unordered_set>::value))
 {

@@ -30,6 +30,11 @@
 //
 #include "../detail/_init_macros.hxx"
 
+namespace cpph {
+using std::variant;
+using std::visit;
+}  // namespace cpph
+
 namespace cpph::refl {
 namespace _detail::variant {
 template <typename... Args_>

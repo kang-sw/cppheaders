@@ -32,6 +32,10 @@
 //
 #include "../detail/_init_macros.hxx"
 
+namespace cpph {
+using std::array;
+}
+
 namespace cpph::refl {
 namespace _detail {
 template <typename>
