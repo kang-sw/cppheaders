@@ -210,6 +210,17 @@ auto find_ptr(Set_&& set, Key_ const& key)
     }
 }
 
+template <typename Container, typename Elem, typename Compare = std::less<>>
+auto set_push(Container&& c, Elem&& e, Compare&& compare = std::less<>{})
+{
+    auto iter = lower_bound(c, e, compare);
+    if (iter == c.end() || compare(*iter, e) || compare(e, *iter)) {
+        return c.insert(iter, std::forward<Elem>(e));
+    } else {
+        return (*iter = std::forward<Elem>(e)), iter;
+    }
+}
+
 template <typename Set_, typename Key_>
 auto contains(Set_&& set, Key_ const& key)
 {
