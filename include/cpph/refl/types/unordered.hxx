@@ -21,3 +21,23 @@
 // SOFTWARE.
 //
 // project home: https://github.com/perfkitpp
+#pragma once
+#include <unordered_map>
+#include <unordered_set>
+
+#include "../detail/primitives.hxx"
+//
+#include "../detail/_init_macros.hxx"
+
+namespace cpph::refl {
+INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::unordered_set>::value))
+{
+    return _detail::get_list_like_descriptor<ValTy_>();
+}
+INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::unordered_map>::value))
+{
+    return _detail::get_dictionary_descriptor<ValTy_>();
+}
+}  // namespace cpph::refl
+
+#include "../detail/_deinit_macros.hxx"
