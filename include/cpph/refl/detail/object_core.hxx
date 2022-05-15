@@ -1163,6 +1163,12 @@ Ty* get_ptr(shared_object_ptr const& view) noexcept
 }
 
 template <typename Ty>
+Ty const* get_ptr(shared_object_const_ptr const& view) noexcept
+{
+    return _get_ptr_impl<Ty const>(view);
+}
+
+template <typename Ty>
 Ty& get(object_view_t const& view) noexcept
 {
     auto ptr = _get_ptr_impl<Ty>(view);
