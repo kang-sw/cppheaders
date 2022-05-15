@@ -47,6 +47,12 @@ inline void thread_yield()
 }  // namespace cpph::_detail
 
 namespace cpph {
+using std::atomic;
+using std::atomic_bool;
+using std::atomic_flag;
+using std::atomic_int;
+using std::atomic_size_t;
+
 // lock guard utility
 template <typename Mutex_>
 struct lock_guard {
