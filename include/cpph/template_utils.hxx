@@ -80,6 +80,7 @@ using std::unique_ptr;
 using std::weak_ptr;
 
 using std::decay_t;
+using std::remove_const_t;
 using std::remove_pointer_t;
 
 using std::enable_if;

@@ -407,7 +407,7 @@ struct get_object_metadata_t {
 template <typename ValTy_>
 auto get_object_metadata()
 {
-    return get_object_metadata_t<ValTy_>{}();
+    return get_object_metadata_t<remove_cvr_t<ValTy_>>{}();
 }
 
 template <typename ValTy_, class = void>
@@ -1138,7 +1138,7 @@ template <typename Ty, typename HolderTy>
 Ty* _get_ptr_impl(HolderTy&& view)
 {
     auto [meta, data] = view.pair();
-    if (meta->type_info() == &typeid(Ty))
+    if (meta == get_object_metadata<Ty>())
         return reinterpret_cast<Ty*>(data);
     else
         return nullptr;
@@ -1272,7 +1272,7 @@ constexpr bool has_object_metadata_initializer_v<
 template <bool IsMutable>
 template <typename Ty_, class>
 basic_shared_object_ptr<IsMutable>::basic_shared_object_ptr(shared_ptr<Ty_> pointer) noexcept
-        : _meta(get_object_metadata<decay_t<Ty_>>()),
+        : _meta(get_object_metadata<Ty_>()),
           _data(std::reinterpret_pointer_cast<data_type>(pointer))
 {
 }
@@ -1280,7 +1280,7 @@ basic_shared_object_ptr<IsMutable>::basic_shared_object_ptr(shared_ptr<Ty_> poin
 template <bool IsMutable>
 template <typename Ty_>
 basic_weak_object_ptr<IsMutable>::basic_weak_object_ptr(weak_ptr<Ty_> pointer)
-        : _meta(get_object_metadata<decay_t<Ty_>>()),
+        : _meta(get_object_metadata<Ty_>()),
           _data(std::reinterpret_pointer_cast<data_type>(pointer))
 {
 }
@@ -1288,7 +1288,7 @@ basic_weak_object_ptr<IsMutable>::basic_weak_object_ptr(weak_ptr<Ty_> pointer)
 template <bool IsMutable>
 template <typename Ty, class>
 basic_object_view_t<IsMutable>::basic_object_view_t(Ty& p) noexcept
-        : meta(get_object_metadata<decay_t<Ty>>()),
+        : meta(get_object_metadata<Ty>()),
           data(reinterpret_cast<data_type*>(&p))
 {
 }
