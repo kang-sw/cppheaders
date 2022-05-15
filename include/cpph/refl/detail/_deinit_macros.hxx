@@ -28,3 +28,7 @@
 #undef INTERNAL_CPPH_define_
 #undef INTERNAL_CPPH_concat_
 #undef INTERNAL_CPPH_concat_2_
+#undef CPPH_REFL_DEF_begin
+#undef CPPH_REFL_DEF_end
+#undef CPPH_REFL_DEF_archive
+#undef CPPH_REFL_DEF_restore
