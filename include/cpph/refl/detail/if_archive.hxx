@@ -179,7 +179,7 @@ struct archive_config {
     // Reader configurations
     bool allow_missing_argument : 1;
     bool allow_unknown_argument : 1;
-    bool merge_on_read : 1;  // TODO: Implement merge mode on other elements!
+    bool merge_on_read          : 1;  // TODO: Implement merge mode on other elements!
 
    public:
     archive_config() noexcept
@@ -206,6 +206,8 @@ class if_archive_base
             : _buf(buf), config()
     {
     }
+
+    virtual void clear() { _err = {}; }
 
     //! Gets internal buffer
     std::streambuf* rdbuf() const noexcept { return _buf; }
@@ -238,8 +240,6 @@ class if_writer : public if_archive_base
     /**
      * Clear internal buffer state
      */
-    virtual void clear() { _err = {}; }
-
     void flush() { _buf->pubsync(); }
 
    public:

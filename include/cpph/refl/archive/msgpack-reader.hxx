@@ -69,7 +69,7 @@ class reader : public archive::if_reader
     void reserve_depth(size_t n) { _scope.reserve(n); }
 
     //! Clears internal parsing state
-    void clear() { _scope.clear(), _scope_key_gen = {}; }
+    void clear() override { if_reader::clear(), _scope.clear(), _scope_key_gen = 0; }
 
    private:
     template <typename ValTy_, typename CastTo_ = ValTy_>
