@@ -72,6 +72,9 @@ class nlohmann_json_manip_t : public templated_primitive_control<nlohmann::json>
 
 INTERNAL_CPPH_define_(ValTy_, (std::is_same_v<ValTy_, nlohmann::json>))
 {
+    static _detail::nlohmann_json_manip_t manip;
+    static auto _ = object_metadata::primitive_factory::define(sizeof(nlohmann::json), &manip);
+    return _.get();
 }
 }  // namespace cpph::refl
 

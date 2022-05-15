@@ -36,6 +36,9 @@
 #    define CPPH_REFL_DEFINE_OBJECT_inline(AttrOps, ...) \
         INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, AttrOps, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
 
+#    define CPPH_REFL_DEFINE_OBJECT_inline_2(...) \
+        INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, (), define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_2, __VA_ARGS__)
+
 #    define CPPH_REFL_DEFINE_TUPLE_c(ClassName, AttrOps, ...) \
         INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, AttrOps, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
@@ -68,6 +71,9 @@
 
 #    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR(Param) \
         INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_3 Param
+
+#    define INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_2(Param) \
+        INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR_3(Param)
 
 #    define INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR(VarName) \
         _cpph_internal_factory.property(&self_t::VarName)
