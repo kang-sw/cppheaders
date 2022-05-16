@@ -34,6 +34,7 @@
 
 #define JSMN_STATIC
 #define JSMN_STRICT
+#define JSMN_PARENT_LINKS
 #include "cpph/third/jsmn.h"
 
 #define CPPHEADERS_IMPLEMENT_ASSERTIONS
