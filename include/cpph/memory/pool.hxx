@@ -28,13 +28,131 @@
 #include <stdexcept>
 #include <vector>
 
-#include "../functional.hxx"
-#include "../spinlock.hxx"
+#include "cpph/functional.hxx"
+#include "cpph/spinlock.hxx"
 
 //
 
 namespace cpph {
 using std::list;
+using std::vector;
+
+namespace _tr {
+namespace _detail {
+struct resource_node_header {
+    resource_node_header* prev;
+    resource_node_header* next;
+};
+
+template <typename Value>
+struct resource_node {
+    void* owner = nullptr;
+    void (*fn_checkin)(void*, _detail::resource_node_header*) noexcept = nullptr;
+    resource_node_header header;
+    Value data;
+};
+}  // namespace _detail
+
+template <typename Value>
+class pool_ptr
+{
+    using node_type = _detail::resource_node<Value>;
+
+   private:
+    node_type* _node = nullptr;
+    Value* _value = nullptr;
+
+   public:
+    pool_ptr() noexcept = default;
+
+    pool_ptr(pool_ptr&& other) noexcept
+            : _node(other._node),
+              _value(other._value)
+    {
+        memset(&other, 0, sizeof other);
+    }
+
+    template <typename OtherValue,
+              class = enable_if_t<not is_same_v<Value, OtherValue> && is_base_of_v<Value, OtherValue>>>
+    pool_ptr(pool_ptr<OtherValue>&& other)
+            : _node(other._node),
+              _value(other._value)
+    {
+        memset(&other, 0, sizeof other);
+    }
+
+    pool_ptr& operator=(pool_ptr&& other) noexcept
+    {
+        _release();
+        _node = other._node;
+        _value = other._value;
+        memset(&other, 0, sizeof other);
+    }
+
+    template <typename OtherValue,
+              class = enable_if_t<not is_same_v<Value, OtherValue> && is_base_of_v<Value, OtherValue>>>
+    pool_ptr& operator=(pool_ptr<OtherValue>&& other)
+    {
+        _release();
+        _node = other._node;
+        _value = other._value;
+        memset(&other, 0, sizeof other);
+    }
+
+    ~pool_ptr() noexcept
+    {
+        _release();
+    }
+
+    void reset() noexcept
+    {
+        _release();
+        _node = nullptr;
+        _value = nullptr;
+    }
+
+    shared_ptr<Value> share() && noexcept
+    {
+        auto pointer = _value;
+        return shared_ptr<Value>{pointer, [_ = move(*this)](auto) {}};
+    }
+
+   public:
+    bool operator==(nullptr_t) const noexcept { return _node == nullptr; }
+    bool operator!=(nullptr_t) const noexcept { return _node != nullptr; }
+    friend bool operator==(nullptr_t n, pool_ptr p) noexcept { return n == p; }
+    friend bool operator!=(nullptr_t n, pool_ptr p) noexcept { return n != p; }
+    explicit operator bool() const noexcept { return *this != nullptr; }
+
+    auto& operator*() noexcept { return *_value; }
+    auto& operator*() const noexcept { return *_value; }
+    auto* operator->() noexcept { return _value; }
+    auto* operator->() const noexcept { return _value; }
+    auto* get() const noexcept { return _value; }
+
+   private:
+    void _release() noexcept
+    {
+        if (_node) { _node->fn_checkin(_node->owner); }
+    }
+
+   public:
+   public:
+};
+
+template <typename Value, typename Mutex, typename CleanUpFunc>
+class basic_resource_pool
+{
+    using node_type = _tr::_detail::resource_node<Value>;
+
+   private:
+    node_type* _in_use;
+    node_type* _in_free;
+    function<node_type*()> _fn_construct;
+
+   public:
+};
+}  // namespace _tr
 
 template <typename Ty_, typename Mutex_ = null_mutex>
 class basic_resource_pool
