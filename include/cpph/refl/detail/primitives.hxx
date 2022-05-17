@@ -206,13 +206,15 @@ auto get_list_like_descriptor() -> object_metadata_t
                           object_metadata_t desc,
                           optional_property_metadata) const override
         {
-            container->clear();
+            if (not strm->config.merge_on_read)
+                container->clear();
+
             auto key = strm->begin_array();
 
             // reserve if possible
             if constexpr (has_reserve_v<Container_>)
                 if (auto n = strm->elem_left(); n != ~size_t{})
-                    container->reserve(n);
+                    container->reserve(container->size() + n);
 
             while (not strm->should_break(key)) {
                 if constexpr (has_emplace_back<Container_>) {  // maybe vector, list, deque ...
@@ -281,6 +283,14 @@ auto get_dictionary_descriptor() -> object_metadata_ptr
         void impl_restore(archive::if_reader* strm, Map_* pvdata, object_metadata_t desc_self, optional_property_metadata opt_as_property) const override
         {
             auto ctx = strm->begin_object();
+
+            if (not strm->config.merge_on_read)
+                pvdata->clear();
+
+            if constexpr (has_reserve_v<Map_>)
+                if (auto elem_left = strm->elem_left(); elem_left != ~size_t{})
+                    pvdata->reserve(pvdata->size() + elem_left);
+
             while (not strm->should_break(ctx)) {
                 std::pair<key_type, mapped_type> kv;
 
