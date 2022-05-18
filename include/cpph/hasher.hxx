@@ -27,6 +27,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <type_traits>
 
 #include "type_traits.hxx"

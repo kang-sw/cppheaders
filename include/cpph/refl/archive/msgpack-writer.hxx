@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include <limits>
 
 #include "detail/context_helper.hxx"
 #include "detail/msgpack.hxx"
