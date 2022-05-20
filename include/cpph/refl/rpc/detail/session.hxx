@@ -92,6 +92,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
     // Current connection state for quick check.
     std::atomic_bool _valid;
 
+    // Connection can be closed without lock.
+    std::once_flag _flag_conn_close = {};
+
 #ifndef NDEBUG
     // Waiting validator
     std::atomic_bool _waiting = false;
@@ -138,6 +141,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     ~session() override
     {
+        // Quickly close connection without acquiring lock
+        std::call_once(_flag_conn_close, [this] { _conn->close(); });
+
         // Try close session first.
         if (lock_guard{_mtx_protocol}, _set_expired(false)) {
             // NOTE: shared_from_this() is not permitted to be called from destructor.
@@ -266,6 +272,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
      */
     bool close()
     {
+        // Quickly close connection without acquiring lock.
+        std::call_once(_flag_conn_close, [this] { _conn->close(); });
+
         lock_guard _{_mtx_protocol};
         if (expired()) { return false; }
 
@@ -487,9 +496,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
 
     bool _set_expired(bool call_monitor = true)
     {
-        if (_valid.exchange(false)) {
-            _conn->close();
+        std::call_once(_flag_conn_close, [this] { _conn->close(); });
 
+        if (_valid.exchange(false)) {
             do {
                 if (not is_request_enabled()) { break; }
 
