@@ -44,7 +44,7 @@ class reader : public archive::if_reader
 
     //! Validate internal state.
     //! Reads content from buffer.
-    void validate() { _validate(); }
+    void validate() { _prepare(); }
 
    public:
     if_reader& read(nullptr_t a_nullptr) override;
@@ -65,7 +65,7 @@ class reader : public archive::if_reader
     entity_type type_next() const override;
 
    private:
-    void _validate();
+    void _prepare() const;
 };
 
 }  // namespace cpph::archive::json

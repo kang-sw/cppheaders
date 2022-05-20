@@ -122,6 +122,10 @@ struct reader::impl {
             ++pos_next;
         }
 
+        if (pos_next == tokens.size()) {
+            pos_next = ~size_t{};
+        }
+
         if (scope->elem_left-- <= 0)
             throw error::reader_invalid_context{self, "end of object"};
 
@@ -158,19 +162,19 @@ reader::reader(std::streambuf* buf, bool use_intkey)
         : if_reader(buf), self(new impl{this})
 {
     config.use_integer_key = use_intkey;
-    reset(), _validate();
+    reset();
 }
 
 if_reader& reader::read(nullptr_t a_nullptr)
 {
-    _validate();
+    _prepare();
     self->step_over();
     return *this;
 }
 
 if_reader& reader::read(bool& v)
 {
-    _validate();
+    _prepare();
     auto next = self->next();
     auto tok = self->tokstr(*next);
     if (next->type != JSMN_PRIMITIVE) { throw error::reader_parse_failed{this}; }
@@ -188,7 +192,7 @@ if_reader& reader::read(bool& v)
 
 if_reader& reader::read(int64_t& v)
 {
-    _validate();
+    _prepare();
 
     auto next = self->next();
     auto tok = self->tokstr(*next);
@@ -205,7 +209,7 @@ if_reader& reader::read(int64_t& v)
 
 if_reader& reader::read(double& v)
 {
-    _validate();
+    _prepare();
 
     auto next = self->next();
     auto tok = self->tokstr(*next);
@@ -223,7 +227,7 @@ if_reader& reader::read(double& v)
 
 if_reader& reader::read(std::string& v)
 {
-    _validate();
+    _prepare();
 
     auto next = self->next();
     auto tok = self->tokstr(*next);
@@ -243,6 +247,8 @@ size_t reader::elem_left() const
 
 size_t reader::begin_binary()
 {
+    _prepare();
+
     auto next = self->next();
     if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
 
@@ -275,11 +281,13 @@ void reader::end_binary()
 
 context_key reader::begin_object()
 {
+    _prepare();
     return self->step_in(reader_scope_type::object)->context;
 }
 
 context_key reader::begin_array()
 {
+    _prepare();
     return self->step_in(reader_scope_type::array)->context;
 }
 
@@ -315,7 +323,7 @@ void reader::reset()
     self->pos_next = ~size_t{};
 }
 
-void reader::_validate()
+void reader::_prepare() const
 {
     // data is ready
     if (self->pos_next != ~size_t{}) { return; }
@@ -325,9 +333,79 @@ void reader::_validate()
 
     // Read until EOF, and try parse
     auto str = &self->string;
-    auto tok = &self->tokens;
-
+    auto tokens = &self->tokens;
+    auto parser = &self->parser;
     str->clear();
+    tokens->resize(8);
+
+    // Read string from buffer, for single object next.
+    jsmn_init(parser);
+
+    // Try read first token
+    while (parser->toknext == 0) {
+        auto c = _buf->sbumpc();
+        if (c == EOF) { throw error::reader_unexpected_end_of_file{this}; }
+
+        str->push_back(c);
+        switch (jsmn_parse(parser, str->c_str(), str->size(), tokens->data(), tokens->size())) {
+            case JSMN_ERROR_INVAL:
+                throw error::reader_parse_failed{this};
+
+            case JSMN_ERROR_NOMEM:
+            case 0:
+                assert(false && "Logically impossible!"), abort();
+
+            default: break;
+        }
+    }
+
+    char stop_char = 0;
+    switch ((*tokens)[0].type) {
+        case JSMN_OBJECT: stop_char = '}'; break;
+        case JSMN_ARRAY: stop_char = ']'; break;
+
+        case JSMN_STRING:
+        case JSMN_PRIMITIVE:  // Primitive root can only have single argument
+            self->pos_next = 0;
+            tokens->resize(1);
+            return;
+
+        default: throw error::reader_invalid_context{this};
+    }
+
+    // Parse rest of the object
+    int r_parse = 0;
+    for (;;) {
+        auto c = _buf->sbumpc();
+        if (c == EOF) { throw error::reader_unexpected_end_of_file{this}; }
+
+        str->push_back(c);
+        if (c != stop_char) { continue; }  // Just keep reading ...
+
+    // On stop char, try parsing
+    PARSE_AGAIN:
+        r_parse = jsmn_parse(parser, str->c_str(), str->size(), tokens->data(), tokens->size());
+
+        switch (r_parse) {
+            case 0:
+            case JSMN_ERROR_INVAL:
+                throw error::reader_parse_failed{this};
+
+            case JSMN_ERROR_NOMEM:
+                tokens->resize(tokens->size() * 3 / 2);
+                goto PARSE_AGAIN;
+
+            case JSMN_ERROR_PART:
+                break;
+
+            default:
+                self->pos_next = 0;
+                tokens->resize(r_parse);  // shrink to actual token size
+                return;
+        }
+    }
+
+#if 0
     for (char c; (c = _buf->sbumpc()) != EOF;) { str->push_back(c); }
 
     jsmn_init(&self->parser);
@@ -341,10 +419,12 @@ void reader::_validate()
 
     assert(n_tok == n_proc);
     self->pos_next = 0;  // Ready to start parsing
+#endif
 }
 
 entity_type reader::type_next() const
 {
+    _prepare();
     auto next = self->next();
 
     switch (next->type) {
