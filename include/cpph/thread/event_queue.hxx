@@ -203,6 +203,11 @@ class event_queue
     }
 
    public:
+    bool empty() const
+    {
+        return _messages.lock()->empty();
+    }
+
     bool exec_one()
     {
         return _exec_one_impl([&] {
