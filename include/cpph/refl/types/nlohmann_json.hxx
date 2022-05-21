@@ -119,7 +119,7 @@ inline void _restore_recursive(archive::if_reader* strm, nlohmann::json* pdata, 
             strm->end_binary();
         } break;
 
-        case entity_type::null: *pdata = nullptr; break;
+        case entity_type::null: *pdata = nullptr, strm->read<nullptr_t>(); break;
         case entity_type::boolean: *pdata = strm->read<bool>(); break;
         case entity_type::integer: *pdata = strm->read<int64_t>(); break;
         case entity_type::floating_point: *pdata = strm->read<double>(); break;

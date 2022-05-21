@@ -619,7 +619,7 @@ inline if_reader& operator>>(if_reader&& reader, nullptr_t nil)
 template <typename T>
 T if_reader::read()
 {
-    T value;
+    T value{};
     *this >> value;
     return value;
 }
