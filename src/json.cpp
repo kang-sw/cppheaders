@@ -436,7 +436,7 @@ entity_type reader::type_next() const
             if (tok == "null"sv) { return entity_type::null; }
             if (tok[0] == 't' || tok[0] == 'f') { return entity_type::boolean; }
 
-            auto has_dot = tok.find_first_of('.') == std::string::npos;
+            auto has_dot = tok.find_first_of("eE.") != std::string::npos;
             return has_dot ? entity_type::floating_point : entity_type::integer;
         }
 
