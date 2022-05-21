@@ -404,22 +404,6 @@ void reader::_prepare() const
                 return;
         }
     }
-
-#if 0
-    for (char c; (c = _buf->sbumpc()) != EOF;) { str->push_back(c); }
-
-    jsmn_init(&self->parser);
-    auto n_tok = jsmn_parse(&self->parser, str->data(), str->size(), nullptr, 0);
-
-    if (n_tok <= 0) { throw error::reader_parse_failed{this, "jsmn error: %d", n_tok}; }
-
-    jsmn_init(&self->parser);
-    tok->resize(n_tok);
-    auto n_proc = jsmn_parse(&self->parser, str->data(), str->size(), tok->data(), tok->size());
-
-    assert(n_tok == n_proc);
-    self->pos_next = 0;  // Ready to start parsing
-#endif
 }
 
 entity_type reader::type_next() const
