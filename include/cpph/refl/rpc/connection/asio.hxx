@@ -162,7 +162,7 @@ class asio_stream : public if_connection, public std::streambuf
             return -1;
         }
 
-#if defined(ASIO_IP_TCP_HPP)  // Only when TCP header is included
+#if 0 && defined(ASIO_IP_TCP_HPP)  // Only when TCP header is included
         try {
             //! Force flushing data
             _socket.set_option(asio::ip::tcp::no_delay{true});
