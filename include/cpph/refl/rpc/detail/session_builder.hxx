@@ -112,6 +112,13 @@ class basic_session_builder
         return _make_ref<slot_protocol>();
     }
 
+    template <typename Protocol, typename... Args>
+    inline auto& protocol(Args&&... args)
+    {
+        _session->_protocol = std::make_unique<Protocol>(forward<Args>(args)...);
+        return _make_ref<slot_protocol>();
+    }
+
     inline auto& enable_request()
     {
         _session->_rq = make_unique<session::rpc_context>();
