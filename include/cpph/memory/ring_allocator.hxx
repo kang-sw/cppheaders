@@ -171,6 +171,11 @@ class ring_allocator
         }
     }
 
+    void* allocate(size_t n, std::nothrow_t) noexcept
+    {
+        return allocate_nt(n);
+    }
+
     void* allocate_nt(size_t n) noexcept
     {
         assert(_memory);
