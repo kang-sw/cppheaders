@@ -108,6 +108,19 @@ ValTy acquire(std::atomic<ValTy> const& value) noexcept
 template <typename ValTy, typename Rhs>
 void release(std::atomic<ValTy>& value, Rhs&& other) noexcept
 {
-    value.store(other, std::memory_order_release);
+    value.store(std::forward<Rhs>(other), std::memory_order_release);
 }
+
+template <typename ValTy>
+ValTy relaxed(std::atomic<ValTy> const& value) noexcept
+{
+    return value.load(std::memory_order_relaxed);
+}
+
+template <typename ValTy, typename Rhs>
+void relaxed(std::atomic<ValTy>& value, Rhs&& other) noexcept
+{
+    return value.store(std::forward<Rhs>(other), std::memory_order_relaxed);
+}
+
 }  // namespace cpph
