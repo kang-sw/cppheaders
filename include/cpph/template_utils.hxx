@@ -341,10 +341,26 @@ struct y_combinator {
 
     // a forwarding operator():
     template <class... Args>
-    decltype(auto) operator()(Args&&... args) const
+    decltype(auto) operator()(Args&&... args) const&
     {
         // we pass ourselves to f, then the arguments.
         return f(*this, std::forward<Args>(args)...);
+    }
+
+    // a forwarding operator():
+    template <class... Args>
+    decltype(auto) operator()(Args&&... args) &
+    {
+        // we pass ourselves to f, then the arguments.
+        return f(*this, std::forward<Args>(args)...);
+    }
+
+    // a forwarding operator():
+    template <class... Args>
+    decltype(auto) operator()(Args&&... args) &&
+    {
+        // we pass ourselves to f, then the arguments.
+        return f(move(*this), std::forward<Args>(args)...);
     }
 };
 
