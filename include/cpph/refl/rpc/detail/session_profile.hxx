@@ -40,5 +40,14 @@ struct session_profile {
     std::string_view peer_name;
 
     shared_ptr<void> user_data;
+
+   public:
+    auto share() const noexcept -> session_profile_view_ptr
+    {
+        auto self = w_self.lock();
+        if (not self) { return nullptr; }
+
+        return {self, this};
+    }
 };
 }  // namespace cpph::rpc

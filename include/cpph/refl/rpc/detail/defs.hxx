@@ -47,6 +47,7 @@ class if_protocol_procedure;
 
 struct session_profile;
 using session_profile_view = session_profile const*;
+using session_profile_view_ptr = shared_ptr<session_profile const>;
 
 class basic_context;
 class session;
