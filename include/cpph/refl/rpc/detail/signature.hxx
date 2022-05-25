@@ -89,14 +89,18 @@ class signature_t<RetVal_, std::tuple<Params_...>>
 
             auto fn_on_complete = [&](error_code const& ec, auto str) { result = (request_result)ec.value(), errstr = str; };
             auto handle = _rpc->async_request(_host->name(), static_cast<function<void(const error_code&, string_view)>>(fn_on_complete), retval, args...);
+            bool r_wait = false;
 
             if constexpr (std::is_null_pointer_v<Duration>)
                 _rpc->wait(handle);
             else
-                _rpc->wait_for(handle, std::forward<Duration>(timeout));
+                r_wait = _rpc->wait_for(handle, std::forward<Duration>(timeout));
 
-            if (result != request_result::okay)
+            if (not handle || result != request_result::okay)
                 throw request_exception{result, &errstr};
+
+            if (not r_wait)
+                handle.abort();
         }
 
         return_type request(Params_ const&... args) const
