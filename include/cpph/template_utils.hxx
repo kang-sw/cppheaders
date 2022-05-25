@@ -79,6 +79,9 @@ using std::tuple;
 using std::unique_ptr;
 using std::weak_ptr;
 
+template <typename T, typename Deleter = std::default_delete<T>>
+using ptr = std::unique_ptr<T, Deleter>;
+
 using std::decay_t;
 using std::remove_const_t;
 using std::remove_pointer_t;
