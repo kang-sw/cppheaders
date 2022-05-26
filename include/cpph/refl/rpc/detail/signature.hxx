@@ -82,31 +82,35 @@ class signature_t<RetVal_, std::tuple<Params_...>>
 
        public:
         template <class Duration = nullptr_t>
-        void request_with(return_type* retval, Params_ const&... args, Duration&& timeout = nullptr) const
+        pair<request_result, optional<string>>
+        request_with(return_type* retval, Params_ const&... args, Duration&& timeout = nullptr) const
         {
             request_result result = {};
-            string errstr;
+            optional<string> errstr;
 
-            auto fn_on_complete = [&](error_code const& ec, auto str) { result = (request_result)ec.value(), errstr = str; };
+            auto fn_on_complete = [&](error_code const& ec, auto str) { result = (request_result)ec.value(), errstr.emplace(str); };
             auto handle = _rpc->async_request(_host->name(), static_cast<function<void(const error_code&, string_view)>>(fn_on_complete), retval, args...);
-            bool r_wait = false;
 
-            if constexpr (std::is_null_pointer_v<Duration>)
+            assert(bool(handle) && "Handle is always valid since RPC must throw on invalid connection!");
+
+            if constexpr (std::is_null_pointer_v<Duration>) {
                 _rpc->wait(handle);
-            else
-                r_wait = _rpc->wait_for(handle, std::forward<Duration>(timeout));
-
-            if (not handle || result != request_result::okay)
-                throw request_exception{result, &errstr};
-
-            if (not r_wait)
+            } else if (not _rpc->wait_for(handle, std::forward<Duration>(timeout))) {
+                result = request_result::timeout;
                 handle.abort();
+            }
+
+            return {result, move(errstr)};
         }
 
         return_type request(Params_ const&... args) const
         {
             return_type retval;
-            this->request_with(&retval, args...);
+            auto [ec, errstr] = this->request_with(&retval, args...);
+
+            if (ec != request_result::okay)
+                throw request_exception(ec, errstr ? &*errstr : nullptr);
+
             return retval;
         }
 
@@ -114,7 +118,11 @@ class signature_t<RetVal_, std::tuple<Params_...>>
         return_type request(Params_ const&... args, Duration&& dur) const
         {
             return_type retval;
-            this->request_with(&retval, args..., std::forward<Duration>(dur));
+            auto [ec, errstr] = this->request_with(&retval, args..., std::forward<Duration>(dur));
+
+            if (ec != request_result::okay)
+                throw request_exception(ec, errstr ? &*errstr : nullptr);
+
             return retval;
         }
 
