@@ -110,9 +110,7 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
 
     constexpr auto subspan(size_t offset, size_t n = ~size_t{}) const
     {
-        if (offset == _size) { return array_view{_ptr, 0}; }
-        _verify_idx(offset);
-
+        if (offset >= _size) { return array_view{_ptr, 0}; }
         return array_view{_ptr + offset, std::min(n, _size - offset)};
     }
 
