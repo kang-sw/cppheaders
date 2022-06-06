@@ -110,6 +110,11 @@ using std::numeric_limits;
 using std::declval;
 }  // namespace stdfwd
 
+// clang-format off
+struct empty_struct {};
+class empty_class {};
+// clang-format on
+
 /**
  * @see https://stackoverflow.com/questions/1198260/how-can-you-iterate-over-the-elements-of-an-stdtuple
  * Iterate over tempalte
