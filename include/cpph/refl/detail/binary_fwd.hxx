@@ -46,7 +46,7 @@ class binary;
 template <typename Container_>
 class binary<
         Container_,
-        std::enable_if_t<
+        enable_if_t<
                 (is_binary_compatible_v<typename Container_::value_type>)  //
                 &&(not _has_data_fn<Container_>)>>
         : public Container_
@@ -68,9 +68,7 @@ class binary<
 
 template <typename Container_>
 class binary<Container_,
-             std::enable_if_t<
-                     is_binary_compatible_v<
-                             remove_cvr_t<decltype(*std::data(std::declval<Container_>()))>>>>
+             enable_if_t<is_binary_compatible_v<decay_t<decltype(*std::data(std::declval<Container_>()))>>>>
         : public Container_
 {
    public:
@@ -89,14 +87,23 @@ class binary<Container_,
 };
 
 template <typename ValTy_>
-class binary<ValTy_, std::enable_if_t<is_binary_compatible_v<ValTy_>>> : ValTy_
+class binary<ValTy_, enable_if_t<is_binary_compatible_v<ValTy_> && not _has_data_fn<ValTy_>>> : ValTy_
 {
    public:
     using ValTy_::ValTy_;
 
+    auto self() const noexcept { return (ValTy_ const*)this; }
+    auto self() noexcept { return (ValTy_*)this; }
+
     enum {
         is_container = false,
     };
+};
+
+template <typename T, class = enable_if_t<std::is_trivial_v<T>>>
+struct chunk : public T {
+   public:
+    using T::T;
 };
 
 /**

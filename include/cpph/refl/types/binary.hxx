@@ -30,6 +30,32 @@
 #include "../detail/binary_fwd.hxx"
 #include "../detail/primitives.hxx"
 
+//
+#include "../detail/_init_macros.hxx"
+
+CPPH_REFL_DEF_begin(T, is_template_instance_of<T, chunk>::value)
+{
+    CPPH_REFL_DEF_type(binary);
+    CPPH_REFL_DEF_restore(strm, data)
+    {
+        auto size = strm->begin_binary();
+        if (size != sizeof *data) {
+            strm->end_binary();
+            throw cpph::archive::error::reader_recoverable_parse_failure{strm};
+        }
+
+        strm->binary_read_some({data, 1});
+        strm->end_binary();
+    }
+    CPPH_REFL_DEF_archive(strm, data)
+    {
+        strm->binary_push(sizeof data);
+        strm->binary_write_some({&data, 1});
+        strm->binary_pop();
+    }
+}
+CPPH_REFL_DEF_end();
+
 /*
  * Binary
  */
@@ -220,3 +246,6 @@ initialize_object_metadata(refl::type_tag<shallow_buffer>)
     return refl::object_metadata::primitive_factory::define(sizeof(shallow_buffer), &_manip);
 }
 }  // namespace cpph
+
+//
+#include "../detail/_deinit_macros.hxx"
