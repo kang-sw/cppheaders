@@ -222,7 +222,7 @@ auto get_list_like_descriptor() -> object_metadata_t
                 } else if constexpr (has_emplace_front<Container_>) {  // maybe forward_list
                     *strm >> container->emplace_front();
                 } else if constexpr (has_emplace<Container_>) {  // maybe set
-                    *container->emplace(strm->read<value_type>());
+                    container->emplace(strm->read<value_type>());
                 } else
                     Container_::ERROR_INVALID_CONTAINER;
             }
