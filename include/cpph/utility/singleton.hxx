@@ -40,10 +40,11 @@ struct singleton_t {
 
    public:
     template <typename... Args_>
-    void create(Args_&&... args) const noexcept(std::is_nothrow_constructible_v<Ty_, Args_...>)
+    nullptr_t create(Args_&&... args) const noexcept(std::is_nothrow_constructible_v<Ty_, Args_...>)
     {
         assert(not _ptr());
         _ptr() = new Ty_(std::forward<Args_>(args)...);
+        return nullptr;
     }
 
     template <typename = void>
