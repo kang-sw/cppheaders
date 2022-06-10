@@ -279,23 +279,25 @@ constexpr auto view_array(Range_&& array)
 template <typename T>
 auto create_temporary_array(void* memory, size_t nelem)
 {
-    struct disposer_t {
-        size_t elem_size;
-        using pointer = void*;
-        void operator()(pointer p) const noexcept(std::is_nothrow_destructible_v<T>)
-        {
-            if constexpr (not std::is_trivially_destructible_v<T>) {
+    if constexpr (std::is_trivially_destructible_v<T>) {
+        return array_view{(T*)memory, nelem};
+    } else {
+        struct disposer_t {
+            size_t elem_size;
+            using pointer = void*;
+            void operator()(pointer p) const noexcept(std::is_nothrow_destructible_v<T>)
+            {
                 for (auto i = 0; i < elem_size; ++i) {
                     ((T*)p)[i].~T();
                 }
             }
-        }
-    };
+        };
 
-    auto pointer = std::unique_ptr<void, disposer_t>{memory, disposer_t{nelem}};
-    auto view = array_view{(T*)memory, nelem};
+        auto pointer = std::unique_ptr<void, disposer_t>{memory, disposer_t{nelem}};
+        auto view = array_view{(T*)memory, nelem};
 
-    return std::make_pair(view, std::move(pointer));
+        return std::make_pair(view, std::move(pointer));
+    }
 }
 
 }  // namespace cpph
