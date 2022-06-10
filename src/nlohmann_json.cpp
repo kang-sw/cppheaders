@@ -24,15 +24,12 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
-#pragma once
-#include <list>
+#if __has_include(<nlohmann/json.hpp>)
+#    include <list>
 
-#include <nlohmann/json.hpp>
+#    include <nlohmann/json.hpp>
 
-#include "../detail/primitives.hxx"
-
-//
-#include "../detail/_init_macros.hxx"
+#    include "cpph/refl/detail/primitives.hxx"
 
 namespace cpph::refl::_detail {
 
@@ -134,22 +131,4 @@ inline void _restore_recursive(archive::if_reader* strm, nlohmann::json* pdata, 
     }
 }
 }  // namespace cpph::refl::_detail
-
-namespace nlohmann {
-CPPH_REFL_DEF_begin_single_inline(json)
-{
-    CPPH_REFL_DEF_type(object);
-    CPPH_REFL_DEF_archive(strm, data)
-    {
-        cpph::refl::_detail::_archive_recursive(strm, data);
-    }
-    CPPH_REFL_DEF_restore(strm, data)
-    {
-        std::string keybuf;
-        cpph::refl::_detail::_restore_recursive(strm, data, &keybuf);
-    }
-}
-CPPH_REFL_DEF_end_single();
-}  // namespace nlohmann
-
-#include "../detail/_deinit_macros.hxx"
+#endif

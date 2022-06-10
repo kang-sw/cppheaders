@@ -9,6 +9,7 @@ target_sources(
 
         PUBLIC
         src/json.cpp
+        src/nlohmann_json.cpp
 )
 
 target_compile_features(
