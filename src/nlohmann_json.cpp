@@ -131,4 +131,21 @@ inline void _restore_recursive(archive::if_reader* strm, nlohmann::json* pdata, 
     }
 }
 }  // namespace cpph::refl::_detail
+
+namespace nlohmann {
+CPPH_REFL_DEFINE_PRIM_begin(json)
+{
+    CPPH_REFL_primitive_type(object);
+    CPPH_REFL_primitive_archive(strm, data)
+    {
+        cpph::refl::_detail::_archive_recursive(strm, data);
+    }
+    CPPH_REFL_primitive_restore(strm, data)
+    {
+        std::string keybuf;
+        cpph::refl::_detail::_restore_recursive(strm, data, &keybuf);
+    }
+}
+CPPH_REFL_DEFINE_PRIM_end();
+}  // namespace nlohmann
 #endif

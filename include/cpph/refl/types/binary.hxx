@@ -33,10 +33,10 @@
 //
 #include "../detail/_init_macros.hxx"
 
-CPPH_REFL_DEF_begin(T, is_template_instance_of<T, chunk>::value)
+IIT_CPPH_REFLD_begin(T, is_template_instance_of<T, chunk>::value)
 {
-    CPPH_REFL_DEF_type(binary);
-    CPPH_REFL_DEF_restore(strm, data)
+    CPPH_REFL_primitive_type(binary);
+    CPPH_REFL_primitive_restore(strm, data)
     {
         auto size = strm->begin_binary();
         if (size != sizeof *data) {
@@ -47,14 +47,14 @@ CPPH_REFL_DEF_begin(T, is_template_instance_of<T, chunk>::value)
         strm->binary_read_some({data, 1});
         strm->end_binary();
     }
-    CPPH_REFL_DEF_archive(strm, data)
+    CPPH_REFL_primitive_archive(strm, data)
     {
         strm->binary_push(sizeof data);
         strm->binary_write_some({&data, 1});
         strm->binary_pop();
     }
 }
-CPPH_REFL_DEF_end();
+IIT_CPPH_REFLD_end();
 
 /*
  * Binary

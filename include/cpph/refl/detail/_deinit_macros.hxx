@@ -25,13 +25,13 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
-#undef INTERNAL_CPPH_define_
-#undef INTERNAL_CPPH_concat_
-#undef INTERNAL_CPPH_concat_2_
-
-#undef CPPH_REFL_DEF_begin
-#undef CPPH_REFL_DEF_end
-#undef CPPH_REFL_DEF_archive
-#undef CPPH_REFL_DEF_restore
-#undef CPPH_REFL_DEF_status
-#undef CPPH_REFL_DEF_type_dynamic
+//#undef INTERNAL_CPPH_define_
+//#undef INTERNAL_CPPH_concat_
+//#undef INTERNAL_CPPH_concat_2_
+//
+//#undef IIT_CPPH_REFLD_begin
+//#undef IIT_CPPH_REFLD_end
+//#undef CPPH_REFL_primitive_archive
+//#undef CPPH_REFL_primitive_restore
+//#undef CPPH_REFL_primitive_status
+//#undef CPPH_REFL_primitive_type_dynamic

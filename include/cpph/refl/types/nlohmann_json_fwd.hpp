@@ -27,29 +27,9 @@
 #pragma once
 #include <list>
 
-#include <nlohmann/json_fwd.hpp>
+#include "cpph/refl/core.hxx"
+#include "nlohmann/json_fwd.hpp"
 
-#include "cpph/refl/detail/primitives.hxx"
-
-namespace cpph::refl::_detail {
-void _archive_recursive(archive::if_writer* strm, const nlohmann::json& data);
-void _restore_recursive(archive::if_reader* strm, nlohmann::json* pdata, string* keybuf);
-}  // namespace cpph::refl::_detail
-
-//
-#include "../detail/_init_macros.hxx"
-CPPH_REFL_DEF_begin(JsonLike, std::is_same_v<JsonLike, nlohmann::json>)
-{
-    CPPH_REFL_DEF_type(object);
-    CPPH_REFL_DEF_archive(strm, data)
-    {
-        cpph::refl::_detail::_archive_recursive(strm, data);
-    }
-    CPPH_REFL_DEF_restore(strm, data)
-    {
-        std::string keybuf;
-        cpph::refl::_detail::_restore_recursive(strm, data, &keybuf);
-    }
+namespace nlohmann {
+CPPH_REFL_DECLARE(json);
 }
-CPPH_REFL_DEF_end();
-#include "../detail/_deinit_macros.hxx"

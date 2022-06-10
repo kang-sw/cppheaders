@@ -26,6 +26,7 @@
 
 #pragma once
 #include "../../helper/macro_for_each.hxx"
+#include "_init_macros.hxx"
 
 #ifndef CPPHEADERS_REFL_OBJECT_MACROS
 #    define CPPHEADERS_REFL_OBJECT_MACROS

@@ -42,7 +42,7 @@
             std::enable_if_t < INTERNAL_CPPH_concat_(_cpph_Cond_Metadata_Line_, __LINE__) < ValT >>> ::operator()() const
 
 // Define new primitive type by template pattern
-#define CPPH_REFL_DEF_begin(Type, ...)                \
+#define IIT_CPPH_REFLD_begin(Type, ...)               \
     namespace cpph::refl {                            \
     template <typename Type>                          \
     struct get_object_metadata_t<                     \
@@ -52,25 +52,25 @@
         {                                             \
             static struct _manip_t : public templated_primitive_control<Type>
 
-#define CPPH_REFL_DEF_type(TypeVal)                           \
+#define CPPH_REFL_primitive_type(TypeVal)                     \
     cpph::archive::entity_type type() const noexcept override \
     {                                                         \
         return cpph::archive::entity_type::TypeVal;           \
     }
 
-#define CPPH_REFL_DEF_status(Param0) \
+#define CPPH_REFL_primitive_status(Param0) \
     cpph::refl::requirement_status_tag impl_status(const value_type* Param0) const noexcept override
 
-#define CPPH_REFL_DEF_type_dynamic() \
+#define CPPH_REFL_primitive_type_dynamic() \
     cpph::archive::entity_type type() const noexcept override
 
-#define CPPH_REFL_DEF_archive(Param0, Param1) \
+#define CPPH_REFL_primitive_archive(Param0, Param1) \
     void impl_archive(cpph::archive::if_writer* Param0, const value_type& Param1, cpph::refl::object_metadata_t Param2, cpph::refl::optional_property_metadata Param3) const override
 
-#define CPPH_REFL_DEF_restore(Param0, Param1) \
+#define CPPH_REFL_primitive_restore(Param0, Param1) \
     void impl_restore(cpph::archive::if_reader* Param0, value_type* Param1, cpph::refl::object_metadata_t Param2, cpph::refl::optional_property_metadata Param3) const override
 
-#define CPPH_REFL_DEF_end()                                                                  \
+#define IIT_CPPH_REFLD_end()                                                                 \
     _manip;                                                                                  \
                                                                                              \
     static auto _ = object_metadata::primitive_factory::define(sizeof(value_type), &_manip); \
@@ -80,19 +80,24 @@
     ;                                                                                        \
     }
 
-#define CPPH_REFL_DEF_begin_single(Type) \
-    cpph::refl::object_metadata_ptr      \
-    initialize_object_metadata(          \
-            cpph::refl::type_tag<Type>)  \
-    {                                    \
-        using value_type = Type;         \
+#define IIT_CPPH_REFLD_begin_single(Type) \
+    cpph::refl::object_metadata_ptr       \
+    initialize_object_metadata(           \
+            cpph::refl::type_tag<Type>)   \
+    {                                     \
+        using value_type = Type;          \
         static struct _manip_t : public cpph::refl::templated_primitive_control<Type>
 
-#define CPPH_REFL_DEF_begin_single_inline(Type) \
-    inline CPPH_REFL_DEF_begin_single(Type)
+#define IIT_CPPH_REFLD_begin_single_inline(Type) \
+    inline IIT_CPPH_REFLD_begin_single(Type)
 
-#define CPPH_REFL_DEF_end_single()                                                              \
+#define IIT_CPPH_REFLD_end_single()                                                             \
     _manip;                                                                                     \
                                                                                                 \
     return cpph::refl::object_metadata::primitive_factory::define(sizeof(value_type), &_manip); \
     }
+
+#define CPPH_REFL_DEFINE_PRIM_T_begin IIT_CPPH_REFLD_begin
+#define CPPH_REFL_DEFINE_PRIM_T_end   IIT_CPPH_REFLD_end
+#define CPPH_REFL_DEFINE_PRIM_begin IIT_CPPH_REFLD_begin_single
+#define CPPH_REFL_DEFINE_PRIM_end IIT_CPPH_REFLD_end_single
