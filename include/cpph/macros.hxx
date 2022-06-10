@@ -89,4 +89,20 @@
     constexpr bool INTERNAL_CPPH_CONCAT(Name, _v) = Name<TParam>::value;
 
 #define CPPH_REQUIRE(TemplateCond) class = std::enable_if_t<(TemplateCond)>
+
+/* alloca *****************************************************************************************/
+namespace cpph::_detail {
+static inline int& _tmp_int() noexcept
+{
+    static thread_local int value = 0;
+    return value;
+}
+}  // namespace cpph::_detail
+
+#define CPPH_ALLOCA_ARR(Type, Size) (                             \
+        cpph::_detail::_tmp_int() = (Size),                       \
+        cpph::create_temporary_array<Type>(                       \
+                alloca(sizeof(Type) * cpph::_detail::_tmp_int()), \
+                cpph::_detail::_tmp_int()))
+
 #endif
