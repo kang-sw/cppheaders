@@ -64,4 +64,58 @@ struct spinlock {
         lock_.store(false, std::memory_order_release);
     }
 };
+
+//! Shared spinlock
+struct shared_spinlock {
+    atomic<int> _nread{0};
+    atomic<bool> _write{false};
+
+    void lock() noexcept
+    {
+        // SEE: spinlock::lock()
+        for (;;) {
+            if (not _write.exchange(false, std::memory_order_acquire))
+                break;
+
+            while (_write.load(std::memory_order_relaxed))
+                _detail::thread_yield();
+        }
+
+        // Wait until all read access is disposed
+        while (relaxed(_nread) != 0) {
+            _detail::thread_yield();
+        }
+    }
+
+    void unlock() noexcept
+    {
+        _write.store(false, std::memory_order_release);
+    }
+
+    void lock_shared() noexcept
+    {
+        for (;;) {
+            // Wait write lock released
+            while (relaxed(_write)) {
+                _detail::thread_yield();
+            }
+
+            // Lock shared access
+            _nread.fetch_add(1, memory_order_acquire);
+
+            if (relaxed(_write)) {
+                // Write lock acquired during transaction ... Go another round.
+                _nread.fetch_sub(1, memory_order_release);
+            } else {
+                break;
+            }
+        }
+    }
+
+    void unlock_shared() noexcept
+    {
+        _nread.fetch_sub(1, memory_order_release);
+    }
+};
+
 }  // namespace cpph

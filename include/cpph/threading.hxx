@@ -53,6 +53,13 @@ using std::atomic_flag;
 using std::atomic_int;
 using std::atomic_size_t;
 
+using std::memory_order_acq_rel;
+using std::memory_order_acquire;
+using std::memory_order_consume;
+using std::memory_order_relaxed;
+using std::memory_order_release;
+using std::memory_order_seq_cst;
+
 // lock guard utility
 template <typename Mutex_>
 struct lock_guard {
@@ -123,4 +130,15 @@ void relaxed(std::atomic<ValTy>& value, Rhs&& other) noexcept
     return value.store(std::forward<Rhs>(other), std::memory_order_relaxed);
 }
 
+template <typename ValTy, typename Rhs>
+ValTy fetch_add_relaxed(std::atomic<ValTy> const& value, Rhs&& other) noexcept
+{
+    return value.fetch_add(std::memory_order_relaxed, std::forward<Rhs>(other));
+}
+
+template <typename ValTy, typename Rhs>
+ValTy fetch_add_acq_rel(std::atomic<ValTy>& value, Rhs&& other) noexcept
+{
+    return value.fetch_add(std::forward<Rhs>(other), std::memory_order_acq_rel);
+}
 }  // namespace cpph
