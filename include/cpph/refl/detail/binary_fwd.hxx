@@ -28,6 +28,7 @@
 #pragma once
 
 #include "../detail/object_core.hxx"
+#include "cpph/container/buffer.hxx"
 
 /*
  * Binary
@@ -106,72 +107,5 @@ struct chunk : public T {
     using T::T;
 };
 
-/**
- * A class to prevent copying existing buffer on serializations
- */
-class shallow_buffer
-{
-    bool _is_owning_buffer = false;
-    size_t _capacity = 0;
-    size_t _size = 0;
-    void const* _buffer = nullptr;
-
-   public:
-    shallow_buffer() noexcept = default;
-    shallow_buffer(void const* buffer, size_t size) noexcept
-            : _size(size), _capacity(size), _buffer(buffer)
-    {
-    }
-
-    shallow_buffer(shallow_buffer&& other) noexcept
-    {
-        *this = move(other);
-    }
-
-    void* get_mutable(size_t len) noexcept
-    {
-        if (_is_owning_buffer) {
-            if (len <= _capacity) {
-                // If owning space can hold given length, just return it.
-                _size = len;
-                return (void*)_buffer;
-            } else {
-                free((void*)_buffer);
-            }
-        }
-
-        _is_owning_buffer = true;
-        _size = len;
-        _capacity = len;
-
-        auto buffer = malloc(len);
-        _buffer = buffer;
-
-        return buffer;
-    }
-
-    size_t size() const noexcept { return _size; }
-    size_t capacity() const noexcept { return _capacity; }
-    void const* data() const noexcept { return _buffer; }
-
-    bool is_owning_buffer() const noexcept { return _is_owning_buffer; }
-
-    shallow_buffer& operator=(shallow_buffer&& other) noexcept
-    {
-        swap(_is_owning_buffer, other._is_owning_buffer);
-        swap(_capacity, other._capacity);
-        swap(_size, other._size);
-        swap(_buffer, other._buffer);
-
-        return *this;
-    }
-
-    ~shallow_buffer() noexcept
-    {
-        if (_is_owning_buffer) {
-            ::free((void*)_buffer);
-        }
-    }
-};
 
 }  // namespace cpph

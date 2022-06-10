@@ -26,7 +26,8 @@
 #include <cstdlib>
 #include <type_traits>
 
-#include "../array_view.hxx"
+#include "cpph/array_view.hxx"
+#include "cpph/template_utils.hxx"
 
 namespace cpph {
 template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<Ty_>>>
@@ -118,6 +119,84 @@ class buffer
         free(_buffer);
         _buffer = {};
         _size = {};
+    }
+};
+
+/**
+ * A class to prevent copying existing buffer on serializations
+ */
+class flex_buffer
+{
+    size_t _capacity = 0;
+    size_t _size = 0;
+    char const* _buffer = nullptr;
+
+   public:
+    flex_buffer() noexcept = default;
+    flex_buffer(void const* buffer, size_t size) noexcept
+            : _size(size), _capacity(0), _buffer((char const*)buffer) {}
+    flex_buffer(std::string_view s) noexcept
+            : _size(s.size()), _buffer(s.data()) {}
+    operator std::string_view() noexcept { return str(); }
+
+    flex_buffer(flex_buffer&& other) noexcept
+    {
+        *this = move(other);
+    }
+
+    array_view<void> mutable_buffer(size_t len) noexcept
+    {
+        if (is_owning_buffer()) {
+            if (len <= _capacity) {
+                // If owning space can hold given length, just return it.
+                _size = len;
+                return {(char*)_buffer, _size};
+            } else {
+                free((void*)_buffer);
+            }
+        }
+
+        _size = len;
+        _capacity = len;
+
+        auto buffer = malloc(len);
+        _buffer = (char const*)buffer;
+
+        return {(char*)buffer, _size};
+    }
+
+    size_t size() const noexcept { return _size; }
+    size_t capacity() const noexcept { return _capacity; }
+    void const* data() const noexcept { return _buffer; }
+
+    auto clone(std::string_view g) noexcept
+    {
+        auto buffer = mutable_buffer(g.size());
+        std::copy(g.begin(), g.end(), buffer.begin());
+        return buffer;
+    }
+
+    std::string_view str() const noexcept
+    {
+        return std::string_view{_buffer, _size};
+    }
+
+    bool is_owning_buffer() const noexcept { return _capacity != 0; }
+
+    flex_buffer& operator=(flex_buffer&& other) noexcept
+    {
+        swap(_size, other._size);
+        swap(_capacity, other._capacity);
+        swap(_buffer, other._buffer);
+
+        return *this;
+    }
+
+    ~flex_buffer() noexcept
+    {
+        if (is_owning_buffer()) {
+            ::free((void*)_buffer);
+        }
     }
 };
 }  // namespace cpph

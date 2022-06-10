@@ -217,33 +217,32 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
  *
  */
 
-static struct manip_t : refl::templated_primitive_control<shallow_buffer> {
+static struct manip_t : refl::templated_primitive_control<flex_buffer> {
     archive::entity_type type() const noexcept override
     {
         return archive::entity_type::binary;
     }
 
    protected:
-    void impl_archive(archive::if_writer* strm, const shallow_buffer& data, refl::object_metadata_t desc_self, refl::optional_property_metadata opt_as_property) const override
+    void impl_archive(archive::if_writer* strm, const flex_buffer& data, refl::object_metadata_t desc_self, refl::optional_property_metadata opt_as_property) const override
     {
         strm->binary_push(data.size());
         strm->binary_write_some({(char const*)data.data(), data.size()});
         strm->binary_pop();
     }
 
-    void impl_restore(archive::if_reader* strm, shallow_buffer* pvdata, refl::object_metadata_t desc_self, refl::optional_property_metadata opt_as_property) const override
+    void impl_restore(archive::if_reader* strm, flex_buffer* pvdata, refl::object_metadata_t desc_self, refl::optional_property_metadata opt_as_property) const override
     {
         auto size = strm->begin_binary();
-        auto ptr = pvdata->get_mutable(size);
-        strm->binary_read_some({(char*)ptr, size});
+        strm->binary_read_some(pvdata->mutable_buffer(size));
         strm->end_binary();
     }
 } _manip;
 
 inline refl::object_metadata_ptr
-initialize_object_metadata(refl::type_tag<shallow_buffer>)
+initialize_object_metadata(refl::type_tag<flex_buffer>)
 {
-    return refl::object_metadata::primitive_factory::define(sizeof(shallow_buffer), &_manip);
+    return refl::object_metadata::primitive_factory::define(sizeof(flex_buffer), &_manip);
 }
 }  // namespace cpph
 
