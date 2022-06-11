@@ -73,7 +73,7 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "../template_utils.hxx"
+#include "cpph/utility/template_utils.hxx"
 
 //
 namespace cpph {

@@ -28,8 +28,8 @@
 #include <stdexcept>
 #include <vector>
 
-#include "cpph/functional.hxx"
 #include "cpph/spinlock.hxx"
+#include "cpph/utility/functional.hxx"
 
 //
 

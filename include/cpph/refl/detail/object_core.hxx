@@ -35,9 +35,9 @@
 
 #include "cpph/algorithm/std.hxx"
 #include "cpph/container/sorted_vector.hxx"
-#include "cpph/counter.hxx"
 #include "cpph/helper/alias_memory.hxx"
-#include "cpph/macros.hxx"
+#include "cpph/helper/macros.hxx"
+#include "cpph/utility/counter.hxx"
 #include "if_archive.hxx"
 
 namespace cpph {

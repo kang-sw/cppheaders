@@ -28,8 +28,8 @@
 
 #include <memory>
 
-#include "../../../functional.hxx"
 #include "../../detail/object_core.hxx"
+#include "cpph/utility/functional.hxx"
 #include "defs.hxx"
 
 namespace cpph::rpc {

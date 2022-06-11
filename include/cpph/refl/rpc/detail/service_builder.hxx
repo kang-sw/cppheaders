@@ -27,9 +27,9 @@
 #include <map>
 #include <utility>
 
-#include "../../../functional.hxx"
 #include "../../../memory/pool.hxx"
 #include "../../detail/object_core.hxx"
+#include "cpph/utility/functional.hxx"
 #include "defs.hxx"
 #include "interface.hxx"
 #include "service.hxx"

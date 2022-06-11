@@ -28,7 +28,7 @@
 #include <mutex>
 #include <optional>
 
-#include "cpph/functional.hxx"
+#include "cpph/utility/functional.hxx"
 
 //
 

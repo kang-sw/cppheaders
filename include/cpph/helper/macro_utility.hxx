@@ -27,8 +27,8 @@
 #include <optional>
 #include <string_view>
 
-#include "../macros.hxx"
-#include "../template_utils.hxx"
+#include "cpph/utility/template_utils.hxx"
+#include "macros.hxx"
 
 namespace cpph::macro_utils {
 template <const auto& s>

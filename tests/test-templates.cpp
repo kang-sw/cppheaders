@@ -26,8 +26,8 @@
 #include <array>
 
 #include "catch.hpp"
-#include "macros.hxx"
-#include "template_utils.hxx"
+#include "helper/macros.hxx"
+#include "utility/template_utils.hxx"
 
 CPPH_SFINAE_EXPR(is_range, Ty_, std::begin(std::declval<Ty_>()));
 

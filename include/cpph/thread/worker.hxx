@@ -26,8 +26,8 @@
 #include <atomic>
 #include <thread>
 
-#include "../functional.hxx"
-#include "../macros.hxx"
+#include "cpph/helper/macros.hxx"
+#include "cpph/utility/functional.hxx"
 
 //
 

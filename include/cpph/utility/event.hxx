@@ -30,10 +30,10 @@
 #include <stdexcept>
 #include <vector>
 
+#include "cpph/spinlock.hxx"
+#include "cpph/threading.hxx"
 #include "functional.hxx"
 #include "hasher.hxx"
-#include "spinlock.hxx"
-#include "threading.hxx"
 
 //
 

@@ -29,7 +29,7 @@
 #include <string>
 #include <tuple>
 
-#include "../../../functional.hxx"
+#include "cpph/utility/functional.hxx"
 #include "defs.hxx"
 
 namespace cpph::rpc {

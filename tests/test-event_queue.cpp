@@ -25,8 +25,8 @@
  ******************************************************************************/
 
 #include "catch.hpp"
-#include "counter.hxx"
 #include "thread/event_queue.hxx"
+#include "utility/counter.hxx"
 
 static std::atomic_size_t invoked = 0;
 static std::atomic_size_t destructed = 0;

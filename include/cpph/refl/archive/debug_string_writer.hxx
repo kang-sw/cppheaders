@@ -23,8 +23,8 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "../../futils.hxx"
 #include "../detail/if_archive.hxx"
+#include "utility/futils.hxx"
 
 namespace cpph::archive {
 

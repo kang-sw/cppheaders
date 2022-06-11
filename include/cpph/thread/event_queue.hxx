@@ -32,9 +32,9 @@
 
 #include "cpph/container/circular_queue.hxx"
 #include "cpph/memory/ring_allocator.hxx"
-#include "cpph/template_utils.hxx"
 #include "cpph/thread/event_wait.hxx"
 #include "cpph/thread/locked.hxx"
+#include "cpph/utility/template_utils.hxx"
 
 namespace cpph {
 /**

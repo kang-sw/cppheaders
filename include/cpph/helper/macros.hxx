@@ -26,7 +26,7 @@
 
 #ifndef CPPHEADERS_HELPER_UTILITY_MACROS_HXX
 #define CPPHEADERS_HELPER_UTILITY_MACROS_HXX
-#include "helper/spdlog_macros.hxx"
+#include "spdlog_macros.hxx"
 
 #define INTERNAL_CPPH_CONCAT2(A, B) A##B
 #define INTERNAL_CPPH_CONCAT(A, B)  INTERNAL_CPPH_CONCAT2(A, B)

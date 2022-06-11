@@ -27,11 +27,11 @@
 #include <streambuf>
 #include <string_view>
 
-#include "../../utility/array_view.hxx"
-#include "../../functional.hxx"
 #include "../../helper/exception.hxx"
-#include "../../template_utils.hxx"
+#include "../../utility/array_view.hxx"
 #include "../../utility/cleanup.hxx"
+#include "cpph/utility/functional.hxx"
+#include "cpph/utility/template_utils.hxx"
 
 /**
  * Defines SAX-like interface for parsing / archiving

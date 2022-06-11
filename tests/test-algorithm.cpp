@@ -23,9 +23,9 @@
 // project home: https://github.com/perfkitpp
 
 #include <algorithm/base64.hxx>
-#include <counter.hxx>
-#include <dynamic_array.hxx>
+#include <container/dynamic_array.hxx>
 #include <helper/nlohmann_json_macros.hxx>
+#include <utility/counter.hxx>
 
 #include "catch.hpp"
 

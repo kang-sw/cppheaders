@@ -33,7 +33,7 @@
 #include <thread>
 #include <vector>
 
-#include "../counter.hxx"
+#include "cpph/utility/counter.hxx"
 #include "event_queue.hxx"
 
 namespace cpph {

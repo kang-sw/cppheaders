@@ -25,9 +25,9 @@
  ******************************************************************************/
 
 #pragma once
-#include "cpph/functional.hxx"
 #include "cpph/thread/event_wait.hxx"
 #include "event_queue.hxx"
+#include "utility/functional.hxx"
 
 namespace cpph::thread {
 /**

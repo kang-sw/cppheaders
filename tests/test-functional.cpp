@@ -25,7 +25,7 @@
 #include <chrono>
 #include <memory>
 
-#include <functional.hxx>
+#include <utility/functional.hxx>
 
 #include "catch.hpp"
 
