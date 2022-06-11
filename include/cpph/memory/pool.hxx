@@ -28,7 +28,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "cpph/spinlock.hxx"
+#include "cpph/thread/spinlock.hxx"
 #include "cpph/utility/functional.hxx"
 
 //

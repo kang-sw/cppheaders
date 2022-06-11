@@ -27,8 +27,8 @@
 #pragma once
 #include "../../../container/circular_queue.hxx"
 #include "../../../thread/event_wait.hxx"
-#include "../../../threading.hxx"
 #include "../detail/connection.hxx"
+#include "thread/threading.hxx"
 
 namespace cpph::rpc::conn {
 class inmemory_pipe : public if_connection, public std::streambuf

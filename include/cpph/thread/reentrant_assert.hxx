@@ -25,8 +25,7 @@
 #pragma once
 #include <mutex>
 
-
-#include "../spinlock.hxx"
+#include "spinlock.hxx"
 
 //
 
