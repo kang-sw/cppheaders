@@ -71,30 +71,68 @@
 #pragma once
 #include <cassert>
 #include <cstring>
+#include <memory>
 #include <stdexcept>
 
 #include "cpph/utility/template_utils.hxx"
 
 //
 namespace cpph {
+namespace _detail {
+template <typename T>
+class ring_fallback_allocator : private T
+{
+    enum { elem_size = sizeof(typename T::value_type) };
+
+   protected:
+    void* _allocate_fallback(size_t nbytes)
+    {
+        return this->allocate((nbytes + elem_size - 1) / elem_size);
+    }
+
+    void _deallocate_fallback(void* p, size_t nbytes)
+    {
+        this->deallocate((typename T::pointer)p, nbytes / elem_size);
+    }
+
+   public:
+    T& allocator() noexcept
+    {
+        return *this;
+    }
+};
+
+template <>
+class ring_fallback_allocator<void>
+{
+};
+
+struct ring_node_t {
+    uint64_t pending_kill       : 1;
+    uint64_t fallback_allocated : 1;
+    uint64_t _reserved          : 2;
+
+    // in block count
+    uint64_t extent : 60;
+    char buffer[0];
+
+    ring_node_t* next_node() const noexcept { return (ring_node_t*)buffer + extent; }
+};
+
+}  // namespace _detail
+
 /**
  * Ring-shaped allocator
  */
-class ring_allocator
+template <typename FallbackAlloc = void>
+class basic_ring_allocator : private _detail::ring_fallback_allocator<FallbackAlloc>
 {
-    struct node_t {
-        uint64_t pending_kill : 1;
-        uint64_t _reserved    : 3;
-
-        // in block count
-        uint64_t extent : 60;
-
-        char buffer[0];
-
-        node_t* next_node() const noexcept { return (node_t*)buffer + extent; }
-    };
-
+    using node_t = _detail::ring_node_t;
     static_assert(sizeof(node_t) == 8);
+
+   public:
+    static constexpr auto has_fallback_allocator = not is_same_v<FallbackAlloc, void>;
+    static constexpr auto node_size = sizeof(node_t);
 
    private:
     node_t* _memory = {};
@@ -106,7 +144,7 @@ class ring_allocator
     void* _user = {};
 
    public:
-    explicit ring_allocator(void* buffer, size_t size, void (*dealloc)(void*, void*), void* user) noexcept
+    explicit basic_ring_allocator(void* buffer, size_t size, void (*dealloc)(void*, void*), void* user) noexcept
             : _memory((node_t*)buffer),
               _capacity(_node_size_floor(size)),
               _dealloc(dealloc),
@@ -119,32 +157,32 @@ class ring_allocator
         memset(buffer, 0, size);
     }
 
-    explicit ring_allocator(void* buffer, size_t size, void (*dealloc)(void*)) noexcept
-            : ring_allocator(
+    explicit basic_ring_allocator(void* buffer, size_t size, void (*dealloc)(void*)) noexcept
+            : basic_ring_allocator(
                     buffer, size,
                     [](void* p, void* vfn) { ((void (*)(void*))vfn)(p); },
                     decltype(_user)(dealloc))
     {
     }
 
-    explicit ring_allocator(size_t size) noexcept
-            : ring_allocator(malloc(_node_size_ceil(size) * 8), _node_size_ceil(size) * 8, [](void* p) { free(p); })
+    explicit basic_ring_allocator(size_t size) noexcept
+            : basic_ring_allocator(malloc(_node_size_ceil(size) * node_size), _node_size_ceil(size) * node_size, [](void* p) { free(p); })
     {
     }
 
-    ring_allocator() noexcept
+    basic_ring_allocator() noexcept
             : _dealloc([](auto, auto) {})
     {
     }
 
-    ~ring_allocator() noexcept
+    ~basic_ring_allocator() noexcept
     {
         _dealloc(_memory, _user);
     }
 
    public:
-    ring_allocator(ring_allocator&& other) noexcept { *this = move(other); }
-    ring_allocator& operator=(ring_allocator&& other) noexcept
+    basic_ring_allocator(basic_ring_allocator&& other) noexcept { *this = move(other); }
+    basic_ring_allocator& operator=(basic_ring_allocator&& other) noexcept
     {
         char tmp[sizeof *this];
 
@@ -159,7 +197,7 @@ class ring_allocator
    public:
     size_t capacity() const noexcept
     {
-        return _capacity * 8;
+        return _capacity * node_size;
     }
 
     void* allocate(size_t n)
@@ -171,12 +209,74 @@ class ring_allocator
         }
     }
 
+    void* allocate_nt(size_t n) noexcept
+    {
+        auto vp = _allocate_ring(n);
+
+        if constexpr (has_fallback_allocator) {
+            n = _node_size_ceil(n);
+            if (auto node = (node_t*)this->_allocate_fallback((n + 1) * node_size)) {
+                vp = node + 1;
+                node->fallback_allocated = true;
+                node->pending_kill = false;
+                node->extent = n;
+            }
+        }
+
+        return vp;
+    }
+
     void* allocate(size_t n, std::nothrow_t) noexcept
     {
         return allocate_nt(n);
     }
 
-    void* allocate_nt(size_t n) noexcept
+    void deallocate(void* vp) noexcept
+    {
+        if constexpr (has_fallback_allocator) {
+            if (is_ring_allocated(vp)) {
+                _deallocate_ring(vp);
+            } else {
+                auto node = _retr_node(vp);
+                this->_deallocate_fallback(node, node->extent * node_size);
+            }
+        } else {
+            _deallocate_ring(vp);
+        }
+    }
+
+    bool empty() const noexcept
+    {
+        return _head == nullptr;
+    }
+
+    void* front()
+    {
+        return _tail->buffer;
+    }
+
+    bool is_ring_allocated(void* p) const noexcept
+    {
+        if constexpr (has_fallback_allocator) {
+            auto node = _retr_node(p);
+            if (node->fallback_allocated) {
+                return true;
+            } else {
+                assert(_memory <= node && node < _memory + _capacity && "Node must be placed in memory range!");
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    static size_t extent(void* memory) noexcept
+    {
+        return _retr_node(memory)->extent * node_size;
+    }
+
+   private:
+    void* _allocate_ring(size_t n) noexcept
     {
         assert(_memory);
 
@@ -188,6 +288,7 @@ class ring_allocator
             _tail = _head = _memory;
 
             _head->pending_kill = false;
+            _head->fallback_allocated = false;
             _head->extent = nblk;
             data_alloc = _head->buffer;
 
@@ -200,6 +301,7 @@ class ring_allocator
             if (nblk <= space) {
                 // Can allocate memory here.
                 _head->pending_kill = false;
+                _head->fallback_allocated = false;
                 _head->extent = nblk;
                 data_alloc = _head->buffer;
 
@@ -207,11 +309,12 @@ class ring_allocator
             } else if (_tail != _memory) {
                 // 2. Fill dummy element in head, jump to front.
                 _head->pending_kill = true;
+                _head->fallback_allocated = false;
                 _head->extent = space;
 
                 // Retry allocation from the first point
                 _head = _memory;
-                return allocate_nt(n);
+                return _allocate_ring(n);
             } else {
                 // If head cannot even jump to front, buffer is full.
                 return nullptr;
@@ -225,6 +328,7 @@ class ring_allocator
             }
 
             _head->pending_kill = false;
+            _head->fallback_allocated = false;
             _head->extent = nblk;
             data_alloc = _head->buffer;
 
@@ -242,18 +346,19 @@ class ring_allocator
         return data_alloc;
     }
 
-    void deallocate(void* p)
+    void _deallocate_ring(void* p)
     {
         auto node = _retr_node(p);
         assert(p && not empty());
         assert(_memory <= node && node < _memory + _capacity);
 
-        // Mark this node be killed
+        // Mark this node to be killed
         node->pending_kill = true;
 
         // GC all disposing nodes
         while (_tail && _tail->pending_kill) {
-            _tail = _tail->next_node();
+            assert(not _tail->fallback_allocated);
+            _tail = _tail->next_node();  // actual deallocation
 
             if (_tail == _memory + _capacity) {
                 // If tail reaches end of the buffer, go to front again.
@@ -267,21 +372,13 @@ class ring_allocator
         }
     }
 
-    bool empty() const noexcept
-    {
-        return _head == nullptr;
-    }
-
-    void* front()
-    {
-        return _tail->buffer;
-    }
-
    private:
-    static constexpr size_t _node_size_ceil(size_t s) { return ((s + 7) & ~7) / 8; }
-    static constexpr size_t _node_size_floor(size_t s) { return s / 8; }
+    static constexpr size_t _node_size_ceil(size_t s) { return ((s + (node_size - 1)) & ~(node_size - 1)) / node_size; }
+    static constexpr size_t _node_size_floor(size_t s) { return s / node_size; }
 
     static node_t* _retr_node(void* data) noexcept { return (node_t*)data - 1; }
 };
 
+using ring_allocator = basic_ring_allocator<>;
+using ring_allocator_with_fb = basic_ring_allocator<std::allocator<char>>;
 }  // namespace cpph
