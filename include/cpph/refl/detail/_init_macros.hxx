@@ -81,7 +81,7 @@
     }
 
 #define IIT_CPPH_REFLD_begin_single(Type) \
-    cpph::refl::object_metadata_ptr       \
+    cpph::refl::unique_object_metadata       \
     initialize_object_metadata(           \
             cpph::refl::type_tag<Type>)   \
     {                                     \

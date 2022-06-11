@@ -107,7 +107,7 @@ INTERNAL_CPPH_define_(
 namespace _detail {
 
 template <typename ElemTy_>
-object_metadata_ptr fixed_size_descriptor_impl(size_t extent, size_t num_elems)
+unique_object_metadata fixed_size_descriptor_impl(size_t extent, size_t num_elems)
 {
     static struct manip_t : templated_primitive_control<ElemTy_> {
         entity_type type() const noexcept override
@@ -252,7 +252,7 @@ INTERNAL_CPPH_define_(
 namespace cpph::refl {
 namespace _detail {
 template <typename Map_>
-auto get_dictionary_descriptor() -> object_metadata_ptr
+auto get_dictionary_descriptor() -> unique_object_metadata
 {
     using key_type = typename Map_::key_type;
     using mapped_type = typename Map_::mapped_type;

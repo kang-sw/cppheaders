@@ -56,8 +56,8 @@ using std::shared_ptr;
 using std::weak_ptr;
 
 using object_metadata_t = object_metadata const*;
-using object_metadata_ptr = unique_ptr<object_metadata const>;
 using optional_property_metadata = struct property_metadata const*;
+using unique_object_metadata = unique_ptr<object_metadata const>;
 
 namespace error {
 CPPH_DECLARE_EXCEPTION(object_exception, basic_exception<object_exception>);
@@ -395,7 +395,7 @@ template <bool Test_>
 using object_sfinae_t = std::enable_if_t<Test_, object_metadata_t>;
 
 template <bool Test_>
-using object_sfinae_ptr = std::enable_if_t<Test_, object_metadata_ptr>;
+using object_sfinae_ptr = std::enable_if_t<Test_, unique_object_metadata>;
 
 template <typename A_, typename B_>
 using object_sfinae_overload_t = object_sfinae_t<std::is_same_v<A_, B_>>;
@@ -841,7 +841,7 @@ class object_metadata
          * Generate object descriptor instance.
          * Sorts keys, build incremental offset lookup table, etc.
          */
-        object_metadata_ptr create()
+        unique_object_metadata create()
         {
             auto result = std::move(_current);
             auto& generated = *result;
@@ -941,7 +941,7 @@ class object_metadata
     class primitive_factory : public basic_factory
     {
        public:
-        static object_metadata_ptr
+        static unique_object_metadata
         define(size_t extent, if_primitive_control const* static_ref_prm_ctrl)
         {
             return primitive_factory{}.setup(extent, static_ref_prm_ctrl).create();
@@ -1254,7 +1254,7 @@ template <typename ValTy_>
 struct get_object_metadata_t<
         ValTy_,
         std::enable_if_t<std::is_same_v<
-                object_metadata_ptr, decltype(initialize_object_metadata(type_tag_v<ValTy_>))>>> {
+                unique_object_metadata, decltype(initialize_object_metadata(type_tag_v<ValTy_>))>>> {
     auto operator()() const
     {
         static auto instance = initialize_object_metadata(type_tag_v<ValTy_>);
@@ -1390,7 +1390,7 @@ namespace cpph::refl {
 template <typename ValTy_>
 auto get_object_metadata_t<ValTy_, std::enable_if_t<_detail::is_cpph_refl_object_v<ValTy_>>>::operator()() const
 {
-    static object_metadata_ptr inst = ((ValTy_*)1)->initialize_object_metadata();
+    static unique_object_metadata inst = ((ValTy_*)1)->initialize_object_metadata();
 
     return &*inst;
 }

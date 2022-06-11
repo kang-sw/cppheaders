@@ -62,7 +62,7 @@ IIT_CPPH_REFLD_end();
 namespace cpph {
 
 template <typename Container_>
-refl::object_metadata_ptr
+refl::unique_object_metadata
 initialize_object_metadata(refl::type_tag<binary<Container_>>)
 {
     using binary_type = binary<Container_>;
@@ -239,7 +239,7 @@ static struct manip_t : refl::templated_primitive_control<flex_buffer> {
     }
 } _manip;
 
-inline refl::object_metadata_ptr
+inline refl::unique_object_metadata
 initialize_object_metadata(refl::type_tag<flex_buffer>)
 {
     return refl::object_metadata::primitive_factory::define(sizeof(flex_buffer), &_manip);
