@@ -259,10 +259,10 @@ class basic_ring_allocator : private _detail::ring_fallback_allocator<FallbackAl
     {
         if constexpr (has_fallback_allocator) {
             auto node = _retr_node(p);
-            if (node->fallback_allocated) {
+            if (not node->fallback_allocated) {
+                assert(_memory <= node && node < _memory + _capacity && "Node must be placed in memory range!");
                 return true;
             } else {
-                assert(_memory <= node && node < _memory + _capacity && "Node must be placed in memory range!");
                 return false;
             }
         } else {

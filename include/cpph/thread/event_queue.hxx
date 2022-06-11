@@ -50,7 +50,7 @@ class event_queue
     };
 
    private:
-    locked<ring_allocator> _queue_alloc;
+    locked<ring_allocator_with_fb> _queue_alloc;
     locked<circular_queue<callable_pair>> _messages;
     thread::event_wait _event_wait;
     std::atomic_bool _stopped = false;
@@ -77,29 +77,19 @@ class event_queue
 
    private:
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
-    callable_pair _allocate_token(Message&& message)
+    callable_pair _allocate_token(Message&& message) noexcept
     {
         auto constexpr fn = [](callable_pair const* arg) { (*(Message*)arg->body)(); };
         callable_pair msg = {fn, nullptr, nullptr};
 
-        msg.body = _queue_alloc.lock()->allocate_nt(sizeof message);
+        msg.body = _queue_alloc.lock()->allocate(sizeof message);
+        msg.dispose =
+                [](event_queue* self, void* body) {
+                    (*(Message*)body).~Message();
+                    self->_queue_alloc.lock()->deallocate(body);
+                };
 
-        if (msg.body) {
-            new (msg.body) Message(std::forward<Message>(message));
-
-            msg.dispose =
-                    [](event_queue* self, void* body) {
-                        (*(Message*)body).~Message();
-                        self->_queue_alloc.lock()->deallocate(body);
-                    };
-        } else {
-            msg.body = new Message(std::forward<Message>(message));
-            msg.dispose =
-                    [](auto, void* body) {
-                        delete (Message*)body;
-                    };
-        }
-
+        new (msg.body) Message(std::forward<Message>(message));
         return msg;
     }
 
