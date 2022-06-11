@@ -1,6 +1,6 @@
 
 #include "catch.hpp"
-#include "circular_queue.hxx"
+#include "container/circular_queue.hxx"
 #include "container/deque.hxx"
 
 TEST_SUITE("misc")

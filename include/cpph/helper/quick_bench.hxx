@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include <string_view>
 
-#include "../algorithm.hxx"
-#include "../array_view.hxx"
+#include "../algorithm/std.hxx"
+#include "../utility/array_view.hxx"
 #include "../utility/chrono.hxx"
 
 namespace cpph::helper {

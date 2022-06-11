@@ -26,7 +26,7 @@
 
 #include <streambuf>
 
-#include "../array_view.hxx"
+#include "../utility/array_view.hxx"
 
 namespace cpph::streambuf {
 class view : public std::streambuf

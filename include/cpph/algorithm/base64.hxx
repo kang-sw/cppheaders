@@ -28,7 +28,7 @@
 #include <cstdint>
 #include <string_view>
 
-#include "../array_view.hxx"
+#include "../utility/array_view.hxx"
 
 // assert always
 

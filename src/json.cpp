@@ -38,7 +38,7 @@
 #include "cpph/third/jsmn.h"
 
 #define CPPHEADERS_IMPLEMENT_ASSERTIONS
-#include "cpph/assert.hxx"
+
 
 namespace cpph::archive::json {
 using namespace std::literals;

@@ -26,7 +26,7 @@
 #include <cstdlib>
 #include <type_traits>
 
-#include "cpph/array_view.hxx"
+#include "cpph/utility/array_view.hxx"
 #include "cpph/template_utils.hxx"
 
 namespace cpph {

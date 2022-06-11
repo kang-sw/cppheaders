@@ -27,7 +27,7 @@
 #pragma once
 #include <memory>
 
-#include "array_view.hxx"
+#include "utility/array_view.hxx"
 
 //
 

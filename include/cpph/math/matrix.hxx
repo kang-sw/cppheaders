@@ -27,7 +27,7 @@
 #include <cmath>
 #include <ostream>
 
-#include "../array_view.hxx"
+#include "../utility/array_view.hxx"
 #include "defs.hxx"
 
 //

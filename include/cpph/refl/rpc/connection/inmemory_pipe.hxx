@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #pragma once
-#include "../../../circular_queue.hxx"
+#include "../../../container/circular_queue.hxx"
 #include "../../../thread/event_wait.hxx"
 #include "../../../threading.hxx"
 #include "../detail/connection.hxx"

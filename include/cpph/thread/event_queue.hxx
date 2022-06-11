@@ -30,7 +30,7 @@
 #include <thread>
 #include <vector>
 
-#include "cpph/circular_queue.hxx"
+#include "cpph/container/circular_queue.hxx"
 #include "cpph/memory/ring_allocator.hxx"
 #include "cpph/template_utils.hxx"
 #include "cpph/thread/event_wait.hxx"

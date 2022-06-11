@@ -25,7 +25,7 @@
 #pragma once
 #include <mutex>
 
-#include "../assert.hxx"
+
 #include "../spinlock.hxx"
 
 //
@@ -38,7 +38,7 @@ class reentrant_assert
     auto operator()() const noexcept
     {
         std::unique_lock lc{_lock, std::try_to_lock};
-        assert_(lc);
+        assert(lc);
         return lc;
     }
 

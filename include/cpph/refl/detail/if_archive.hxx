@@ -27,7 +27,7 @@
 #include <streambuf>
 #include <string_view>
 
-#include "../../array_view.hxx"
+#include "../../utility/array_view.hxx"
 #include "../../functional.hxx"
 #include "../../helper/exception.hxx"
 #include "../../template_utils.hxx"
