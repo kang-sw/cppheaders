@@ -190,6 +190,7 @@ class pool_ptr
     pool_ptr() noexcept = default;
     pool_ptr(pool_ptr&& other) noexcept : _node(exchange(other._node, nullptr)) {}
     pool_ptr& operator=(pool_ptr&& other) noexcept { return swap(_node, other._node), *this; }
+
     explicit pool_ptr(_detail::pool_node* h) : _node(h) {}
 
     void checkin() noexcept
@@ -214,8 +215,10 @@ class pool_ptr
 
     bool valid() const noexcept { return _node; }
     explicit operator bool() const noexcept { return valid(); }
-    auto operator->() const noexcept { return get(); }
-    auto& operator*() const noexcept { return *get(); }
+    T* operator->() const noexcept { return get(); }
+    T& operator*() const noexcept { return *get(); }
+    auto to_const() && noexcept { return pool_ptr<T const>(move(*this)); }
+    operator pool_ptr<T const>() && noexcept { return to_const(); }
 
     shared_ptr<T> share() &&
     {
@@ -225,6 +228,8 @@ class pool_ptr
         auto data = get();
         return shared_ptr<T>{data, [disposer = move(*this)](auto) {}};
     }
+
+    auto unique() && noexcept;
 
     void detach()
     {
@@ -249,7 +254,14 @@ struct _pool_ptr_disposer {
 };
 
 template <typename T>
-using unique_pool_ptr = unique_ptr<pool_ptr<T>, _pool_ptr_disposer<T>>;
+using unique_pool_ptr = unique_ptr<T, _pool_ptr_disposer<remove_const_t<T>>>;
+
+template <typename T>
+auto pool_ptr<T>::unique() && noexcept
+{
+    auto data = this->get();
+    return unique_pool_ptr<T>{data, {move(*this)}};
+}
 
 template <typename T, class Mutex = spinlock, typename... Params>
 class pool : public tuple<Params...>
