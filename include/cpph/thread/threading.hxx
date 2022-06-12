@@ -155,7 +155,7 @@ bool try_exchange(atomic<ValTy>& value, Rhs&& other, ValTy* current_value) noexc
         return other;
     } else {
         auto result = value.compare_exchange_strong(current, std::forward<Rhs>(other));
-        *current_value = move(current);
+        *current_value = std::move(current);
 
         return result;
     }

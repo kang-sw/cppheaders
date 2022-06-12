@@ -23,20 +23,14 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <list>
 #include <memory>
-#include <stdexcept>
-#include <vector>
 
 #include "cpph/thread/spinlock.hxx"
-#include "cpph/utility/functional.hxx"
+#include "cpph/utility/template_utils.hxx"
 
 //
 
 namespace cpph {
-using std::list;
-using std::vector;
-
 namespace _tr {
 namespace _detail {
 struct pool_node {
@@ -173,8 +167,6 @@ class pool_base : public std::enable_shared_from_this<pool_base>
             lock_guard _{*_mtx};
             node = exchange(_idle_nodes, nullptr);
         }
-
-        list<std::exception_ptr> exceptions;
 
         for (pool_node* next; node; node = next) {
             next = exchange(node->next, nullptr);
