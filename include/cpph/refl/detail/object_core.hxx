@@ -123,7 +123,7 @@ struct basic_object_view_t {
     {
     }
 
-    template <typename Ty, CPPH_REQUIRE(not IsMutable || IsMutable == not is_const_v<Ty>)>
+    template <typename Ty, CPPH_REQUIRE(not IsMutable || not is_const_v<Ty>)>
     explicit basic_object_view_t(Ty& p) noexcept;
 
     bool empty() const noexcept { return data == nullptr; }
@@ -154,7 +154,7 @@ struct basic_shared_object_ptr {
     {
     }
 
-    template <typename Ty, CPPH_REQUIRE(not IsMutable || IsMutable == not is_const_v<Ty>)>
+    template <typename Ty, CPPH_REQUIRE(not IsMutable || not is_const_v<Ty>)>
     basic_shared_object_ptr(shared_ptr<Ty> pointer) noexcept;
 
     bool operator==(nullptr_t) const noexcept { return _data == nullptr; }
