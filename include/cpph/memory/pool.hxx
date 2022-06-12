@@ -82,16 +82,32 @@ class if_pool_mutex
     virtual void unlock() noexcept = 0;
 };
 
+template <typename Mutex>
+class pool_mutex : public if_pool_mutex
+{
+    Mutex _mtx;
+
+   public:
+    void lock() noexcept override
+    {
+        _mtx.lock();
+    }
+
+    void unlock() noexcept override
+    {
+        _mtx.unlock();
+    }
+};
+
 class pool_base : enable_shared_from_this<pool_base>
 {
-   public:
     pool_node* _idle_nodes = nullptr;
 
-    if_pool_mutex* _mtx;
+    ptr<if_pool_mutex> _mtx;
     void (*_dtor)(void*);
 
    public:
-    pool_base(if_pool_mutex* mtx, decltype(_dtor) dtor) noexcept : _mtx(mtx), _dtor(dtor)
+    pool_base(ptr<if_pool_mutex> mtx, decltype(_dtor) dtor) noexcept : _mtx(move(mtx)), _dtor(dtor)
     {
         assert(_mtx);
         assert(_dtor);
@@ -160,7 +176,7 @@ class pool_base : enable_shared_from_this<pool_base>
             node = exchange(_idle_nodes, nullptr);
         }
 
-        for (pool_node* next = nullptr; node; node = next) {
+        for (pool_node* next; node; node = next) {
             next = node->next;
 
             _dtor(node->data);
@@ -184,6 +200,7 @@ class pool_ptr
     pool_ptr() noexcept = default;
     pool_ptr(pool_ptr&& other) noexcept : _node(exchange(other._node, nullptr)) {}
     pool_ptr& operator=(pool_ptr&& other) noexcept { swap(_node, other._node); }
+    explicit pool_ptr(_detail::pool_node* h) : _node(h) {}
 
     void checkin() noexcept
     {
@@ -230,14 +247,69 @@ class pool_ptr
     }
 };
 
+template <typename T>
+struct _pool_ptr_disposer {
+    using pointer = T*;
+    pool_ptr<T> _node;
+    void operator()(pointer) const noexcept {}
+};
+
+template <typename T>
+using unique_pool_ptr = unique_ptr<pool_ptr<T>, _pool_ptr_disposer<T>>;
+
 template <typename T, class Mutex>
 class basic_resource_pool
 {
-    mutable Mutex _mtx;
-    shared_ptr<_detail::pool_base> _pool;
+    shared_ptr<_detail::pool_base> _pool = make_shared<_detail::pool_base>(
+            make_unique<_detail::pool_mutex<Mutex>>(), &basic_resource_pool::_dtor);
+
+    function<_detail::pool_node*()> _construct_new_node = [this] {
+        return _pool->construct<T>();
+    };
+
+   public:
+    basic_resource_pool() noexcept = default;
+
+    template <typename Param0, typename... Params>
+    explicit basic_resource_pool(Param0&& p0, Params&&... params)
+            : _construct_new_node([this, params = make_tuple(std::forward<Param0>(p0), std::forward<Params>(params)...)] {
+                  apply(
+                          [this](auto&&... params) {
+                              return _pool->template construct<T>(params...);
+                          },
+                          params);
+              })
+    {
+    }
+
+   private:
+    static void _dtor(void* p)
+    {
+        reinterpret_cast<T*>(p)->~T();
+    }
 
    public:
     using handle_type = pool_ptr<T>;
+
+   public:
+    handle_type checkout()
+    {
+        if (auto node = _pool->try_checkout()) {
+            return {node};
+        } else {
+            return {_construct_new_node()};
+        }
+    }
+
+    void checkin(handle_type h)
+    {
+        h.checkin();
+    }
+
+    void shrink()
+    {
+        _pool->clear_all_idle();
+    }
 };
 }  // namespace _tr
 
