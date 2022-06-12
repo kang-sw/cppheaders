@@ -177,7 +177,7 @@ class pool_base : public std::enable_shared_from_this<pool_base>
         list<std::exception_ptr> exceptions;
 
         for (pool_node* next; node; node = next) {
-            next = node->next;
+            next = exchange(node->next, nullptr);
 
             _dtor(node->data);
             pool_node::dispose_header(node);
