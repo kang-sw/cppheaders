@@ -33,20 +33,19 @@
 namespace cpph {
 namespace _tr {
 namespace _detail {
-struct pool_node {
+struct pool_node_base {
     weak_ptr<class pool_base> owner = {};
-    pool_node* next = {};
-    char data[];
+    pool_node_base* next = {};
 
    public:
     template <typename T>
-    static void dispose(pool_node* n)
+    static void dispose(pool_node_base* n)
     {
-        reinterpret_cast<T*>(n->data)->~T();
+        reinterpret_cast<T*>(n->data())->~T();
         erase_memory(n);
     }
 
-    static void erase_memory(pool_node* n)
+    static void erase_memory(pool_node_base* n)
     {
         assert(n->next == nullptr);
 
@@ -59,11 +58,15 @@ struct pool_node {
         owner.~weak_ptr<pool_base>();
     }
 
-    template <typename T>
-    T* get() noexcept
+    void* data() noexcept
     {
-        return reinterpret_cast<T*>(data);
+        return this + 1;
     }
+};
+
+template <typename T>
+struct pool_node : pool_node_base {
+    T element;
 };
 
 class if_pool_mutex
@@ -93,7 +96,7 @@ class pool_mutex : public if_pool_mutex
 
 class pool_base : public std::enable_shared_from_this<pool_base>
 {
-    pool_node* _idle_nodes = nullptr;
+    pool_node_base* _idle_nodes = nullptr;
 
     ptr<if_pool_mutex> _mtx;
     void (*_dtor)(void*) noexcept;
@@ -111,7 +114,7 @@ class pool_base : public std::enable_shared_from_this<pool_base>
     }
 
    public:
-    pool_node* try_checkout() noexcept
+    pool_node_base* try_checkout() noexcept
     {
         assert(_mtx != nullptr);
         lock_guard _{*_mtx};
@@ -126,15 +129,15 @@ class pool_base : public std::enable_shared_from_this<pool_base>
     }
 
     template <typename T, typename... Args>
-    pool_node* construct(Args&&... args)
+    pool_node_base* construct(Args&&... args)
     {
-        auto node_mem = new char[sizeof(pool_node) + sizeof(T)];
-        auto node = reinterpret_cast<pool_node*>(node_mem);
+        auto node_mem = new char[sizeof(pool_node_base) + sizeof(T)];
+        auto node = reinterpret_cast<pool_node_base*>(node_mem);
 
-        new (node) pool_node();
+        new (node) pool_node_base();
 
         try {
-            new (node->data) T{std::forward<Args>(args)...};
+            new (node->data()) T{std::forward<Args>(args)...};
         } catch (...) {
             node->destruct_header();
             delete[] node_mem;
@@ -145,7 +148,7 @@ class pool_base : public std::enable_shared_from_this<pool_base>
         return node;
     }
 
-    void checkin(pool_node* n) noexcept
+    void checkin(pool_node_base* n) noexcept
     {
         assert(n->next == nullptr);
         assert(_mtx != nullptr);
@@ -160,17 +163,17 @@ class pool_base : public std::enable_shared_from_this<pool_base>
 
     void clear_all_idle() noexcept
     {
-        pool_node* node = nullptr;
+        pool_node_base* node = nullptr;
         {
             lock_guard _{*_mtx};
             node = exchange(_idle_nodes, nullptr);
         }
 
-        for (pool_node* next; node; node = next) {
+        for (pool_node_base* next; node; node = next) {
             next = exchange(node->next, nullptr);
 
-            _dtor(node->data);
-            pool_node::erase_memory(node);
+            _dtor(node->data());
+            pool_node_base::erase_memory(node);
         }
     }
 };
@@ -184,14 +187,14 @@ class pool_ptr
     using value_type = T;
 
    private:
-    _detail::pool_node* _node = nullptr;
+    _detail::pool_node<T>* _node = nullptr;
 
    public:
     pool_ptr() noexcept = default;
     pool_ptr(pool_ptr&& other) noexcept : _node(exchange(other._node, nullptr)) {}
     pool_ptr& operator=(pool_ptr&& other) noexcept { return swap(_node, other._node), *this; }
 
-    explicit pool_ptr(_detail::pool_node* h) : _node(h) {}
+    explicit pool_ptr(_detail::pool_node_base* h) : _node(static_cast<_detail::pool_node<T>*>(h)) {}
 
     void checkin() noexcept
     {
@@ -199,7 +202,7 @@ class pool_ptr
             if (auto owner = node->owner.lock()) {
                 owner->checkin(node);
             } else {
-                _detail::pool_node::dispose<T>(node);
+                _detail::pool_node_base::dispose<T>(node);
             }
         }
     }
@@ -207,7 +210,7 @@ class pool_ptr
     T* get() const noexcept
     {
         if (_node) {
-            return _node->template get<T>();
+            return &_node->element;
         } else {
             return nullptr;
         }
@@ -217,8 +220,11 @@ class pool_ptr
     explicit operator bool() const noexcept { return valid(); }
     T* operator->() const noexcept { return get(); }
     T& operator*() const noexcept { return *get(); }
-    auto to_const() && noexcept { return pool_ptr<T const>(move(*this)); }
-    operator pool_ptr<T const>() && noexcept { return to_const(); }
+
+    auto constant() && noexcept
+    {
+        return pool_ptr<T const>{move(reinterpret_cast<pool_ptr<T const>&>(*this))};
+    }
 
     shared_ptr<T> share() &&
     {
@@ -237,7 +243,7 @@ class pool_ptr
     }
 
    public:
-    _detail::pool_node* _internal_handle() const noexcept { return _node; }
+    _detail::pool_node_base* _internal_handle() const noexcept { return _node; }
 
    public:
     ~pool_ptr() noexcept(std::is_nothrow_destructible_v<T>)
