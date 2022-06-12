@@ -39,118 +39,205 @@ using std::vector;
 
 namespace _tr {
 namespace _detail {
-struct resource_node_header {
-    resource_node_header* prev;
-    resource_node_header* next;
+class pool_base;
+
+struct pool_node {
+    weak_ptr<pool_base> owner = {};
+    pool_node* next = {};
+    char data[];
+
+   public:
+    template <typename T>
+    static void dispose(pool_node* n)
+    {
+        static_cast<T*>(n->data)->~T();
+        dispose_header(n);
+    }
+
+    static void dispose_header(pool_node* n)
+    {
+        assert(n->next == nullptr);
+
+        n->destruct_header();
+        delete[] reinterpret_cast<char*>(n);
+    }
+
+    void destruct_header()
+    {
+        owner.~weak_ptr<pool_base>();
+    }
+
+    template <typename T>
+    T* get() const noexcept
+    {
+        return reinterpret_cast<T*>(data);
+    }
 };
 
-template <typename Value>
-struct resource_node {
-    void* owner = nullptr;
-    void (*fn_checkin)(void*, _detail::resource_node_header*) noexcept = nullptr;
-    resource_node_header header;
-    Value data;
+class if_pool_mutex
+{
+   public:
+    virtual ~if_pool_mutex() = default;
+    virtual void lock() noexcept = 0;
+    virtual void unlock() noexcept = 0;
 };
+
+class pool_base : enable_shared_from_this<pool_base>
+{
+   public:
+    pool_node* _idle_nodes = nullptr;
+
+    if_pool_mutex* _mtx;
+    void (*_dtor)(void*);
+
+   public:
+    pool_base(if_pool_mutex* mtx, decltype(_dtor) dtor) noexcept : _mtx(mtx), _dtor(dtor)
+    {
+        assert(_mtx);
+        assert(_dtor);
+    }
+
+    ~pool_base()
+    {
+        clear_all_idle();
+    }
+
+   public:
+    pool_node* try_checkout() noexcept
+    {
+        assert(_mtx != nullptr);
+        CPPH_TMPVAR = lock_guard{*_mtx};
+
+        if (not _idle_nodes)
+            return nullptr;
+
+        auto node = exchange(_idle_nodes, _idle_nodes->next);
+        node->next = nullptr;
+
+        return node;
+    }
+
+    template <typename T, typename... Args>
+    pool_node* construct(Args&&... args)
+    {
+        auto node_mem = new char[sizeof(pool_node) + sizeof(T)];
+        auto node = reinterpret_cast<pool_node*>(node_mem);
+
+        new (node) pool_node();
+
+        try {
+            new (node->data) T{std::forward<Args>(args)...};
+        } catch (...) {
+            node->destruct_header();
+            delete[] node_mem;
+            throw;
+        }
+
+        node->owner = weak_from_this();
+        return node;
+    }
+
+    void checkin(pool_node*& n) noexcept
+    {
+        assert(n->next == nullptr);
+        assert(_mtx != nullptr);
+        CPPH_TMPVAR = lock_guard{*_mtx};
+
+        if (_idle_nodes) {
+            n->next = exchange(_idle_nodes, n);
+        } else {
+            _idle_nodes = n;
+        }
+
+        n = nullptr;
+    }
+
+    void clear_all_idle()
+    {
+        pool_node* node = nullptr;
+        {
+            CPPH_TMPVAR = lock_guard{*_mtx};
+            node = exchange(_idle_nodes, nullptr);
+        }
+
+        for (pool_node* next = nullptr; node; node = next) {
+            next = node->next;
+
+            _dtor(node->data);
+            pool_node::dispose_header(node);
+        }
+    }
+};
+
 }  // namespace _detail
 
-template <typename Value>
+template <typename T>
 class pool_ptr
 {
-    using node_type = _detail::resource_node<Value>;
+   public:
+    using value_type = T;
 
    private:
-    node_type* _node = nullptr;
-    Value* _value = nullptr;
+    _detail::pool_node* _node = nullptr;
 
    public:
     pool_ptr() noexcept = default;
+    pool_ptr(pool_ptr&& other) noexcept : _node(exchange(other._node, nullptr)) {}
+    pool_ptr& operator=(pool_ptr&& other) noexcept { swap(_node, other._node); }
 
-    pool_ptr(pool_ptr&& other) noexcept
-            : _node(other._node),
-              _value(other._value)
+    void checkin() noexcept
     {
-        memset(&other, 0, sizeof other);
+        assert(_node);
+
+        if (auto owner = _node->owner.lock()) {
+            owner->checkin(_node);
+        }
     }
 
-    template <typename OtherValue,
-              class = enable_if_t<not is_same_v<Value, OtherValue> && is_base_of_v<Value, OtherValue>>>
-    pool_ptr(pool_ptr<OtherValue>&& other)
-            : _node(other._node),
-              _value(other._value)
+    T* get() const noexcept
     {
-        memset(&other, 0, sizeof other);
+        if (_node) {
+            return _node->template get<T>();
+        } else {
+            return nullptr;
+        }
     }
 
-    pool_ptr& operator=(pool_ptr&& other) noexcept
-    {
-        _release();
-        _node = other._node;
-        _value = other._value;
-        memset(&other, 0, sizeof other);
-    }
+    bool valid() const noexcept { return _node; }
+    explicit operator bool() const noexcept { return valid(); }
+    auto operator->() const noexcept { return get(); }
+    auto& operator*() const noexcept { return *get(); }
 
-    template <typename OtherValue,
-              class = enable_if_t<not is_same_v<Value, OtherValue> && is_base_of_v<Value, OtherValue>>>
-    pool_ptr& operator=(pool_ptr<OtherValue>&& other)
+    shared_ptr<T> share() &&
     {
-        _release();
-        _node = other._node;
-        _value = other._value;
-        memset(&other, 0, sizeof other);
-    }
+        if (not _node)
+            return nullptr;
 
-    ~pool_ptr() noexcept
-    {
-        _release();
-    }
-
-    void reset() noexcept
-    {
-        _release();
-        _node = nullptr;
-        _value = nullptr;
-    }
-
-    shared_ptr<Value> share() && noexcept
-    {
-        auto pointer = _value;
-        return shared_ptr<Value>{pointer, [_ = move(*this)](auto) {}};
+        auto data = get();
+        return shared_ptr<T>{data, [disposer = move(*this)](auto) {}};
     }
 
    public:
-    bool operator==(nullptr_t) const noexcept { return _node == nullptr; }
-    bool operator!=(nullptr_t) const noexcept { return _node != nullptr; }
-    friend bool operator==(nullptr_t n, pool_ptr p) noexcept { return n == p; }
-    friend bool operator!=(nullptr_t n, pool_ptr p) noexcept { return n != p; }
-    explicit operator bool() const noexcept { return *this != nullptr; }
-
-    auto& operator*() noexcept { return *_value; }
-    auto& operator*() const noexcept { return *_value; }
-    auto* operator->() noexcept { return _value; }
-    auto* operator->() const noexcept { return _value; }
-    auto* get() const noexcept { return _value; }
-
-   private:
-    void _release() noexcept
+    ~pool_ptr() noexcept(std::is_nothrow_destructible_v<T>)
     {
-        if (_node) { _node->fn_checkin(_node->owner); }
+        if (auto node = exchange(_node, nullptr)) {
+            if (auto owner = node->owner.lock()) {
+                owner->checkin(node);
+            } else {
+                _detail::pool_node::dispose<T>(node);
+            }
+        }
     }
-
-   public:
-   public:
 };
 
-template <typename Value, typename Mutex, typename CleanUpFunc>
+template <typename T, class Mutex>
 class basic_resource_pool
 {
-    using node_type = _tr::_detail::resource_node<Value>;
-
-   private:
-    node_type* _in_use;
-    node_type* _in_free;
-    function<node_type*()> _fn_construct;
+    mutable Mutex _mtx;
+    shared_ptr<_detail::pool_base> _pool;
 
    public:
+    using handle_type = pool_ptr<T>;
 };
 }  // namespace _tr
 

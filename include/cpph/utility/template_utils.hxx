@@ -41,6 +41,7 @@ namespace cpph {
 inline namespace stdfwd {
 using namespace std::literals;
 
+using std::nothrow;
 using std::initializer_list;
 
 using std::forward_as_tuple;
