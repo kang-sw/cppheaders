@@ -43,10 +43,10 @@ struct pool_node {
     static void dispose(pool_node* n)
     {
         reinterpret_cast<T*>(n->data)->~T();
-        dispose_header(n);
+        erase_memory(n);
     }
 
-    static void dispose_header(pool_node* n)
+    static void erase_memory(pool_node* n)
     {
         assert(n->next == nullptr);
 
@@ -170,7 +170,7 @@ class pool_base : public std::enable_shared_from_this<pool_base>
             next = exchange(node->next, nullptr);
 
             _dtor(node->data);
-            pool_node::dispose_header(node);
+            pool_node::erase_memory(node);
         }
     }
 };
