@@ -102,7 +102,7 @@ static_assert(sizeof(time_info) == 12);
 #pragma pack(pop)
 }  // namespace cpph::refl
 
-IIT_CPPH_REFLD_begin(ValueType, is_template_instance_of<ValueType, std::chrono::duration>::value)
+CPPH_REFL_DEFINE_PRIM_T_begin(ValueType, is_template_instance_of<ValueType, std::chrono::duration>::value)
 {
     CPPH_REFL_primitive_type(binary);
 
@@ -128,6 +128,6 @@ IIT_CPPH_REFLD_begin(ValueType, is_template_instance_of<ValueType, std::chrono::
         t.retrieve(*pvdata);
     }
 }
-IIT_CPPH_REFLD_end();
+CPPH_REFL_DEFINE_PRIM_T_end();
 
 #include "../detail/_deinit_macros.hxx"

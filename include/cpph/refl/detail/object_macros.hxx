@@ -53,7 +53,7 @@
         INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
 
 #    define INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(Qualify, AttrOps, FactoryType, Iterator, ...) \
-        cpph::refl::unique_object_metadata                                                        \
+        cpph::refl::unique_object_metadata                                                     \
                 Qualify                                                                        \
                 initialize_object_metadata()                                                   \
         {                                                                                      \
@@ -82,7 +82,7 @@
 #    define INTERNAL_CPPH_REFL_UNWRAP(...) __VA_ARGS__
 
 #    define INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, FactoryType, Iterator, ...) \
-        cpph::refl::unique_object_metadata                                                    \
+        cpph::refl::unique_object_metadata                                                 \
         initialize_object_metadata(                                                        \
                 cpph::refl::type_tag<ClassName>)                                           \
         {                                                                                  \

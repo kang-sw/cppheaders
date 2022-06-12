@@ -64,6 +64,7 @@ CPPH_REFL_DECLARE(base_object);
 #include "refl/types/array.hxx"
 #include "refl/types/binary.hxx"
 #include "refl/types/chrono.hxx"
+#include "refl/types/key.hxx"
 #include "refl/types/list.hxx"
 #include "refl/types/variant.hxx"
 
