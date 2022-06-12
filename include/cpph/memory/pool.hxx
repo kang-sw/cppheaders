@@ -145,7 +145,7 @@ class pool_base : public std::enable_shared_from_this<pool_base>
         return node;
     }
 
-    void checkin(pool_node*& n) noexcept
+    void checkin(pool_node* n) noexcept
     {
         assert(n->next == nullptr);
         assert(_mtx != nullptr);
@@ -156,8 +156,6 @@ class pool_base : public std::enable_shared_from_this<pool_base>
         } else {
             _idle_nodes = n;
         }
-
-        n = nullptr;
     }
 
     void clear_all_idle() noexcept
@@ -196,10 +194,12 @@ class pool_ptr
 
     void checkin() noexcept
     {
-        assert(_node);
-
-        if (auto owner = _node->owner.lock()) {
-            owner->checkin(_node);
+        if (auto node = exchange(_node, nullptr)) {
+            if (auto owner = node->owner.lock()) {
+                owner->checkin(node);
+            } else {
+                _detail::pool_node::dispose<T>(node);
+            }
         }
     }
 
@@ -226,16 +226,18 @@ class pool_ptr
         return shared_ptr<T>{data, [disposer = move(*this)](auto) {}};
     }
 
+    void detach()
+    {
+        _node->owner.reset();
+    }
+
+   public:
+    _detail::pool_node* _internal_handle() const noexcept { return _node; }
+
    public:
     ~pool_ptr() noexcept(std::is_nothrow_destructible_v<T>)
     {
-        if (auto node = exchange(_node, nullptr)) {
-            if (auto owner = node->owner.lock()) {
-                owner->checkin(node);
-            } else {
-                _detail::pool_node::dispose<T>(node);
-            }
-        }
+        checkin();
     }
 };
 
@@ -250,7 +252,7 @@ template <typename T>
 using unique_pool_ptr = unique_ptr<pool_ptr<T>, _pool_ptr_disposer<T>>;
 
 template <typename T, class Mutex = spinlock, typename... Params>
-class pool : private tuple<Params...>
+class pool : public tuple<Params...>
 {
     shared_ptr<_detail::pool_base> _pool
             = make_shared<_detail::pool_base>(
@@ -261,11 +263,7 @@ class pool : private tuple<Params...>
     pool(pool&&) noexcept = default;
     pool& operator=(pool&&) noexcept = default;
 
-    template <typename Param0, typename... Param1>
-    explicit pool(Param0&& param0, Param1&&... params)
-            : tuple<Params...>(make_tuple(std::forward<Param0>(param0), std::forward<Param1>(params)...))
-    {
-    }
+    using tuple<Params...>::tuple;
 
    private:
     static void _dtor(void* p) noexcept
@@ -290,14 +288,20 @@ class pool : private tuple<Params...>
         }
     }
 
-    void checkin(handle_type h)
+    void checkin(handle_type h) noexcept
     {
         h.checkin();
     }
 
-    void shrink()
+    void shrink() noexcept
     {
         _pool->clear_all_idle();
+    }
+
+    handle_type take_ownership(handle_type other) noexcept
+    {
+        other._internal_handle()->owner = _pool->weak_from_this();
+        return move(other);
     }
 };
 }  // namespace _tr
