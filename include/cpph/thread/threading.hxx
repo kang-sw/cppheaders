@@ -26,6 +26,7 @@
 
 #pragma once
 #include <atomic>
+#include <cassert>
 
 #if _MSVC_LANG
 void __cdecl _Thrd_yield();
@@ -140,5 +141,23 @@ template <typename ValTy, typename Rhs>
 ValTy fetch_add_acq_rel(std::atomic<ValTy>& value, Rhs&& other) noexcept
 {
     return value.fetch_add(std::forward<Rhs>(other), std::memory_order_acq_rel);
+}
+
+/**
+ * Tries non-cache-invalidating read access first.
+ */
+template <typename ValTy, typename Rhs>
+bool try_exchange(atomic<ValTy>& value, Rhs&& other, ValTy* current_value) noexcept
+{
+    assert(current_value);
+
+    if (auto current = acquire(value); current == other) {
+        return other;
+    } else {
+        auto result = value.compare_exchange_strong(current, std::forward<Rhs>(other));
+        *current_value = move(current);
+
+        return result;
+    }
 }
 }  // namespace cpph
