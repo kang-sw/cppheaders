@@ -277,7 +277,7 @@ class pool : public tuple<Params...>
                     make_unique<_detail::pool_mutex<Mutex>>(), &pool::_dtor);
 
    public:
-    pool() noexcept = default;
+    pool() = default;
     pool(pool&&) noexcept = default;
     pool& operator=(pool&&) noexcept = default;
 

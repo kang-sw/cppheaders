@@ -30,6 +30,7 @@
 #pragma once
 #include <cassert>
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <type_traits>
 
