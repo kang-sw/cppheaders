@@ -30,7 +30,7 @@
 #include "../detail/primitives.hxx"
 
 //
-#include "../detail/_init_macros.hxx"
+#include "../detail/object_primitive_macros.hxx"
 
 namespace cpph {
 using std::array;
@@ -52,4 +52,4 @@ INTERNAL_CPPH_define_(ValTy_, _detail::is_stl_array_v<ValTy_>)
 }
 }  // namespace cpph::refl
 
-#include "../detail/_deinit_macros.hxx"
+

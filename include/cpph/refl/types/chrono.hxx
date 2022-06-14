@@ -31,7 +31,7 @@
 #include "../detail/primitives.hxx"
 
 //
-#include "../detail/_init_macros.hxx"
+#include "../detail/object_primitive_macros.hxx"
 
 namespace cpph {
 using std::chrono::duration;
@@ -130,4 +130,4 @@ CPPH_REFL_DEFINE_PRIM_T_begin(ValueType, is_template_instance_of<ValueType, std:
 }
 CPPH_REFL_DEFINE_PRIM_T_end();
 
-#include "../detail/_deinit_macros.hxx"
+

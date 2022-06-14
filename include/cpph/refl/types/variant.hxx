@@ -28,7 +28,7 @@
 #include "../detail/primitives.hxx"
 
 //
-#include "../detail/_init_macros.hxx"
+#include "../detail/object_primitive_macros.hxx"
 
 namespace cpph {
 using std::variant;
@@ -112,4 +112,4 @@ INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::variant>::va
 }
 }  // namespace cpph::refl
 
-#include "../detail/_deinit_macros.hxx"
+

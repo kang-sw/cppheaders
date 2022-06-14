@@ -31,7 +31,7 @@
 #include "../detail/primitives.hxx"
 
 //
-#include "../detail/_init_macros.hxx"
+#include "../detail/object_primitive_macros.hxx"
 
 IIT_CPPH_REFLD_begin(T, is_template_instance_of<T, chunk>::value)
 {
@@ -247,4 +247,4 @@ initialize_object_metadata(refl::type_tag<flex_buffer>)
 }  // namespace cpph
 
 //
-#include "../detail/_deinit_macros.hxx"
+

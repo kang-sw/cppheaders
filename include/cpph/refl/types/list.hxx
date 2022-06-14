@@ -29,7 +29,7 @@
 
 #include "../detail/primitives.hxx"
 //
-#include "../detail/_init_macros.hxx"
+#include "../detail/object_primitive_macros.hxx"
 
 namespace cpph {
 using std::list;
@@ -42,4 +42,3 @@ INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::list>::value
 }
 }  // namespace cpph::refl
 
-#include "../detail/_deinit_macros.hxx"

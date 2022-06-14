@@ -174,7 +174,7 @@ struct some_other_2 {
     outer e;
     inner_arg_2 ff;
 
-    CPPH_REFL_DECLARE_c;
+    CPPH_REFL_DECLARE_em(some_other_2);
 };
 
 }  // namespace ns
@@ -331,7 +331,7 @@ TEST_SUITE("refl.archive")
 //     return factory.create();
 // }
 CPPH_REFL_DEFINE_OBJECT_c(ns::some_other, (), (a, "hello", 3), (b, 4), (c), (f), (t), (r), (e), (ff));
-CPPH_REFL_DEFINE_TUPLE_c(ns::some_other_2, (), a, b, c, f, t, r, e, ff);
+CPPH_REFL_DEFINE_TUPLE(ns::some_other_2, (), a, b, c, f, t, r, e, ff);
 
 struct bintest {
     binary<std::string> binstr = "hello, world!";

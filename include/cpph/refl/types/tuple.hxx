@@ -30,7 +30,7 @@
 #include "../detail/primitives.hxx"
 
 //
-#include "../detail/_init_macros.hxx"
+#include "../detail/object_primitive_macros.hxx"
 
 /*
  * Tuple access
@@ -102,4 +102,4 @@ INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::pair>::value
 
 }  // namespace cpph::refl
 
-#include "../detail/_deinit_macros.hxx"
+

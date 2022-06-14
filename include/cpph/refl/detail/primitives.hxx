@@ -54,7 +54,7 @@ static_assert(has_reserve_v<std::vector<int>>);
 
 }  // namespace cpph::refl
 
-#include "_init_macros.hxx"
+#include "object_primitive_macros.hxx"
 
 namespace cpph::refl {
 
@@ -378,4 +378,4 @@ INTERNAL_CPPH_define_(
 }
 }  // namespace cpph::refl
 
-#include "_deinit_macros.hxx"
+
