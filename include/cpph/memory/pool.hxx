@@ -196,7 +196,7 @@ class pool_ptr
 
     explicit pool_ptr(_detail::pool_node_base* h) : _node(static_cast<_detail::pool_node<T>*>(h)) {}
 
-    void checkin() noexcept
+    void checkin() noexcept(std::is_nothrow_destructible_v<T>)
     {
         if (auto node = exchange(_node, nullptr)) {
             if (auto owner = node->owner.lock()) {
