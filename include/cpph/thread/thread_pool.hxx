@@ -157,6 +157,11 @@ class event_queue_worker
         _proc.clear();
     }
 
+    bool launched() const noexcept
+    {
+        return _worker.joinable();
+    }
+
    public:
     auto& queue() { return _proc; }
 
