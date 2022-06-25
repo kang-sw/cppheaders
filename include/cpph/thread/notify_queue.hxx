@@ -72,12 +72,12 @@ class notify_queue
     }
 
     template <typename Duration_>
-    std::optional<Ty_> try_pop(Duration_ wait)
+    std::optional<Ty_> try_pop(Duration_&& wait)
     {
         _lc_t lc{_mtx};
         std::optional<Ty_> value;
 
-        if (_cvar.wait_for(lc, wait, bind_front(&notify_queue::_not_empty, this))) {
+        if (_cvar.wait_for(lc, wait, [this] { return _not_empty(); })) {
             value.emplace(std::move(_queue.front()));
             _queue.pop_front();
         }
