@@ -369,8 +369,12 @@ class reader : public archive::if_reader
    private:
     void _break_scope()
     {
-        for (auto scope = &_scope_ref(); scope->elems_left > 0;)
+        for (auto scope = &_scope_ref(); scope->elems_left > 0;) {
+            if (scope->type == scope_t::type_object && (scope->elems_left & 1) == 0)
+                scope->reading_key = true;
+
             _skip_once();
+        }
 
         _scope.pop_back();
     }
