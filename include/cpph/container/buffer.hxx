@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include <cassert>
 #include <cstdlib>
 #include <type_traits>
 
@@ -147,6 +148,8 @@ class flex_buffer
     array_view<void> mutable_buffer(size_t len) noexcept
     {
         if (is_owning_buffer()) {
+            assert(_buffer && "Buffer must present in this context");
+
             if (len <= _capacity) {
                 // If owning space can hold given length, just return it.
                 _size = len;
@@ -161,6 +164,7 @@ class flex_buffer
 
         auto buffer = malloc(len);
         _buffer = (char const*)buffer;
+        assert(_buffer && "Memory allocation must not fail!");
 
         return {(char*)buffer, _size};
     }
