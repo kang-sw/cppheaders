@@ -36,7 +36,7 @@
 
 /* temporary variable name ************************************************************************/
 #define CPPH_TMPVAR auto INTERNAL_CPPH_CONCAT(_internal_cpph_tmpvar_, __LINE__)
-#define CPPH_TMP     INTERNAL_CPPH_CONCAT(_internal_cpph_tmpvar_, __LINE__)
+#define CPPH_TMP    INTERNAL_CPPH_CONCAT(_internal_cpph_tmpvar_, __LINE__)
 
 /* generic      ***********************************************************************************/
 #define CPPH_BIND(Function)                                                                     \
@@ -106,4 +106,10 @@ static inline int& _tmp_int() noexcept
                 alloca(sizeof(Type) * cpph::_detail::_tmp_int()), \
                 cpph::_detail::_tmp_int()))
 
+#define CPPH_ALLOCA_CSTR(sview)                         \
+    (std::data(sview)[std::size(sview)] == 0            \
+             ? std::data(sview)                         \
+             : ([](char* p, void const* s, size_t n) {  \
+                   return memcpy(p, s, n), p[n] = 0, p; \
+               }((char*)alloca(std::size(sview) + 1), std::data(sview), std::size(sview))))
 #endif
