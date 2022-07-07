@@ -162,7 +162,8 @@ struct vectors {
     variant_type vt3 = std::string{"hello!"};
     variant_type vt4 = false;
 
-    CPPH_REFL_DEFINE_OBJECT_inline((), (bb, "BB", 0x7fffffff), (f), (f2), (f3), (f4), (f5), (my_enum_value), (arg), (some_outer),
+    CPPH_REFL_DEFINE_OBJECT_inline((), (bb, "BB", 0x7fffffff),
+                                   (f), (f2), (f3), (f4), (f5), (my_enum_value), (arg), (some_outer),
                                    (no_val), (has_val),
                                    (vt1), (vt2), (vt3), (vt4));
 };
@@ -309,6 +310,44 @@ TEST_SUITE("refl.archive")
         strbuf.sputc('4');
         REQUIRE(strbuf.sbumpc() == '4');
         REQUIRE(strbuf.sbumpc() == EOF);
+    }
+
+    TEST_CASE("archive.json.goto_key")
+    {
+        auto str = archive::to_json(ns::vectors{});
+        streambuf::view buf_view{str};
+        archive::json::reader reader{&buf_view};
+
+        auto key = reader.begin_object();
+        REQUIRE(reader.goto_key("vt1"));
+        REQUIRE(reader.is_array_next());
+        {
+            ns::variant_type t;
+            REQUIRE_NOTHROW(reader >> t);
+        }
+
+        REQUIRE(reader.goto_key("f"));
+        REQUIRE(reader.is_array_next());
+        {
+            std::vector<std::vector<double>> gg;
+            REQUIRE_NOTHROW(reader >> gg);
+        }
+
+        REQUIRE(reader.goto_key("my_enum_value"));
+        REQUIRE(reader.type_next() == cpph::archive::entity_type::integer);
+        {
+            int g;
+            REQUIRE_NOTHROW(reader >> g);
+        }
+
+        REQUIRE(reader.goto_key("some_outer"));
+        REQUIRE(reader.is_object_next());
+        {
+            ns::outer g;
+            REQUIRE_NOTHROW(reader >> g);
+        }
+
+        reader.end_object(key);
     }
 }
 

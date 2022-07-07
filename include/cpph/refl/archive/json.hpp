@@ -24,12 +24,16 @@
 
 #pragma once
 #include <sstream>
+#include <string_view>
 
 #include "../../streambuf/base64.hxx"
 #include "../../streambuf/view.hxx"
 #include "json-writer.hxx"
 
 namespace cpph::archive::json {
+using std::string;
+using std::string_view;
+
 class reader : public archive::if_reader
 {
     struct impl;
@@ -63,6 +67,7 @@ class reader : public archive::if_reader
     void end_array(context_key key) override;
     void read_key_next() override;
     entity_type type_next() const override;
+    bool goto_key(string_view key);
 
    private:
     void _prepare() const;
