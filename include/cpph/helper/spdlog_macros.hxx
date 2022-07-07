@@ -28,6 +28,13 @@
 
 // #define CPPH_LOGGER (your_logger)
 
+#    define CPPH_trace(...)    (CPPH_LOGGER()->trace(__VA_ARGS__))
+#    define CPPH_debug(...)    (CPPH_LOGGER()->debug(__VA_ARGS__))
+#    define CPPH_info(...)     (CPPH_LOGGER()->info(__VA_ARGS__))
+#    define CPPH_warn(...)     (CPPH_LOGGER()->warn(__VA_ARGS__))
+#    define CPPH_error(...)    (CPPH_LOGGER()->error(__VA_ARGS__))
+#    define CPPH_critical(...) (CPPH_LOGGER()->critical(__VA_ARGS__))
+
 #    define CPPH_TRACE(...)    SPDLOG_LOGGER_TRACE(CPPH_LOGGER(), __VA_ARGS__)
 #    define CPPH_DEBUG(...)    SPDLOG_LOGGER_DEBUG(CPPH_LOGGER(), __VA_ARGS__)
 #    define CPPH_INFO(...)     SPDLOG_LOGGER_INFO(CPPH_LOGGER(), __VA_ARGS__)
