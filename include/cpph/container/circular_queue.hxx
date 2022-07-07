@@ -418,13 +418,11 @@ class circular_queue
 
     Ty_& _at(size_t i) const
     {
-        assert(!empty());
         return reinterpret_cast<Ty_&>(const_cast<chunk_t&>(_data[i]));
     }
 
     Ty_& _r_at(size_t i) const
     {
-        assert(!empty());
         return const_cast<Ty_&>(cend()[-_idx_linear(i) - 1]);
     }
 
