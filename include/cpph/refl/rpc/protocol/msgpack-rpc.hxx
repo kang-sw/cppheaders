@@ -138,12 +138,8 @@ class msgpack : public if_protocol_procedure
                             fn_error(epss::warning_received_invalid_number_of_parameters);
 
                         // Parse parameters
-                        try {
-                            for (auto& param : *params)
-                                _read >> param;
-                        } catch (archive::error::reader_recoverable_exception&) {
-                            fn_error(epss::warning_received_invalid_parameter_type);
-                        }
+                        for (auto& param : *params)
+                            _read >> param;
 
                         _read.end_array(scope_params);
                     }
@@ -200,6 +196,8 @@ class msgpack : public if_protocol_procedure
                         } catch (archive::error::reader_recoverable_exception&) {
                             fn_rep_err(errstr_invalid_parameter);
                             fn_error(epss::warning_received_invalid_parameter_type);
+                        } catch (...) {
+                            throw;
                         }
 
                         _read.end_array(scope_params);
