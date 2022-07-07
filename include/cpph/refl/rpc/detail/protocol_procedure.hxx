@@ -82,6 +82,11 @@ class if_protocol_procedure
     virtual bool send_notify(std::string_view method, array_view<refl::object_const_view_t> params) noexcept = 0;
 
     /**
+     * Flush buffer
+     */
+    virtual bool flush() noexcept = 0;
+
+    /**
      * Send reply with given msgid and return value.
      */
     virtual bool send_reply_result(int msgid, refl::object_const_view_t retval) noexcept = 0;

@@ -223,6 +223,12 @@ class msgpack : public if_protocol_procedure
         }
     }
 
+    bool flush() noexcept override
+    {
+        _write.flush();
+        return true;
+    }
+
     bool send_request(std::string_view method, int msgid, array_view<refl::object_const_view_t> params) noexcept override
     {
         try {
@@ -234,9 +240,7 @@ class msgpack : public if_protocol_procedure
             _write.array_push(params.size());
             for (auto& p : params) { _write << p; }
             _write.array_pop();
-
             _write.array_pop();
-            _write.flush();
 
             return true;
         } catch (std::exception& e) {
@@ -254,9 +258,7 @@ class msgpack : public if_protocol_procedure
             _write.array_push(params.size());
             for (auto& p : params) { _write << p; }
             _write.array_pop();
-
             _write.array_pop();
-            _write.flush();
 
             return true;
         } catch (std::exception& e) {

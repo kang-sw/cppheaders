@@ -92,6 +92,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
     // Current connection state for quick check.
     std::atomic_bool _valid;
 
+    // Autoflush enabled ?
+    std::atomic_bool _manual_flush = false;
+
     // Connection can be closed without lock.
     std::once_flag _flag_conn_close = {};
 
@@ -234,6 +237,9 @@ class session : public if_session, public std::enable_shared_from_this<session>
                 _rq->lock.critical_section([&] { _rq->requests.erase(handle._msgid); });
                 throw request_exception(make_request_error(request_result::invalid_connection));
             } else {
+                if (not relaxed(_manual_flush))
+                    _protocol->flush();
+
                 _update_rw_count();
             }
         }
@@ -259,10 +265,32 @@ class session : public if_session, public std::enable_shared_from_this<session>
                 _set_expired();
                 return false;
             } else {
+                if (not relaxed(_manual_flush))
+                    _protocol->flush();
+
                 _update_rw_count();
                 return true;
             }
         }
+    }
+
+    /**
+     * Flush sent data
+     */
+    void flush()
+    {
+        {
+            lock_guard _lc_{_mtx_protocol};
+            _protocol->flush();
+        }
+    }
+
+    /**
+     * Set autoflush mode
+     */
+    void autoflush(bool enabled)
+    {
+        relaxed(_manual_flush, not enabled);
     }
 
     /**
