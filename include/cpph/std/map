@@ -1,0 +1,6 @@
+#pragma once
+#include <map>
+namespace cpph
+{
+    using std::map;
+}

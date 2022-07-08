@@ -25,13 +25,13 @@
 #pragma once
 
 #include <algorithm>
-#include <map>
+#include <cpph/std/map>
 #include <memory>
 #include <optional>
-#include <string>
-#include <string_view>
+#include <cpph/std/string>
+#include <cpph/std/string_view>
 #include <utility>
-#include <vector>
+#include <cpph/std/vector>
 
 #include "cpph/algorithm/std.hxx"
 #include "cpph/container/flat_map.hxx"

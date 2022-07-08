@@ -1,0 +1,6 @@
+#pragma once
+#include <filesystem>
+namespace cpph
+{
+    using fs = std::filesystem;
+}

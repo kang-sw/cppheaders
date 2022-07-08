@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #pragma once
-#include <list>
+#include <cpph/std/list>
 
 #include "../detail/primitives.hxx"
 //

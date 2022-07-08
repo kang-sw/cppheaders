@@ -28,7 +28,7 @@
 #include <cassert>
 #include <cstdio>
 #include <memory>
-#include <string>
+#include <cpph/std/string>
 
 //
 

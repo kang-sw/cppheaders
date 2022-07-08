@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #pragma once
-#include <list>
+#include <cpph/std/list>
 
 #include "cpph/refl/core.hxx"
 #include "nlohmann/json_fwd.hpp"

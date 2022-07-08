@@ -24,7 +24,7 @@
 
 #pragma once
 #include <array>
-#include <map>
+#include <cpph/std/map>
 #include <utility>
 
 #include "../../../memory/pool.hxx"

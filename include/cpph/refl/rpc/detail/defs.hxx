@@ -26,8 +26,8 @@
 
 #pragma once
 #include <memory>
-#include <string>
-#include <string_view>
+#include <cpph/std/string>
+#include <cpph/std/string_view>
 #include <system_error>
 
 #include "../../detail/object_core.hxx"

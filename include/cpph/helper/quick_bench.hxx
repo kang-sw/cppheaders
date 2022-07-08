@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdio>
 #include <stdexcept>
-#include <string_view>
+#include <cpph/std/string_view>
 
 #include "../algorithm/std.hxx"
 #include "../utility/array_view.hxx"

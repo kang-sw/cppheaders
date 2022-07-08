@@ -30,8 +30,8 @@
 
 #pragma once
 #include <cassert>
-#include <map>
-#include <vector>
+#include <cpph/std/map>
+#include <cpph/std/vector>
 
 namespace cpph {
 template <typename Key1, typename Key2, bool UniqueSecondKey>

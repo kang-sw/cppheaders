@@ -26,7 +26,7 @@
  ******************************************************************************/
 
 #pragma once
-#include <map>
+#include <cpph/std/map>
 #include <optional>
 
 #include "../../../streambuf/string.hxx"

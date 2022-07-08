@@ -26,7 +26,7 @@
  ******************************************************************************/
 
 #pragma once
-#include <set>
+#include <cpph/std/set>
 
 #include "../detail/primitives.hxx"
 //

@@ -24,7 +24,7 @@
 
 #pragma once
 #include <streambuf>
-#include <string>
+#include <cpph/std/string>
 
 namespace cpph::streambuf {
 

@@ -28,7 +28,7 @@
 #include <array>
 #include <numeric>
 #include <stdexcept>
-#include <vector>
+#include <cpph/std/vector>
 
 namespace cpph {
 /**

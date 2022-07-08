@@ -26,7 +26,7 @@
 #include <algorithm>
 #include <array>
 #include <memory>
-#include <vector>
+#include <cpph/std/vector>
 
 #include "buffer.hxx"
 

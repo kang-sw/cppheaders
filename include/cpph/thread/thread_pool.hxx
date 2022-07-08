@@ -31,7 +31,7 @@
 #pragma once
 #include <atomic>
 #include <thread>
-#include <vector>
+#include <cpph/std/vector>
 
 #include "cpph/utility/counter.hxx"
 #include "event_queue.hxx"

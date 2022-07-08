@@ -88,8 +88,8 @@
 #include <new>
 #include <sstream>
 #include <streambuf>
-#include <string>
-#include <vector>
+#include <cpph/std/string>
+#include <cpph/std/vector>
 #include <exception>
 #include <iterator>
 
@@ -247,7 +247,7 @@
 #include <dwarf.h>
 #include <libdwarf.h>
 #include <libelf.h>
-#include <map>
+#include <cpph/std/map>
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <dlfcn.h>
@@ -408,7 +408,7 @@ extern "C" uintptr_t _Unwind_GetIPInfo(_Unwind_Context *, int *);
 #endif // BACKWARD_HAS_LIBUNWIND == 1
 
 #ifdef BACKWARD_ATLEAST_CXX11
-#include <unordered_map>
+#include <cpph/std/unordered_map>
 #include <utility> // for std::swap
 namespace backward {
 namespace details {
@@ -421,7 +421,7 @@ using std::move;
 #else // NOT BACKWARD_ATLEAST_CXX11
 #define nullptr NULL
 #define override
-#include <map>
+#include <cpph/std/map>
 namespace backward {
 namespace details {
 template <typename K, typename V> struct hashtable {

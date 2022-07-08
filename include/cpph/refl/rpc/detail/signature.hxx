@@ -26,7 +26,7 @@
 
 #pragma once
 #include <array>
-#include <string>
+#include <cpph/std/string>
 #include <tuple>
 
 #include "cpph/utility/functional.hxx"

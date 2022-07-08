@@ -25,7 +25,7 @@
 #pragma once
 #include <array>
 #include <optional>
-#include <string_view>
+#include <cpph/std/string_view>
 
 #include "cpph/utility/generic.hxx"
 #include "macros.hxx"

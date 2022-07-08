@@ -26,9 +26,9 @@
 
 #pragma once
 #include <atomic>
-#include <list>
+#include <cpph/std/list>
 #include <thread>
-#include <vector>
+#include <cpph/std/vector>
 
 #include "cpph/container/circular_queue.hxx"
 #include "cpph/memory/ring_allocator.hxx"

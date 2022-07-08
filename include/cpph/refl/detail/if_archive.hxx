@@ -25,7 +25,7 @@
 #pragma once
 #include <stdexcept>
 #include <streambuf>
-#include <string_view>
+#include <cpph/std/string_view>
 
 #include "../../helper/exception.hxx"
 #include "../../utility/array_view.hxx"

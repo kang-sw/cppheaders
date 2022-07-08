@@ -28,7 +28,7 @@
 #include <algorithm>
 #include <memory>
 #include <stdexcept>
-#include <vector>
+#include <cpph/std/vector>
 
 #include "cpph/thread/spinlock.hxx"
 #include "cpph/thread/threading.hxx"
