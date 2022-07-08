@@ -302,13 +302,3 @@ auto create_temporary_array(void* memory, size_t nelem)
 }
 
 }  // namespace cpph
-
-#if __has_include(<range/v3/range/concepts.hpp>)
-#    include <range/v3/range/concepts.hpp>
-
-namespace ranges {
-template <typename Ty_>
-RANGES_INLINE_VAR constexpr bool
-        enable_borrowed_range<cpph::array_view<Ty_>> = true;
-}
-#endif

@@ -23,7 +23,6 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <sstream>
 #include <string_view>
 
 #include "../../streambuf/base64.hxx"
