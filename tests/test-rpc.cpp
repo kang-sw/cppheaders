@@ -31,6 +31,7 @@
 #include "refl/object.hxx"
 #include "refl/rpc/connection/inmemory_pipe.hxx"
 #include "refl/rpc/default_event_procedure.hxx"
+#include "refl/rpc/protocol/json-rpc.hxx"
 #include "refl/rpc/protocol/msgpack-rpc.hxx"
 #include "refl/rpc/rpc.hxx"
 #include "refl/rpc/service.hxx"
