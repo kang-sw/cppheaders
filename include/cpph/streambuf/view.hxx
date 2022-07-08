@@ -44,4 +44,19 @@ class view : public std::streambuf
     }
 };
 
+class const_view : public std::streambuf
+{
+   public:
+    explicit const_view(const_buffer_view buf = {})
+    {
+        reset(buf);
+    }
+
+    void reset(const_buffer_view buf)
+    {
+        auto data = const_cast<char*>(buf.data());
+        setg(data, data, data + buf.size());
+    }
+};
+
 }  // namespace cpph::streambuf
