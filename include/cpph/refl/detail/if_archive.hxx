@@ -31,7 +31,7 @@
 #include "../../utility/array_view.hxx"
 #include "../../utility/cleanup.hxx"
 #include "cpph/utility/functional.hxx"
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 
 /**
  * Defines SAX-like interface for parsing / archiving

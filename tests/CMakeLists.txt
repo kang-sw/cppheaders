@@ -3,6 +3,7 @@ project(cppheaders_test_suit)
 add_executable(
         ${PROJECT_NAME}
 
+        compile-test.cpp
         test-algorithm.cpp
         test-queue.cpp
         test-functional.cpp

@@ -27,7 +27,7 @@
 #include <optional>
 #include <string_view>
 
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 #include "macros.hxx"
 
 namespace cpph::macro_utils {

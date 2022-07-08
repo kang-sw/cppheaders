@@ -26,7 +26,7 @@
 #include <memory>
 
 #include "cpph/thread/spinlock.hxx"
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 
 //
 

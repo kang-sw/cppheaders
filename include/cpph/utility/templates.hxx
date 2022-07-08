@@ -26,43 +26,26 @@
 
 #pragma once
 #include <algorithm>
-#include <limits>
-#include <memory>
-#include <tuple>
 
-namespace std {
-inline namespace literals {
-}
-}  // namespace std
-
-//
+// clang-format off
+namespace std{inline namespace literals {}}
+// clang-format on
 
 namespace cpph {
 inline namespace stdfwd {
 using namespace std::literals;
 
-using std::nothrow;
 using std::initializer_list;
-
-using std::forward_as_tuple;
-using std::make_from_tuple;
-using std::make_pair;
-using std::make_tuple;
-
-using std::apply;
-using std::invoke;
-
-using std::make_shared;
-using std::make_unique;
+using std::nothrow;
 
 using std::exchange;
+using std::invoke;
 using std::swap;
 
 using std::clamp;
 using std::max;
 using std::min;
 using std::minmax;
-using std::tie;
 
 using std::as_const;
 using std::forward;
@@ -72,16 +55,6 @@ using std::ref;
 
 using std::distance;
 using std::size;
-
-using std::is_base_of_v;
-using std::pair;
-using std::shared_ptr;
-using std::tuple;
-using std::unique_ptr;
-using std::weak_ptr;
-
-template <typename T, typename Deleter = std::default_delete<T>>
-using ptr = std::unique_ptr<T, Deleter>;
 
 using std::decay_t;
 using std::remove_const_t;
@@ -106,11 +79,11 @@ using std::is_invocable_v;
 using std::is_same_v;
 using std::is_void_v;
 
-using std::numeric_limits;
-
 using std::declval;
 }  // namespace stdfwd
+}  // namespace cpph
 
+namespace cpph {
 // clang-format off
 struct empty_struct {};
 class empty_class {};
@@ -183,10 +156,6 @@ make_iterable(Begin_&& begin, End_&& end) -> _borrowed_range<Begin_, End_>
 {
     return {std::forward<Begin_>(begin), std::forward<End_>(end)};
 }
-
-using shared_null = std::shared_ptr<nullptr_t>;
-using weak_null = std::shared_ptr<nullptr_t>;
-inline shared_null make_null() { return std::make_shared<nullptr_t>(); }
 
 /**
  * Retrieve function signature's parameter list as tuple.

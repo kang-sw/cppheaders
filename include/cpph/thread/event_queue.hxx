@@ -34,7 +34,7 @@
 #include "cpph/memory/ring_allocator.hxx"
 #include "cpph/thread/event_wait.hxx"
 #include "cpph/thread/locked.hxx"
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 
 namespace cpph {
 /**

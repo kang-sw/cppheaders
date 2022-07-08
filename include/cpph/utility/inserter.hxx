@@ -26,7 +26,7 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "template_utils.hxx"
+#include "generic.hxx"
 
 namespace cpph {
 template <typename InsertFn_>

@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #pragma once
-#include "template_utils.hxx"
+#include "generic.hxx"
 
 //
 

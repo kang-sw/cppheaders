@@ -2,7 +2,7 @@
 #include <random>
 
 #include "cpph/algorithm/std.hxx"
-#include "template_utils.hxx"
+#include "generic.hxx"
 
 namespace cpph {
 template <typename OutIter, typename Generator>

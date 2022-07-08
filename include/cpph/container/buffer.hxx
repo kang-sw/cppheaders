@@ -28,7 +28,7 @@
 #include <type_traits>
 
 #include "cpph/utility/array_view.hxx"
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 
 namespace cpph {
 template <typename Ty_, typename = std::enable_if_t<std::is_trivial_v<Ty_>>>

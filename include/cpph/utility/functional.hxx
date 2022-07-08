@@ -30,7 +30,7 @@
 #include <cstddef>
 #include <functional>
 
-#include "template_utils.hxx"
+#include "generic.hxx"
 //
 
 namespace cpph {
@@ -46,6 +46,10 @@ struct default_function_t {
 
 constexpr default_function_t default_function{nullptr};
 
+/**
+ * Non-copyable unique function
+ * @tparam Signature_
+ */
 template <typename Signature_>
 class ufunction;
 

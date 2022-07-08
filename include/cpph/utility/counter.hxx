@@ -29,7 +29,7 @@
 #include <iterator>
 #include <numeric>
 
-#include "template_utils.hxx"
+#include "generic.hxx"
 
 //
 

@@ -24,7 +24,7 @@
 #pragma once
 #include <list>
 
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 
 namespace cpph {
 using std::list;
