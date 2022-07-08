@@ -34,7 +34,7 @@
 #include <vector>
 
 #include "cpph/algorithm/std.hxx"
-#include "cpph/container/sorted_vector.hxx"
+#include "cpph/container/flat_map.hxx"
 #include "cpph/helper/alias_memory.hxx"
 #include "cpph/helper/macros.hxx"
 #include "cpph/utility/counter.hxx"
@@ -460,10 +460,10 @@ class object_metadata
     bool _is_object = false;
 
     // if _is_object is true, this indicates name of properties
-    sorted_vector<string_view, int> _keys;
+    flat_map<string_view, int> _keys;
 
     // if _is_object is true, this indicates set of indices which is used for fast-access key
-    sorted_vector<int, int> _key_indices;
+    flat_map<int, int> _key_indices;
 
     // compares validity
     std::type_info const* _typeid = nullptr;

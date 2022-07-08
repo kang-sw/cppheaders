@@ -35,7 +35,7 @@ namespace cpph {
 template <typename KeyTy_, typename MapTy_,
           typename Comparator_ = std::less<KeyTy_>,
           typename Alloc_ = std::allocator<std::pair<KeyTy_, MapTy_>>>
-class sorted_vector
+class flat_map
 {
    public:
     using key_type = KeyTy_;

@@ -25,7 +25,7 @@
 #pragma once
 #include <mutex>
 
-#include "../../../container/sorted_vector.hxx"
+#include "../../../container/flat_map.hxx"
 #include "../../../memory/pool.hxx"
 #include "../../../thread/event_wait.hxx"
 #include "connection.hxx"
@@ -121,7 +121,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
         pool<rpc_request_node> request_node_pool;
 
         // List of active RPC requests
-        sorted_vector<int, pool_ptr<rpc_request_node>> requests;
+        flat_map<int, pool_ptr<rpc_request_node>> requests;
     };
 
    private:
