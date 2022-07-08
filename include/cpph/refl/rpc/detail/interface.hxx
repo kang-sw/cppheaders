@@ -49,17 +49,17 @@ class if_event_proc
      *
      * Low priority.
      */
-    virtual void post_rpc_completion(function<void()>&& fn) { post_internal_message(std::move(fn)); }
+    virtual void post_rpc_completion(ufunction<void()>&& fn) { post_internal_message(std::move(fn)); }
 
     /**
      * Post incoming request/notify handler callback. Median priority.
      */
-    virtual void post_handler_callback(function<void()>&& fn) { post_internal_message(std::move(fn)); };
+    virtual void post_handler_callback(ufunction<void()>&& fn) { post_internal_message(std::move(fn)); };
 
     /**
      * Post internal messages. High priority.
      */
-    virtual void post_internal_message(function<void()>&& fn) = 0;
+    virtual void post_internal_message(ufunction<void()>&& fn) = 0;
 };
 
 /**

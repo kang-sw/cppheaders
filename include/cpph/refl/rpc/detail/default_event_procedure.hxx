@@ -35,17 +35,17 @@ class default_event_procedure : public if_event_proc
     thread_pool* _tpool = &default_singleton<thread_pool>();
 
    public:
-    void post_rpc_completion(function<void()>&& fn) override
+    void post_rpc_completion(ufunction<void()>&& fn) override
     {
         _tpool->post(std::move(fn));
     }
 
-    void post_handler_callback(function<void()>&& fn) override
+    void post_handler_callback(ufunction<void()>&& fn) override
     {
         _tpool->post(std::move(fn));
     }
 
-    void post_internal_message(function<void()>&& fn) override
+    void post_internal_message(ufunction<void()>&& fn) override
     {
         _tpool->post(std::move(fn));
     }

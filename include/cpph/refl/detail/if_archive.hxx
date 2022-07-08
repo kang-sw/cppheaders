@@ -125,7 +125,7 @@ constexpr size_t eof = ~size_t{};
  *  - returns number of bytes written successfully
  *  - throws write_error if stream status is erroneous
  */
-using stream_writer = function<size_t(array_view<char const> ibuf)>;
+using stream_writer = ufunction<size_t(array_view<char const> ibuf)>;
 
 /**
  * Read function requirements
@@ -133,7 +133,7 @@ using stream_writer = function<size_t(array_view<char const> ibuf)>;
  *    - returns 0 if there's no more data available.
  *    - throws read_error if stream status is erroneous
  */
-using stream_reader = function<int64_t(array_view<char> obuf)>;
+using stream_reader = ufunction<int64_t(array_view<char> obuf)>;
 
 /**
  * Error info

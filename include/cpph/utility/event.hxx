@@ -69,11 +69,11 @@ template <typename Mutex_, typename... Args_>
 class basic_event
 {
    public:
-    using event_fn = function<event_control(Args_...)>;
+    using event_fn = ufunction<event_control(Args_...)>;
 
     struct _entity_type {
         event_key id;
-        std::shared_ptr<event_fn> function;
+        std::shared_ptr<event_fn> ufunction;
         uint64_t priority = 0;
 
         bool operator<(_entity_type const& rhs) const noexcept
@@ -153,7 +153,7 @@ class basic_event
             if (not _events[idx].id) {
                 _events.erase(_events.begin() + idx);
             } else {
-                auto func_ptr = _events[idx].function;
+                auto func_ptr = _events[idx].ufunction;
                 lock.unlock();
                 auto invoke_result = (int)(*func_ptr)(forward<Params>(args)...);
                 lock.lock();
@@ -185,20 +185,20 @@ class basic_event
         using std::make_shared;
 
         if constexpr (std::is_invocable_r_v<event_control, Callable_, Args_...>) {
-            evt->function = make_shared<event_fn>(forward<Callable_>(fn));
+            evt->ufunction = make_shared<event_fn>(forward<Callable_>(fn));
         } else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>) {
-            evt->function = make_shared<event_fn>(
+            evt->ufunction = make_shared<event_fn>(
                     [_fn = forward<Callable_>(fn)](auto&&... args) mutable {
                         return _fn(args...) ? event_control::ok
                                             : event_control::expire;
                     });
         } else if constexpr (std::is_invocable_v<Callable_, Args_...>) {
-            evt->function = make_shared<event_fn>(
+            evt->ufunction = make_shared<event_fn>(
                     [_fn = forward<Callable_>(fn)](auto&&... args) mutable {
                         return _fn(args...), event_control::ok;
                     });
         } else {
-            evt->function = make_shared<event_fn>(
+            evt->ufunction = make_shared<event_fn>(
                     [_fn = forward<Callable_>(fn)](auto&&...) mutable {
                         return _fn(), event_control::ok;
                     });

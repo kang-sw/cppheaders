@@ -39,7 +39,7 @@ class pipe_mono
     EventProc* const _ioc;
     shared_ptr<SharedContext> _buf_shared = nullptr;
 
-    function<void(shared_ptr<SharedContext>, InputType&)> const _procedure;
+    ufunction<void(shared_ptr<SharedContext>, InputType&)> const _procedure;
     InputType _next_input = {};
 
     bool _busy = false;

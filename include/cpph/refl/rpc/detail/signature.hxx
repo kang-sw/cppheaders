@@ -52,10 +52,10 @@ class signature_t<RetVal_, std::tuple<Params_...>>
 {
    public:
     using return_type = RetVal_;
-    using rpc_signature = function<void(RetVal_*, Params_...)>;
-    using serve_signature_0 = function<RetVal_(Params_&...)>;
-    using serve_signature_1 = function<void(RetVal_*, Params_&...)>;
-    using serve_signature_full = function<void(session_profile_view, RetVal_*, Params_&...)>;
+    using rpc_signature = ufunction<void(RetVal_*, Params_...)>;
+    using serve_signature_0 = ufunction<RetVal_(Params_&...)>;
+    using serve_signature_1 = ufunction<void(RetVal_*, Params_&...)>;
+    using serve_signature_full = ufunction<void(session_profile_view, RetVal_*, Params_&...)>;
 
     // Helper for clion code inspection ...
     using guide_t = void (*)(session_profile_view, RetVal_*, Params_&...);
@@ -89,7 +89,7 @@ class signature_t<RetVal_, std::tuple<Params_...>>
             optional<string> errstr;
 
             auto fn_on_complete = [&](error_code const& ec, auto str) { result = (request_result)ec.value(), errstr.emplace(str); };
-            auto handle = _rpc->async_request(_host->name(), static_cast<function<void(const error_code&, string_view)>>(fn_on_complete), retval, args...);
+            auto handle = _rpc->async_request(_host->name(), static_cast<ufunction<void(const error_code&, string_view)>>(fn_on_complete), retval, args...);
 
             assert(bool(handle) && "Handle is always valid since RPC must throw on invalid connection!");
 

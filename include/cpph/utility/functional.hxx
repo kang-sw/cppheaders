@@ -47,10 +47,10 @@ struct default_function_t {
 constexpr default_function_t default_function{nullptr};
 
 template <typename Signature_>
-class function;
+class ufunction;
 
 template <typename Ret_, typename... Args_>
-class function<Ret_(Args_...)>
+class ufunction<Ret_(Args_...)>
 {
    public:
     using return_type = Ret_;
@@ -96,7 +96,7 @@ class function<Ret_(Args_...)>
         }
     }
 
-    void _move_from(function&& rhs) noexcept
+    void _move_from(ufunction&& rhs) noexcept
     {
         if (not rhs.is_sbo()) {
             _callable = rhs._callable;
@@ -116,15 +116,15 @@ class function<Ret_(Args_...)>
     }
 
    public:
-    function& operator=(function const& fn) noexcept = delete;
-    function(function const& fn) noexcept = delete;
+    ufunction& operator=(ufunction const& fn) noexcept = delete;
+    ufunction(ufunction const& fn) noexcept = delete;
 
-    function(default_function_t) noexcept
+    ufunction(default_function_t) noexcept
     {
         _assign_function(&_default_fn);
     }
 
-    function& operator=(default_function_t) noexcept
+    ufunction& operator=(default_function_t) noexcept
     {
         _destroy();
         _assign_function(&_default_fn);
@@ -141,18 +141,18 @@ class function<Ret_(Args_...)>
             typename Callable_,
             typename = std::enable_if_t<
                     not std::is_same_v<
-                            function,
+                            ufunction,
                             std::remove_cv_t<std::remove_reference_t<Callable_>>>>,
             typename = std::enable_if_t<
                     std::is_invocable_r_v<Ret_, Callable_, Args_...>>>
-    function& operator=(Callable_&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable_>)
+    ufunction& operator=(Callable_&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable_>)
     {
         _destroy();
         _assign_function(std::forward<Callable_>(fn));
         return *this;
     }
 
-    function& operator=(function&& fn) noexcept
+    ufunction& operator=(ufunction&& fn) noexcept
     {
         _destroy();
         _move_from(std::move(fn));
@@ -163,11 +163,11 @@ class function<Ret_(Args_...)>
             typename Callable_,
             typename = std::enable_if_t<
                     not std::is_same_v<
-                            function,
+                            ufunction,
                             std::remove_cv_t<std::remove_reference_t<Callable_>>>>,
             typename = std::enable_if_t<
                     std::is_invocable_r_v<Ret_, Callable_, Args_...>>>
-    function(Callable_&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable_>)
+    ufunction(Callable_&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable_>)
     {
         _assign_function(std::forward<Callable_>(fn));
     }
@@ -177,14 +177,14 @@ class function<Ret_(Args_...)>
         return _callable;
     }
 
-    function(function&& fn) noexcept
+    ufunction(ufunction&& fn) noexcept
     {
         _move_from(std::move(fn));
     }
 
-    function() noexcept = default;
+    ufunction() noexcept = default;
 
-    ~function() noexcept
+    ~ufunction() noexcept
     {
         _destroy();
     }
@@ -218,7 +218,7 @@ class function<Ret_(Args_...)>
     void _static_assert_expr() const noexcept
     {
         static_assert(sizeof _sbo_buf == _function_size - sizeof(void*));
-        static_assert(sizeof(function) == _function_size);
+        static_assert(sizeof(ufunction) == _function_size);
     }
 
    private:
@@ -377,7 +377,7 @@ auto bind_front_weak(Ptr_&& ref, Callable_ callable, Captures_&&... captures)
 }
 
 /**
- * Bind function with weak pointer
+ * Bind ufunction with weak pointer
  */
 template <class Callable, typename Ptr, typename... Captures,
           typename = std::enable_if_t<std::is_invocable_v<Callable, Captures...>>>

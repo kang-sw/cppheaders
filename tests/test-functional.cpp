@@ -33,7 +33,7 @@ TEST_SUITE("misc")
 {
     TEST_CASE("functional overall operation")
     {
-        cpph::function<int(void)> s;
+        cpph::ufunction<int(void)> s;
         s = [] {
             return 1;
         };
@@ -78,7 +78,7 @@ TEST_SUITE("misc")
     {
         return;
 
-        cpph::function<void()> test1 = lambda_t{};
+        cpph::ufunction<void()> test1 = lambda_t{};
         std::function<void()> test2 = lambda_t{};
 
         using clk = std::chrono::system_clock;
@@ -110,7 +110,7 @@ TEST_SUITE("misc")
         auto s = std::make_shared<int>();
         std::weak_ptr<int> w = s;
 
-        cpph::function<int()> f{
+        cpph::ufunction<int()> f{
                 [s = std::move(s)] {
                     return s.use_count();
                 }};

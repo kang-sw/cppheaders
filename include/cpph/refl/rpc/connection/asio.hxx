@@ -221,17 +221,17 @@ class asio_event_procedure : public if_event_proc
     auto executor() const noexcept { return _ref; }
 
    public:
-    void post_rpc_completion(function<void()>&& fn) override
+    void post_rpc_completion(ufunction<void()>&& fn) override
     {
         asio::post(*_ref, std::move(fn));
     }
 
-    void post_handler_callback(function<void()>&& fn) override
+    void post_handler_callback(ufunction<void()>&& fn) override
     {
         asio::post(*_ref, std::move(fn));
     }
 
-    void post_internal_message(function<void()>&& fn) override
+    void post_internal_message(ufunction<void()>&& fn) override
     {
         asio::post(*_ref, std::move(fn));
     }
@@ -248,17 +248,17 @@ inline auto asio_global_event_procedure()
     class procedure_t : public if_event_proc
     {
        public:
-        void post_rpc_completion(function<void()>&& fn) override
+        void post_rpc_completion(ufunction<void()>&& fn) override
         {
             asio::post(std::move(fn));
         }
 
-        void post_handler_callback(function<void()>&& fn) override
+        void post_handler_callback(ufunction<void()>&& fn) override
         {
             asio::post(std::move(fn));
         }
 
-        void post_internal_message(function<void()>&& fn) override
+        void post_internal_message(ufunction<void()>&& fn) override
         {
             asio::post(std::move(fn));
         }

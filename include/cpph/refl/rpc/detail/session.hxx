@@ -36,7 +36,7 @@
 #include "session_profile.hxx"
 
 namespace cpph::rpc {
-using request_complete_handler = function<void(error_code const&, std::string_view json_error)>;
+using request_complete_handler = ufunction<void(error_code const&, std::string_view json_error)>;
 
 template <int>
 class basic_session_builder;

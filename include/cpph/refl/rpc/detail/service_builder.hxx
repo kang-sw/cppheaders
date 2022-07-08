@@ -69,7 +69,7 @@ class service_builder
         using parameter_type = tuple<std::decay_t<Params>...>;
         using param_desc_buffer_type = std::array<refl::object_view_t, sizeof...(Params)>;
         using pool_ret_type = std::conditional_t<std::is_void_v<RetVal>, nullptr_t, RetVal>;
-        using handler_type = function<void(session_profile_view, RetVal*, Params...)>;
+        using handler_type = ufunction<void(session_profile_view, RetVal*, Params...)>;
 
         struct param_buf_pack_t {
             parameter_type params;
@@ -131,7 +131,7 @@ class service_builder
     template <typename RetVal, typename... Params>
     service_builder& route(
             string method_name,
-            function<void(session_profile_view, RetVal*, Params...)>&& handler)
+            ufunction<void(session_profile_view, RetVal*, Params...)>&& handler)
     {
         if (not _table) { _table = make_shared<service_table_t>(); }
 
