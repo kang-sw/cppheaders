@@ -35,7 +35,8 @@ namespace cpph::streambuf {
  */
 class stringbuf : public std::streambuf
 {
-    std::string* _buf = {};
+    std::string _default_buf;
+    std::string* _buf = &_default_buf;
     size_t _read_end = 0;
 
    public:
@@ -46,8 +47,10 @@ class stringbuf : public std::streambuf
     }
 
     //! Reset target buffer
-    void reset(std::string* buf)
+    void reset(std::string* buf = nullptr)
     {
+        if (_buf == &_default_buf && buf != nullptr) { _default_buf.clear(), _default_buf.shrink_to_fit(); }
+        if (buf == nullptr) { buf = &_default_buf; }
         _buf = buf;
         _read_end = buf->size();  // Set initial content as read target
 
