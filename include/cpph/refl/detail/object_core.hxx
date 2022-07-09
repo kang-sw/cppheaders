@@ -25,15 +25,15 @@
 #pragma once
 
 #include <algorithm>
+#include <cpph/std/algorithm>
 #include <cpph/std/map>
-#include <memory>
-#include <optional>
 #include <cpph/std/string>
 #include <cpph/std/string_view>
-#include <utility>
 #include <cpph/std/vector>
+#include <memory>
+#include <optional>
+#include <utility>
 
-#include "cpph/algorithm/std.hxx"
 #include "cpph/container/flat_map.hxx"
 #include "cpph/helper/alias_memory.hxx"
 #include "cpph/helper/macros.hxx"
@@ -841,101 +841,7 @@ class object_metadata
          * Generate object descriptor instance.
          * Sorts keys, build incremental offset lookup table, etc.
          */
-        unique_object_metadata create()
-        {
-            auto result = std::move(_current);
-            auto& generated = *result;
-            auto lookup = &generated._offset_lookup;
-
-            assert(result->_typeid != nullptr);
-
-            auto const n_props = generated._props.size();
-            lookup->reserve(n_props);
-
-            // for name key autogeneration
-            std::vector<int> used_name_keys;
-
-            bool const is_object = generated.is_object();
-            used_name_keys.reserve(n_props);
-
-            auto* key_table = &generated._keys;
-            if (is_object)
-                key_table->reserve(n_props);
-
-#ifndef NDEBUG
-            size_t object_end = 0;
-#endif
-            for (auto& prop : generated._props) {
-                lookup->emplace_back(std::make_pair(prop.offset, prop.index_self));
-                prop._owner_type = result.get();
-
-                if (is_object) {
-                    if (not key_table->try_emplace(prop.name, prop.index_self).second)
-                        throw std::logic_error{"key must be unique!"};
-
-                    if (prop.name_key_self == 0)
-                        throw std::logic_error{"name key must be larger than 0!"};
-                    if (prop.name_key_self > 0) {
-                        used_name_keys.push_back(prop.name_key_self);
-                        push_heap(used_name_keys, std::greater<>{});
-                    }
-                }
-
-#ifndef NDEBUG
-                object_end = std::max(object_end, prop.offset + prop.type->extent());
-#endif
-            }
-
-            // assign name_key table
-            if (is_object) {
-                if (adjacent_find(used_name_keys) != used_name_keys.end())
-                    throw std::logic_error("duplicated name key assignment found!");
-
-                // target key table
-                generated._key_indices.reserve(n_props);
-
-                size_t idx_table = 0;
-                int generated_index = 1;
-                for (auto& prop : generated._props) {
-                    // autogenerate unassigned ones
-                    if (prop.name_key_self < 0) {
-                        // skip all already pre-assigned indices
-                        while (not used_name_keys.empty() && used_name_keys.front() <= generated_index) {
-                            generated_index = used_name_keys.front() + 1;
-
-                            pop_heap(used_name_keys, std::greater<>{});
-                            used_name_keys.pop_back();
-                        }
-
-                        prop.name_key_self = generated_index++;
-                    }
-
-                    auto const is_unique
-                            = generated
-                                      ._key_indices
-                                      .try_emplace(prop.name_key_self, prop.index_self)
-                                      .second;
-
-                    (void)is_unique;  // prevent warning on NDEBUG
-                    assert(is_unique);
-                }
-            }
-
-            // simply sort incrementally.
-            std::sort(lookup->begin(), lookup->end());
-
-            assert("Offset must not duplicate"
-                   && adjacent_find(
-                              *lookup, [](auto& a, auto& b) {
-                                  return a.first == b.first;
-                              })
-                              == lookup->end());
-
-            assert("End of address must be less or equal with actual object extent"
-                   && object_end <= generated.extent());
-
-            return result;
-        }
+        unique_object_metadata create();
     };
 
     class primitive_factory : public basic_factory
