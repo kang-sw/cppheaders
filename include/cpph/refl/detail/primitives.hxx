@@ -332,7 +332,7 @@ auto get_list_like_descriptor() -> object_metadata_t
 
     constexpr auto extent = sizeof(Container_);
     static auto desc = object_metadata::primitive_factory::define(extent, &manip);
-    return &*desc;
+    return desc.get();
 }
 
 }  // namespace _detail
@@ -351,7 +351,7 @@ INTERNAL_CPPH_define_(
 namespace cpph::refl {
 namespace _detail {
 template <typename Map_>
-auto get_dictionary_descriptor() -> unique_object_metadata
+auto get_dictionary_descriptor() -> object_metadata_t
 {
     using key_type = typename Map_::key_type;
     using mapped_type = typename Map_::mapped_type;
@@ -403,14 +403,14 @@ auto get_dictionary_descriptor() -> unique_object_metadata
         }
     } manip;
 
-    return object_metadata::primitive_factory::define(sizeof(Map_), &manip);
+    static auto _ = object_metadata::primitive_factory::define(sizeof(Map_), &manip);
+    return _.get();
 }
 }  // namespace _detail
 
 INTERNAL_CPPH_define_(MapTy_, (is_template_instance_of<MapTy_, std::map>::value))
 {
-    static auto inst = _detail::get_dictionary_descriptor<MapTy_>();
-    return &*inst;
+    return _detail::get_dictionary_descriptor<MapTy_>();
 }
 }  // namespace cpph::refl
 
