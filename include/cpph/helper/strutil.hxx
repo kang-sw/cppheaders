@@ -31,7 +31,7 @@ namespace cpph::strutil {
 template <typename Char_, typename OutIt_>
 void _escape_ch(Char_ ch, OutIt_&& out)
 {
-    if (ch < 0 || std::isprint(ch) && ch != '\'' && ch != '\"' && ch != '\\' && ch != '\?')
+    if (ch < 0 || std::isprint(ch) && ch != '\\' && ch != '\"')  // && ch != '\?' && ch != '\'' )
         *out = ch;
     else {
         *out++ = '\\';
@@ -58,12 +58,13 @@ void _escape_ch(Char_ ch, OutIt_&& out)
                     cc = uint32_t(ch);
 
                 constexpr auto table = "0123456789abcdef";
-                if (cc < 256) {
-                    *out++ = 'x';
-
-                    *out++ = table[(cc & 0xf0) >> 4];
-                    *out++ = table[(cc & 0x0f) >> 0];
-                } else if (cc < 65535) {
+                //                if (cc < 256) {
+                //                    *out++ = 'x';
+                //
+                //                    *out++ = table[(cc & 0xf0) >> 4];
+                //                    *out++ = table[(cc & 0x0f) >> 0];
+                //                } else
+                if (cc < 65535) {
                     *out++ = 'u';
 
                     *out++ = table[(cc & 0xf000) >> 12];
@@ -79,7 +80,7 @@ void _escape_ch(Char_ ch, OutIt_&& out)
 }
 
 template <typename InIt_, typename OutIt_>
-void escape(InIt_ begin, InIt_ end, OutIt_ out)
+void json_escape(InIt_ begin, InIt_ end, OutIt_ out)
 {
     for (auto it = begin; it != end; ++it) { _escape_ch(*it, out); }
 }
@@ -93,7 +94,7 @@ inline int hexval(char hi, char lo)
 }
 
 template <typename InputIt_, typename OutIt_>
-void unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
+void json_unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
 {
     for (auto it = begin; it != end;) {
         char ch = *it++;

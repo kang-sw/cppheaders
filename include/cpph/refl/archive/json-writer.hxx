@@ -115,7 +115,7 @@ class writer : public archive::if_writer
 
         sputc('"');
         auto inserter = insert_adapter([&](char ch) { sputc(ch); });
-        strutil::escape(v.begin(), v.end(), inserter);
+        strutil::json_escape(v.begin(), v.end(), inserter);
         sputc('"');
 
         if (d.is_key) {

@@ -238,7 +238,7 @@ if_reader& reader::read(std::string& v)
     if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
 
     v.clear();
-    strutil::unescape(tok.begin(), tok.end(), std::back_inserter(v));
+    strutil::json_unescape(tok.begin(), tok.end(), std::back_inserter(v));
 
     self->step();
     return *this;

@@ -150,7 +150,7 @@ struct vectors {
     my_enum my_enum_value = my_enum::test3;
 
     std::pair<int, bool> arg = {3, false};
-    std::tuple<int, double, std::string> bb = {5, 1.14, "hell금방갈게요o"};
+    std::tuple<int, double, std::string> bb = {5, 1.14, "hell?금?방?갈?게?요?o"};
 
     outer some_outer;
 
