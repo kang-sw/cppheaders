@@ -114,7 +114,7 @@ class writer : public archive::if_writer
         if (d.need_indent) { _brk_indent(); }
 
         sputc('"');
-        auto inserter = adapt_inserter([&](char ch) { sputc(ch); });
+        auto inserter = insert_adapter([&](char ch) { sputc(ch); });
         strutil::escape(v.begin(), v.end(), inserter);
         sputc('"');
 

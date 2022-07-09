@@ -30,20 +30,20 @@
 
 namespace cpph {
 template <typename InsertFn_>
-class adapt_inserter
+class insert_adapter
 {
    public:
     InsertFn_ assign;
 
    public:
-    adapt_inserter(InsertFn_ fn) noexcept : assign(std::move(fn)) {}
+    insert_adapter(InsertFn_ fn) noexcept : assign(std::move(fn)) {}
 
-    adapt_inserter& operator*() noexcept { return *this; };
-    adapt_inserter& operator++(int) noexcept { return *this; }
-    adapt_inserter& operator++() noexcept { return *this; }
+    insert_adapter& operator*() noexcept { return *this; };
+    insert_adapter& operator++(int) noexcept { return *this; }
+    insert_adapter& operator++() noexcept { return *this; }
 
-    template <typename Ty_, class = std::enable_if_t<not std::is_same_v<Ty_, adapt_inserter>>>
-    adapt_inserter& operator=(Ty_&& other)
+    template <typename Ty_, class = std::enable_if_t<not std::is_same_v<Ty_, insert_adapter>>>
+    insert_adapter& operator=(Ty_&& other)
     {
         assign(std::forward<Ty_>(other));
         return *this;
@@ -51,6 +51,6 @@ class adapt_inserter
 };
 
 template <typename InsertFn_>
-adapt_inserter(InsertFn_&&) -> adapt_inserter<InsertFn_>;
+insert_adapter(InsertFn_&&) -> insert_adapter<InsertFn_>;
 
 }  // namespace cpph

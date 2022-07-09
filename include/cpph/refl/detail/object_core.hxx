@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <cpph/std/algorithm>
 #include <cpph/std/map>
+#include <cpph/std/memory>
 #include <cpph/std/string>
 #include <cpph/std/string_view>
 #include <cpph/std/vector>
@@ -35,7 +36,6 @@
 #include <utility>
 
 #include "cpph/container/flat_map.hxx"
-#include "cpph/helper/alias_memory.hxx"
 #include "cpph/helper/macros.hxx"
 #include "cpph/utility/counter.hxx"
 #include "if_archive.hxx"

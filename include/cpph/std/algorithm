@@ -1,1 +1,8 @@
 #include <cpph/algorithm/std.hxx>
+
+namespace cpph{
+    using std::less;
+    using std::less_equal;
+    using std::greater;
+    using std::greater_equal;
+}
