@@ -101,11 +101,18 @@ class binary<ValTy_, enable_if_t<is_binary_compatible_v<ValTy_> && not _has_data
     };
 };
 
-template <typename T, class = enable_if_t<std::is_trivial_v<T>>>
-struct chunk : public T {
+template <typename, typename = void>
+struct chunk;
+
+template <typename T>
+struct chunk<T, enable_if_t<std::is_trivial_v<T> && not std::is_fundamental_v<T>>> : public T {
    public:
     using T::T;
 };
 
+template <typename T>
+struct chunk<T, enable_if_t<std::is_trivial_v<T> && std::is_fundamental_v<T>>> {
+    T value;
+};
 
 }  // namespace cpph
