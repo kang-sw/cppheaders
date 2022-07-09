@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 # -------------------------------------------------------------------------------------------------
 project(cppheaders)
 add_library(${PROJECT_NAME} STATIC)
+add_library(kang-sw::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_sources(
         ${PROJECT_NAME}
