@@ -127,8 +127,10 @@ class msgpack : public if_protocol_procedure
 
                     auto params = proxy.notify_parameters(method);
 
-                    if (not params)
-                        fn_error(epss::warning_received_unkown_method_name);
+                    if (not params) {
+                        _read.end_array(scope);
+                        return epss::warning_received_unkown_method_name;
+                    }
 
                     {
                         auto scope_params = _read.begin_array();
@@ -176,7 +178,8 @@ class msgpack : public if_protocol_procedure
 
                     if (params == nullptr) {
                         fn_rep_err(errstr_method_not_found);
-                        fn_error(epss::warning_received_unkown_method_name);
+                        _read.end_array(scope);
+                        return epss::warning_received_unkown_method_name;
                     }
 
                     // Parse parameters
