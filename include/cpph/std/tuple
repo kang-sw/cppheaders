@@ -1,0 +1,17 @@
+#pragma once
+#include <tuple>
+
+namespace cpph {
+inline namespace stdfwd {
+using std::forward_as_tuple;
+using std::make_from_tuple;
+using std::make_pair;
+using std::make_tuple;
+using std::pair;
+using std::tie;
+
+using std::apply;
+using std::invoke;
+}  // namespace stdfwd
+}  // namespace cpph
+

@@ -26,6 +26,7 @@
 
 #pragma once
 #include <algorithm>
+#include <limits>
 
 // clang-format off
 namespace std{inline namespace literals {}}
@@ -81,6 +82,8 @@ using std::is_void_v;
 
 using std::declval;
 }  // namespace stdfwd
+
+using std::numeric_limits;
 }  // namespace cpph
 
 namespace cpph {

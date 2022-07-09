@@ -25,37 +25,13 @@
  ******************************************************************************/
 
 #pragma once
-#include <limits>
-#include <memory>
-#include <tuple>
+#include <cpph/std/memory>
+#include <cpph/std/tuple>
 
 #include "templates.hxx"
 
 namespace cpph {
 inline namespace stdfwd {
-
 using std::initializer_list;
-using std::nothrow;
-
-using std::forward_as_tuple;
-using std::make_from_tuple;
-using std::make_pair;
-using std::make_tuple;
-
-using std::apply;
-using std::invoke;
-
-using std::make_shared;
-using std::make_unique;
-
-using std::pair;
-using std::shared_ptr;
-using std::tie;
-using std::tuple;
-using std::unique_ptr;
-using std::weak_ptr;
-
-template <typename T, typename Deleter = std::default_delete<T>>
-using ptr = std::unique_ptr<T, Deleter>;
 }  // namespace stdfwd
 }  // namespace cpph
