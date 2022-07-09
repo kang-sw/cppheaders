@@ -26,7 +26,16 @@
 #include <condition_variable>
 #include <mutex>
 
+#include "cpph/memory/pool.hxx"
+
 //
+
+namespace cpph {
+using std::condition_variable;
+using std::mutex;
+using std::timed_mutex;
+using std::unique_lock;
+}  // namespace cpph
 
 namespace cpph::thread {
 using namespace std::literals;
@@ -39,6 +48,10 @@ const auto event_wait_default_critical = [] { return true; };
  */
 class event_wait
 {
+   private:
+    mutable std::condition_variable _cvar;
+    mutable std::mutex _mtx;
+
    private:
     using mutex_type = std::mutex;
     using cvar_type = std::condition_variable;
@@ -253,10 +266,55 @@ class event_wait
 
     auto lock() const { return ulock_type{_mtx}; }
     auto& mutex() const { return _mtx; }
+};
+
+/**
+ * Used for instant wait of async events ...
+ */
+class trigger_wait
+{
+    // TODO: In c++ 20, change this to use atomic wait
 
    private:
-    mutable std::condition_variable _cvar;
-    mutable std::mutex _mtx;
+    inline static pool<event_wait> _reuse;
+    pool_ptr<event_wait> _body;
+    bool _ready = false;
+
+   public:
+    explicit trigger_wait(nullptr_t) noexcept : _body(nullptr) {}
+    explicit trigger_wait() : _body(_reuse.checkout()) {}
+
+   public:
+    void prepare()
+    {
+        _body = _reuse.checkout();
+    }
+
+    void trigger()
+    {
+        assert(_body);
+        _body->notify_one([this] { _ready = true; });
+    }
+
+    void wait()
+    {
+        assert(_body);
+        _body->wait([this] { return _ready; });
+    }
+
+    void reset()
+    {
+        _body->critical_section([this] { _ready = false; });
+    }
+};
+
+class scoped_trigger
+{
+    trigger_wait* _wait;
+
+   public:
+    scoped_trigger(trigger_wait& wait) noexcept : _wait(&wait) {}
+    ~scoped_trigger() { _wait->trigger(); }
 };
 
 }  // namespace cpph::thread
