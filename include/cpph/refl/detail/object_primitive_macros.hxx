@@ -58,17 +58,17 @@
         return cpph::archive::entity_type::TypeVal;           \
     }
 
-#define CPPH_REFL_primitive_status(Param0) \
-    cpph::refl::requirement_status_tag impl_status(const value_type* Param0) const noexcept override
+#define CPPH_REFL_primitive_status(ValuePtrParamName) \
+    cpph::refl::requirement_status_tag impl_status(const value_type* ValuePtrParamName) const noexcept override
 
 #define CPPH_REFL_primitive_type_dynamic() \
     cpph::archive::entity_type type() const noexcept override
 
-#define CPPH_REFL_primitive_archive(Param0, Param1) \
-    void impl_archive(cpph::archive::if_writer* Param0, const value_type& Param1, cpph::refl::object_metadata_t Param2, cpph::refl::optional_property_metadata Param3) const override
+#define CPPH_REFL_primitive_archive(StrmParamName, ValueParamName) \
+    void impl_archive(cpph::archive::if_writer* StrmParamName, const value_type& ValueParamName, cpph::refl::object_metadata_t Param2, cpph::refl::optional_property_metadata Param3) const override
 
-#define CPPH_REFL_primitive_restore(Param0, Param1) \
-    void impl_restore(cpph::archive::if_reader* Param0, value_type* Param1, cpph::refl::object_metadata_t Param2, cpph::refl::optional_property_metadata Param3) const override
+#define CPPH_REFL_primitive_restore(StrmParamName, ValuePtrParamName) \
+    void impl_restore(cpph::archive::if_reader* StrmParamName, value_type* ValuePtrParamName, cpph::refl::object_metadata_t Param2, cpph::refl::optional_property_metadata Param3) const override
 
 #define IIT_CPPH_REFLD_end()                                                                 \
     _manip;                                                                                  \
@@ -81,7 +81,7 @@
     }
 
 #define IIT_CPPH_REFLD_begin_single(Type) \
-    cpph::refl::unique_object_metadata       \
+    cpph::refl::unique_object_metadata    \
     initialize_object_metadata(           \
             cpph::refl::type_tag<Type>)   \
     {                                     \
@@ -99,5 +99,28 @@
 
 #define CPPH_REFL_DEFINE_PRIM_T_begin IIT_CPPH_REFLD_begin
 #define CPPH_REFL_DEFINE_PRIM_T_end   IIT_CPPH_REFLD_end
-#define CPPH_REFL_DEFINE_PRIM_begin IIT_CPPH_REFLD_begin_single
-#define CPPH_REFL_DEFINE_PRIM_end IIT_CPPH_REFLD_end_single
+#define CPPH_REFL_DEFINE_PRIM_begin   IIT_CPPH_REFLD_begin_single
+#define CPPH_REFL_DEFINE_PRIM_end     IIT_CPPH_REFLD_end_single
+
+#define CPPH_REFL_DEFINE_PRIM_binary(Struct)                                                  \
+    IIT_CPPH_REFLD_begin_single(Struct)                                                       \
+    {                                                                                         \
+        static_assert(std::is_trivial_v<Struct>, "Only trivial struct can be binary object"); \
+        CPPH_REFL_primitive_type(binary);                                                     \
+                                                                                              \
+        CPPH_REFL_primitive_archive(strm, value)                                              \
+        {                                                                                     \
+            strm->binary_push(sizeof value);                                                  \
+            strm->binary_write_some({&value, 1});                                             \
+            strm->binary_pop();                                                               \
+        }                                                                                     \
+                                                                                              \
+        CPPH_REFL_primitive_restore(strm, p_value)                                            \
+        {                                                                                     \
+            auto n = strm->begin_binary();                                                    \
+            n = std::min(n, sizeof *p_value);                                                 \
+            strm->binary_read_some({p_value, 1});                                             \
+            strm->end_binary();                                                               \
+        }                                                                                     \
+    }                                                                                         \
+    IIT_CPPH_REFLD_end_single()

@@ -34,6 +34,8 @@
 #include <stdexcept>
 #include <type_traits>
 
+#include "cpph/utility/templates.hxx"
+
 //
 
 namespace cpph {
@@ -250,11 +252,6 @@ class array_view<void const> : public array_view<char const>
         return *this;
     }
 
-    array_view(array_view<void> v)
-            : array_view<char const>(v.data(), v.size())
-    {
-    }
-
     array_view& operator=(array_view<void> v)
     {
         array_view<char const>::operator=({v.data(), v.size()});
@@ -266,13 +263,7 @@ using const_buffer_view = array_view<void const>;
 using mutable_buffer_view = array_view<void>;
 
 template <typename Range_>
-constexpr auto make_view(Range_&& array)
-{
-    return array_view{std::data(array), std::size(array)};
-}
-
-template <typename Range_>
-constexpr auto view_array(Range_&& array)
+constexpr auto view_array(Range_&& array) noexcept
 {
     return array_view{std::data(array), std::size(array)};
 }

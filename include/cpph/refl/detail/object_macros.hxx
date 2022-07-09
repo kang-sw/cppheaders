@@ -31,6 +31,9 @@
 #ifndef CPPHEADERS_REFL_OBJECT_MACROS
 #    define CPPHEADERS_REFL_OBJECT_MACROS
 
+#    define CPPH_REFL_DEFINE_OBJECT(ClassName, AttrOps, ...) \
+        INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
+
 #    define CPPH_REFL_DEFINE_OBJECT_c(ClassName, AttrOps, ...) \
         INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(ClassName::, AttrOps, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
 
@@ -45,9 +48,6 @@
 
 #    define CPPH_REFL_DEFINE_TUPLE_inline(AttrOps, ...) \
         INTERNAL_CPPH_REFL_EMBED_DEFINE_IMPL(, AttrOps, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)
-
-#    define CPPH_REFL_DEFINE_OBJECT(ClassName, AttrOps, ...) \
-        INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, define_object, INTERNAL_CPPH_REFL_ITERATE_OJBECT_VAR, __VA_ARGS__)
 
 #    define CPPH_REFL_DEFINE_TUPLE(ClassName, AttrOps, ...) \
         INTERNAL_CPPH_REFL_DEFINE_IMPL(ClassName, AttrOps, define_tuple, INTERNAL_CPPH_REFL_ITERATE_TUPLE_VAR, __VA_ARGS__)

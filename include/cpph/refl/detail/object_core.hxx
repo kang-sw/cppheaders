@@ -589,6 +589,7 @@ class object_metadata
         // 1. iterate properties, and access to their object descriptor
         // 2. recursively call _archive_to on them.
         // 3. if 'this' is object, first add key on archive before recurse.
+        using reqstat_t = requirement_status_tag;
 
         if (is_primitive()) {
             _primitive->archive(strm, data, this, opt_property);
@@ -603,7 +604,7 @@ class object_metadata
                     assert(child_data);
 
                     if (auto status = child->requirement_status(child_data);
-                        status != requirement_status_tag::optional_empty) {
+                        status != reqstat_t::optional_empty) {
                         ++num_filled;
                     }
                 }
@@ -619,7 +620,7 @@ class object_metadata
                               assert(child_data);
 
                               if (auto status = child->requirement_status(child_data);
-                                  status == requirement_status_tag::optional_empty) {
+                                  status == reqstat_t::optional_empty) {
                                   return;  // skip empty optional property
                               } else {
                                   strm->write_key_next();
@@ -644,8 +645,7 @@ class object_metadata
                     auto child_data = retrieve_self(data, prop);
                     assert(child_data);
 
-                    if (auto status = child->requirement_status(child_data);
-                        status == requirement_status_tag::optional_empty) {
+                    if (child->requirement_status(child_data) == reqstat_t::optional_empty) {
                         // archive empty argument as null.
                         *strm << nullptr;
                     } else {
