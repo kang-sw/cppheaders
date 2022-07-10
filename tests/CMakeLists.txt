@@ -32,7 +32,9 @@ target_link_libraries(
         ${PROJECT_NAME}
 
         PRIVATE
-        cppheaders
+        kang-sw::cpph::core
+        kang-sw::cpph::json
+        kang-sw::cpph::localization
         doctest_with_main
 )
 
