@@ -1,28 +1,54 @@
-// MIT License
-//
-// Copyright (c) 2021-2022. Seungwoo Kang
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-// project home: https://github.com/perfkitpp
 
-#include "cpph/refl/archive/json.hpp"
+#pragma once
+#include <cpph/std/string_view>
+
+#include "../../streambuf/base64.hxx"
+#include "../../streambuf/view.hxx"
+#include "cpph/refl/detail/if_archive.hxx"
+namespace cpph::archive::json {
+using std::string;
+using std::string_view;
+
+class reader : public archive::if_reader
+{
+    struct impl;
+    std::unique_ptr<impl> self;
+
+   public:
+    explicit reader(std::streambuf* buf, bool use_intkey = false);
+    ~reader() override;
+
+    //! Prepare for next list of tokens
+    void reset();
+
+    //! Validate internal state.
+    //! Reads content from buffer.
+    void validate() { _prepare(); }
+
+   public:
+    if_reader& read(nullptr_t a_nullptr) override;
+    if_reader& read(bool& v) override;
+    if_reader& read(int64_t& v) override;
+    if_reader& read(double& v) override;
+    if_reader& read(std::string& v) override;
+    size_t elem_left() const override;
+    size_t begin_binary() override;
+    size_t binary_read_some(mutable_buffer_view v) override;
+    void end_binary() override;
+    context_key begin_object() override;
+    context_key begin_array() override;
+    bool should_break(const context_key& key) const override;
+    void end_object(context_key key) override;
+    void end_array(context_key key) override;
+    void read_key_next() override;
+    entity_type type_next() const override;
+    bool goto_key(string_view key);
+
+   private:
+    void _prepare() const;
+};
+
+}  // namespace cpph::archive::json
 
 #include <charconv>
 #include <iterator>
@@ -30,14 +56,8 @@
 #include "cpph/helper/strutil.hxx"
 #include "cpph/streambuf/base64.hxx"
 #include "cpph/streambuf/view.hxx"
-#include "cpph/utility/inserter.hxx"
-
-#define JSMN_STATIC
-#define JSMN_STRICT
-#define JSMN_PARENT_LINKS
 #include "cpph/third/jsmn.h"
-
-#define CPPHEADERS_IMPLEMENT_ASSERTIONS
+#include "cpph/utility/inserter.hxx"
 
 namespace cpph::archive::json {
 using namespace std::literals;
@@ -59,9 +79,9 @@ struct reader_scope_context_t {
 struct reader::impl {
     if_reader* self;
 
-    std::vector<jsmntok_t> tokens;
+    std::vector<_jsmn::jsmntok_t> tokens;
     std::string buffer;
-    jsmn_parser parser;
+    _jsmn::jsmn_parser parser;
     size_t pos_next = ~size_t{};
 
     std::vector<reader_scope_context_t> scopes;
@@ -74,7 +94,7 @@ struct reader::impl {
     auto next() const { return &tokens.at(pos_next); }
     auto next() { return &tokens.at(pos_next); }
 
-    std::string_view tokstr(jsmntok_t const& tok) const
+    std::string_view tokstr(_jsmn::jsmntok_t const& tok) const
     {
         std::string_view view{buffer};
         return view.substr(tok.start, tok.end - tok.start);
@@ -84,9 +104,9 @@ struct reader::impl {
     {
         auto ntok = next();
 
-        if (t == reader_scope_type::object && ntok->type != JSMN_OBJECT)
+        if (t == reader_scope_type::object && ntok->type != _jsmn::JSMN_OBJECT)
             throw error::reader_parse_failed{self};
-        if (t == reader_scope_type::array && ntok->type != JSMN_ARRAY)
+        if (t == reader_scope_type::array && ntok->type != _jsmn::JSMN_ARRAY)
             throw error::reader_parse_failed{self};
 
         auto elem = &scopes.emplace_back(
@@ -108,9 +128,9 @@ struct reader::impl {
         auto scope = &scopes.back();
         auto ntok = next();
 
-        if (scope->is_key_next && ntok->type != JSMN_STRING) { throw error::reader_invalid_context{self}; }
+        if (scope->is_key_next && ntok->type != _jsmn::JSMN_STRING) { throw error::reader_invalid_context{self}; }
 
-        if (ntok->type == JSMN_OBJECT || ntok->type == JSMN_ARRAY) {
+        if (ntok->type == _jsmn::JSMN_OBJECT || ntok->type == _jsmn::JSMN_ARRAY) {
             pos_next = step_over(pos_next);
         } else {
             ++pos_next;
@@ -138,7 +158,7 @@ struct reader::impl {
 
         auto it = std::lower_bound(
                 it_tok, tokens.end(), it_tok->end,
-                [](jsmntok_t const& t, int e) { return t.start < e; });
+                [](_jsmn::jsmntok_t const& t, int e) { return t.start < e; });
         pos_next = it - tokens.begin();
         scopes.pop_back();
 
@@ -156,32 +176,32 @@ struct reader::impl {
         auto it_tok = tokens.begin() + tokidx;
         auto iter = std::lower_bound(
                 it_tok, tokens.end(), it_tok->end,
-                [](jsmntok_t const& tok, int end) { return tok.start < end; });
+                [](_jsmn::jsmntok_t const& tok, int end) { return tok.start < end; });
 
         return iter - tokens.begin();
     }
 };
 
-reader::reader(std::streambuf* buf, bool use_intkey)
+inline reader::reader(std::streambuf* buf, bool use_intkey)
         : if_reader(buf), self(new impl{this})
 {
     config.use_integer_key = use_intkey;
     reset();
 }
 
-if_reader& reader::read(nullptr_t a_nullptr)
+inline if_reader& reader::read(nullptr_t a_nullptr)
 {
     _prepare();
     self->step();
     return *this;
 }
 
-if_reader& reader::read(bool& v)
+inline if_reader& reader::read(bool& v)
 {
     _prepare();
     auto next = self->next();
     auto tok = self->tokstr(*next);
-    if (next->type != JSMN_PRIMITIVE) { throw error::reader_parse_failed{this}; }
+    if (next->type != _jsmn::JSMN_PRIMITIVE) { throw error::reader_parse_failed{this}; }
 
     if (tok == "true")
         v = true;
@@ -194,13 +214,13 @@ if_reader& reader::read(bool& v)
     return *this;
 }
 
-if_reader& reader::read(int64_t& v)
+inline if_reader& reader::read(int64_t& v)
 {
     _prepare();
 
     auto next = self->next();
     auto tok = self->tokstr(*next);
-    if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE) {
+    if (next->type == _jsmn::JSMN_STRING || next->type == _jsmn::JSMN_PRIMITIVE) {
         auto r = std::from_chars(tok.data(), tok.data() + tok.size(), v);
         if (r.ptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}; }
     } else {
@@ -211,13 +231,13 @@ if_reader& reader::read(int64_t& v)
     return *this;
 }
 
-if_reader& reader::read(double& v)
+inline if_reader& reader::read(double& v)
 {
     _prepare();
 
     auto next = self->next();
     auto tok = self->tokstr(*next);
-    if (next->type == JSMN_STRING || next->type == JSMN_PRIMITIVE) {
+    if (next->type == _jsmn::JSMN_STRING || next->type == _jsmn::JSMN_PRIMITIVE) {
         char* eptr = {};
         v = strtod(tok.data(), &eptr);
         if (eptr != tok.data() + tok.size()) { throw error::reader_parse_failed{this}; }
@@ -229,13 +249,13 @@ if_reader& reader::read(double& v)
     return *this;
 }
 
-if_reader& reader::read(std::string& v)
+inline if_reader& reader::read(std::string& v)
 {
     _prepare();
 
     auto next = self->next();
     auto tok = self->tokstr(*next);
-    if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
+    if (next->type != _jsmn::JSMN_STRING) { throw error::reader_parse_failed{this}; }
 
     v.clear();
     strutil::json_unescape(tok.begin(), tok.end(), std::back_inserter(v));
@@ -244,17 +264,17 @@ if_reader& reader::read(std::string& v)
     return *this;
 }
 
-size_t reader::elem_left() const
+inline size_t reader::elem_left() const
 {
     return self->scopes.back().elem_left;
 }
 
-size_t reader::begin_binary()
+inline size_t reader::begin_binary()
 {
     _prepare();
 
     auto next = self->next();
-    if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
+    if (next->type != _jsmn::JSMN_STRING) { throw error::reader_parse_failed{this}; }
 
     auto binsize = (next->end - next->start);
     if (binsize & 1) { throw error::reader_parse_failed{this}; }
@@ -266,10 +286,10 @@ size_t reader::begin_binary()
     return base64::decoded_size(buffer);
 }
 
-size_t reader::binary_read_some(mutable_buffer_view v)
+inline size_t reader::binary_read_some(mutable_buffer_view v)
 {
     auto next = self->next();
-    if (next->type != JSMN_STRING) { throw error::reader_parse_failed{this}; }
+    if (next->type != _jsmn::JSMN_STRING) { throw error::reader_parse_failed{this}; }
 
     // copy buffer
     auto n_read = self->base64.sgetn(v.data(), v.size());
@@ -278,24 +298,24 @@ size_t reader::binary_read_some(mutable_buffer_view v)
     return n_read;
 }
 
-void reader::end_binary()
+inline void reader::end_binary()
 {
     self->step();
 }
 
-context_key reader::begin_object()
+inline context_key reader::begin_object()
 {
     _prepare();
     return self->step_in(reader_scope_type::object)->context;
 }
 
-context_key reader::begin_array()
+inline context_key reader::begin_array()
 {
     _prepare();
     return self->step_in(reader_scope_type::array)->context;
 }
 
-bool reader::should_break(const context_key& key) const
+inline bool reader::should_break(const context_key& key) const
 {
     auto& top = self->scopes.back();
     if (top.context.value != key.value) { return false; }
@@ -303,17 +323,17 @@ bool reader::should_break(const context_key& key) const
     return top.elem_left == 0;
 }
 
-void reader::end_object(context_key key)
+inline void reader::end_object(context_key key)
 {
     self->step_out(key);
 }
 
-void reader::end_array(context_key key)
+inline void reader::end_array(context_key key)
 {
     self->step_out(key);
 }
 
-void reader::read_key_next()
+inline void reader::read_key_next()
 {
     auto& top = self->scopes.back();
     if (top.is_key_next) { throw error::reader_invalid_context{this}; }
@@ -322,12 +342,12 @@ void reader::read_key_next()
     top.is_key_next = true;
 }
 
-void reader::reset()
+inline void reader::reset()
 {
     self->pos_next = ~size_t{};
 }
 
-void reader::_prepare() const
+inline void reader::_prepare() const
 {
     // data is ready
     if (self->pos_next != ~size_t{}) { return; }
@@ -343,7 +363,7 @@ void reader::_prepare() const
     tokens->resize(8);
 
     // Read string from buffer, for single object next.
-    jsmn_init(parser);
+    _jsmn::jsmn_init(parser);
 
     // Try read first token
     while (parser->toknext == 0) {
@@ -351,11 +371,11 @@ void reader::_prepare() const
         if (c == EOF) { throw error::reader_unexpected_end_of_file{this}; }
 
         str->push_back(c);
-        switch (jsmn_parse(parser, str->c_str(), str->size(), tokens->data(), tokens->size())) {
-            case JSMN_ERROR_INVAL:
+        switch (_jsmn::jsmn_parse(parser, str->c_str(), str->size(), tokens->data(), tokens->size())) {
+            case _jsmn::JSMN_ERROR_INVAL:
                 throw error::reader_parse_failed{this};
 
-            case JSMN_ERROR_NOMEM:
+            case _jsmn::JSMN_ERROR_NOMEM:
             case 0:
                 assert(false && "Logically impossible!"), abort();
 
@@ -365,11 +385,11 @@ void reader::_prepare() const
 
     char stop_char = 0;
     switch ((*tokens)[0].type) {
-        case JSMN_OBJECT: stop_char = '}'; break;
-        case JSMN_ARRAY: stop_char = ']'; break;
+        case _jsmn::JSMN_OBJECT: stop_char = '}'; break;
+        case _jsmn::JSMN_ARRAY: stop_char = ']'; break;
 
-        case JSMN_STRING:
-        case JSMN_PRIMITIVE:  // Primitive root can only have single argument
+        case _jsmn::JSMN_STRING:
+        case _jsmn::JSMN_PRIMITIVE:  // Primitive root can only have single argument
             self->pos_next = 0;
             tokens->resize(1);
             return;
@@ -388,18 +408,18 @@ void reader::_prepare() const
 
     // On stop char, try parsing
     PARSE_AGAIN:
-        r_parse = jsmn_parse(parser, str->c_str(), str->size(), tokens->data(), tokens->size());
+        r_parse = _jsmn::jsmn_parse(parser, str->c_str(), str->size(), tokens->data(), tokens->size());
 
         switch (r_parse) {
             case 0:
-            case JSMN_ERROR_INVAL:
+            case _jsmn::JSMN_ERROR_INVAL:
                 throw error::reader_parse_failed{this};
 
-            case JSMN_ERROR_NOMEM:
+            case _jsmn::JSMN_ERROR_NOMEM:
                 tokens->resize(tokens->size() * 3 / 2);
                 goto PARSE_AGAIN;
 
-            case JSMN_ERROR_PART:
+            case _jsmn::JSMN_ERROR_PART:
                 break;
 
             default:
@@ -410,16 +430,16 @@ void reader::_prepare() const
     }
 }
 
-entity_type reader::type_next() const
+inline entity_type reader::type_next() const
 {
     _prepare();
     auto next = self->next();
 
     switch (next->type) {
-        case JSMN_STRING:
+        case _jsmn::JSMN_STRING:
             return entity_type::string;
 
-        case JSMN_PRIMITIVE: {
+        case _jsmn::JSMN_PRIMITIVE: {
             auto tok = self->tokstr(*next);
             if (tok == "null"sv) { return entity_type::null; }
             if (tok[0] == 't' || tok[0] == 'f') { return entity_type::boolean; }
@@ -428,19 +448,19 @@ entity_type reader::type_next() const
             return has_dot ? entity_type::floating_point : entity_type::integer;
         }
 
-        case JSMN_ARRAY:
+        case _jsmn::JSMN_ARRAY:
             return entity_type::array;
 
-        case JSMN_OBJECT:
+        case _jsmn::JSMN_OBJECT:
             return entity_type::object;
 
         default:
-        case JSMN_UNDEFINED:
-            throw error::reader_invalid_context{this, "jsmn error: invalid next type"};
+        case _jsmn::JSMN_UNDEFINED:
+            throw error::reader_invalid_context{this, "_jsmn::jsmn error: invalid next type"};
     }
 }
 
-bool reader::goto_key(string_view key)
+inline bool reader::goto_key(string_view key)
 {
     if (self->scopes.empty())
         throw error::reader_check_failed{this, "goto_key() called from empty scope context"};
@@ -453,13 +473,13 @@ bool reader::goto_key(string_view key)
     auto const parent_token = self->tokens.begin() + parent_pos;
     auto key_left = parent_token->size;
 
-    assert(parent_token->type == JSMN_OBJECT);
+    assert(parent_token->type == _jsmn::JSMN_OBJECT);
 
     if (key_left == 0) { return false; }  // Empty object.
 
     for (auto cursor = parent_pos + 1; key_left--; cursor = self->step_over(cursor + 1)) {
         auto content = self->tokstr(self->tokens[cursor]);
-        assert(self->tokens[cursor].type == JSMN_STRING);
+        assert(self->tokens[cursor].type == _jsmn::JSMN_STRING);
         assert(self->tokens[cursor].parent == parent_pos);
 
         if (content == key) {
@@ -474,6 +494,5 @@ bool reader::goto_key(string_view key)
     return false;
 }
 
-reader::~reader() = default;
-
+inline reader::~reader() = default;
 }  // namespace cpph::archive::json

@@ -33,7 +33,7 @@ target_link_libraries(
 
         PRIVATE
         kang-sw::cpph::core
-        kang-sw::cpph::json
+        kang-sw::cpph::refl-extension
         kang-sw::cpph::localization
         doctest_with_main
 )
