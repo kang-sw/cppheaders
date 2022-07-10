@@ -87,7 +87,7 @@ class signature_t<RetVal, std::tuple<Params...>>
        public:
         template <class Duration = nullptr_t>
         pair<request_result, optional<string>>
-        request_with(return_type* retval, Params const&... args, Duration&& timeout = nullptr) const
+        request_with(return_type* retval, Params const&... args, Duration&& timeout = nullptr) const noexcept
         {
             request_result result = {};
             optional<string> errstr;
@@ -95,7 +95,9 @@ class signature_t<RetVal, std::tuple<Params...>>
             auto fn_on_complete = [&](error_code const& ec, auto str) { result = (request_result)ec.value(), errstr.emplace(str); };
             auto handle = _rpc->async_request(_host->name(), static_cast<ufunction<void(const error_code&, string_view)>>(fn_on_complete), retval, args...);
 
-            assert(bool(handle) && "Handle is always valid since RPC must throw on invalid connection!");
+            if (not handle) {
+                return {request_result::invalid_connection, {}};
+            }
 
             if constexpr (std::is_null_pointer_v<Duration>) {
                 _rpc->wait(handle);
