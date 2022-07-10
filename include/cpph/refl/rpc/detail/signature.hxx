@@ -29,43 +29,47 @@
 #include <cpph/std/string>
 #include <tuple>
 
+#include "cpph/utility/chrono.hxx"
 #include "cpph/utility/functional.hxx"
 #include "defs.hxx"
 
 namespace cpph::rpc {
 using std::string, std::string_view;
 
-template <typename Signature_>
+template <typename Signature>
 struct _function_decompose;
 
-template <typename Ret_, typename... Args_>
-struct _function_decompose<Ret_(Args_...)> {
-    using return_type = Ret_;
-    using parameter_tuple_type = std::tuple<Args_...>;
+template <typename Ret, typename... Args>
+struct _function_decompose<Ret(Args...)> {
+    using return_type = Ret;
+    using parameter_tuple_type = std::tuple<Args...>;
 };
+
+template <typename Callable>
+using is_request_handler = enable_if_t<is_invocable_v<Callable, error_code const&, string_view>>;
 
 template <typename, typename>
 class signature_t;
 
-template <typename RetVal_, typename... Params_>
-class signature_t<RetVal_, std::tuple<Params_...>>
+template <typename RetVal, typename... Params>
+class signature_t<RetVal, std::tuple<Params...>>
 {
    public:
-    using return_type = RetVal_;
-    using rpc_signature = ufunction<void(RetVal_*, Params_...)>;
-    using serve_signature_0 = ufunction<RetVal_(Params_&...)>;
-    using serve_signature_1 = ufunction<void(RetVal_*, Params_&...)>;
-    using serve_signature_full = ufunction<void(session_profile_view, RetVal_*, Params_&...)>;
+    using return_type = RetVal;
+    using rpc_signature = ufunction<void(RetVal*, Params...)>;
+    using serve_signature_0 = ufunction<RetVal(Params&...)>;
+    using serve_signature_1 = ufunction<void(RetVal*, Params&...)>;
+    using serve_signature_full = ufunction<void(session_profile_view, RetVal*, Params&...)>;
 
     // Helper for clion code inspection ...
-    using guide_t = void (*)(session_profile_view, RetVal_*, Params_&...);
+    using guide_t = void (*)(session_profile_view, RetVal*, Params&...);
     static inline guide_t const guide = nullptr;
 
     template <typename Callable>
-    static constexpr bool invocable_0 = std::is_invocable_r_v<RetVal_, Callable, Params_&...>;
+    static constexpr bool invocable_0 = std::is_invocable_r_v<RetVal, Callable, Params&...>;
 
     template <typename Callable>
-    static constexpr bool invocable_1 = std::is_invocable_v<Callable, RetVal_*, Params_&...>;
+    static constexpr bool invocable_1 = std::is_invocable_v<Callable, RetVal*, Params&...>;
 
    private:
     string const _method_name;
@@ -75,15 +79,15 @@ class signature_t<RetVal_, std::tuple<Params_...>>
     string const& name() const noexcept { return _method_name; }
 
    public:
-    template <class RpcContext_>
+    template <class RpcContext>
     struct invoke_proxy_t {
         signature_t const* const _host;
-        RpcContext_* const _rpc;
+        RpcContext* const _rpc;
 
        public:
         template <class Duration = nullptr_t>
         pair<request_result, optional<string>>
-        request_with(return_type* retval, Params_ const&... args, Duration&& timeout = nullptr) const
+        request_with(return_type* retval, Params const&... args, Duration&& timeout = nullptr) const
         {
             request_result result = {};
             optional<string> errstr;
@@ -103,7 +107,18 @@ class signature_t<RetVal_, std::tuple<Params_...>>
             return {result, move(errstr)};
         }
 
-        return_type request(Params_ const&... args) const
+        return_type request(Params const&... args, error_code& ec) const
+        {
+            return_type retval;
+            auto [r_ec, errstr] = this->request_with(&retval, args...);
+
+            if (r_ec != request_result::okay)
+                ec = make_request_error(r_ec);
+
+            return retval;
+        }
+
+        return_type request(Params const&... args) const
         {
             return_type retval;
             auto [ec, errstr] = this->request_with(&retval, args...);
@@ -114,11 +129,11 @@ class signature_t<RetVal_, std::tuple<Params_...>>
             return retval;
         }
 
-        template <class Duration>
-        return_type request(Params_ const&... args, Duration&& dur) const
+        template <class Rep, class Ratio>
+        return_type request(Params const&... args, duration<Rep, Ratio> const& dur) const
         {
             return_type retval;
-            auto [ec, errstr] = this->request_with(&retval, args..., std::forward<Duration>(dur));
+            auto [ec, errstr] = this->request_with(&retval, args..., dur);
 
             if (ec != request_result::okay)
                 throw request_exception(ec, errstr ? &*errstr : nullptr);
@@ -126,16 +141,28 @@ class signature_t<RetVal_, std::tuple<Params_...>>
             return retval;
         }
 
-        template <typename CompletionContext_>
-        auto async_request(return_type* ret, Params_ const&... args, CompletionContext_&& complete_handler) const
+        template <class Clock, class Dur>
+        return_type request(Params const&... args, time_point<Clock, Dur> const& tp) const
+        {
+            return_type retval;
+            auto [ec, errstr] = this->request_with(&retval, args..., tp - Clock::now());
+
+            if (ec != request_result::okay)
+                throw request_exception(ec, errstr ? &*errstr : nullptr);
+
+            return retval;
+        }
+
+        template <typename CompletionContext, class = is_request_handler<CompletionContext>>
+        auto async_request(return_type* ret, Params const&... args, CompletionContext&& complete_handler) const
         {
             return _rpc->async_request(
                     _host->name(),
-                    std::forward<CompletionContext_>(complete_handler),
+                    std::forward<CompletionContext>(complete_handler),
                     ret, args...);
         }
 
-        auto async_request(return_type* ret, Params_ const&... args) const
+        auto async_request(return_type* ret, Params const&... args) const
         {
             return _rpc->async_request(
                     _host->name(),
@@ -143,16 +170,16 @@ class signature_t<RetVal_, std::tuple<Params_...>>
                     ret, args...);
         }
 
-        template <typename CompletionContext_>
-        auto async_request(Params_ const&... args, CompletionContext_&& complete_handler) const
+        template <typename CompletionContext, class = is_request_handler<CompletionContext>>
+        auto async_request(Params const&... args, CompletionContext&& complete_handler) const
         {
             return _rpc->async_request(
                     _host->name(),
-                    std::forward<CompletionContext_>(complete_handler),
+                    std::forward<CompletionContext>(complete_handler),
                     nullptr, args...);
         }
 
-        auto async_rpc(Params_ const&... args) const
+        auto async_rpc(Params const&... args) const
         {
             return _rpc->async_request(
                     _host->name(),
@@ -160,13 +187,13 @@ class signature_t<RetVal_, std::tuple<Params_...>>
                     nullptr, args...);
         }
 
-        void notify(Params_ const&... args) const
+        void notify(Params const&... args) const
         {
             _rpc->notify(_host->name(), args...);
         }
 
         template <typename Filter>
-        size_t notify(Params_ const&... args, Filter&& fn) const
+        size_t notify(Params const&... args, Filter&& fn) const
         {
             return _rpc->notify_filter(_host->name(), std::forward<Filter>(fn), args...);
         }
@@ -182,10 +209,10 @@ class signature_t<RetVal_, std::tuple<Params_...>>
     auto&& wrap(serve_signature_full&& signature) const noexcept { return std::move(signature); }
 };
 
-template <typename Signature_>
+template <typename Signature>
 auto create_signature(string name)
 {
-    using decomposed = _function_decompose<Signature_>;
+    using decomposed = _function_decompose<Signature>;
     using return_type = typename decomposed::return_type;
     using param_tuple_type = typename decomposed::parameter_tuple_type;
 

@@ -36,7 +36,7 @@
 #include "session_profile.hxx"
 
 namespace cpph::rpc {
-using request_complete_handler = ufunction<void(error_code const&, std::string_view json_error)>;
+using request_complete_handler = ufunction<void(error_code const&, string_view json_error)>;
 
 template <int>
 class basic_session_builder;
@@ -167,7 +167,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
    private:
     template <typename... Params>
     auto _create_parameter_descriptor_array(
-            Params const&... params)
+            Params const&... params) noexcept
             -> std::array<refl::object_const_view_t, sizeof...(Params)>
     {
         constexpr auto nparam = sizeof...(Params);
@@ -194,7 +194,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
             string_view method,
             request_complete_handler&& handler,
             RetPtr return_buffer,
-            Params const&... params)
+            Params const&... params) noexcept
     {
         assert(this->is_request_enabled());
         request_handle handle = {};
@@ -235,7 +235,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
                 //  notify caller that this session is in invalid state, therefore given handler
                 //  won't be invoked.
                 _rq->lock.critical_section([&] { _rq->requests.erase(handle._msgid); });
-                throw request_exception(make_request_error(request_result::invalid_connection));
+                handle = {};
             } else {
                 if (not relaxed(_manual_flush))
                     _protocol->flush();
@@ -253,7 +253,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
      * @return false when connection is expired.
      */
     template <typename... Params>
-    bool notify(string_view method, Params const&... params)
+    bool notify(string_view method, Params const&... params) noexcept
     {
         auto views = _create_parameter_descriptor_array(params...);
 
@@ -277,7 +277,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
     /**
      * Flush sent data
      */
-    void flush()
+    void flush() noexcept
     {
         {
             lock_guard _lc_{_mtx_protocol};
@@ -288,7 +288,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
     /**
      * Set autoflush mode
      */
-    void autoflush(bool enabled)
+    void autoflush(bool enabled) noexcept
     {
         relaxed(_manual_flush, not enabled);
     }
@@ -298,7 +298,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
      *
      * @return false if connection is already expired
      */
-    bool close()
+    bool close() noexcept
     {
         // Quickly close connection without acquiring lock.
         std::call_once(_flag_conn_close, [this] { _conn->close(); });
@@ -321,7 +321,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
     /**
      * Wait RPC
      */
-    void wait(request_handle const& h)
+    void wait(request_handle const& h) noexcept
     {
         _rq->lock.wait([&] {
             return not contains(_rq->requests, h._msgid);
@@ -329,7 +329,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
     }
 
     template <class Duration>
-    bool wait_for(request_handle const& h, Duration&& timeout)
+    bool wait_for(request_handle const& h, Duration&& timeout) noexcept
     {
         return _rq->lock.wait_for(std::forward<Duration>(timeout), [&] {
             return not contains(_rq->requests, h._msgid);
@@ -337,7 +337,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
     }
 
     template <class Tp>
-    bool wait_until(request_handle const& h, Tp&& timeout)
+    bool wait_until(request_handle const& h, Tp&& timeout) noexcept
     {
         return _rq->lock.wait_until(std::forward<Tp>(timeout), [&] {
             return not contains(_rq->requests, h._msgid);
@@ -347,7 +347,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
     /**
      * Abort sent request
      */
-    bool abort_request(request_handle const& h)
+    bool abort_request(request_handle const& h) noexcept
     {
         assert(this->is_request_enabled());
         int msgid = h._msgid;
@@ -384,7 +384,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
     /**
      * Get total number of received bytes
      */
-    void totals(size_t* nread, size_t* nwrite)
+    void totals(size_t* nread, size_t* nwrite) noexcept
     {
         *nread = _profile.total_read;
         *nwrite = _profile.total_write;
