@@ -185,6 +185,16 @@ class flex_buffer
         return std::string_view{_buffer, _size};
     }
 
+    bool empty() const noexcept
+    {
+        return _size == 0;
+    }
+
+    void clear() noexcept
+    {
+        _size = 0;
+    }
+
     bool is_owning_buffer() const noexcept { return _capacity != 0; }
 
     flex_buffer& operator=(flex_buffer&& other) noexcept
