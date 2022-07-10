@@ -23,7 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <variant>
+#include <cpph/std/variant>
 
 #include "../detail/primitives.hxx"
 
@@ -111,5 +111,3 @@ INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::variant>::va
     return _detail::variant::get_metadata(type_tag_v<ValTy_>);
 }
 }  // namespace cpph::refl
-
-

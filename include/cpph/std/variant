@@ -1,0 +1,15 @@
+#pragma once
+#include <variant>
+
+namespace cpph {
+using std::variant;
+using std::holds_alternative;
+using std::visit;
+using std::get;
+using std::bad_variant_access;
+using std::get_if;
+using std::variant_npos;
+using std::variant_size_v;
+using std::variant_alternative_t;
+using std::monostate;
+}

@@ -107,13 +107,37 @@ class signature_t<RetVal, std::tuple<Params...>>
             return {result, move(errstr)};
         }
 
-        return_type request(Params const&... args, error_code& ec) const
+        return_type request(Params const&... args, error_code& ec) const noexcept
         {
             return_type retval;
             auto [r_ec, errstr] = this->request_with(&retval, args...);
 
-            if (r_ec != request_result::okay)
+            if (ec = {}; r_ec != request_result::okay)
                 ec = make_request_error(r_ec);
+
+            return retval;
+        }
+
+        template <class Rep, class Ratio>
+        return_type request(Params const&... args, duration<Rep, Ratio> const& dur, error_code& errc) const noexcept
+        {
+            return_type retval;
+            auto [ec, errstr] = this->request_with(&retval, args..., dur);
+
+            if (errc = {}; ec != request_result::okay)
+                errc = make_request_error(ec);
+
+            return retval;
+        }
+
+        template <class Clock, class Dur>
+        return_type request(Params const&... args, time_point<Clock, Dur> const& tp, error_code& errc) const noexcept
+        {
+            return_type retval;
+            auto [ec, errstr] = this->request_with(&retval, args..., tp - Clock::now());
+
+            if (errc = {}; ec != request_result::okay)
+                errc = make_request_error(ec);
 
             return retval;
         }
@@ -154,7 +178,7 @@ class signature_t<RetVal, std::tuple<Params...>>
         }
 
         template <typename CompletionContext, class = is_request_handler<CompletionContext>>
-        auto async_request(return_type* ret, Params const&... args, CompletionContext&& complete_handler) const
+        auto async_request(return_type* ret, Params const&... args, CompletionContext&& complete_handler) const noexcept
         {
             return _rpc->async_request(
                     _host->name(),
@@ -162,7 +186,7 @@ class signature_t<RetVal, std::tuple<Params...>>
                     ret, args...);
         }
 
-        auto async_request(return_type* ret, Params const&... args) const
+        auto async_request(return_type* ret, Params const&... args) const noexcept
         {
             return _rpc->async_request(
                     _host->name(),
@@ -171,7 +195,7 @@ class signature_t<RetVal, std::tuple<Params...>>
         }
 
         template <typename CompletionContext, class = is_request_handler<CompletionContext>>
-        auto async_request(Params const&... args, CompletionContext&& complete_handler) const
+        auto async_request(Params const&... args, CompletionContext&& complete_handler) const noexcept
         {
             return _rpc->async_request(
                     _host->name(),
@@ -179,7 +203,7 @@ class signature_t<RetVal, std::tuple<Params...>>
                     nullptr, args...);
         }
 
-        auto async_rpc(Params const&... args) const
+        auto async_request(Params const&... args) const noexcept
         {
             return _rpc->async_request(
                     _host->name(),

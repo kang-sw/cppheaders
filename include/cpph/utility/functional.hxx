@@ -36,6 +36,7 @@
 namespace cpph {
 using std::function;
 using std::is_function_v;
+using std::invoke;
 
 //
 constexpr int _function_size = sizeof(std::function<void()>) + 16;
