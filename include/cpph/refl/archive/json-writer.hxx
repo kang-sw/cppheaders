@@ -53,6 +53,13 @@ class writer : public archive::if_writer
         _ctx.reserve_depth(depth_maybe);
     }
 
+    void clear() override
+    {
+        if_archive_base::clear();
+        _ctx.clear();
+        _base64.reset_nosync();
+    }
+
     if_writer& write(nullptr_t a_nullptr) override
     {
         _on_write();
