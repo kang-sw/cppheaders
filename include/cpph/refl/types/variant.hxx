@@ -110,4 +110,13 @@ INTERNAL_CPPH_define_(ValTy_, (is_template_instance_of<ValTy_, std::variant>::va
 {
     return _detail::variant::get_metadata(type_tag_v<ValTy_>);
 }
+
 }  // namespace cpph::refl
+
+CPPH_REFL_DEFINE_PRIM_T_begin(T, std::is_same_v<T, std::monostate>)
+{
+    CPPH_REFL_primitive_type(null);
+    CPPH_REFL_primitive_archive(strm, value) { *strm << nullptr; }
+    CPPH_REFL_primitive_restore(strm, value) { *strm >> nullptr; }
+}
+CPPH_REFL_DEFINE_PRIM_T_end();
