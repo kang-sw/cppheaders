@@ -214,12 +214,14 @@ class basic_ring_allocator : private _detail::ring_fallback_allocator<FallbackAl
         auto vp = _allocate_ring(n);
 
         if constexpr (has_fallback_allocator) {
-            n = _node_size_ceil(n);
-            if (auto node = (node_t*)this->_allocate_fallback((n + 1) * node_size)) {
-                vp = node + 1;
-                node->fallback_allocated = true;
-                node->pending_kill = false;
-                node->extent = n;
+            if (not vp) {
+                n = _node_size_ceil(n);
+                if (auto node = (node_t*)this->_allocate_fallback((n + 1) * node_size)) {
+                    vp = node + 1;
+                    node->fallback_allocated = true;
+                    node->pending_kill = false;
+                    node->extent = n;
+                }
             }
         }
 
@@ -239,6 +241,7 @@ class basic_ring_allocator : private _detail::ring_fallback_allocator<FallbackAl
             } else {
                 auto node = _retr_node(vp);
                 this->_deallocate_fallback(node, node->extent * node_size);
+                this->_flush_ring();
             }
         } else {
             _deallocate_ring(vp);
@@ -354,7 +357,11 @@ class basic_ring_allocator : private _detail::ring_fallback_allocator<FallbackAl
 
         // Mark this node to be killed
         node->pending_kill = true;
+        _flush_ring();
+    }
 
+    void _flush_ring()
+    {
         // GC all disposing nodes
         while (_tail && _tail->pending_kill) {
             assert(not _tail->fallback_allocated);
