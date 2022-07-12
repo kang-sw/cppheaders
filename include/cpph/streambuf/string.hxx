@@ -23,8 +23,8 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <streambuf>
 #include <cpph/std/string>
+#include <streambuf>
 
 namespace cpph::streambuf {
 
@@ -91,6 +91,7 @@ class stringbuf : public std::streambuf
     void _retarget()
     {
         // Reset write buffer
+        assert(_read_end <= _buf->size());
         setp(_buf->data() + _read_end, _buf->data() + _buf->size());
 
         auto offset = gptr() - eback();
@@ -101,7 +102,7 @@ class stringbuf : public std::streambuf
     int_type overflow(int_type value) override
     {
         _read_end = _buf->size();
-        _buf->resize(_read_end + 228);
+        _buf->resize((_read_end * 5 / 4) + 228);
 
         _retarget();
 

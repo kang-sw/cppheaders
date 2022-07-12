@@ -61,11 +61,13 @@ class basic_b64 : public std::streambuf
     std::streambuf* reset(std::streambuf* adapted = nullptr) noexcept
     {
         if (_src) { sync(); }
-        return std::exchange(_src, adapted);
+        return reset_nosync(adapted);
     }
 
     std::streambuf* reset_nosync(std::streambuf* adapted = nullptr) noexcept
     {
+        setp(_o().data(), _o().data() + n_write_bytes);
+        setg(nullptr, nullptr, nullptr);
         return std::exchange(_src, adapted);
     }
 
