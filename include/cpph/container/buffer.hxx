@@ -136,16 +136,16 @@ class flex_buffer
     flex_buffer() noexcept = default;
     flex_buffer(void const* buffer, size_t size) noexcept
             : _size(size), _capacity(0), _buffer((char const*)buffer) {}
-    flex_buffer(std::string_view s) noexcept
+    flex_buffer(const_buffer_view s) noexcept
             : _size(s.size()), _buffer(s.data()) {}
-    operator std::string_view() noexcept { return str(); }
+    operator std::string_view() noexcept { return view(); }
 
     flex_buffer(flex_buffer&& other) noexcept
     {
         *this = move(other);
     }
 
-    array_view<void> mutable_buffer(size_t len) noexcept
+    array_view<void> mutable_buffer(size_t const len) noexcept
     {
         if (is_owning_buffer()) {
             assert(_buffer && "Buffer must present in this context");
@@ -153,34 +153,39 @@ class flex_buffer
             if (len <= _capacity) {
                 // If owning space can hold given length, just return it.
                 _size = len;
-                return {(char*)_buffer, _size};
             } else {
-                free((void*)_buffer);
+                _buffer = static_cast<char*>(realloc(const_cast<char*>(_buffer), len));
+                _capacity = _size = len;
             }
+
+            return {(char*)_buffer, _size};
         }
 
-        _size = len;
-        _capacity = len;
-
-        auto buffer = malloc(len);
-        _buffer = (char const*)buffer;
+        auto buffer = static_cast<char*>(malloc(len));
+        _capacity = _size = len;
+        _buffer = buffer;
         assert(_buffer && "Memory allocation must not fail!");
 
-        return {(char*)buffer, _size};
+        return {buffer, _size};
     }
 
     size_t size() const noexcept { return _size; }
     size_t capacity() const noexcept { return _capacity; }
     void const* data() const noexcept { return _buffer; }
 
-    auto clone(std::string_view g) noexcept
+    auto& copy(std::string_view g) noexcept
     {
         auto buffer = mutable_buffer(g.size());
         std::copy(g.begin(), g.end(), buffer.begin());
-        return buffer;
+        return *this;
     }
 
-    std::string_view str() const noexcept
+    auto clone() const noexcept
+    {
+        return move(flex_buffer{}.copy(view()));
+    }
+
+    std::string_view view() const noexcept
     {
         return std::string_view{_buffer, _size};
     }
