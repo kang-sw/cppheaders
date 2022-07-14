@@ -113,6 +113,9 @@ struct chunk<T, enable_if_t<std::is_trivial_v<T> && not std::is_fundamental_v<T>
 template <typename T>
 struct chunk<T, enable_if_t<std::is_trivial_v<T> && std::is_fundamental_v<T>>> {
     T value;
+
+    operator T&() noexcept { return value; }
+    operator T const&() const noexcept { return value; }
 };
 
 }  // namespace cpph

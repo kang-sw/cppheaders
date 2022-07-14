@@ -19,24 +19,30 @@
 #include "cpph/utility/singleton.hxx"
 
 //
+using namespace cpph;
+
+namespace std {
+template <>
+struct hash<chunk<uint64_t>> {
+    size_t operator()(chunk<uint64_t> value) const noexcept
+    {
+        return std::hash<uint64_t>{}(value.value);
+    }
+};
+}  // namespace std
 
 namespace cpph {
 namespace _detail {
 
 struct loca_text_entity {
-    string label;
-    string content;
-};
+    CPPH_REFL_DEFINE_OBJECT_inline_simple(label, content);
 
-struct loca_archived_text_entity {
-    CPPH_REFL_DEFINE_OBJECT_inline_simple(hash, label, content);
-
-    chunk<uint64_t> hash;
-    string label;
     string content;
+    optional<string> label;
 };
 
 using loca_full_lut_t = unordered_map<uint64_t, loca_text_entity>;
+using loca_archived_lut_t = unordered_map<chunk<uint64_t>, loca_text_entity>;
 using loca_mutable_lut_t = unordered_map<uint64_t, string>;
 using loca_lut_t = const unordered_map<uint64_t, string>;
 
@@ -57,18 +63,12 @@ static string const* lookup(uint64_t hash)
 
 static void send_string_to_builder(uint64_t hash, string_view refstr, string_view label)
 {
-    char base64_label[base64::encoded_size(sizeof hash)];
-    if (label.empty()) {
-        base64::encode_bytes(&hash, sizeof hash, base64_label);
-        label = {base64_label, sizeof base64_label};
-    }
-
     auto builder = acquire_global_builder();
     auto [iter, is_first] = builder->try_emplace(hash);
 
     if (is_first) {
         iter->second.content = refstr;
-        iter->second.label = label;
+        if (not label.empty() && refstr != label) { iter->second.label.emplace(label); }
     }
 }
 
@@ -115,7 +115,7 @@ string const& loca_lookup(loca_static_context* ctx) noexcept
 localization_result load_localization_lut(string_view key, archive::if_reader* strm)
 {
     // Load struct
-    vector<_detail::loca_archived_text_entity> table;
+    _detail::loca_archived_lut_t table;
     try {
         *strm >> table;
     } catch (archive::error::reader_exception&) {
@@ -125,8 +125,8 @@ localization_result load_localization_lut(string_view key, archive::if_reader* s
     // Build LUT
     auto lut = make_unique<_detail::loca_mutable_lut_t>();
     lut->reserve(table.size());
-    for (auto& [hash, label, content] : table) {
-        lut->try_emplace(hash.value, content);
+    for (auto& [hash, content] : table) {
+        lut->try_emplace(hash.value, content.content);
     }
 
     // Check if table with same-key is already loaded ... As language tables are not unloaded,
@@ -143,15 +143,7 @@ localization_result load_localization_lut(string_view key, archive::if_reader* s
     // Send text to global builder
     {
         auto builder = _detail::acquire_global_builder();
-        builder->reserve(table.size());
-
-        for (auto& [hash, label, content] : table) {
-            auto [iter, is_new] = builder->try_emplace(hash.value);
-            if (is_new) {
-                iter->second.content = move(content);
-                iter->second.label = move(label);
-            }
-        }
+        builder->merge(reinterpret_cast<_detail::loca_full_lut_t&&>(move(table)));
     }
 
     return localization_result::okay;
@@ -160,17 +152,8 @@ localization_result load_localization_lut(string_view key, archive::if_reader* s
 localization_result dump_localization_lut(archive::if_writer* strm)
 {
     auto table = *_detail::acquire_global_builder();
-    vector<_detail::loca_archived_text_entity> array;
-    array.reserve(table.size());
 
-    for (auto& [hash, entity] : table) {
-        auto elem = &array.emplace_back();
-        elem->hash.value = hash;
-        elem->label = entity.label;
-        elem->content = entity.content;
-    }
-
-    *strm << array;
+    *strm << reinterpret_cast<_detail::loca_archived_lut_t&>(table);
     return localization_result::okay;
 }
 

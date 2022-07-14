@@ -158,8 +158,10 @@ class writer : public archive::if_writer
         _base64.pubsync();
         sputc('"');
 
-        if (_ctx.is_key_context())
+        if (_ctx.is_key_context()) {
             sputc(':');
+            if (indent >= 0) { sputc(' '); }
+        }
 
         return *this;
     }
