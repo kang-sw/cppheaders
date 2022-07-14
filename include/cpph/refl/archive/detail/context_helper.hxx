@@ -147,6 +147,15 @@ class write_context_helper
         }
     }
 
+    bool is_key_context()
+    {
+        if (_scopes.empty()) { return false; }
+        auto* elem = &_scopes.back();
+
+        if (elem->type != scope_type::object) { return false; }
+        return elem->is_key_current();
+    }
+
     //! Push array with n arguments
     void push_array(size_t n)
     {
@@ -168,7 +177,6 @@ class write_context_helper
     //! Push binary of size n
     void push_binary(size_t n)
     {
-        _assert_value_context();
         auto elem = &_scopes.emplace_back();
         elem->type = scope_type::binary;
         elem->capacity = n;

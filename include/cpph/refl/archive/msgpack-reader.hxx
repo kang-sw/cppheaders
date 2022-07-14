@@ -253,7 +253,7 @@ class reader : public archive::if_reader
 
     size_t begin_binary() override
     {
-        _verify_not_key_type();
+        //        _verify_not_key_type();
 
         auto header = _verify_eof(_buf->sgetc());
         uint32_t buflen = _read_elem_count_bin(header);

@@ -62,7 +62,7 @@ class writer : public archive::if_writer
 
     if_writer& write(nullptr_t a_nullptr) override
     {
-        _on_write();
+        _on_write_value_only();
 
         sputn("null", 4);
         return *this;
@@ -93,7 +93,7 @@ class writer : public archive::if_writer
 
     if_writer& write(double v) override
     {
-        _on_write();
+        _on_write_value_only();
 
         char buf[32];
         auto r = snprintf(buf, sizeof buf, "%.14g", v);
@@ -104,7 +104,7 @@ class writer : public archive::if_writer
 
     if_writer& write(bool v) override
     {
-        _on_write();
+        _on_write_value_only();
 
         if (v)
             sputn("true", 4);
@@ -134,7 +134,9 @@ class writer : public archive::if_writer
 
     if_writer& binary_push(size_t total) override
     {
-        _on_write();
+        auto d = _ctx.write_next();
+        if (d.need_comma) { _append_comma(); }
+        if (d.need_indent) { _brk_indent(); }
 
         _ctx.push_binary(total);
         sputc('"');
@@ -155,12 +157,16 @@ class writer : public archive::if_writer
         _ctx.pop_binary();
         _base64.pubsync();
         sputc('"');
+
+        if (_ctx.is_key_context())
+            sputc(':');
+
         return *this;
     }
 
     if_writer& object_push(size_t num_elems) override
     {
-        _on_write();
+        _on_write_value_only();
 
         _ctx.push_object(num_elems);
         sputc('{');
@@ -178,7 +184,7 @@ class writer : public archive::if_writer
 
     if_writer& array_push(size_t num_elems) override
     {
-        _on_write();
+        _on_write_value_only();
 
         _ctx.push_array(num_elems);
         sputc('[');
@@ -200,7 +206,7 @@ class writer : public archive::if_writer
     }
 
    private:
-    void _on_write()
+    void _on_write_value_only()
     {
         auto d = _ctx.write_next();
         if (d.is_key) { _throw_invalid_key_type(); }

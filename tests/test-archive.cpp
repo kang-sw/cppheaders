@@ -86,7 +86,7 @@ struct outer {
 
     binary<abcd> r;
 
-    std::map<std::string, abcd> afs = {
+    std::map<binary<std::string>, abcd> afs = {
             {"aa", {1, 2, 3, 4}},
             {"bb", {1, 3, 2, 5}},
     };
