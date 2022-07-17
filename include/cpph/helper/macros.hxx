@@ -101,10 +101,8 @@ static inline int& _tmp_int() noexcept
 }  // namespace cpph::_detail
 
 // TODO: Implement corresponding logic ...
-#define CPPH_ALLOCA_LIST(TypeName)             cpph::_detail::alloca_list<TypeName>
-#define CPPH_ALLOCA_LIST_EMPLACE(S, Iter, ...) S.emplace_with(S.elem_size(), Iter, __VA_ARGS__)
-#define CPPH_ALLOCA_LIST_EMPLACE_BACK(...)     S.emplace_with(S.elem_size(), S.end(), __VA_ARGS__)
-#define CPPH_ALLOCA_LIST_EMPLACE_FRONT(...)    S.emplace_with(S.elem_size(), S.begin(), __VA_ARGS__)
+#define CPPH_ALLOCA_LIST(TypeName, VarName) cpph::_detail::alloca_fwd_list<TypeName> VarName
+#define CPPH_ALLOCA_LIST_EMPLACE(S, ...)    S._emplace_with(alloca(decltype(S)::node_size), __VA_ARGS__)
 
 #define CPPH_ALLOCA_ARR(Type, Size) (                             \
         cpph::_detail::_tmp_int() = (Size),                       \
