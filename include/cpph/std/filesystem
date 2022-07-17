@@ -2,5 +2,5 @@
 #include <filesystem>
 namespace cpph
 {
-    using fs = std::filesystem;
+    namespace fs = std::filesystem;
 }
