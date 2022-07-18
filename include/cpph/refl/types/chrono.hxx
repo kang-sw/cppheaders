@@ -119,15 +119,17 @@ CPPH_REFL_DEFINE_PRIM_T_begin(ValueType, is_template_instance_of<ValueType, std:
         time_info t;
         {
             auto n = strm->begin_binary();
-            CPPH_FINALLY(strm->end_binary());
 
-            if (n != sizeof(time_info)) { throw archive::error::reader_check_failed{strm}; }
+            if (n != sizeof(time_info)) {
+                strm->end_binary();
+                throw archive::error::reader_check_failed{strm};
+            }
+
             strm->binary_read_some({&t, 1});
+            strm->end_binary();
         }
 
         t.retrieve(*pvdata);
     }
 }
 CPPH_REFL_DEFINE_PRIM_T_end();
-
-
