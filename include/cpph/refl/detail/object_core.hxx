@@ -985,7 +985,7 @@ class object_metadata
         template <typename KeyStr_, typename MemVar_>
         auto& _property_3(MemVar_ Class_::*mem_ptr, KeyStr_&& name, int name_key = -1)
         {
-            return property(mem_ptr, std::move(name), -1);
+            return property(mem_ptr, std::forward<KeyStr_>(name), name_key);
         }
 
         template <typename KeyStr_, typename MemVar_>
