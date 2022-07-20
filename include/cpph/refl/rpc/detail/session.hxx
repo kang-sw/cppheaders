@@ -599,12 +599,7 @@ class session : public if_session, public std::enable_shared_from_this<session>
         request = {};  // Checkin allocated request node
 
         // Delete request node after handler invocation, to asure 'wait' returns after
-        _rq->lock.notify_all([&] {
-            auto num_erased = _rq->requests.erase(msgid);
-
-            assert(num_erased && "Logic error; Invalid deletion exploited");
-            (void)num_erased;
-        });
+        _rq->lock.notify_all([&] { _rq->requests.erase(msgid); });
     }
 
     void _handle_receive_result(remote_procedure_message_proxy&& proxy)
