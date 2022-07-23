@@ -132,16 +132,4 @@ class stringbuf : public std::streambuf
         return basic_streambuf::sync();
     }
 };
-
-class stringbuf_2 : public stringbuf
-{
-    string _str;
-
-   public:
-    stringbuf_2() noexcept : stringbuf(&_str) {}
-
-   public:
-    void reset() noexcept { stringbuf::reset(&_str); }
-};
-
 }  // namespace cpph::streambuf
