@@ -1,0 +1,8 @@
+#pragma once
+#include <optional>
+
+namespace cpph{
+using std::optional;
+using std::make_optional;
+using std::nullopt;
+}
