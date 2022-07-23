@@ -23,9 +23,9 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include <cpph/std/string_view>
 #include <stdexcept>
 #include <streambuf>
-#include <cpph/std/string_view>
 
 #include "../../helper/exception.hxx"
 #include "../../utility/array_view.hxx"
@@ -429,6 +429,13 @@ class if_reader : public if_archive_base
     //! Helper for quick value retrieval
     template <typename T>
     T read();
+
+    //! Prevents hiding from base class by overload
+    template <typename T>
+    T read_as()
+    {
+        return read<T>();
+    }
 
    public:
     //! Dump single object to target writer
