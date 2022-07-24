@@ -288,6 +288,9 @@ auto create_temporary_array(void* memory, size_t nelem)
         auto pointer = std::unique_ptr<void, disposer_t>{memory, disposer_t{nelem}};
         auto view = array_view{(T*)memory, nelem};
 
+        for (auto& e : view)
+            new (&e) T{};
+
         return std::make_pair(view, std::move(pointer));
     }
 }
