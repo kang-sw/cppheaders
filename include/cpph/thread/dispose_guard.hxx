@@ -15,7 +15,7 @@ class atomic_dispose_guard
             while (relaxed(_lc) > 0) { _detail::thread_yield(); }
 
             int rv = 0;
-            if (_lc.compare_exchange_weak(rv, INT_MIN / 2)) {
+            if (_lc.compare_exchange_weak(rv, std::numeric_limits<int>::min() / 2)) {
                 return;
             }
 
