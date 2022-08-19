@@ -27,8 +27,8 @@
 #pragma once
 #include <atomic>
 #include <cpph/std/list>
-#include <thread>
 #include <cpph/std/vector>
+#include <thread>
 
 #include "cpph/container/circular_queue.hxx"
 #include "cpph/memory/ring_allocator.hxx"
@@ -193,6 +193,16 @@ class event_queue
     }
 
    public:
+    void touch_one()
+    {
+        _event_wait.notify_one();
+    }
+
+    void touch_all()
+    {
+        _event_wait.notify_all();
+    }
+
     bool empty() const
     {
         return _messages.lock()->empty();
@@ -314,8 +324,8 @@ class event_queue
             should_wakeup_any = (_num_waiting_runner != 0);
         });
 
-        if (should_wakeup_any)
-            _event_wait.notify_one();
+        std::atomic_thread_fence(std::memory_order_release);
+        _event_wait.notify_one();
     }
 
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
