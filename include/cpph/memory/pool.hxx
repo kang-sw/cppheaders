@@ -235,6 +235,20 @@ class pool_ptr
         return shared_ptr<T>{data, [disposer = move(*this)](auto) {}};
     }
 
+    template <typename ReleaseHandler, class = enable_if_t<is_invocable_v<ReleaseHandler, T*>>>
+    shared_ptr<T> share(ReleaseHandler&& fn_release) &&
+    {
+        if (not _node)
+            return nullptr;
+
+        auto data = get();
+        return shared_ptr<T>{
+                data,
+                [disposer = move(*this), fn_release = std::forward<ReleaseHandler>(fn_release)](T* p) {
+                    fn_release(p);
+                }};
+    }
+
     auto unique() && noexcept;
 
     void detach()
