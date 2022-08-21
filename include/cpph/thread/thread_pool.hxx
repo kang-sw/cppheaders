@@ -30,8 +30,8 @@
 
 #pragma once
 #include <atomic>
-#include <thread>
 #include <cpph/std/vector>
+#include <thread>
 
 #include "cpph/utility/counter.hxx"
 #include "event_queue.hxx"
@@ -78,12 +78,6 @@ class thread_pool
     }
 
     template <typename Message_>
-    void defer(Message_&& msg)
-    {
-        _proc.defer(std::forward<Message_>(msg));
-    }
-
-    template <typename Message_>
     void dispatch(Message_&& msg)
     {
         _proc.dispatch(std::forward<Message_>(msg));
@@ -124,7 +118,7 @@ class event_queue_worker
 
     ~event_queue_worker()
     {
-        _proc.clear(0);
+        _proc.clear();
         shutdown();
     }
 
@@ -169,12 +163,6 @@ class event_queue_worker
     void post(Message_&& msg)
     {
         _proc.post(std::forward<Message_>(msg));
-    }
-
-    template <typename Message_>
-    void defer(Message_&& msg)
-    {
-        _proc.defer(std::forward<Message_>(msg));
     }
 
     template <typename Message_>

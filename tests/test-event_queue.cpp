@@ -81,7 +81,7 @@ TEST_SUITE("thread")
     {
         cpph::event_queue mproc{10 << 20};
         using invocable_t = test_invocable_t<std::array<int, 1024>>;
-        int N = 1'000;
+        int N = 10'000;
 
         invoked = destructed = 0;
 

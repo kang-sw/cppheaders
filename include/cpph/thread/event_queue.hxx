@@ -26,15 +26,18 @@
 
 #pragma once
 #include <atomic>
+#include <cpph/std/chrono>
 #include <cpph/std/list>
 #include <cpph/std/vector>
 #include <thread>
 
-#include "cpph/container/circular_queue.hxx"
 #include "cpph/memory/ring_allocator.hxx"
 #include "cpph/thread/event_wait.hxx"
 #include "cpph/thread/locked.hxx"
+#include "cpph/thread/threading.hxx"
+#include "cpph/utility/cleanup.hxx"
 #include "cpph/utility/generic.hxx"
+#include "cpph/utility/templates.hxx"
 
 namespace cpph {
 /**
@@ -42,19 +45,20 @@ namespace cpph {
  */
 class event_queue
 {
-   private:
-    struct callable_pair {
-        void (*fn)(callable_pair const*);
-        void (*dispose)(event_queue*, void*);
-        void* body;
+    struct function_node {
+        function_node* next_ = nullptr;
+
+        virtual ~function_node() noexcept = default;
+        virtual void operator()() noexcept = 0;
     };
 
    private:
-    locked<ring_allocator_with_fb> _queue_alloc;
-    locked<circular_queue<callable_pair>> _messages;
-    thread::event_wait _event_wait;
-    std::atomic_bool _stopped = false;
-    volatile size_t _num_waiting_runner = 0;
+    alignas(64) mutable spinlock alloc_lock_;
+    ring_allocator_with_fb alloc_;
+    thread::event_wait ewait_;
+    atomic_bool stopped_ = false;
+    function_node* front_ = nullptr;
+    function_node* back_ = nullptr;
 
    public:
     /**
@@ -67,8 +71,8 @@ class event_queue
      *    Number of initial image queue size. As this circular queue resizes on demand,
      *     determining this value is less important than setting \c num_queue_buffer correctly.
      */
-    explicit event_queue(size_t queue_buffer_size, size_t num_initial_message_queue_size = 32)
-            : _queue_alloc(queue_buffer_size), _messages(num_initial_message_queue_size) {}
+    explicit event_queue(size_t queue_buffer_size)
+            : alloc_(queue_buffer_size) {}
 
     /**
      * Destruct this message procedure
@@ -76,196 +80,106 @@ class event_queue
     ~event_queue() { clear(); }
 
    private:
-    template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
-    callable_pair _allocate_token(Message&& message) noexcept
+    static auto& _p_active_exec() noexcept
     {
-        auto constexpr fn = [](callable_pair const* arg) { (*(Message*)arg->body)(); };
-        callable_pair msg = {fn, nullptr, nullptr};
-
-        msg.body = _queue_alloc.lock()->allocate(sizeof message);
-        msg.dispose =
-                [](event_queue* self, void* body) {
-                    (*(Message*)body).~Message();
-                    self->_queue_alloc.lock()->deallocate(body);
-                };
-
-        new (msg.body) Message(std::forward<Message>(message));
-        return msg;
+        static thread_local event_queue* p_exec;
+        return p_exec;
     }
 
-   private:
-    static bool& _deferred_wakeup_flag() noexcept
+    template <class RetrFn, class = enable_if_t<is_invocable_r_v<function_node*, RetrFn>>>
+    bool _exec_single(RetrFn&& retreive_event)
     {
-        thread_local static bool _flag = false;
-        return _flag;
-    }
+        if (function_node* p_func = retreive_event()) {
+            auto CLEANUP = cleanup([&] { _release(p_func); });
 
-    static auto _deferred_list() noexcept
-    {
-        thread_local static std::vector<callable_pair> _list;
-        return &_list;
-    }
+            assert(_p_active_exec() == nullptr);
+            _p_active_exec() = this;
+            (*p_func)();
+            _p_active_exec() = nullptr;
 
-    static auto _active_executor() -> void const*&
-    {
-        thread_local static void const* _inst = nullptr;
-        return _inst;
-    }
-
-    void _invoke(callable_pair const& msg)
-    {
-        _active_executor() = this;
-        msg.fn(&msg);
-        msg.dispose(this, msg.body);
-        _active_executor() = nullptr;
-
-        // Flush deferred list after invocation
-        if (auto deferred = _deferred_list(); not deferred->empty()) {
-            bool should_wakeup_other_thread = false;
-            _messages.access([&](decltype(_messages)::value_type& e) {
-                if (e.capacity() - e.size() < deferred->size())
-                    e.reserve_shrink(std::max(e.capacity() + deferred->size(), e.size() * 2));
-
-                auto num_deferred_jobs = deferred->size();
-                should_wakeup_other_thread = _num_waiting_runner > 0 && num_deferred_jobs > 1;
-                e.enqueue_n(deferred->begin(), num_deferred_jobs);
-            });
-
-            // Defer waking up other threads.
-            _deferred_wakeup_flag() = should_wakeup_other_thread;
-            deferred->clear();
+            return true;
         } else {
-            _deferred_wakeup_flag() = false;
+            return false;
         }
     }
 
-    template <typename WaitFn>
-    bool _exec_one_impl(WaitFn&& fn_wait)
+    function_node* _pop_event_locked() noexcept
     {
-        callable_pair msg = {};
-
-        // Wakeup other threads to process deferred jobs.
-        size_t num_wakeup_count = 0;
-
-        // Do quick check
-        _messages.access([&](decltype(_messages)::value_type& v) {
-            if (v.empty()) {
-                ++_num_waiting_runner;
-            } else {
-                msg = v.dequeue();
-                auto num_jobs = v.size();
-
-                if (exchange(_deferred_wakeup_flag(), false) && num_jobs > 0) {
-                    num_wakeup_count = std::min(num_jobs, size_t(_num_waiting_runner));
-                }
-            }
-        });
-
-        while (num_wakeup_count--)
-            _event_wait.notify_one();  // wakeup other thread to process
-
-        for (; msg.fn == nullptr;) {
-            // Function couldn't be found. Wait for next post.
-            // semaphore must be decreased.
-            if (not fn_wait()) {
-                _messages.access([&](auto&&) { --_num_waiting_runner; });
-                return false;
-            } else {
-                // If wait succeeds, try access messages queue again.
-                _messages.access([&](decltype(_messages)::value_type& v) {
-                    if (not v.empty()) {
-                        --_num_waiting_runner;
-                        msg = v.dequeue();
-                    }
-                });
-            }
-        }
-
-        // Invoke and exit.
-        _invoke(msg);
-
-        return true;
+        return lock_guard{alloc_lock_}, _pop_event();
     }
 
-    bool _has_any_job_locked()
+    function_node* _pop_event() noexcept
     {
-        return not _messages.lock()->empty();
+        if (not front_) { return nullptr; }
+        return exchange(front_, front_->next_);
+    }
+
+    void _push_event(function_node* p_func) noexcept
+    {
+        if (auto prev_back = exchange(back_, p_func)) {
+            prev_back->next_ = p_func;
+        }
+
+        if (front_ == nullptr)
+            front_ = p_func;
+    }
+
+    void _release(function_node* p_func) noexcept
+    {
+        (*p_func).~function_node();
+
+        lock_guard _{alloc_lock_};
+        alloc_.deallocate(p_func);
     }
 
    public:
-    void touch_one()
-    {
-        _event_wait.notify_one();
-    }
-
-    void touch_all()
-    {
-        _event_wait.notify_all();
-    }
-
     bool empty() const
     {
-        return _messages.lock()->empty();
+        return lock_guard{alloc_lock_}, front_ == nullptr;
     }
 
     bool exec_one()
     {
-        return _exec_one_impl([&] {
-            bool stopped = false;
-            _event_wait.wait([&] { return (_has_any_job_locked() || (stopped = acquire(_stopped))); });
-            return not stopped;
+        return _exec_single([this] {
+            function_node* p_func = nullptr;
+            ewait_.wait([&] { return acquire(stopped_) || (p_func = _pop_event_locked()); });
+            return p_func;
         });
     }
 
-    template <typename Timestamp>
-    bool exec_one_until(Timestamp&& until)
+    template <typename Clock, typename Duration>
+    bool exec_one_until(time_point<Clock, Duration>&& until)
     {
-        return _exec_one_impl([&] {
-            bool stopped = false;
-            bool timeout = not _event_wait.wait_until(
-                    std::forward<Timestamp>(until),
-                    [&] {
-                        return (_has_any_job_locked() || (stopped = acquire(_stopped)));
-                    });
-
-            return not stopped && not timeout;
+        return _exec_single([&] {
+            function_node* p_func = nullptr;
+            ewait_.wait_until([&] { return acquire(stopped_) || (p_func = _pop_event_locked()); });
+            return p_func;
         });
     }
 
-    template <typename Duration>
-    bool exec_one_for(Duration&& dur)
+    template <typename Rep, typename Period>
+    bool exec_one_for(duration<Rep, Period>&& dur)
     {
-        return exec_one_until(std::chrono::steady_clock::now() + dur);
+        return exec_one_until(steady_clock::now() + dur);
     }
 
     size_t exec()
     {
-        size_t num_ran = 0;
-        for (; not acquire(_stopped) && exec_one(); ++num_ran) {}
-        return num_ran;
+        size_t nexec = 0;
+        for (; not acquire(stopped_) && exec_one(); ++nexec) {}
+        return nexec;
     }
 
     size_t flush()
     {
         size_t num_ran = 0;
+        auto exec_fn = [&] {
+            function_node* p_func = nullptr;
+            ewait_.wait([&] { return acquire(stopped_) || (p_func = _pop_event_locked(), true); });
+            return p_func;
+        };
 
-        for (;;) {
-            callable_pair msg = {};
-
-            // Do quick check
-            _messages.access([&](decltype(_messages)::value_type& v) {
-                if (not v.empty() && not acquire(_stopped)) {
-                    msg = v.dequeue();
-                }
-            });
-
-            if (msg.fn == nullptr)
-                break;
-
-            _invoke(msg);
-            ++num_ran;
-        }
-
+        for (; not acquire(stopped_) && _exec_single(exec_fn); ++num_ran) {}
         return num_ran;
     }
 
@@ -273,7 +187,7 @@ class event_queue
     size_t run_until(Timestamp&& until)
     {
         size_t num_ran = 0;
-        for (; not acquire(_stopped) && exec_one_until(until); ++num_ran) {}
+        for (; not acquire(stopped_) && exec_one_until(until); ++num_ran) {}
         return num_ran;
     }
 
@@ -283,29 +197,34 @@ class event_queue
         size_t num_ran = 0;
         auto until = std::chrono::steady_clock::now() + dur;
 
-        for (; not acquire(_stopped) && exec_one_until(until); ++num_ran) {}
+        for (; not acquire(stopped_) && exec_one_until(until); ++num_ran) {}
         return num_ran;
     }
 
     void stop()
     {
-        _event_wait.notify_all([&] { release(_stopped, true); });
+        ewait_.notify_all([&] { release(stopped_, true); });
     }
 
     void restart()
     {
-        release(_stopped, false);
+        release(stopped_, false);
     }
 
-    void clear(size_t next_size = 32)
+    void clear() noexcept
     {
-        decltype(_messages)::value_type queue{next_size};
-        _messages.access([&](decltype(queue)& v) {
-            swap(queue, v);
-        });
+        // Retrieve functions
+        alloc_lock_.lock();
+        auto p_head = exchange(front_, nullptr);
+        back_ = nullptr;
+        alloc_lock_.unlock();
 
-        for (auto& e : queue) {
-            e.dispose(this, e.body);
+        while (p_head != nullptr) {
+            auto p_released = exchange(p_head, p_head->next_);
+            (*p_released).~function_node();
+
+            lock_guard _{alloc_lock_};
+            alloc_.deallocate(p_released);
         }
     }
 
@@ -313,40 +232,31 @@ class event_queue
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
     void post(Message&& message)
     {
-        auto msg = _allocate_token(std::forward<Message>(message));
+        struct message_type : function_node {
+            decay_t<Message> body_;
+            message_type(Message&& body) noexcept : body_(std::forward<Message>(body)) {}
+            void operator()() noexcept override { move(body_)(); }
+        };
 
-        bool should_wakeup_any = false;
-        _messages.access([&](decltype(_messages)::value_type& v) {
-            if (v.is_full())
-                v.reserve_shrink(v.capacity() * 2);
-
-            v.push(msg);
-            should_wakeup_any = (_num_waiting_runner != 0);
-        });
-
-        std::atomic_thread_fence(std::memory_order_release);
-        _event_wait.notify_one();
-    }
-
-    template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
-    void defer(Message&& message)
-    {
-        if (this == _active_executor()) {
-            auto msg = _allocate_token(std::forward<Message>(message));
-            _deferred_list()->emplace_back(msg);
-        } else {
-            post(std::forward<Message>(message));
+        function_node* p_func;
+        {
+            lock_guard _{alloc_lock_};
+            auto mem = alloc_.allocate(sizeof(message_type));
+            p_func = new (mem) message_type{forward<Message>(message)};
         }
+
+        ewait_.notify_one([&] { lock_guard{alloc_lock_}, _push_event(p_func); });
     }
 
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
     void dispatch(Message&& message)
     {
-        if (this == _active_executor()) {
-            message();
+        if (_p_active_exec() == this) {
+            forward<Message>(message)();
         } else {
-            post(std::forward<Message>(message));
+            post(forward<Message>(message));
         }
     }
 };
+
 }  // namespace cpph
