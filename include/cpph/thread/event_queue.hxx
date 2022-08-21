@@ -163,7 +163,7 @@ class event_queue
     {
         return _exec_single([&] {
             function_node* p_func = nullptr;
-            ewait_.wait_until([&] { return acquire(stopped_) || (p_func = _pop_event()); });
+            ewait_.wait_until(until, [&] { return acquire(stopped_) || (p_func = _pop_event()); });
             return p_func;
         });
     }
