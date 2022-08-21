@@ -109,7 +109,11 @@ class event_queue
     function_node* _pop_event() noexcept
     {
         if (not front_) { return nullptr; }
-        return exchange(front_, front_->next_);
+        auto p_func = exchange(front_, front_->next_);
+        if (p_func == back_)
+            back_ = nullptr;
+
+        return p_func;
     }
 
     void _push_event(function_node* p_func) noexcept
