@@ -39,9 +39,6 @@ struct test_invocable_t {
     void operator()()
     {
         invoked.fetch_add(1, std::memory_order_relaxed);
-        for (int i = 0; i < 10000; ++i) {
-            std::this_thread::yield();
-        }
     }
 
     ~test_invocable_t()
