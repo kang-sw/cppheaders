@@ -45,17 +45,21 @@ namespace cpph {
 class event_queue
 {
     struct function_node {
-        function_node* next_ = nullptr;
+        bool is_ring_allocated_;
+        function_node* next_;
+        void (*disposer_)(function_node*);
+        void (*invoke_)(function_node*);
+        char data[];
 
-        virtual ~function_node() noexcept = default;
-        virtual void operator()() noexcept = 0;
+        void operator()() noexcept { invoke_(this); }
+        ~function_node() noexcept { disposer_(this); }
     };
 
    private:
     mutable spinlock alloc_lock_;
     mutable spinlock msg_lock_;
 
-    ring_allocator_with_fb alloc_;
+    ring_allocator alloc_;
     thread::event_wait ewait_;
     atomic_bool stopped_ = false;
     function_node* front_ = nullptr;
@@ -131,8 +135,12 @@ class event_queue
     {
         (*p_func).~function_node();
 
-        lock_guard _{alloc_lock_};
-        alloc_.deallocate(p_func);
+        if (p_func->is_ring_allocated_) {
+            lock_guard _{alloc_lock_};
+            alloc_.deallocate(p_func);
+        } else {
+            delete[] (char*)p_func;
+        }
     }
 
    public:
@@ -235,19 +243,25 @@ class event_queue
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
     void post(Message&& message)
     {
-        struct message_type : function_node {
-            decay_t<Message> body_;
-            message_type(Message&& body) noexcept : body_(std::forward<Message>(body)) {}
-            void operator()() noexcept override { move(body_)(); }
-        };
-
-        void* mem;
+        function_node* p_func;
         {
             lock_guard _{alloc_lock_};
-            mem = alloc_.allocate(sizeof(message_type));
+            p_func = (function_node*)alloc_.allocate_nt(sizeof(function_node) + sizeof(Message));
         }
 
-        auto p_func = new (mem) message_type{forward<Message>(message)};
+        if (p_func != nullptr) {
+            p_func->is_ring_allocated_ = true;
+        } else {
+            p_func = (function_node*)new char[sizeof(function_node) + sizeof(Message)];
+            p_func->is_ring_allocated_ = false;
+        }
+
+        auto p_msg = new (p_func->data) Message{std::forward<Message>(message)};
+
+        p_func->next_ = nullptr;
+        p_func->disposer_ = [](function_node* p) { ((Message&)p->data).~Message(); };
+        p_func->invoke_ = [](function_node* p) { move((Message&)p->data)(); };
+
         ewait_.notify_one([&] { _push_event(p_func); });
     }
 
