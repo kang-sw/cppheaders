@@ -52,7 +52,9 @@ class event_queue
     };
 
    private:
-    alignas(64) mutable spinlock alloc_lock_;
+    mutable spinlock alloc_lock_;
+    mutable spinlock msg_lock_;
+
     ring_allocator_with_fb alloc_;
     thread::event_wait ewait_;
     atomic_bool stopped_ = false;
@@ -101,13 +103,10 @@ class event_queue
         }
     }
 
-    function_node* _pop_event_locked() noexcept
-    {
-        return lock_guard{alloc_lock_}, _pop_event();
-    }
-
     function_node* _pop_event() noexcept
     {
+        lock_guard _{msg_lock_};
+
         if (not front_) { return nullptr; }
         auto p_func = exchange(front_, front_->next_);
         if (p_func == back_)
@@ -118,6 +117,8 @@ class event_queue
 
     void _push_event(function_node* p_func) noexcept
     {
+        lock_guard _{msg_lock_};
+
         if (auto prev_back = exchange(back_, p_func)) {
             prev_back->next_ = p_func;
         }
@@ -137,14 +138,14 @@ class event_queue
    public:
     bool empty() const
     {
-        return lock_guard{alloc_lock_}, front_ == nullptr;
+        return lock_guard{msg_lock_}, front_ == nullptr;
     }
 
     bool exec_one()
     {
         return _exec_single([this] {
             function_node* p_func = nullptr;
-            ewait_.wait([&] { return acquire(stopped_) || (p_func = _pop_event_locked()); });
+            ewait_.wait([&] { return acquire(stopped_) || (p_func = _pop_event()); });
             return p_func;
         });
     }
@@ -154,7 +155,7 @@ class event_queue
     {
         return _exec_single([&] {
             function_node* p_func = nullptr;
-            ewait_.wait_until([&] { return acquire(stopped_) || (p_func = _pop_event_locked()); });
+            ewait_.wait_until([&] { return acquire(stopped_) || (p_func = _pop_event()); });
             return p_func;
         });
     }
@@ -177,7 +178,7 @@ class event_queue
         size_t num_ran = 0;
         auto exec_fn = [&] {
             function_node* p_func = nullptr;
-            ewait_.wait([&] { return acquire(stopped_) || (p_func = _pop_event_locked(), true); });
+            ewait_.wait([&] { return acquire(stopped_) || (p_func = _pop_event(), true); });
             return p_func;
         };
 
@@ -216,10 +217,10 @@ class event_queue
     void clear() noexcept
     {
         // Retrieve functions
-        alloc_lock_.lock();
+        msg_lock_.lock();
         auto p_head = exchange(front_, nullptr);
         back_ = nullptr;
-        alloc_lock_.unlock();
+        msg_lock_.unlock();
 
         while (p_head != nullptr) {
             auto p_released = exchange(p_head, p_head->next_);
@@ -240,14 +241,14 @@ class event_queue
             void operator()() noexcept override { move(body_)(); }
         };
 
-        function_node* p_func;
+        void* mem;
         {
             lock_guard _{alloc_lock_};
-            auto mem = alloc_.allocate(sizeof(message_type));
-            p_func = new (mem) message_type{forward<Message>(message)};
+            mem = alloc_.allocate(sizeof(message_type));
         }
 
-        ewait_.notify_one([&] { lock_guard{alloc_lock_}, _push_event(p_func); });
+        auto p_func = new (mem) message_type{forward<Message>(message)};
+        ewait_.notify_one([&] { _push_event(p_func); });
     }
 
     template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>

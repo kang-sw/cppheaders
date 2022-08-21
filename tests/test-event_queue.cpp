@@ -41,7 +41,7 @@ struct test_invocable_t {
     void operator()()
     {
         invoked.fetch_add(1, std::memory_order_relaxed);
-        for (volatile auto i = 10000; i; --i) { std::this_thread::yield(); }
+        // for (volatile auto i = 10000; i; --i) { std::this_thread::yield(); }
     }
 
     ~test_invocable_t()
@@ -81,7 +81,7 @@ TEST_SUITE("thread")
     {
         cpph::event_queue mproc{10 << 20};
         using invocable_t = test_invocable_t<std::array<int, 1024>>;
-        int N = 10'000;
+        int N = 1'000'000;
 
         invoked = destructed = 0;
 
