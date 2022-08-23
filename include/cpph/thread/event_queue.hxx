@@ -35,6 +35,7 @@
 #include "cpph/thread/event_wait.hxx"
 #include "cpph/thread/locked.hxx"
 #include "cpph/thread/threading.hxx"
+#include "cpph/utility/cleanup.hxx"
 #include "cpph/utility/generic.hxx"
 #include "cpph/utility/templates.hxx"
 
@@ -87,7 +88,7 @@ class event_queue
    private:
     static event_queue*& _p_active_exec() noexcept
     {
-        static thread_local event_queue* p_exec;
+        static thread_local event_queue* p_exec = nullptr;
         return p_exec;
     }
 
@@ -95,12 +96,15 @@ class event_queue
     bool _exec_single(RetrFn&& retreive_event)
     {
         if (function_node* p_func = retreive_event()) {
-            assert(_p_active_exec() == nullptr);
-            _p_active_exec() = this;
-            (*p_func)();
-            _p_active_exec() = nullptr;
+            // Using cleanup, all states would remain valid on exceptional situation.
+            [[maybe_unused]] auto _0 = cleanup(
+                    [&, previous = exchange(_p_active_exec(), this)] {
+                        _p_active_exec() = previous;  // Rollback active executor as previous one
+                        _release(p_func);             // Release allocated function
+                    });
 
-            _release(p_func);
+            (*p_func)();
+            assert(_p_active_exec() == this);
             return true;
         } else {
             return false;
