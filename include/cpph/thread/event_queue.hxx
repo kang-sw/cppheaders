@@ -163,7 +163,7 @@ class event_queue
     }
 
     template <typename Clock, typename Duration>
-    bool exec_one_until(time_point<Clock, Duration>&& until)
+    bool exec_one_until(time_point<Clock, Duration> const& until)
     {
         return _exec_single([&] {
             function_node* p_func = nullptr;
@@ -173,7 +173,7 @@ class event_queue
     }
 
     template <typename Rep, typename Period>
-    bool exec_one_for(duration<Rep, Period>&& dur)
+    bool exec_one_for(duration<Rep, Period> const& dur)
     {
         return exec_one_until(steady_clock::now() + dur);
     }
@@ -198,16 +198,16 @@ class event_queue
         return num_ran;
     }
 
-    template <typename Timestamp>
-    size_t run_until(Timestamp&& until)
+    template <typename Clock, typename Duration>
+    size_t run_until(time_point<Clock, Duration> const& until)
     {
         size_t num_ran = 0;
         for (; not acquire(stopped_) && exec_one_until(until); ++num_ran) {}
         return num_ran;
     }
 
-    template <typename Duration>
-    size_t run_for(Duration&& dur)
+    template <typename Rep, typename Period>
+    size_t run_for(duration<Rep, Period> const& dur)
     {
         size_t num_ran = 0;
         auto until = std::chrono::steady_clock::now() + dur;

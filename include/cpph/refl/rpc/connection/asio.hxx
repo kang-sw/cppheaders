@@ -74,7 +74,9 @@ class asio_stream : public if_connection, public std::streambuf
 
     void close() noexcept override
     {
-        _socket.close();
+        asio::error_code ec;
+        _socket.shutdown(decltype(_socket)::shutdown_send, ec);
+        _socket.close(ec);
     }
 
     void get_total_rw(size_t* num_read, size_t* num_write) override
