@@ -589,6 +589,19 @@ class if_reader : public if_archive_base
     bool is_string_next() const { return type_next() == entity_type::string; }
 };
 
+constexpr struct key_next_t {
+} key_next;
+
+inline if_writer& operator<<(if_writer& writer, key_next_t)
+{
+    return writer.write_key_next(), writer;
+}
+
+inline if_reader& operator<<(if_reader& reader, key_next_t)
+{
+    return reader.read_key_next(), reader;
+}
+
 template <typename Any_>
 if_writer& operator<<(if_writer& writer, Any_ const& value)
 {
