@@ -32,23 +32,18 @@
 namespace cpph {
 namespace _zip_impl {
 template <typename Arg_>
-auto _can_de_deref(int) -> decltype(
-        **std::declval<Arg_>(),
-        std::integral_constant<
-                bool,
-                std::is_pointer_v<std::remove_reference_t<decltype(*Arg_{})>>>{});
+auto _can_de_deref(int) -> decltype(**std::declval<Arg_>(),
+                                    std::integral_constant<
+                                            bool,
+                                            std::is_pointer_v<std::remove_reference_t<decltype(*Arg_{})>>>{});
 
 template <typename>
 auto _can_de_deref(...) -> std::false_type;
 
 template <typename Arg_>
-auto& _deref_arg(Arg_&& s)
+auto _deref_arg(Arg_&& s) -> decltype(*std::declval<Arg_>())
 {
-    if constexpr (decltype(_can_de_deref<Arg_>(0))::value) {
-        return *s;
-    } else {
-        return s;
-    }
+    return *s;
 }
 
 template <typename... Args_>
