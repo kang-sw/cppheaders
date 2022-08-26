@@ -41,13 +41,15 @@ template <typename>
 auto _can_de_deref(...) -> std::false_type;
 
 template <typename Arg_>
-auto _deref_arg(Arg_&& s)
-        -> conditional_t<
-                std::is_lvalue_reference_v<decltype(*std::declval<Arg_>())>,
-                decltype(*std::declval<Arg_>()),
-                decay_t<decltype(*std::declval<Arg_>())>>
+auto _deref_arg(Arg_&& s) -> enable_if_t<not std::is_lvalue_reference_v<decltype(*std::declval<Arg_>())>, decltype(*std::declval<Arg_>())>
 {
     return *s;
+}
+
+template <typename Arg_>
+auto _deref_arg(Arg_&& s) -> enable_if_t<std::is_lvalue_reference_v<decltype(*std::declval<Arg_>())>, decltype(std::ref(*std::declval<Arg_>()))>
+{
+    return std::ref(*s);
 }
 
 template <typename... Args_>
@@ -65,7 +67,7 @@ class _zip_iterator
     template <size_t... N_>
     auto _deref(std::index_sequence<N_...>) const
     {
-        return std::forward_as_tuple(_deref_arg(std::get<N_>(pack_))...);
+        return std::make_tuple(_deref_arg(std::get<N_>(pack_))...);
     }
 
     template <size_t N_ = 0>
