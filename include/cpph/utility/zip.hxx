@@ -41,7 +41,11 @@ template <typename>
 auto _can_de_deref(...) -> std::false_type;
 
 template <typename Arg_>
-auto _deref_arg(Arg_&& s) -> decltype(*std::declval<Arg_>())
+auto _deref_arg(Arg_&& s)
+        -> conditional_t<
+                std::is_lvalue_reference_v<decltype(*std::declval<Arg_>())>,
+                decltype(*std::declval<Arg_>()),
+                decay_t<decltype(*std::declval<Arg_>())>>
 {
     return *s;
 }
