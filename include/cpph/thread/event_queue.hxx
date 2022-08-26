@@ -235,11 +235,7 @@ class event_queue
         msg_lock_.unlock();
 
         while (p_head != nullptr) {
-            auto p_released = exchange(p_head, p_head->next_);
-            (*p_released).~function_node();
-
-            lock_guard _{alloc_lock_};
-            alloc_.deallocate(p_released);
+            _release(exchange(p_head, p_head->next_));
         }
     }
 
