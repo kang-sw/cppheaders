@@ -26,9 +26,11 @@
 
 #pragma once
 #include <algorithm>
+#include <atomic>
+#include <cpph/std/list>
+#include <cpph/std/mutex>
 #include <memory>
 #include <stdexcept>
-#include <cpph/std/vector>
 
 #include "cpph/thread/spinlock.hxx"
 #include "cpph/thread/threading.hxx"
@@ -38,8 +40,6 @@
 //
 
 namespace cpph {
-using event_key = basic_key<class LABEL_delegate_key>;
-
 enum class event_control {
     ok = 0,
     expire = 1,
@@ -65,107 +65,163 @@ enum class event_priority : uint64_t {
     first = ~uint64_t{},
 };
 
-template <typename Mutex_, typename... Args_>
+template <typename Mutex, typename... Args>
 class basic_event
 {
    public:
-    using event_fn = ufunction<event_control(Args_...)>;
+    using event_fn = ufunction<event_control(Args...)>;
+    using param_pack_t = tuple<conditional_t<std::is_reference_v<Args>, Args, Args const&>...>;
 
-    struct _entity_type {
-        event_key id;
-        std::shared_ptr<event_fn> ufunction;
+   private:
+    struct if_entity {
+       private:
+        atomic<intptr_t> refcnt_ = 1;
+
+       public:
+        basic_event* owner = nullptr;
         uint64_t priority = 0;
 
-        bool operator<(_entity_type const& rhs) const noexcept
-        {
-            // send remove candidates to back
-            if (not id && rhs.id)
-                return false;
-            if (id && not rhs.id)
-                return true;
+        if_entity* p_prev = nullptr;
+        if_entity* p_next = nullptr;
 
-            return priority > rhs.priority;
+        virtual ~if_entity() = default;
+        virtual event_control operator()(param_pack_t) = 0;
+
+        void release() noexcept
+        {
+            if (refcnt_.fetch_sub(1, std::memory_order_release) == 1) {
+                // If it's zero reference count, make it tiny value which makes further add_ref()
+                //  request be ignored.
+                constexpr auto SMALL_VALUE = numeric_limits<intptr_t>::min() / 2;
+                intptr_t expected = 0;
+
+                if (refcnt_.compare_exchange_strong(expected, SMALL_VALUE)) {
+                    {  // Detach this node from siblings safely
+                        [[maybe_unused]] scoped_lock _{owner->mtx_};
+
+                        // Erase owner pointer
+                        if_entity** pp_owner_node = nullptr;
+                        if (this == owner->node_front_)
+                            pp_owner_node = &owner->node_front_;
+                        else if (this == owner->new_node_front_)
+                            pp_owner_node = &owner->new_node_front_;
+
+                        if (pp_owner_node != nullptr) {
+                            *pp_owner_node = (*pp_owner_node)->p_next;
+                            (*pp_owner_node)->p_prev = nullptr;
+                        }
+
+                        // Unlink nodes
+                        p_prev->p_next = p_next;
+                        p_next->p_prev = p_prev;
+
+                        p_prev = p_next = nullptr;
+                    }
+
+                    // Erase self
+                    delete this;
+                }
+            }
+        }
+
+        bool add_ref() noexcept
+        {
+            return refcnt_.fetch_add(1, std::memory_order_acquire) > 0;
         }
     };
 
-    static_assert(std::is_nothrow_move_assignable_v<_entity_type>);
-    static_assert(std::is_nothrow_move_constructible_v<_entity_type>);
-
    public:
-    using container = std::vector<_entity_type>;
-    using mutex_type = Mutex_;
+    using mutex_type = Mutex;
+
+   private:
+    mutable Mutex mtx_;
+    size_t size_ = 0;
+    if_entity* node_front_ = nullptr;
+    if_entity* new_node_front_ = nullptr;
 
    public:
     class handle
     {
         friend class basic_event;
-        basic_event* owner_ = {};
-        event_key key_ = {};
+        if_entity* node_ = nullptr;
 
-        handle(basic_event* o, event_key key) noexcept
-                : owner_{o}, key_{key} {}
+        explicit handle(if_entity* p_node) noexcept
+                : node_{p_node}
+        {
+            node_->add_ref();
+        }
 
        public:
+        ~handle() noexcept
+        {
+            node_->release();
+        }
+
         auto& operator=(handle&& o) noexcept
         {
-            owner_ = o.owner_;
-            key_ = o.key_;
-            o.owner_ = nullptr;
-            o.key_ = {};
+            swap(node_, o.node_);
             return *this;
         }
 
         handle(handle&& other) noexcept { (*this) = std::move(other); }
-        void expire() noexcept { owner_->remove(std::move(*this)); }
-        bool valid() noexcept { return owner_ != nullptr; }
+        bool valid() noexcept { return node_ != nullptr; }
+        void expire() noexcept { exchange(node_, nullptr)->release(); }
     };
 
    public:
     basic_event() noexcept = default;
     basic_event(basic_event&& rhs) noexcept { *this = std::move(rhs); }
-    basic_event(basic_event const& rhs) noexcept { *this = rhs; }
 
     basic_event& operator=(basic_event&& rhs) noexcept
     {
-        lock_guard a{_mtx}, b{rhs._mtx};
-        _events = std::move(rhs._events);
-        _mtx.unlock(), rhs._mtx.unlock();
-    }
-
-    basic_event& operator=(basic_event const& rhs) noexcept
-    {
-        lock_guard a{_mtx}, b{rhs._mtx};
-        _events = rhs._events;
-        _mtx.unlock(), rhs._mtx.unlock();
+        std::scoped_lock _{mtx_, rhs.mtx_};
+        swap(size_, rhs.size_);
+        swap(node_front_, rhs.node_front_);
+        swap(new_node_front_, rhs.new_node_front_);
     }
 
     template <typename... Params>
     void invoke(Params&&... args)
     {
-        lock_guard lock{_mtx};
+        // TODO: Perform insertion
+        {
+            scoped_lock _{mtx_};
 
-        if (_dirty) {
-            _dirty = false;
-            std::sort(_events.begin(), _events.end());
+            while (new_node_front_ != nullptr) {
+                auto new_node = new_node_front_;
+                new_node->p_prev = nullptr;
+                new_node->p_next = nullptr;
+                new_node_front_ = new_node_front_->p_next;
+
+                if (node_front_ != nullptr) {
+                    auto p_insert = node_front_;
+                    while (p_insert && p_insert->priority > new_node->priority) {
+                        if (p_insert->p_next != nullptr) {
+                            p_insert = p_insert->p_next;
+                        } else {
+                            p_insert->p_next = new_node;
+                            new_node->p_prev = p_insert;
+
+                            // done.
+                            p_insert = nullptr;
+                        }
+                    }
+
+                    if (p_insert) {
+                        p_insert->p_next->p_prev = new_node;
+                        new_node->p_next = p_insert->p_next;
+                        p_insert->p_next = new_node;
+                        new_node->p_prev = p_insert;
+                    }
+                } else {
+                    node_front_ = new_node;
+                }
+            }
         }
 
-        for (auto idx = 0; idx < _events.size();) {
-            if (not _events[idx].id) {
-                _events.erase(_events.begin() + idx);
-            } else {
-                auto func_ptr = _events[idx].ufunction;
-                lock.unlock();
-                auto invoke_result = (int)(*func_ptr)(forward<Params>(args)...);
-                lock.lock();
+        // TODO: Perform invocation
+        for (if_entity* p_head;;) {
 
-                if (invoke_result & (int)event_control::expire)
-                    _events.erase(_events.begin() + idx);
-                else
-                    ++idx;
-
-                if (invoke_result & (int)event_control::consume)
-                    break;
-            }
         }
     }
 
@@ -174,37 +230,39 @@ class basic_event
                event_priority priority = event_priority::middle,
                int64_t value = 0)
     {
-        lock_guard _{_mtx};
-        auto* evt = &_events.emplace_back();
-        evt->id = {++_hash_gen};
-        evt->priority = value + (uint64_t)priority;
+        struct entity_t : if_entity {
+            decay_t<Callable_> fn_;
+            explicit entity_t(Callable_&& fn) : fn_(fn) {}
 
-        _dirty |= evt->priority != 0;
+            event_control operator()(param_pack_t tup) override
+            {
+                return std::apply([this](auto&... args) -> event_control {
+                    if constexpr (is_invocable_r_v<event_control, Callable_, Args...>) {
+                        return fn_(args...);
+                    } else if constexpr (is_invocable_r_v<bool, Callable_, Args...>) {
+                        return fn_(args...) ? event_control::ok : event_control::expire;
+                    } else if constexpr (is_invocable_v<Callable_, Args...>) {
+                        return fn_(args...), event_control::ok;
+                    } else if constexpr (is_invocable_v<Callable_>) {
+                        return fn_(), event_control::ok;
+                    } else {
+                        Callable_::ERROR_NO_INVOCATION_AVAILABLE;
+                    } }, tup);
+            }
+        };
 
-        using std::forward;
-        using std::make_shared;
+        ptr<if_entity> p_new_node = make_unique<entity_t>(std::forward<Callable_>(fn));
+        p_new_node->owner = this;
+        p_new_node->priority = value + uint64_t(priority);
 
-        if constexpr (std::is_invocable_r_v<event_control, Callable_, Args_...>) {
-            evt->ufunction = make_shared<event_fn>(forward<Callable_>(fn));
-        } else if constexpr (std::is_invocable_r_v<bool, Callable_, Args_...>) {
-            evt->ufunction = make_shared<event_fn>(
-                    [_fn = forward<Callable_>(fn)](auto&&... args) mutable {
-                        return _fn(args...) ? event_control::ok
-                                            : event_control::expire;
-                    });
-        } else if constexpr (std::is_invocable_v<Callable_, Args_...>) {
-            evt->ufunction = make_shared<event_fn>(
-                    [_fn = forward<Callable_>(fn)](auto&&... args) mutable {
-                        return _fn(args...), event_control::ok;
-                    });
-        } else {
-            evt->ufunction = make_shared<event_fn>(
-                    [_fn = forward<Callable_>(fn)](auto&&...) mutable {
-                        return _fn(), event_control::ok;
-                    });
+        {
+            scoped_lock _{mtx_};
+            auto p_node = p_new_node.release();
+            p_node->p_next = new_node_front_, new_node_front_->p_prev = p_node, new_node_front_ = p_node;
+            ++size_;
+
+            return handle{new_node_front_};
         }
-
-        return handle{this, evt->id};
     }
 
     template <typename Ptr_, typename Callable_>
@@ -215,14 +273,14 @@ class basic_event
         return add(
                 [wptr = std::move(wptr),
                  callable = std::forward<Callable_>(callable)](
-                        Args_... args) mutable
+                        Args... args) mutable
                 -> event_control {
                     auto anchor = wptr.lock();  // Prevent anchor to be destroyed during function call
                     if (not anchor) { return event_control::expire; }
 
-                    if constexpr (std::is_invocable_r_v<event_control, Callable_, Args_...>)
+                    if constexpr (std::is_invocable_r_v<event_control, Callable_, Args...>)
                         return callable(args...);
-                    else if constexpr (std::is_invocable_v<Callable_, Args_...>)
+                    else if constexpr (std::is_invocable_v<Callable_, Args...>)
                         return callable(args...), event_control::ok;
                     else if constexpr (std::is_invocable_r_v<event_control, Callable_>)
                         return callable();
@@ -237,38 +295,32 @@ class basic_event
 
     void priority(handle const& h, event_priority offset, int64_t value = 0) noexcept
     {
-        lock_guard _{_mtx};
-        auto entity = _find(h);
-        if (not entity)
-            return;
+        if (h.node_->add_ref()) {
+            {
+                scoped_lock _{mtx_};
+                h.node_->priority = value + (uint64_t)offset;
 
-        value &= (1ull << DELEGATE_BITS) - 1;
-        value += (uint64_t)offset;
-        entity->priority = value;
-        _dirty = true;
+                // TODO: Replace this node
+            }
+            h.node_->release();
+        }
     }
 
     void remove(handle h) noexcept
     {
-        lock_guard _{_mtx};
-        auto entity = _find(h);
-        if (not entity)
-            return;
-
-        entity->id = {};
-        _dirty = true;
+        h.expire();
     }
 
     bool empty() const noexcept
     {
-        lock_guard _{_mtx};
-        return _events.empty();
+        lock_guard _{mtx_};
+        return node_front_ == nullptr && new_node_front_ == nullptr;
     }
 
     bool size() const noexcept
     {
-        lock_guard _{_mtx};
-        return _events.size();
+        lock_guard _{mtx_};
+        return size_;
     }
 
     template <typename Callable_>
@@ -283,27 +335,6 @@ class basic_event
         remove(std::move(r));
         return *this;
     }
-
-   private:
-    _entity_type* _find(handle const& h)
-    {
-        if (not h.key_)
-            throw std::logic_error{"invalid handle!"};
-
-        auto it = std::find_if(
-                _events.begin(), _events.end(),
-                [&](_entity_type const& s) {
-                    return h.key_ == s.id;
-                });
-        return it == _events.end() ? nullptr : &*it;
-    }
-
-   private:
-    container _events;
-    uint64_t _hash_gen = 0;
-
-    mutable Mutex_ _mtx;
-    volatile bool _dirty = false;
 };
 
 template <typename... Args_>

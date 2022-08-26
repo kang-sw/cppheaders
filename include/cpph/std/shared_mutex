@@ -1,0 +1,9 @@
+#include "cpph/thread/spinlock.hxx"
+#include <shared_mutex>
+
+namespace cpph {
+using std::shared_mutex;
+using std::shared_timed_mutex;
+using std::shared_lock;
+}
+
