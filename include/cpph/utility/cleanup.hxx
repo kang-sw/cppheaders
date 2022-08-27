@@ -27,21 +27,21 @@
 #include <utility>
 
 namespace cpph {
-template <typename Callable_>
+template <typename Callable>
 class cleanup_t
 {
    public:
-    ~cleanup_t() noexcept(std::is_nothrow_invocable_v<Callable_>) { _callable(); }
-    Callable_ _callable;
+    ~cleanup_t() noexcept(std::is_nothrow_invocable_v<Callable>) { _callable(); }
+    Callable _callable;
 };
 
-template <typename Callable_>
-cleanup_t(Callable_) -> cleanup_t<Callable_>;
+template <typename Callable>
+cleanup_t(Callable) -> cleanup_t<Callable>;
 
-template <typename Callable_>
-[[maybe_unused]] auto cleanup(Callable_&& callable)
+template <typename Callable>
+[[maybe_unused]] auto cleanup(Callable&& callable)
 {
-    return cleanup_t<std::remove_reference_t<Callable_>>{
-            std::forward<Callable_>(callable)};
+    return cleanup_t<std::remove_reference_t<Callable>>{
+            std::forward<Callable>(callable)};
 }
 }  // namespace cpph

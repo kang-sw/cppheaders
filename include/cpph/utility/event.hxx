@@ -70,12 +70,20 @@ enum class event_priority : uint64_t {
     first = ~uint64_t{},
 };
 
+template <class T>
+using event_fwd_arg_t = conditional_t<std::is_reference_v<T>, T, T const&>;
+
 template <typename Mutex, typename... Args>
 class basic_event
 {
    public:
     using event_fn = ufunction<event_control(Args...)>;
-    using param_pack_t = tuple<conditional_t<std::is_reference_v<Args>, Args, Args const&>...>;
+
+    template <class Callable>
+    static constexpr inline bool is_event_function_v = is_invocable_v<Callable> || is_invocable_v<Callable, Args...>;
+
+    template <class Callable>
+    using enable_if_event_t = enable_if_t<is_event_function_v<Callable>>;
 
    private:
     struct if_entity : enable_shared_from_this<if_entity> {
@@ -90,7 +98,7 @@ class basic_event
         shared_ptr<if_entity> p_next = nullptr;
 
        public:
-        virtual event_control operator()(param_pack_t) = 0;
+        virtual event_control operator()(event_fwd_arg_t<Args>...) = 0;
 
         virtual ~if_entity()
         {
@@ -130,7 +138,7 @@ class basic_event
     class handle
     {
         friend class basic_event;
-        weak_ptr<if_entity> node_ = nullptr;
+        weak_ptr<if_entity> node_ = {};
 
         explicit handle(weak_ptr<if_entity> p_node) noexcept
                 : node_{p_node}
@@ -138,19 +146,78 @@ class basic_event
         }
 
        public:
-        ~handle() noexcept {}
+        handle() noexcept = default;
+        handle(handle&& other) noexcept : node_(move(other.node_)) {}
+        auto& operator=(handle&& o) noexcept { return swap(node_, o.node_), *this; }
 
-        auto& operator=(handle&& o) noexcept
-        {
-            swap(node_, o.node_);
-            return *this;
-        }
-
-        handle(handle&& other) noexcept { (*this) = std::move(other); }
         bool valid() noexcept { return not node_.expired(); }
         void expire() noexcept
         {
             if (auto p_node = node_.lock()) { p_node->detach(); }
+        }
+    };
+
+   public:
+    template <class Callable, class = enable_if_event_t<Callable>>
+    static auto weak(weak_ptr<void> wptr, Callable&& callable)
+    {
+        return [wptr = std::move(wptr),
+                callable = std::forward<Callable>(callable)]  //
+               (event_fwd_arg_t<Args>... args) mutable
+               -> event_control {
+                   auto anchor = wptr.lock();  // Prevent anchor to be destroyed during function call
+                   if (anchor == nullptr) { return event_control::expire; }
+
+                   if constexpr (std::is_invocable_r_v<event_control, Callable, Args...>)
+                       return callable(args...);
+                   else if constexpr (std::is_invocable_v<Callable, Args...>)
+                       return callable(args...), event_control::ok;
+                   else if constexpr (std::is_invocable_r_v<event_control, Callable>)
+                       return callable();
+                   else if constexpr (std::is_invocable_v<Callable>)
+                       return callable(), event_control::ok;
+                   else
+                       return ((args.INVALID), ...);
+               };
+    }
+
+   public:
+    struct append_proxy {
+        basic_event& owner;
+        uint64_t priority;
+
+        weak_ptr<void> w_anchor;
+        handle* p_store_handle = nullptr;
+
+        template <typename Callable, class = enable_if_event_t<Callable>>
+        append_proxy& operator<<(Callable&& fn) noexcept
+        {
+            handle h_result;
+            if (w_anchor.expired())
+                h_result = owner.append(std::forward<Callable>(fn), priority);
+            else
+                h_result = owner.append(weak(w_anchor, std::forward<Callable>(fn)), priority);
+
+            if (auto p_dst = exchange(p_store_handle, nullptr)) { *p_dst = move(h_result); }
+            return *this;
+        }
+
+        append_proxy& operator<<(handle* dst) noexcept
+        {
+            p_store_handle = dst;
+            return *this;
+        }
+
+        append_proxy& operator<<(nullptr_t) noexcept
+        {
+            w_anchor = {};
+            return *this;
+        }
+
+        append_proxy& operator<<(weak_ptr<void> wp) noexcept
+        {
+            w_anchor = move(wp);
+            return *this;
         }
     };
 
@@ -166,10 +233,15 @@ class basic_event
         swap(new_node_front_, rhs.new_node_front_);
     }
 
+    append_proxy operator()(event_priority priority, int64_t value) noexcept { return append_proxy{*this, (uint64_t)priority + value}; }
+    append_proxy operator()(event_priority priority) noexcept { return append_proxy{*this, (uint64_t)priority}; }
+    append_proxy operator()(int64_t value) noexcept { return append_proxy{*this, (uint64_t)event_priority::middle + value}; }
+    append_proxy operator()() noexcept { return append_proxy{*this, (uint64_t)event_priority::middle + 0}; }
+
     template <typename... Params>
     void invoke(Params&&... args)
     {
-        // TODO: Perform insertion
+        // Perform insertion
         {
             scoped_lock _{mtx_};
 
@@ -199,19 +271,19 @@ class basic_event
                         new_node->p_prev = p_insert->weak_from_this();
                     }
                 } else {
-                    node_front_ = new_node;
+                    node_front_ = move(new_node);
                 }
             }
         }
 
-        // Iterate until find valid initial node
+        // Invoke chained methods
         mtx_.lock();
         shared_ptr<if_entity> p_head = node_front_;
 
         while (p_head != nullptr) {
             mtx_.unlock();
             auto p_node = exchange(p_head, p_head->p_next);
-            event_control r_invoke = (*p_node)(forward_as_tuple(std::forward<Params>(args)...));
+            event_control r_invoke = (*p_node)(std::forward<Params>(args)...);
             if (r_invoke & event_control::expire) { p_node->detach(), p_node.reset(); }
 
             mtx_.lock();
@@ -221,35 +293,32 @@ class basic_event
         mtx_.unlock();
     }
 
-    template <typename Callable_>
-    handle add(Callable_&& fn,
-               event_priority priority = event_priority::middle,
-               int64_t value = 0)
+    template <typename Callable, class = enable_if_event_t<Callable>>
+    handle append(Callable&& fn, uint64_t priority)
     {
         struct entity_t : if_entity {
-            decay_t<Callable_> fn_;
-            explicit entity_t(Callable_&& fn) : fn_(fn) {}
+            decay_t<Callable> fn_;
+            explicit entity_t(Callable&& fn) : fn_(fn) {}
 
-            event_control operator()(param_pack_t tup) override
+            event_control operator()(event_fwd_arg_t<Args>... args) override
             {
-                return std::apply([this](auto&... args) -> event_control {
-                    if constexpr (is_invocable_r_v<event_control, Callable_, Args...>) {
-                        return fn_(args...);
-                    } else if constexpr (is_invocable_r_v<bool, Callable_, Args...>) {
-                        return fn_(args...) ? event_control::ok : event_control::expire;
-                    } else if constexpr (is_invocable_v<Callable_, Args...>) {
-                        return fn_(args...), event_control::ok;
-                    } else if constexpr (is_invocable_v<Callable_>) {
-                        return fn_(), event_control::ok;
-                    } else {
-                        Callable_::ERROR_NO_INVOCATION_AVAILABLE;
-                    } }, tup);
+                if constexpr (is_invocable_r_v<event_control, Callable, Args...>) {
+                    return fn_(args...);
+                } else if constexpr (is_invocable_r_v<bool, Callable, Args...>) {
+                    return fn_(args...) ? event_control::ok : event_control::expire;
+                } else if constexpr (is_invocable_v<Callable, Args...>) {
+                    return fn_(args...), event_control::ok;
+                } else if constexpr (is_invocable_v<Callable>) {
+                    return fn_(), event_control::ok;
+                } else {
+                    Callable::ERROR_NO_INVOCATION_AVAILABLE;
+                }
             }
         };
 
-        shared_ptr<if_entity> p_new_node = make_shared<entity_t>(std::forward<Callable_>(fn));
+        shared_ptr<if_entity> p_new_node = make_shared<entity_t>(std::forward<Callable>(fn));
         p_new_node->owner = this;
-        p_new_node->priority = value + uint64_t(priority);
+        p_new_node->priority = priority;
 
         {
             scoped_lock _{mtx_};
@@ -262,30 +331,44 @@ class basic_event
         return handle{p_new_node};
     }
 
-    template <typename Ptr_, typename Callable_>
-    handle add_weak(Ptr_&& ptr, Callable_&& callable, event_priority priority = event_priority::middle, int64_t value = 0)
+    template <typename Callable, class = enable_if_event_t<Callable>>
+    handle add(Callable&& fn, event_priority prio, int64_t value)
     {
-        std::weak_ptr wptr{std::forward<Ptr_>(ptr)};
+        return this->append(std::forward<Callable>(fn), uint64_t(prio) + value);
+    }
 
-        return add(
-                [wptr = std::move(wptr),
-                 callable = std::forward<Callable_>(callable)](
-                        Args... args) mutable
-                -> event_control {
-                    auto anchor = wptr.lock();  // Prevent anchor to be destroyed during function call
-                    if (not anchor) { return event_control::expire; }
+    template <typename Callable, class = enable_if_event_t<Callable>>
+    handle add(Callable&& fn, event_priority evt)
+    {
+        return this->add(std::forward<Callable>(fn), evt, 0);
+    }
 
-                    if constexpr (std::is_invocable_r_v<event_control, Callable_, Args...>)
-                        return callable(args...);
-                    else if constexpr (std::is_invocable_v<Callable_, Args...>)
-                        return callable(args...), event_control::ok;
-                    else if constexpr (std::is_invocable_r_v<event_control, Callable_>)
-                        return callable();
-                    else if constexpr (std::is_invocable_v<Callable_>)
-                        return callable(), event_control::ok;
-                    else
-                        return ((args.INVALID), ...);
-                },
+    template <typename Callable, class = enable_if_event_t<Callable>>
+    handle add(Callable&& fn, int64_t value)
+    {
+        return this->add(std::forward<Callable>(fn), event_priority::middle, value);
+    }
+
+    template <typename Callable, class = enable_if_event_t<Callable>>
+    handle add(Callable&& fn)
+    {
+        return this->add(std::forward<Callable>(fn), event_priority::middle, 0);
+    }
+
+    template <typename Callable, class = enable_if_event_t<Callable>>
+    handle add_weak(weak_ptr<void> wptr, Callable&& callable, event_priority priority = event_priority::middle, int64_t value = 0)
+    {
+        return this->add(
+                weak(move(wptr), std::forward<Callable>(callable)),
+                priority,
+                value);
+    }
+
+    template <typename Callable, class = enable_if_event_t<Callable>>
+    handle add(weak_ptr<void> wptr, Callable&& callable, event_priority priority = event_priority::middle, int64_t value = 0)
+    {
+        return this->add(
+                weak(move(wptr), std::forward<Callable>(callable)),
                 priority,
                 value);
     }

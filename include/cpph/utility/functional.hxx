@@ -71,10 +71,10 @@ class ufunction<Ret_(Args_...)>
     };
 
    private:
-    template <typename Callable_>
-    void _assign_function(Callable_&& fn)
+    template <typename Callable>
+    void _assign_function(Callable&& fn)
     {
-        using callable_type = std::remove_cv_t<std::remove_reference_t<Callable_>>;
+        using callable_type = std::remove_cv_t<std::remove_reference_t<Callable>>;
 
         struct _callable_impl_t : _callable_t {
             Ret_ operator()(Args_... args) override
@@ -82,8 +82,8 @@ class ufunction<Ret_(Args_...)>
                 return std::invoke(_body, std::forward<Args_>(args)...);
             }
 
-            explicit _callable_impl_t(Callable_&& fwd)
-                    : _body(std::forward<Callable_>(fwd))
+            explicit _callable_impl_t(Callable&& fwd)
+                    : _body(std::forward<Callable>(fwd))
             {
             }
 
@@ -97,9 +97,9 @@ class ufunction<Ret_(Args_...)>
         };
 
         if constexpr (sizeof(_callable_impl_t) <= sizeof _sbo_buf) {  // allocate on heap
-            _callable = new (_sbob()) _callable_impl_t{std::forward<Callable_>(fn)};
+            _callable = new (_sbob()) _callable_impl_t{std::forward<Callable>(fn)};
         } else {  // apply SBO
-            _callable = new _callable_impl_t{std::forward<Callable_>(fn)};
+            _callable = new _callable_impl_t{std::forward<Callable>(fn)};
         }
     }
 
@@ -145,17 +145,17 @@ class ufunction<Ret_(Args_...)>
     }
 
     template <
-            typename Callable_,
+            typename Callable,
             typename = std::enable_if_t<
                     not std::is_same_v<
                             ufunction,
-                            std::remove_cv_t<std::remove_reference_t<Callable_>>>>,
+                            std::remove_cv_t<std::remove_reference_t<Callable>>>>,
             typename = std::enable_if_t<
-                    std::is_invocable_r_v<Ret_, Callable_, Args_...>>>
-    ufunction& operator=(Callable_&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable_>)
+                    std::is_invocable_r_v<Ret_, Callable, Args_...>>>
+    ufunction& operator=(Callable&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable>)
     {
         _destroy();
-        _assign_function(std::forward<Callable_>(fn));
+        _assign_function(std::forward<Callable>(fn));
         return *this;
     }
 
@@ -167,16 +167,16 @@ class ufunction<Ret_(Args_...)>
     }
 
     template <
-            typename Callable_,
+            typename Callable,
             typename = std::enable_if_t<
                     not std::is_same_v<
                             ufunction,
-                            std::remove_cv_t<std::remove_reference_t<Callable_>>>>,
+                            std::remove_cv_t<std::remove_reference_t<Callable>>>>,
             typename = std::enable_if_t<
-                    std::is_invocable_r_v<Ret_, Callable_, Args_...>>>
-    ufunction(Callable_&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable_>)
+                    std::is_invocable_r_v<Ret_, Callable, Args_...>>>
+    ufunction(Callable&& fn) noexcept(std::is_nothrow_move_constructible_v<Callable>)
     {
-        _assign_function(std::forward<Callable_>(fn));
+        _assign_function(std::forward<Callable>(fn));
     }
 
     operator bool() const noexcept
@@ -242,20 +242,20 @@ using std::bind_front;
 // Just forward STL bind
 using std::bind;
 
-template <typename Callable_, typename Tuple_>
+template <typename Callable, typename Tuple_>
 class _bound_functor_t
 {
-    Callable_ fn;
+    Callable fn;
     Tuple_ captures;
 
    public:
-    _bound_functor_t(Callable_&& fn, Tuple_&& captures)
-            : fn(std::forward<Callable_>(fn)), captures(std::forward<Tuple_>(captures)) {}
+    _bound_functor_t(Callable&& fn, Tuple_&& captures)
+            : fn(std::forward<Callable>(fn)), captures(std::forward<Tuple_>(captures)) {}
 
    private:
     template <typename... Captures_, typename... Args_>
     constexpr auto _fn_invoke_result(std::tuple<Captures_...> const&, Args_&&...) const
-            -> std::invoke_result_t<Callable_, Captures_..., Args_...>;
+            -> std::invoke_result_t<Callable, Captures_..., Args_...>;
 
     auto _get_forwarded() const noexcept
     {
@@ -305,12 +305,12 @@ class _bound_functor_t
  * Bind callable with arguments in front of parameter list.
  * Function parameters will be delivered to backward
  *
- * @tparam Callable_
+ * @tparam Callable
  * @tparam Captures_
  * @return
  */
-template <class Callable_, typename... Captures_>
-auto bind_front(Callable_ callable, Captures_&&... captures)
+template <class Callable, typename... Captures_>
+auto bind_front(Callable callable, Captures_&&... captures)
 {
     return _bound_functor_t{
             std::move(callable),
@@ -318,23 +318,23 @@ auto bind_front(Callable_ callable, Captures_&&... captures)
 }
 #endif
 
-template <typename Callable_>
+template <typename Callable>
 class _bound_weak_functor_t
 {
     std::weak_ptr<void> ptr;
-    Callable_ fn;
+    Callable fn;
 
    public:
-    _bound_weak_functor_t(std::weak_ptr<void> ptr, Callable_&& fn)
+    _bound_weak_functor_t(std::weak_ptr<void> ptr, Callable&& fn)
             : ptr(std::move(ptr)),
-              fn(std::forward<Callable_>(fn)) {}
+              fn(std::forward<Callable>(fn)) {}
 
     template <typename... Args_>
     auto operator()(Args_&&... args)
-            -> std::invoke_result_t<Callable_, Args_...>
+            -> std::invoke_result_t<Callable, Args_...>
     {
         auto tuple = std::forward_as_tuple(std::forward<Args_>(args)...);
-        enum : bool { return_void = std::is_void_v<std::invoke_result_t<Callable_, Args_...>> };
+        enum : bool { return_void = std::is_void_v<std::invoke_result_t<Callable, Args_...>> };
 
         if (auto anchor = ptr.lock()) {
             if constexpr (return_void)
@@ -351,10 +351,10 @@ class _bound_weak_functor_t
 
     template <typename... Args_>
     auto operator()(Args_&&... args) const
-            -> std::invoke_result_t<Callable_, Args_...>
+            -> std::invoke_result_t<Callable, Args_...>
     {
         auto tuple = std::forward_as_tuple(std::forward<Args_>(args)...);
-        enum : bool { return_void = std::is_void_v<std::invoke_result_t<Callable_, Args_...>> };
+        enum : bool { return_void = std::is_void_v<std::invoke_result_t<Callable, Args_...>> };
 
         if (auto anchor = ptr.lock()) {
             if constexpr (return_void)
@@ -374,8 +374,8 @@ class _bound_weak_functor_t
  * Bind front callable with weak reference. Actual callable will be invoked
  *  only when given weak reference is valid.
  */
-template <class Callable_, typename Ptr_, typename... Captures_>
-auto bind_front_weak(Ptr_&& ref, Callable_ callable, Captures_&&... captures)
+template <class Callable, typename Ptr_, typename... Captures_>
+auto bind_front_weak(Ptr_&& ref, Callable callable, Captures_&&... captures)
 {
     using std::decay_t;
     return _bound_weak_functor_t{

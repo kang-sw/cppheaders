@@ -17,6 +17,7 @@ add_executable(
         test-container.cpp
         test-event_queue.cpp
         test-pipeline.cpp
+        test-event.cpp
 )
 
 if (NOT TARGET doctest_with_main)
