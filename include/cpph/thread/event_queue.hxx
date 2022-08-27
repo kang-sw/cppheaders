@@ -274,6 +274,38 @@ class event_queue
             post(forward<Message>(message));
         }
     }
+
+   public:
+    struct payload_deallocator {
+        event_queue* p_owner_;
+        void operator()(char* p) noexcept
+        {
+            if (p_owner_) {
+                lock_guard _{p_owner_->alloc_lock_};
+                p_owner_->alloc_.deallocate(p);
+            } else {
+                delete[] p;
+            }
+        }
+    };
+
+    using temporary_payload_ptr = ptr<char[], payload_deallocator>;
+
+    //! Do not use this except for temporary post data generation!
+    auto allocate_temporary_payload(size_t nbyte) noexcept -> temporary_payload_ptr
+    {
+        temporary_payload_ptr ptr;
+        {
+            lock_guard _{alloc_lock_};
+            ptr = temporary_payload_ptr((char*)alloc_.allocate_nt(nbyte), payload_deallocator{this});
+        }
+
+        if (ptr == nullptr) {
+            ptr = temporary_payload_ptr{new char[nbyte], payload_deallocator{nullptr}};
+        }
+
+        return ptr;
+    }
 };
 
 }  // namespace cpph
