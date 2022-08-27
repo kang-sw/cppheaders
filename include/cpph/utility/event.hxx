@@ -51,6 +51,11 @@ inline event_control operator|(event_control a, event_control b)
     return (event_control)(int(a) | int(b));
 }
 
+inline int operator&(event_control a, event_control b)
+{
+    return int(a) & int(b);
+}
+
 enum {
     DELEGATE_BITS = 61
 };
@@ -73,7 +78,7 @@ class basic_event
     using param_pack_t = tuple<conditional_t<std::is_reference_v<Args>, Args, Args const&>...>;
 
    private:
-    struct if_entity {
+    struct if_entity : enable_shared_from_this<if_entity> {
        private:
         atomic<intptr_t> refcnt_ = 1;
 
@@ -81,52 +86,34 @@ class basic_event
         basic_event* owner = nullptr;
         uint64_t priority = 0;
 
-        if_entity* p_prev = nullptr;
-        if_entity* p_next = nullptr;
+        weak_ptr<if_entity> p_prev = {};
+        shared_ptr<if_entity> p_next = nullptr;
 
-        virtual ~if_entity() = default;
+       public:
         virtual event_control operator()(param_pack_t) = 0;
 
-        void release() noexcept
+        virtual ~if_entity()
         {
-            if (refcnt_.fetch_sub(1, std::memory_order_release) == 1) {
-                // If it's zero reference count, make it tiny value which makes further add_ref()
-                //  request be ignored.
-                constexpr auto SMALL_VALUE = numeric_limits<intptr_t>::min() / 2;
-                intptr_t expected = 0;
-
-                if (refcnt_.compare_exchange_strong(expected, SMALL_VALUE)) {
-                    {  // Detach this node from siblings safely
-                        [[maybe_unused]] scoped_lock _{owner->mtx_};
-
-                        // Erase owner pointer
-                        if_entity** pp_owner_node = nullptr;
-                        if (this == owner->node_front_)
-                            pp_owner_node = &owner->node_front_;
-                        else if (this == owner->new_node_front_)
-                            pp_owner_node = &owner->new_node_front_;
-
-                        if (pp_owner_node != nullptr) {
-                            *pp_owner_node = (*pp_owner_node)->p_next;
-                            (*pp_owner_node)->p_prev = nullptr;
-                        }
-
-                        // Unlink nodes
-                        p_prev->p_next = p_next;
-                        p_next->p_prev = p_prev;
-
-                        p_prev = p_next = nullptr;
-                    }
-
-                    // Erase self
-                    delete this;
-                }
-            }
+            scoped_lock _{owner->mtx_};
+            --owner->size_;
         }
 
-        bool add_ref() noexcept
+        void detach() noexcept
         {
-            return refcnt_.fetch_add(1, std::memory_order_acquire) > 0;
+            scoped_lock _{owner->mtx_};
+
+            // Validate
+            if (ptr_equals(owner->new_node_front_, this->weak_from_this()))
+                owner->new_node_front_ = p_next;
+            else if (ptr_equals(owner->node_front_, this->weak_from_this()))
+                owner->node_front_ = p_next;
+
+            // Detach this from previous / next node.
+            auto next = exchange(p_next, {});
+            auto prev = exchange(p_prev, {}).lock();
+
+            if (next) { next->p_prev = prev; }
+            if (prev) { prev->p_next = next; }
         }
     };
 
@@ -136,26 +123,22 @@ class basic_event
    private:
     mutable Mutex mtx_;
     size_t size_ = 0;
-    if_entity* node_front_ = nullptr;
-    if_entity* new_node_front_ = nullptr;
+    shared_ptr<if_entity> node_front_ = nullptr;
+    shared_ptr<if_entity> new_node_front_ = nullptr;
 
    public:
     class handle
     {
         friend class basic_event;
-        if_entity* node_ = nullptr;
+        weak_ptr<if_entity> node_ = nullptr;
 
-        explicit handle(if_entity* p_node) noexcept
+        explicit handle(weak_ptr<if_entity> p_node) noexcept
                 : node_{p_node}
         {
-            node_->add_ref();
         }
 
        public:
-        ~handle() noexcept
-        {
-            node_->release();
-        }
+        ~handle() noexcept {}
 
         auto& operator=(handle&& o) noexcept
         {
@@ -164,8 +147,11 @@ class basic_event
         }
 
         handle(handle&& other) noexcept { (*this) = std::move(other); }
-        bool valid() noexcept { return node_ != nullptr; }
-        void expire() noexcept { exchange(node_, nullptr)->release(); }
+        bool valid() noexcept { return not node_.expired(); }
+        void expire() noexcept
+        {
+            if (auto p_node = node_.lock()) { p_node->detach(); }
+        }
     };
 
    public:
@@ -188,19 +174,18 @@ class basic_event
             scoped_lock _{mtx_};
 
             while (new_node_front_ != nullptr) {
-                auto new_node = new_node_front_;
-                new_node->p_prev = nullptr;
+                auto new_node = exchange(new_node_front_, new_node_front_->p_next);
+                new_node->p_prev = {};
                 new_node->p_next = nullptr;
-                new_node_front_ = new_node_front_->p_next;
 
                 if (node_front_ != nullptr) {
-                    auto p_insert = node_front_;
+                    auto p_insert = node_front_.get();
                     while (p_insert && p_insert->priority > new_node->priority) {
                         if (p_insert->p_next != nullptr) {
-                            p_insert = p_insert->p_next;
+                            p_insert = p_insert->p_next.get();
                         } else {
                             p_insert->p_next = new_node;
-                            new_node->p_prev = p_insert;
+                            new_node->p_prev = p_insert->weak_from_this();
 
                             // done.
                             p_insert = nullptr;
@@ -208,10 +193,10 @@ class basic_event
                     }
 
                     if (p_insert) {
-                        p_insert->p_next->p_prev = new_node;
+                        if (auto& n = p_insert->p_next) { n->p_prev = new_node; }
                         new_node->p_next = p_insert->p_next;
                         p_insert->p_next = new_node;
-                        new_node->p_prev = p_insert;
+                        new_node->p_prev = p_insert->weak_from_this();
                     }
                 } else {
                     node_front_ = new_node;
@@ -219,10 +204,21 @@ class basic_event
             }
         }
 
-        // TODO: Perform invocation
-        for (if_entity* p_head;;) {
+        // Iterate until find valid initial node
+        mtx_.lock();
+        shared_ptr<if_entity> p_head = node_front_;
 
+        while (p_head != nullptr) {
+            mtx_.unlock();
+            auto p_node = exchange(p_head, p_head->p_next);
+            event_control r_invoke = (*p_node)(forward_as_tuple(std::forward<Params>(args)...));
+            if (r_invoke & event_control::expire) { p_node->detach(), p_node.reset(); }
+
+            mtx_.lock();
+            if (r_invoke & event_control::consume) { break; }
         }
+
+        mtx_.unlock();
     }
 
     template <typename Callable_>
@@ -251,18 +247,19 @@ class basic_event
             }
         };
 
-        ptr<if_entity> p_new_node = make_unique<entity_t>(std::forward<Callable_>(fn));
+        shared_ptr<if_entity> p_new_node = make_shared<entity_t>(std::forward<Callable_>(fn));
         p_new_node->owner = this;
         p_new_node->priority = value + uint64_t(priority);
 
         {
             scoped_lock _{mtx_};
-            auto p_node = p_new_node.release();
-            p_node->p_next = new_node_front_, new_node_front_->p_prev = p_node, new_node_front_ = p_node;
-            ++size_;
+            auto prev_front = exchange(new_node_front_, p_new_node);
+            if (prev_front) { prev_front->p_prev = p_new_node; }
+            p_new_node->p_next = prev_front;
 
-            return handle{new_node_front_};
+            ++size_;
         }
+        return handle{p_new_node};
     }
 
     template <typename Ptr_, typename Callable_>
@@ -291,19 +288,6 @@ class basic_event
                 },
                 priority,
                 value);
-    }
-
-    void priority(handle const& h, event_priority offset, int64_t value = 0) noexcept
-    {
-        if (h.node_->add_ref()) {
-            {
-                scoped_lock _{mtx_};
-                h.node_->priority = value + (uint64_t)offset;
-
-                // TODO: Replace this node
-            }
-            h.node_->release();
-        }
     }
 
     void remove(handle h) noexcept
