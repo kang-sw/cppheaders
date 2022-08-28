@@ -323,7 +323,8 @@ class if_primitive_control
     virtual void restore(archive::if_reader* strm,
                          void* pvdata,
                          object_metadata_t desc_self,
-                         optional_property_metadata opt_as_property) const = 0;
+                         optional_property_metadata opt_as_property) const
+            = 0;
 
     /**
      * Check status of given parameter. Default is 'required', which cannot be ignored.
@@ -373,13 +374,15 @@ class templated_primitive_control : public if_primitive_control
             archive::if_writer* strm,
             const Ty_& data,
             object_metadata_t desc_self,
-            optional_property_metadata opt_as_property) const = 0;
+            optional_property_metadata opt_as_property) const
+            = 0;
 
     virtual void impl_restore(
             archive::if_reader* strm,
             Ty_* pvdata,
             object_metadata_t desc_self,
-            optional_property_metadata opt_as_property) const = 0;
+            optional_property_metadata opt_as_property) const
+            = 0;
 
     virtual requirement_status_tag
     impl_status(const Ty_* data) const noexcept
@@ -415,7 +418,8 @@ constexpr bool has_object_metadata_v = false;
 
 template <typename ValTy_>
 constexpr bool has_object_metadata_v<
-        ValTy_, std::void_t<decltype(get_object_metadata<ValTy_>())>> = true;
+        ValTy_, std::void_t<decltype(get_object_metadata<ValTy_>())>>
+        = true;
 
 template <typename ValTy_>
 using has_object_metadata_t = std::enable_if_t<has_object_metadata_v<ValTy_>>;
@@ -1111,7 +1115,8 @@ constexpr bool is_cpph_refl_object_v = false;
 
 template <typename Ty_>
 constexpr bool is_cpph_refl_object_v<
-        Ty_, std::void_t<decltype(std::declval<Ty_>().initialize_object_metadata())>> = true;
+        Ty_, std::void_t<decltype(std::declval<Ty_>().initialize_object_metadata())>>
+        = true;
 }  // namespace _detail
 
 template <typename ValTy_>
@@ -1173,7 +1178,8 @@ constexpr bool has_object_metadata_initializer_v = false;
 
 template <typename ValTy_>
 constexpr bool has_object_metadata_initializer_v<
-        ValTy_, std::void_t<decltype(initialize_object_metadata(type_tag_v<ValTy_>))>> = true;
+        ValTy_, std::void_t<decltype(initialize_object_metadata(type_tag_v<ValTy_>))>>
+        = true;
 
 template <bool IsMutable>
 template <typename Ty_, class>
@@ -1301,3 +1307,31 @@ auto get_object_metadata_t<ValTy_, std::enable_if_t<_detail::is_cpph_refl_object
     return &*inst;
 }
 }  // namespace cpph::refl
+
+namespace cpph::archive {
+inline namespace decorators {
+template <class T>
+struct write_or_t {
+    refl::object_const_view_t view;
+    T const value;
+};
+
+template <class Base, class T>
+auto write_or(Base&& base, T&& value) noexcept
+{
+    return write_or_t<decay_t<T>>{{base}, std::forward<T>(value)};
+}
+}  // namespace decorators
+
+template <class T>
+if_writer& operator<<(if_writer& wr, write_or_t<T> const& val)
+{
+    if (not val.view.empty())
+        wr << val.view;
+    else
+        wr << val.value;
+
+    return wr;
+}
+
+}  // namespace cpph::archive
