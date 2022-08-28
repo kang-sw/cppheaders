@@ -52,6 +52,7 @@ struct singleton_t {
     {
         assert(_ptr());
         delete _ptr();
+        _ptr() = nullptr;
     }
 
     /**
@@ -76,5 +77,11 @@ Ty_& default_singleton()
     static Ty_ _instance;
     return _instance;
 }
+
+template <class T, class Label = void>
+struct basic_singleton {
+    using value_type = T;
+    static T& get() noexcept { return default_singleton<T, Label>(); }
+};
 
 }  // namespace cpph

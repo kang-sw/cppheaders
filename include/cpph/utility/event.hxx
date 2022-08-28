@@ -238,8 +238,25 @@ class basic_event
     append_proxy operator()(int64_t value) noexcept { return append_proxy{*this, (uint64_t)event_priority::middle + value}; }
     append_proxy operator()() noexcept { return append_proxy{*this, (uint64_t)event_priority::middle + 0}; }
 
-    template <typename... Params>
-    void invoke(Params&&... args)
+    class frontend {
+        basic_event* owner_;
+
+       public:
+        explicit frontend(basic_event* owner = nullptr) : owner_(owner) {}
+
+       public:
+        append_proxy operator()(event_priority priority, int64_t value) noexcept { return append_proxy{*owner_, (uint64_t)priority + value}; }
+        append_proxy operator()(event_priority priority) noexcept { return append_proxy{*owner_, (uint64_t)priority}; }
+        append_proxy operator()(int64_t value) noexcept { return append_proxy{*owner_, (uint64_t)event_priority::middle + value}; }
+        append_proxy operator()() noexcept { return append_proxy{*owner_, (uint64_t)event_priority::middle + 0}; }
+    };
+
+    frontend make_frontend() noexcept
+    {
+        return frontend{this};
+    }
+
+    void invoke(event_fwd_arg_t<Args>... args)
     {
         // Perform insertion
         {
@@ -283,7 +300,7 @@ class basic_event
         while (p_head != nullptr) {
             mtx_.unlock();
             auto p_node = exchange(p_head, p_head->p_next);
-            event_control r_invoke = (*p_node)(std::forward<Params>(args)...);
+            event_control r_invoke = (*p_node)(args...);
             if (r_invoke & event_control::expire) { p_node->detach(), p_node.reset(); }
 
             mtx_.lock();
