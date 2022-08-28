@@ -589,18 +589,47 @@ class if_reader : public if_archive_base
     bool is_string_next() const { return type_next() == entity_type::string; }
 };
 
-constexpr struct key_next_t {
-} key_next;
+inline namespace decorators {
+// clang-format off
+constexpr struct key_next_t {} key_next;
 
-inline if_writer& operator<<(if_writer& writer, key_next_t)
+struct push_array_t { size_t const n; };
+struct push_object_t { size_t const n; };
+struct push_binary_t { size_t const n; };
+constexpr struct push_array_gen_t { constexpr push_array_t operator()(size_t n) const noexcept { return {n}; }} push_array;
+constexpr struct push_object_gen_t { constexpr push_object_t operator()(size_t n) const noexcept { return {n}; }} push_object;
+constexpr struct push_binary_gen_t { constexpr push_binary_t operator()(size_t n) const noexcept { return {n}; }} push_binary;
+
+constexpr struct pop_array_t {} pop_array;
+constexpr struct pop_object_t {} pop_object;
+constexpr struct pop_binary_t {} pop_binary;
+// clang-format on
+}  // namespace decorators
+
+template <class Manip, class = enable_if_t<is_invocable_r_v<if_writer&, Manip, if_writer&>>>
+inline if_writer& operator<<(if_writer& writer, Manip&& manip)
 {
-    return writer.write_key_next(), writer;
+    return manip(writer);
 }
 
-inline if_reader& operator<<(if_reader& reader, key_next_t)
+template <class Manip, class = enable_if_t<is_invocable_r_v<if_reader&, Manip, if_reader&>>>
+inline if_reader& operator>>(if_reader& reader, Manip&& manip)
 {
-    return reader.read_key_next(), reader;
+    return manip(reader);
 }
+
+inline if_writer& operator<<(if_writer& writer, if_writer& (*fn)(if_writer&)) { return fn(writer); }
+inline if_reader& operator>>(if_reader& reader, if_reader& (*fn)(if_reader&)) { return fn(reader); }
+
+inline if_writer& operator<<(if_writer& writer, key_next_t) { return writer.write_key_next(), writer; }
+inline if_writer& operator<<(if_writer& writer, push_array_t s) { return writer.array_push(s.n); }
+inline if_writer& operator<<(if_writer& writer, push_object_t s) { return writer.object_push(s.n); }
+inline if_writer& operator<<(if_writer& writer, push_binary_t s) { return writer.binary_push(s.n); }
+inline if_writer& operator<<(if_writer& writer, pop_binary_t) { return writer.binary_pop(); }
+inline if_writer& operator<<(if_writer& writer, pop_object_t) { return writer.object_pop(); }
+inline if_writer& operator<<(if_writer& writer, pop_array_t) { return writer.array_pop(); }
+
+inline if_reader& operator<<(if_reader& reader, key_next_t) { return reader.read_key_next(), reader; }
 
 template <typename Any_>
 if_writer& operator<<(if_writer& writer, Any_ const& value)
