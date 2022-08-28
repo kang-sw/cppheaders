@@ -592,6 +592,7 @@ class if_reader : public if_archive_base
 inline namespace decorators {
 // clang-format off
 constexpr struct key_next_t {} key_next;
+constexpr auto key = key_next;
 
 struct push_array_t { size_t const n; };
 struct push_object_t { size_t const n; };

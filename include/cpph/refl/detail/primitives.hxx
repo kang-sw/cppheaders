@@ -476,3 +476,26 @@ INTERNAL_CPPH_define_(
     return &*desc;
 }
 }  // namespace cpph::refl
+
+namespace std {
+inline CPPH_REFL_DEFINE_PRIM_begin(string_view)
+{
+    CPPH_REFL_primitive_type(string);
+    CPPH_REFL_primitive_restore(_0, _1) { throw std::logic_error{"invalid restoration on view!"}; }
+    CPPH_REFL_primitive_archive(strm, value) { *strm << value; }
+}
+CPPH_REFL_DEFINE_PRIM_end();
+}  // namespace std
+
+CPPH_REFL_DEFINE_PRIM_T_begin(T, is_template_instance_of<T, cpph::array_view>::value)
+{
+    CPPH_REFL_primitive_type(array);
+    CPPH_REFL_primitive_restore(_0, _1) { throw std::logic_error{"invalid restoration on view!"}; }
+    CPPH_REFL_primitive_archive(strm, value)
+    {
+        *strm << archive::push_array(value.size());
+        for (auto& v : value) { *strm << v; }
+        *strm << archive::pop_array;
+    }
+}
+CPPH_REFL_DEFINE_PRIM_T_end();
