@@ -14,6 +14,12 @@ struct alloca_fwd_list {
     template <bool IsConst>
     struct basic_iterator {
         using node_type = conditional_t<IsConst, node const, node>;
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = conditional_t<IsConst, T const, T>;
+        using pointer = value_type*;
+        using reference = value_type&;
+
         node_type* _cursor;
 
         basic_iterator& operator++() noexcept { return _cursor = _cursor->next, *this; }
@@ -31,28 +37,33 @@ struct alloca_fwd_list {
     using const_iterator = basic_iterator<true>;
 
    public:
-    node* _first = nullptr;
+    node* first_ = nullptr;
+    size_t nelem_ = 0;
 
    public:
     template <typename... Args>
     T& _emplace_with(void* buffer, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
     {
-        _first = new (buffer) node{_first, {std::forward<Args>(args)...}};
-        return _first->data;
+        first_ = new (buffer) node{first_, {std::forward<Args>(args)...}};
+        ++nelem_;
+        return first_->data;
     }
 
-    auto begin() noexcept { return iterator{_first}; }
-    auto begin() const noexcept { return const_iterator{_first}; }
+    auto begin() noexcept { return iterator{first_}; }
+    auto begin() const noexcept { return const_iterator{first_}; }
     auto cbegin() const noexcept { return this->begin(); }
     auto end() noexcept { return iterator{nullptr}; }
     auto end() const noexcept { return const_iterator{nullptr}; }
     auto cend() const noexcept { return this->end(); }
 
+    auto empty() const noexcept { return first_ == nullptr; }
+    auto size() const noexcept { return nelem_; }
+
    public:
     ~alloca_fwd_list() noexcept(std::is_nothrow_destructible_v<T>)
     {
-        for (; _first; _first = _first->next) {
-            _first->data.~T();
+        for (; first_; first_ = first_->next) {
+            first_->data.~T();
         }
     }
 };
