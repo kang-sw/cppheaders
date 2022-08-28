@@ -33,21 +33,21 @@ namespace cpph {
 inline namespace algorithm {
 using std::move;
 
-#define INTERNAL_CPPH_DEFINE_WRAPPER(FUNC)                                          \
-    template <typename Container_, typename... Args_>                               \
-    auto FUNC(Container_&& a, Args_&&... args)                                      \
-    {                                                                               \
-        return std::FUNC(std::begin(a), std::end(a), std::forward<Args_>(args)...); \
+#define INTERNAL_CPPH_DEFINE_WRAPPER(FUNC)                                         \
+    template <typename Container, typename... Args>                                \
+    auto FUNC(Container&& a, Args&&... args)                                       \
+    {                                                                              \
+        return std::FUNC(std::begin(a), std::end(a), std::forward<Args>(args)...); \
     }
 
-#define INTERNAL_CPPH_DEFINE_WRAPPER2(FUNC)                                  \
-    template <typename ContainerA_, typename ContainerB_, typename... Args_> \
-    auto FUNC##2(ContainerA_ && a, ContainerB_ && b, Args_ && ... args)      \
-    {                                                                        \
-        return std::FUNC(                                                    \
-                std::begin(a), std::end(a),                                  \
-                std::begin(b), std::end(b),                                  \
-                std::forward<Args_>(args)...);                               \
+#define INTERNAL_CPPH_DEFINE_WRAPPER2(FUNC)                               \
+    template <typename ContainerA, typename ContainerB, typename... Args> \
+    auto FUNC##2(ContainerA && a, ContainerB && b, Args && ... args)      \
+    {                                                                     \
+        return std::FUNC(                                                 \
+                std::begin(a), std::end(a),                               \
+                std::begin(b), std::end(b),                               \
+                std::forward<Args>(args)...);                             \
     }
 
 INTERNAL_CPPH_DEFINE_WRAPPER(all_of)
@@ -176,15 +176,15 @@ INTERNAL_CPPH_DEFINE_WRAPPER(transform_inclusive_scan)
 #undef INTERNAL_CPPH_DEFINE_WRAPPER
 
 // helper methods
-template <typename Range_, typename Pred_>
-auto erase_if(Range_&& range, Pred_&& pred)
+template <typename Range, typename Pred>
+auto erase_if(Range&& range, Pred&& pred)
 {
-    auto iter = std::remove_if(std::begin(range), std::end(range), std::forward<Pred_>(pred));
+    auto iter = std::remove_if(std::begin(range), std::end(range), std::forward<Pred>(pred));
     return range.erase(iter, std::end(range));
 }
 
-template <typename Range_, typename Pred_>
-size_t erase_if_each(Range_&& map, Pred_&& pred)
+template <typename Range, typename Pred>
+size_t erase_if_each(Range&& map, Pred&& pred)
 {
     size_t n_erased = 0;
 
@@ -198,8 +198,25 @@ size_t erase_if_each(Range_&& map, Pred_&& pred)
     return n_erased;
 }
 
-template <typename Set_, typename Key_>
-auto find_ptr(Set_&& set, Key_ const& key)
+template <class Range, class PredOp, class PredErase>
+size_t for_each_or_erase(Range&& map, PredErase&& pred_erase, PredOp&& pred_op)
+{
+    size_t n_erased = 0;
+
+    for (auto it = map.begin(); it != map.end();) {
+        if (pred(*it)) {
+            it = map.erase(it), ++n_erased;
+        } else {
+            pred_op(*it);
+            ++it;
+        }
+    }
+
+    return n_erased;
+}
+
+template <typename Set, typename Key>
+auto find_ptr(Set&& set, Key const& key)
         -> decltype(&*set.find(key))
 {
     auto it = set.find(key);
@@ -221,34 +238,34 @@ auto set_push(Container&& c, Elem&& e, Compare&& compare = std::less<>{})
     }
 }
 
-template <typename Set_, typename Key_>
-auto contains(Set_&& set, Key_ const& key)
+template <typename Set, typename Key>
+auto contains(Set&& set, Key const& key)
 {
-    return !!find_ptr(std::forward<Set_>(set), std::forward<const Key_>(key));
+    return !!find_ptr(std::forward<Set>(set), std::forward<const Key>(key));
 }
 
-template <typename Float_>
-auto range_alpha(Float_ value, Float_ v1, Float_ v2)
+template <typename Float>
+auto range_alpha(Float value, Float v1, Float v2)
 {
-    if (v1 == v2) { return Float_(value > v1); }
+    if (v1 == v2) { return Float(value > v1); }
     auto [min, max] = std::minmax(v1, v2);
 
-    Float_ alpha = std::clamp(value, min, max);
+    Float alpha = std::clamp(value, min, max);
     alpha = (alpha - min) / (max - min);
 
     return alpha;
 }
 
-template <typename Alpha_, typename ValTy_>
-auto lerp(ValTy_ const& a, ValTy_ const& b, Alpha_ const& alpha)
+template <typename Alpha, typename ValTy>
+auto lerp(ValTy const& a, ValTy const& b, Alpha const& alpha)
 {
     return a + (b - a) * alpha;
 }
 
-template <typename ValTy_ = double, typename Iter_, typename Mult_ = std::multiplies<>>
-auto variance(Iter_ begin, Iter_ end, Mult_ mult = std::multiplies<>{})
+template <typename ValTy = double, typename Iter, typename Mult = std::multiplies<>>
+auto variance(Iter begin, Iter end, Mult mult = std::multiplies<>{})
 {
-    auto div = static_cast<ValTy_>(std::distance(begin, end));
+    auto div = static_cast<ValTy>(std::distance(begin, end));
     auto mean = std::reduce(begin, end) / div;
     return std::transform_reduce(
                    begin, end,
@@ -261,15 +278,15 @@ auto variance(Iter_ begin, Iter_ end, Mult_ mult = std::multiplies<>{})
          / div;
 }
 
-template <typename ValTy_ = double, typename Container_, typename Mult_ = std::multiplies<>>
-auto variance(Container_&& cont, Mult_ mult = std::multiplies<>{})
+template <typename ValTy = double, typename Container, typename Mult = std::multiplies<>>
+auto variance(Container&& cont, Mult mult = std::multiplies<>{})
 {
-    return variance(std::begin(cont), std::end(cont), std::forward<Mult_>(mult));
+    return variance(std::begin(cont), std::end(cont), std::forward<Mult>(mult));
 }
 
 struct owner_equal_t {
-    template <typename PtrA_, typename PtrB_>
-    bool operator()(PtrA_ const& a, PtrB_ const& b) const noexcept
+    template <typename PtrA, typename PtrB>
+    bool operator()(PtrA const& a, PtrB const& b) const noexcept
     {
         return not a.owner_before(b) && not b.owner_before(a);
     }
