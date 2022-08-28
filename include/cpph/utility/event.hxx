@@ -238,17 +238,18 @@ class basic_event
     append_proxy operator()(int64_t value) noexcept { return append_proxy{*this, (uint64_t)event_priority::middle + value}; }
     append_proxy operator()() noexcept { return append_proxy{*this, (uint64_t)event_priority::middle + 0}; }
 
-    class frontend {
+    class frontend
+    {
         basic_event* owner_;
 
        public:
         explicit frontend(basic_event* owner = nullptr) : owner_(owner) {}
 
        public:
-        append_proxy operator()(event_priority priority, int64_t value) noexcept { return append_proxy{*owner_, (uint64_t)priority + value}; }
-        append_proxy operator()(event_priority priority) noexcept { return append_proxy{*owner_, (uint64_t)priority}; }
-        append_proxy operator()(int64_t value) noexcept { return append_proxy{*owner_, (uint64_t)event_priority::middle + value}; }
-        append_proxy operator()() noexcept { return append_proxy{*owner_, (uint64_t)event_priority::middle + 0}; }
+        auto operator()(event_priority priority, int64_t value) const noexcept { return append_proxy{*owner_, (uint64_t)priority + value}; }
+        auto operator()(event_priority priority) const noexcept { return append_proxy{*owner_, (uint64_t)priority}; }
+        auto operator()(int64_t value) const noexcept { return append_proxy{*owner_, (uint64_t)event_priority::middle + value}; }
+        auto operator()() const noexcept { return append_proxy{*owner_, (uint64_t)event_priority::middle + 0}; }
     };
 
     frontend make_frontend() noexcept
