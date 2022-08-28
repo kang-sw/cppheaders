@@ -238,8 +238,7 @@ bool ptr_equals(Ptr1_&& lhs, Ptr2_&& rhs)
 template <class Opr_, class X_, class Y_ = X_>
 struct has_binary_op {
     template <typename Op_, typename LTy_, typename RTy_>
-    static auto _test(int) -> decltype(
-            std::declval<Op_>()(std::declval<LTy_>(), std::declval<RTy_>()), std::true_type{})
+    static auto _test(int) -> decltype(std::declval<Op_>()(std::declval<LTy_>(), std::declval<RTy_>()), std::true_type{})
     {
         return {};
     }
@@ -275,7 +274,7 @@ constexpr auto enable_if_v() -> decltype(std::declval<std::enable_if_t<Test_, Ty
 
 // constexpr declval
 template <typename Ty_>
-constexpr Ty_ declval();
+constexpr Ty_ declval_c() noexcept;
 
 // is_any_of template
 template <typename Ty_, typename... Args_>

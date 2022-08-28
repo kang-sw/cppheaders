@@ -26,10 +26,12 @@
 #include <cctype>
 #include <cstdint>
 
+#include "cpph/utility/templates.hxx"
+
 namespace cpph::strutil {
 
-template <typename Char_, typename OutIt_>
-void _escape_ch(Char_ ch, OutIt_&& out)
+template <typename Char, typename OutIt>
+void _escape_ch(Char ch, OutIt&& out)
 {
     if (ch < 0 || std::isprint(ch) && ch != '\\' && ch != '\"')  // && ch != '\?' && ch != '\'' )
         *out = ch;
@@ -79,8 +81,8 @@ void _escape_ch(Char_ ch, OutIt_&& out)
     }
 }
 
-template <typename InIt_, typename OutIt_>
-void json_escape(InIt_ begin, InIt_ end, OutIt_ out)
+template <typename InIt, typename OutIt>
+void json_escape(InIt begin, InIt end, OutIt out)
 {
     for (auto it = begin; it != end; ++it) { _escape_ch(*it, out); }
 }
@@ -93,8 +95,8 @@ inline int hexval(char hi, char lo)
     return (hi << 4) + lo;
 }
 
-template <typename InputIt_, typename OutIt_>
-void json_unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
+template <typename InputIt, typename OutIt>
+void json_unescape(InputIt begin, InputIt end, OutIt out)
 {
     for (auto it = begin; it != end;) {
         char ch = *it++;
@@ -137,5 +139,61 @@ void json_unescape(InputIt_ begin, InputIt_ end, OutIt_ out)
             }
         }
     }
+}
+
+/**
+ * Validate UTF-8 string by leaping its
+ *
+ * @see https://gist.github.com/ichramm/3ffeaf7ba4f24853e9ecaf176da84566
+ */
+template <class BeginIt, class EndIt, class OutIt,
+          class = enable_if_t<sizeof(decay_t<decltype(*declval<BeginIt>())>) == 1>>
+size_t validate_utf8(BeginIt it, EndIt const& end, OutIt out)
+{
+    // Based on this one: http://www.zedwood.com/article/cpp-is-valid-utf8-string-function
+    unsigned char shelf[4];
+    size_t new_size = 0;
+    int n;
+    unsigned char c;
+
+    for (; it != end;) {
+        c = (unsigned char)*it++;
+
+        if (0x00 <= c && c <= 0x7f) {
+            *out++ = c, ++new_size;
+            continue;
+        } else if ((c & 0xE0) == 0xC0) {
+            n = 1;
+        } else if ((c & 0xF0) == 0xE0) {
+            n = 2;  // 1110bbbb
+        } else if ((c & 0xF8) == 0xF0) {
+            n = 3;  // 11110bbb
+        } else {
+            continue;
+        }
+
+        // first character
+        shelf[0] = c;
+
+        for (auto j = 0; j < n; ++j) {
+            if (it == end) {
+                goto END;
+            }
+
+            if (((shelf[j + 1] = (unsigned char)*it++) & 0xC0) != 0x80) {
+                goto SKIP;
+            }
+        }
+
+        for (auto j = 0; j < n + 1; ++j) {
+            *out++ = shelf[j];
+        }
+
+        new_size += n + 1;
+    SKIP:;
+    }
+
+END:;
+    return new_size;
 }
 }  // namespace cpph::strutil
