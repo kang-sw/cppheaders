@@ -294,6 +294,14 @@ class session : public if_session, public std::enable_shared_from_this<session>
     }
 
     /**
+     * Get event procedure reference
+     */
+    auto event_proc() const noexcept
+    {
+        return _event_proc;
+    }
+
+    /**
      * Close
      *
      * @return false if connection is already expired
