@@ -39,6 +39,18 @@ target_sources(${PROJECT_NAME} PRIVATE src/localize.cpp)
 add_library(kang-sw::cpph::localization ALIAS ${PROJECT_NAME})
 
 # -------------------------------------------------------------------------------------------------
+project(cppheaders.os)
+add_library(${PROJECT_NAME} STATIC)
+target_link_libraries(${PROJECT_NAME} PUBLIC cppheaders)
+
+target_sources(
+        ${PROJECT_NAME} PRIVATE
+
+        src/module.cpp)
+
+add_library(kang-sw::cpph::os ALIAS ${PROJECT_NAME})
+
+# -------------------------------------------------------------------------------------------------
 project(cppheaders.stb)
 add_library(${PROJECT_NAME} STATIC)
 
