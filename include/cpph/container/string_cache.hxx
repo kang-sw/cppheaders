@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cassert>
 #include <cpph/std/string>
 #include <cpph/std/string_view>
@@ -66,17 +67,25 @@ class string_cache
         payload_.reserve(num_chars + (sizeof(node) + sizeof(size_t)) * num_strings);
     }
 
-    auto push_back(string_view s) -> const_iterator
+    template <class... Str>
+    auto push_back(Str&&... strings)
     {
         assert((payload_.size() & (sizeof(node) - 1)) == 0);
-        size_t pos = payload_.size();
-        size_t len = s.size();
 
-        payload_.reserve(payload_.size() + sizeof(node) + align_ceil_(s.size() + 1));
+        string_view views[] = {strings...};
+        size_t pos = payload_.size();
+        size_t str_len = 0;
+        for (auto& s : views) { str_len += s.size(); }
+
+        payload_.reserve(payload_.size() + sizeof(node) + align_ceil_(str_len + 1));
         payload_.append((char*)&pos, sizeof pos);
-        payload_.append((char*)&len, sizeof len);
-        payload_.append(s);
-        payload_.append(s.size() & (sizeof(size_t) - 1), '\0');  // Align to 8
+        payload_.append((char*)&str_len, sizeof str_len);
+
+        for (auto& s : views) { payload_.append(s); }
+        payload_.push_back('\0');
+
+        // Fill with zeros until size align to size_t
+        payload_.append((str_len + 1) & (sizeof(size_t) - 1), '\0');
 
         assert((payload_.size() & sizeof(size_t)) == 0);
         return const_iterator(this, pos);
