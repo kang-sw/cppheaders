@@ -20,6 +20,7 @@ class reader : public archive::if_reader
 
     //! Prepare for next list of tokens
     void reset();
+    void clear() override { reset(), if_reader::clear(); }
 
     //! Validate internal state.
     //! Reads content from buffer.
