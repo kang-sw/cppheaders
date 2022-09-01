@@ -18,8 +18,8 @@ class string_cache
    public:
     class const_iterator
     {
-        string_cache const* owner_;
-        node const* p_;
+        string_cache const* s_;
+        size_t pos_;
 
        public:
         using value_type = string_view;
@@ -28,21 +28,20 @@ class string_cache
         using iterator_category = std::forward_iterator_tag;
 
        public:
-        explicit const_iterator(string_cache const* owner, node* p) noexcept : owner_(owner), p_(p) {}
-        bool operator==(const_iterator other) const noexcept { return p_ == other.p_; }
-        bool operator!=(const_iterator other) const noexcept { return not(p_ == other.p_); }
+        explicit const_iterator(string_cache const* owner, size_t pos) noexcept : s_(owner), pos_(pos) {}
+        bool operator==(const_iterator other) const noexcept { return pos_ == other.pos_; }
+        bool operator!=(const_iterator other) const noexcept { return not(pos_ == other.pos_); }
 
         auto operator*() const noexcept
         {
-            return string_view{owner_->payload_}.substr(p_->pos + sizeof(node), p_->str_len);
+            auto n = s_->node_at_(pos_);
+            assert(pos_ + sizeof(node) < s_->payload_.size());
+            return string_view{s_->payload_.data() + pos_ + sizeof(node), n->str_len};
         }
         const_iterator& operator++() noexcept
         {
-            p_ = (node const*)((char const*)p_ + sizeof(node) + align_ceil_(p_->str_len + 1));
-            assert(([this, distance = (char const*)p_ - owner_->payload_.data()] {
-                return distance >= 0 && distance < owner_->payload_.size();
-            }()));
-
+            auto n = s_->node_at_(pos_);
+            pos_ += sizeof(node) + align_ceil_(n->str_len + 1);
             return *this;
         }
         const_iterator operator++(int) noexcept
@@ -67,18 +66,20 @@ class string_cache
         payload_.reserve(num_chars + (sizeof(node) + sizeof(size_t)) * num_strings);
     }
 
-    void push_back(string_view s)
+    auto push_back(string_view s) -> const_iterator
     {
+        assert((payload_.size() & (sizeof(node) - 1)) == 0);
         size_t pos = payload_.size();
         size_t len = s.size();
 
-        payload_.reserve(sizeof(node) + align_ceil_(s.size() + 1));
+        payload_.reserve(payload_.size() + sizeof(node) + align_ceil_(s.size() + 1));
         payload_.append((char*)&pos, sizeof pos);
         payload_.append((char*)&len, sizeof len);
         payload_.append(s);
         payload_.append(s.size() & (sizeof(size_t) - 1), '\0');  // Align to 8
 
         assert((payload_.size() & sizeof(size_t)) == 0);
+        return const_iterator(this, pos);
     }
 
     void clear() noexcept
@@ -86,12 +87,13 @@ class string_cache
         payload_.clear();
     }
 
-    auto begin() const noexcept { return const_iterator{this, (node*)payload_.data()}; }
-    auto end() const noexcept { return const_iterator{this, (node*)(payload_.data() + payload_.size())}; }
+    auto begin() const noexcept { return const_iterator{this, 0}; }
+    auto end() const noexcept { return const_iterator{this, payload_.size()}; }
     auto cbegin() const noexcept { return begin(); }
     auto cend() const noexcept { return end(); }
 
    private:
     static size_t align_ceil_(size_t len) noexcept { return (len + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1); }
+    auto node_at_(size_t pos) const noexcept -> node const* { return (node const*)(payload_.data() + pos); }
 };
 }  // namespace cpph
