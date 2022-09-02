@@ -77,7 +77,8 @@ class string_cache
         size_t str_len = 0;
         for (auto& s : views) { str_len += s.size(); }
 
-        payload_.reserve(payload_.size() + sizeof(node) + align_ceil_(str_len + 1));
+        auto end_pos = payload_.size() + sizeof(node) + align_ceil_(str_len + 1);
+        payload_.reserve(end_pos);
         payload_.append((char*)&pos, sizeof pos);
         payload_.append((char*)&str_len, sizeof str_len);
 
@@ -85,9 +86,9 @@ class string_cache
         payload_.push_back('\0');
 
         // Fill with zeros until size align to size_t
-        payload_.append((str_len + 1) & (sizeof(size_t) - 1), '\0');
+        payload_.append(end_pos - payload_.size(), '\0');
 
-        assert((payload_.size() & sizeof(size_t)) == 0);
+        assert((payload_.size() & (sizeof(size_t) - 1)) == 0);
         return const_iterator(this, pos);
     }
 
