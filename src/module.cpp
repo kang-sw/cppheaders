@@ -6,6 +6,8 @@
 #include "cpph/utility/templates.hxx"
 
 #ifdef _WIN32
+#    include <cpph/std/filesystem>
+
 #    include <Windows.h>
 
 namespace cpph::os {
@@ -13,15 +15,20 @@ struct module_body {
     HINSTANCE hLib;
 };
 
-module::module(string_view path) noexcept :chnk_{}
+module::module(string_view pathstr) noexcept :chnk_{}
 {
     static_assert(sizeof(module_body) < sizeof(module::chnk_));
     auto body = ((module_body*)chnk_);
 
-    if (*(path.data() + path.size()) != '\0')  // non-zero-terminated
-        path = CPPH_ALLOCA_CSTR(path);
+    if (*(pathstr.data() + pathstr.size()) != '\0')  // non-zero-terminated
+        pathstr = CPPH_ALLOCA_CSTR(pathstr);
 
-    body->hLib = ::LoadLibraryA(path.data());
+    auto path = fs::path{pathstr};
+    std::error_code ec;
+    if (not path.is_absolute()) { path = fs::absolute(path, ec); }
+    if (ec) { return; }  // If path is invalid ...
+
+    body->hLib = ::LoadLibraryExW(path.c_str(), NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
 }
 
 void* module::load_symbol_(string_view name) noexcept
