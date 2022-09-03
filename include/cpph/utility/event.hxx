@@ -260,39 +260,7 @@ class basic_event
     void invoke(event_fwd_arg_t<Args>... args)
     {
         // Perform insertion
-        {
-            scoped_lock _{mtx_};
-
-            while (new_node_front_ != nullptr) {
-                auto new_node = exchange(new_node_front_, new_node_front_->p_next);
-                new_node->p_prev = {};
-                new_node->p_next = nullptr;
-
-                if (node_front_ != nullptr) {
-                    auto p_insert = node_front_.get();
-                    while (p_insert && p_insert->priority > new_node->priority) {
-                        if (p_insert->p_next != nullptr) {
-                            p_insert = p_insert->p_next.get();
-                        } else {
-                            p_insert->p_next = new_node;
-                            new_node->p_prev = p_insert->weak_from_this();
-
-                            // done.
-                            p_insert = nullptr;
-                        }
-                    }
-
-                    if (p_insert) {
-                        if (auto& n = p_insert->p_next) { n->p_prev = new_node; }
-                        new_node->p_next = p_insert->p_next;
-                        p_insert->p_next = new_node;
-                        new_node->p_prev = p_insert->weak_from_this();
-                    }
-                } else {
-                    node_front_ = move(new_node);
-                }
-            }
-        }
+        this->flush();
 
         // Invoke chained methods
         mtx_.lock();
@@ -309,6 +277,41 @@ class basic_event
         }
 
         mtx_.unlock();
+    }
+
+    void flush()
+    {
+        scoped_lock _{mtx_};
+
+        while (new_node_front_ != nullptr) {
+            auto new_node = exchange(new_node_front_, new_node_front_->p_next);
+            new_node->p_prev = {};
+            new_node->p_next = nullptr;
+
+            if (node_front_ != nullptr) {
+                auto p_insert = node_front_.get();
+                while (p_insert && p_insert->priority > new_node->priority) {
+                    if (p_insert->p_next != nullptr) {
+                        p_insert = p_insert->p_next.get();
+                    } else {
+                        p_insert->p_next = new_node;
+                        new_node->p_prev = p_insert->weak_from_this();
+
+                        // done.
+                        p_insert = nullptr;
+                    }
+                }
+
+                if (p_insert) {
+                    if (auto& n = p_insert->p_next) { n->p_prev = new_node; }
+                    new_node->p_next = p_insert->p_next;
+                    p_insert->p_next = new_node;
+                    new_node->p_prev = p_insert->weak_from_this();
+                }
+            } else {
+                node_front_ = move(new_node);
+            }
+        }
     }
 
     template <typename Callable, class = enable_if_event_t<Callable>>
