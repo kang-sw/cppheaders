@@ -40,19 +40,29 @@
 #include "cpph/utility/templates.hxx"
 
 namespace cpph {
+
+template <class... Args>
+class basic_event_queue;
+
+using event_queue = basic_event_queue<>;
+
 /**
  *
  */
-class event_queue
+template <class... Args>
+class basic_event_queue
 {
+    template <typename T>
+    using add_ref_t = std::conditional_t<std::is_reference_v<T>, T, T const&>;
+
     struct function_node {
         bool is_ring_allocated_;
         function_node* next_;
         void (*disposer_)(function_node*);
-        void (*invoke_)(function_node*);
+        void (*invoke_)(function_node*, add_ref_t<Args>...);
         char data[];
 
-        void operator()() noexcept { invoke_(this); }
+        void operator()(add_ref_t<Args>... args) noexcept { invoke_(this, args...); }
         ~function_node() noexcept { disposer_(this); }
     };
 
@@ -77,23 +87,23 @@ class event_queue
      *    Number of initial image queue size. As this circular queue resizes on demand,
      *     determining this value is less important than setting \c num_queue_buffer correctly.
      */
-    explicit event_queue(size_t queue_buffer_size)
+    explicit basic_event_queue(size_t queue_buffer_size)
             : alloc_(queue_buffer_size) {}
 
     /**
      * Destruct this message procedure
      */
-    ~event_queue() { clear(); }
+    ~basic_event_queue() { clear(); }
 
    private:
-    static event_queue*& _p_active_exec() noexcept
+    static basic_event_queue*& _p_active_exec() noexcept
     {
-        static thread_local event_queue* p_exec = nullptr;
+        static thread_local basic_event_queue* p_exec = nullptr;
         return p_exec;
     }
 
     template <class RetrFn, class = enable_if_t<is_invocable_r_v<function_node*, RetrFn>>>
-    bool _exec_single(RetrFn&& retreive_event)
+    bool _exec_single(RetrFn&& retreive_event, add_ref_t<Args>... args)
     {
         if (function_node* p_func = retreive_event()) {
             // Using cleanup, all states would remain valid on exceptional situation.
@@ -103,7 +113,7 @@ class event_queue
                         _release(p_func);             // Release allocated function
                     });
 
-            (*p_func)();
+            (*p_func)(args...);
             assert(_p_active_exec() == this);
             return true;
         } else {
@@ -153,39 +163,43 @@ class event_queue
         return lock_guard{msg_lock_}, front_ == nullptr;
     }
 
-    bool exec_one()
+    bool exec_one(add_ref_t<Args>... args)
     {
-        return _exec_single([this] {
-            function_node* p_func = nullptr;
-            ewait_.wait([&] { return acquire(stopped_) || (p_func = _pop_event()); });
-            return p_func;
-        });
+        return _exec_single(
+                [this] {
+                    function_node* p_func = nullptr;
+                    ewait_.wait([&] { return acquire(stopped_) || (p_func = _pop_event()); });
+                    return p_func;
+                },
+                args...);
     }
 
     template <typename Clock, typename Duration>
-    bool exec_one_until(time_point<Clock, Duration> const& until)
+    bool exec_one_until(add_ref_t<Args>... args, time_point<Clock, Duration> const& until)
     {
-        return _exec_single([&] {
-            function_node* p_func = nullptr;
-            ewait_.wait_until(until, [&] { return acquire(stopped_) || (p_func = _pop_event()); });
-            return p_func;
-        });
+        return _exec_single(
+                [&] {
+                    function_node* p_func = nullptr;
+                    ewait_.wait_until(until, [&] { return acquire(stopped_) || (p_func = _pop_event()); });
+                    return p_func;
+                },
+                args...);
     }
 
     template <typename Rep, typename Period>
-    bool exec_one_for(duration<Rep, Period> const& dur)
+    bool exec_one_for(add_ref_t<Args>... args, duration<Rep, Period> const& dur)
     {
-        return exec_one_until(steady_clock::now() + dur);
+        return exec_one_until(args..., steady_clock::now() + dur);
     }
 
-    size_t exec()
+    size_t exec(add_ref_t<Args>... args)
     {
         size_t nexec = 0;
-        for (; not acquire(stopped_) && exec_one(); ++nexec) {}
+        for (; not acquire(stopped_) && exec_one(args...); ++nexec) {}
         return nexec;
     }
 
-    size_t flush()
+    size_t flush(add_ref_t<Args>... args)
     {
         size_t num_ran = 0;
         auto exec_fn = [&] {
@@ -194,25 +208,25 @@ class event_queue
             return p_func;
         };
 
-        for (; not acquire(stopped_) && _exec_single(exec_fn); ++num_ran) {}
+        for (; not acquire(stopped_) && _exec_single(exec_fn, args...); ++num_ran) {}
         return num_ran;
     }
 
     template <typename Clock, typename Duration>
-    size_t run_until(time_point<Clock, Duration> const& until)
+    size_t run_until(add_ref_t<Args>... args, time_point<Clock, Duration> const& until)
     {
         size_t num_ran = 0;
-        for (; not acquire(stopped_) && exec_one_until(until); ++num_ran) {}
+        for (; not acquire(stopped_) && exec_one_until(args..., until); ++num_ran) {}
         return num_ran;
     }
 
     template <typename Rep, typename Period>
-    size_t run_for(duration<Rep, Period> const& dur)
+    size_t run_for(add_ref_t<Args>... args, duration<Rep, Period> const& dur)
     {
         size_t num_ran = 0;
         auto until = std::chrono::steady_clock::now() + dur;
 
-        for (; not acquire(stopped_) && exec_one_until(until); ++num_ran) {}
+        for (; not acquire(stopped_) && exec_one_until(args..., until); ++num_ran) {}
         return num_ran;
     }
 
@@ -240,7 +254,7 @@ class event_queue
     }
 
    public:
-    template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
+    template <typename Message, typename = enable_if_t<is_invocable_v<Message, Args...>>>
     void post(Message&& message)
     {
         function_node* p_func;
@@ -260,12 +274,12 @@ class event_queue
 
         p_func->next_ = nullptr;
         p_func->disposer_ = [](function_node* p) { ((Message&)p->data).~Message(); };
-        p_func->invoke_ = [](function_node* p) { move((Message&)p->data)(); };
+        p_func->invoke_ = [](function_node* p, add_ref_t<Args>... args) { move((Message&)p->data)(args...); };
 
         ewait_.notify_one([&] { _push_event(p_func); });
     }
 
-    template <typename Message, typename = enable_if_t<is_invocable_v<Message>>>
+    template <typename Message, typename = enable_if_t<is_invocable_v<Message, Args...>>>
     void dispatch(Message&& message)
     {
         if (_p_active_exec() == this) {
@@ -277,7 +291,7 @@ class event_queue
 
    public:
     struct payload_deallocator {
-        event_queue* p_owner_;
+        basic_event_queue* p_owner_;
         void operator()(char* p) noexcept
         {
             if (p_owner_) {

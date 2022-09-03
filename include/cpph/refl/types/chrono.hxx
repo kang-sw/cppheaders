@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #pragma once
-#include <chrono>
+#include <cpph/std/chrono>
 #include <cpph/std/list>
 
 #include "../detail/primitives.hxx"
