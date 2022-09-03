@@ -319,7 +319,7 @@ class basic_event
     {
         struct entity_t : if_entity {
             decay_t<Callable> fn_;
-            explicit entity_t(Callable&& fn) : fn_(fn) {}
+            explicit entity_t(Callable&& fn) : fn_(std::forward<Callable>(fn)) {}
 
             event_control operator()(event_fwd_arg_t<Args>... args) override
             {
