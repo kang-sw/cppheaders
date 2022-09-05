@@ -50,6 +50,13 @@ target_sources(
 
 add_library(kang-sw::cpph::os ALIAS ${PROJECT_NAME})
 
+if (UNIX)
+    find_library(dl NAMES dl PATH /usr/lib/x86_64-linux-gnu/libdl.so)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${dl})
+
+    message(STATUS "[${PROJECT_NAME}] UNIX. Linking dl: ${dl}")
+endif ()
+
 # -------------------------------------------------------------------------------------------------
 project(cppheaders.stb)
 add_library(${PROJECT_NAME} STATIC)
