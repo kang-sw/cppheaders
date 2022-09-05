@@ -70,7 +70,7 @@ class string_cache
     template <class... Str>
     auto push_back(Str&&... strings)
     {
-        assert((payload_.size() & (sizeof(node) - 1)) == 0);
+        assert((payload_.size() & (sizeof(size_t) - 1)) == 0);
 
         string_view views[] = {strings...};
         size_t pos = payload_.size();
