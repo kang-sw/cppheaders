@@ -87,7 +87,7 @@ void* module::load_symbol_(string_view name) noexcept
         name = CPPH_ALLOCA_CSTR(name);
 
     auto body = ((module_body*)chnk_);
-    return dlsym(body, name.data());
+    return dlsym(body->h_module, name.data());
 }
 
 bool module::is_loaded()
