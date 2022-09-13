@@ -80,13 +80,13 @@
     ;                                                                                        \
     }
 
-#define IIT_CPPH_REFLD_begin_single(Type) \
+#define IIT_CPPH_REFLD_begin_single(...) \
     cpph::refl::unique_object_metadata    \
     initialize_object_metadata(           \
-            cpph::refl::type_tag<Type>)   \
+            cpph::refl::type_tag<__VA_ARGS__>)   \
     {                                     \
-        using value_type = Type;          \
-        static struct _manip_t : public cpph::refl::templated_primitive_control<Type>
+        using value_type = __VA_ARGS__;          \
+        static struct _manip_t : public cpph::refl::templated_primitive_control<__VA_ARGS__>
 
 #define IIT_CPPH_REFLD_begin_single_inline(Type) \
     inline IIT_CPPH_REFLD_begin_single(Type)
