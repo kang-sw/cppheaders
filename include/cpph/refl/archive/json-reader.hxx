@@ -373,12 +373,10 @@ inline void reader::_prepare() const
 
         str->push_back(c);
         switch (_jsmn::jsmn_parse(parser, str->c_str(), str->size(), tokens->data(), tokens->size())) {
+            case 0:
+            case _jsmn::JSMN_ERROR_NOMEM:
             case _jsmn::JSMN_ERROR_INVAL:
                 throw error::reader_parse_failed{this};
-
-            case _jsmn::JSMN_ERROR_NOMEM:
-            case 0:
-                assert(false && "Logically impossible!"), abort();
 
             default: break;
         }
