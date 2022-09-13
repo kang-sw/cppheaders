@@ -31,7 +31,7 @@ template <typename Callable>
 class cleanup_t
 {
    public:
-    ~cleanup_t() noexcept(std::is_nothrow_invocable_v<Callable>) { _callable(); }
+    ~cleanup_t() { _callable(); }
     Callable _callable;
 };
 
