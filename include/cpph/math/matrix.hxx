@@ -63,10 +63,10 @@ class matrix
     using reference = Ty_&;
     using const_reference = Ty_ const&;
 
-    template <size_t NR_, size_t NC_>
+    template <int NR_, int NC_>
     using matx_type = matrix<value_type, NR_, NC_>;
 
-    template <size_t Len_>
+    template <int Len_>
     using vector_type = matrix<value_type, Len_, 1>;
 
     using row_type = matx_type<1, num_cols>;
