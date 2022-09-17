@@ -73,11 +73,41 @@ enum class event_priority : uint64_t {
 template <class T>
 using event_fwd_arg_t = conditional_t<std::is_reference_v<T>, T, T const&>;
 
+struct if_event_entity {
+    virtual ~if_event_entity() = default;
+    virtual void detach() noexcept = 0;
+};
+
+class event_handle
+{
+    template <class, class...>
+    friend class basic_event;
+
+    weak_ptr<if_event_entity> node_ = {};
+
+    explicit event_handle(weak_ptr<if_event_entity> p_node) noexcept
+            : node_{p_node}
+    {
+    }
+
+   public:
+    event_handle() noexcept = default;
+    event_handle(event_handle&& other) noexcept : node_(move(other.node_)) {}
+    auto& operator=(event_handle&& o) noexcept { return swap(node_, o.node_), *this; }
+
+    bool valid() noexcept { return not node_.expired(); }
+    void expire() noexcept
+    {
+        if (auto p_node = node_.lock()) { p_node->detach(); }
+    }
+};
+
 template <typename Mutex, typename... Args>
 class basic_event
 {
    public:
     using event_fn = ufunction<event_control(Args...)>;
+    using handle = event_handle;
 
     template <class Callable>
     static constexpr inline bool is_event_function_v = is_invocable_v<Callable> || is_invocable_v<Callable, Args...>;
@@ -86,7 +116,7 @@ class basic_event
     using enable_if_event_t = enable_if_t<is_event_function_v<Callable>>;
 
    private:
-    struct if_entity : enable_shared_from_this<if_entity> {
+    struct if_entity : if_event_entity, enable_shared_from_this<if_entity> {
        private:
         atomic<intptr_t> refcnt_ = 1;
 
@@ -100,13 +130,13 @@ class basic_event
        public:
         virtual event_control operator()(event_fwd_arg_t<Args>...) = 0;
 
-        virtual ~if_entity()
+        virtual ~if_entity() override
         {
             scoped_lock _{owner->mtx_};
             --owner->size_;
         }
 
-        void detach() noexcept
+        void detach() noexcept override
         {
             scoped_lock _{owner->mtx_};
 
@@ -133,29 +163,6 @@ class basic_event
     size_t size_ = 0;
     shared_ptr<if_entity> node_front_ = nullptr;
     shared_ptr<if_entity> new_node_front_ = nullptr;
-
-   public:
-    class handle
-    {
-        friend class basic_event;
-        weak_ptr<if_entity> node_ = {};
-
-        explicit handle(weak_ptr<if_entity> p_node) noexcept
-                : node_{p_node}
-        {
-        }
-
-       public:
-        handle() noexcept = default;
-        handle(handle&& other) noexcept : node_(move(other.node_)) {}
-        auto& operator=(handle&& o) noexcept { return swap(node_, o.node_), *this; }
-
-        bool valid() noexcept { return not node_.expired(); }
-        void expire() noexcept
-        {
-            if (auto p_node = node_.lock()) { p_node->detach(); }
-        }
-    };
 
    public:
     template <class Callable, class = enable_if_event_t<Callable>>
