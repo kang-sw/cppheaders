@@ -54,4 +54,44 @@ vector<Ty_, 3> rodrigues(matrix<Ty_, 3, 3> m)
     return v * O;
 }
 
+enum class coord {
+    zero,
+    x = 1,
+    y = 2,
+    z = 3,
+    _mx = -x,
+    _my = -y,
+    _mz = -z,
+};
+
+coord operator-(coord v) noexcept { return coord(-(int)v); }
+
+template <typename T>
+auto convert_coord(matrix<T, 3, 3> rmat, coord src_x, coord src_y, coord src_z)
+{
+    using matrix_type = matrix<T, 3, 3>;
+    using row_type = typename matrix_type::row_type;
+    matrix_type rslt = matrix_type::eye();
+
+    // right X, down Y, forward Z  to  right X, forward Y, up Z
+
+    row_type src[] = {rmat.row(0), rmat.row(1), rmat.row(2)};
+    coord coords[] = {src_x, src_y, src_z};
+
+    for (int idx_dst = 0; idx_dst < 3; ++idx_dst) {
+        int idx_src = (int)coords[idx_dst];
+        row_type row_src;
+
+        if (idx_src > 0) {
+            row_src = src[idx_src - 1];
+        } else {
+            row_src = -src[-idx_src - 1];
+        }
+
+        rslt.update(idx_dst, 0, row_src);
+    }
+
+    return rslt;
+}
+
 }  // namespace cpph::math

@@ -424,12 +424,12 @@ INTERNAL_CPPH_define_(
          || is_template_instance_of<ValTy_, std::unique_ptr>::value
          || is_template_instance_of<ValTy_, std::shared_ptr>::value))
 {
-    using value_type = remove_cvr_t<decltype(*std::declval<ValTy_>())>;
-    constexpr bool is_optional = is_template_instance_of<ValTy_, std::optional>::value;
-    constexpr bool is_unique_ptr = is_template_instance_of<ValTy_, std::unique_ptr>::value;
-    constexpr bool is_shared_ptr = is_template_instance_of<ValTy_, std::shared_ptr>::value;
-
     static struct manip_t : templated_primitive_control<ValTy_> {
+        using value_type = remove_cvr_t<decltype(*std::declval<ValTy_>())>;
+        enum { is_optional = is_template_instance_of<ValTy_, std::optional>::value };
+        enum { is_unique_ptr = is_template_instance_of<ValTy_, std::unique_ptr>::value };
+        enum { is_shared_ptr = is_template_instance_of<ValTy_, std::shared_ptr>::value };
+
         entity_type type() const noexcept override
         {
             return get_object_metadata<value_type>()->type();
