@@ -36,6 +36,7 @@
 #include "cpph/thread/locked.hxx"
 #include "cpph/thread/threading.hxx"
 #include "cpph/utility/cleanup.hxx"
+#include "cpph/utility/functional.hxx"
 #include "cpph/utility/generic.hxx"
 #include "cpph/utility/templates.hxx"
 
@@ -52,17 +53,14 @@ using event_queue = basic_event_queue<>;
 template <class... Args>
 class basic_event_queue
 {
-    template <typename T>
-    using add_ref_t = std::conditional_t<std::is_reference_v<T>, T, T const&>;
-
     struct function_node {
         bool is_ring_allocated_;
         function_node* next_;
         void (*disposer_)(function_node*);
-        void (*invoke_)(function_node*, add_ref_t<Args>...);
+        void (*invoke_)(function_node*, add_reference_t<Args>...);
         char data[];
 
-        void operator()(add_ref_t<Args>... args) noexcept { invoke_(this, args...); }
+        void operator()(add_reference_t<Args>... args) noexcept { invoke_(this, args...); }
         ~function_node() noexcept { disposer_(this); }
     };
 
@@ -103,7 +101,7 @@ class basic_event_queue
     }
 
     template <class RetrFn, class = enable_if_t<is_invocable_r_v<function_node*, RetrFn>>>
-    bool _exec_single(RetrFn&& retreive_event, add_ref_t<Args>... args)
+    bool _exec_single(RetrFn&& retreive_event, add_reference_t<Args>... args)
     {
         if (function_node* p_func = retreive_event()) {
             // Using cleanup, all states would remain valid on exceptional situation.
@@ -163,7 +161,7 @@ class basic_event_queue
         return lock_guard{msg_lock_}, front_ == nullptr;
     }
 
-    bool exec_one(add_ref_t<Args>... args)
+    bool exec_one(add_reference_t<Args>... args)
     {
         return _exec_single(
                 [this] {
@@ -175,7 +173,7 @@ class basic_event_queue
     }
 
     template <typename Clock, typename Duration>
-    bool exec_one_until(add_ref_t<Args>... args, time_point<Clock, Duration> const& until)
+    bool exec_one_until(add_reference_t<Args>... args, time_point<Clock, Duration> const& until)
     {
         return _exec_single(
                 [&] {
@@ -187,19 +185,19 @@ class basic_event_queue
     }
 
     template <typename Rep, typename Period>
-    bool exec_one_for(add_ref_t<Args>... args, duration<Rep, Period> const& dur)
+    bool exec_one_for(add_reference_t<Args>... args, duration<Rep, Period> const& dur)
     {
         return exec_one_until(args..., steady_clock::now() + dur);
     }
 
-    size_t exec(add_ref_t<Args>... args)
+    size_t exec(add_reference_t<Args>... args)
     {
         size_t nexec = 0;
         for (; not acquire(stopped_) && exec_one(args...); ++nexec) {}
         return nexec;
     }
 
-    size_t flush(add_ref_t<Args>... args)
+    size_t flush(add_reference_t<Args>... args)
     {
         size_t num_ran = 0;
         auto exec_fn = [&] {
@@ -213,7 +211,7 @@ class basic_event_queue
     }
 
     template <typename Clock, typename Duration>
-    size_t run_until(add_ref_t<Args>... args, time_point<Clock, Duration> const& until)
+    size_t run_until(add_reference_t<Args>... args, time_point<Clock, Duration> const& until)
     {
         size_t num_ran = 0;
         for (; not acquire(stopped_) && exec_one_until(args..., until); ++num_ran) {}
@@ -221,7 +219,7 @@ class basic_event_queue
     }
 
     template <typename Rep, typename Period>
-    size_t run_for(add_ref_t<Args>... args, duration<Rep, Period> const& dur)
+    size_t run_for(add_reference_t<Args>... args, duration<Rep, Period> const& dur)
     {
         size_t num_ran = 0;
         auto until = std::chrono::steady_clock::now() + dur;
@@ -274,7 +272,7 @@ class basic_event_queue
 
         p_func->next_ = nullptr;
         p_func->disposer_ = [](function_node* p) { ((Message&)p->data).~Message(); };
-        p_func->invoke_ = [](function_node* p, add_ref_t<Args>... args) { move((Message&)p->data)(args...); };
+        p_func->invoke_ = [](function_node* p, add_reference_t<Args>... args) { move((Message&)p->data)(args...); };
 
         ewait_.notify_one([&] { _push_event(p_func); });
     }
@@ -321,5 +319,31 @@ class basic_event_queue
         return ptr;
     }
 };
+
+template <class Func, class... Args>
+struct event_queue_binder {
+    basic_event_queue<Args...>& ioc_;
+    Func callable_;
+
+    template <class... Params>
+    void operator()(Params&&... params) const
+    {
+        ioc_.post(bind_front(callable_, std::forward<Params>(params)...));
+    }
+};
+
+template <class Fn, class... Args, class... Params>
+auto bind_event_queue(basic_event_queue<Params...>& ioc, Fn&& fn, Args&&... args)
+{
+    auto func = share_callable(bind_front(std::forward<Fn>(fn), std::forward<Args>(args)...));
+    return event_queue_binder<decltype(func), Params...>{ioc, std::move(func)};
+}
+
+template <class Fn, class... Args, class... Params>
+auto bind_event_queue_weak(basic_event_queue<Params...>& ioc, weak_ptr<void> wp, Fn&& fn, Args&&... args)
+{
+    auto func = share_callable(bind_front_weak(move(wp), std::forward<Fn>(fn), std::forward<Args>(args)...));
+    return event_queue_binder<decltype(func), Params...>{ioc, std::move(func)};
+}
 
 }  // namespace cpph

@@ -35,8 +35,8 @@
 
 namespace cpph {
 using std::function;
-using std::is_function_v;
 using std::invoke;
+using std::is_function_v;
 
 //
 constexpr int _function_size = sizeof(std::function<void()>) + 16;
@@ -257,18 +257,16 @@ class _bound_functor_t
     constexpr auto _fn_invoke_result(std::tuple<Captures_...> const&, Args_&&...) const
             -> std::invoke_result_t<Callable, Captures_..., Args_...>;
 
-    auto _get_forwarded() const noexcept
+    auto _get_forwarded() noexcept
     {
         return std::apply(
                 [](auto&&... args) { return std::forward_as_tuple(std::forward<decltype(args)>(args)...); },
                 captures);
     }
 
-    auto _get_forwarded() noexcept
+    auto _get_forwarded() const noexcept
     {
-        return std::apply(
-                [](auto&&... args) { return std::forward_as_tuple(std::forward<decltype(args)>(args)...); },
-                captures);
+        return self_non_const_()._get_forwarded();
     }
 
    public:
@@ -290,14 +288,13 @@ class _bound_functor_t
     auto operator()(Args_&&... args) const
             -> decltype(_fn_invoke_result(captures, std::forward<Args_>(args)...))
     {
-        auto tuple = std::tuple_cat(
-                this->_get_forwarded(),
-                std::forward_as_tuple(std::forward<decltype(args)>(args)...));
+        return self_non_const_().operator()(forward<Args_>(args)...);
+    }
 
-        if constexpr (std::is_same_v<void, decltype(std::apply(fn, tuple))>)
-            std::apply(fn, tuple);
-        else
-            return std::apply(fn, tuple);
+   private:
+    _bound_functor_t& self_non_const_() const noexcept
+    {
+        return const_cast<_bound_functor_t&>(*this);
     }
 };
 
@@ -353,20 +350,7 @@ class _bound_weak_functor_t
     auto operator()(Args_&&... args) const
             -> std::invoke_result_t<Callable, Args_...>
     {
-        auto tuple = std::forward_as_tuple(std::forward<Args_>(args)...);
-        enum : bool { return_void = std::is_void_v<std::invoke_result_t<Callable, Args_...>> };
-
-        if (auto anchor = ptr.lock()) {
-            if constexpr (return_void)
-                std::apply(fn, tuple);
-            else
-                return std::apply(fn, tuple);
-        } else {
-            if constexpr (return_void)
-                ;
-            else
-                return {};
-        }
+        return const_cast<_bound_weak_functor_t&>(*this).operator()(std::forward<Args_>(args)...);
     }
 };
 
@@ -404,5 +388,31 @@ auto bind_weak(Ptr&& ref, Callable callable, Captures&&... captures)
             return result_type{};
         }
     };
+}
+
+template <class Callable>
+struct _heap_bound_functor_t {
+    shared_ptr<Callable> callable_;
+
+    template <typename... Params>
+    auto operator()(Params&&... params)
+    {
+        if (is_void_v<decltype((*callable_)(forward<Params>(params)...))>)
+            (*callable_)(forward<Params>(params)...);
+        else
+            return (*callable_)(forward<Params>(params)...);
+    }
+
+    template <typename... Params>
+    auto operator()(Params&&... params) const
+    {
+        return const_cast<_heap_bound_functor_t&>(*this).operator()(forward<Params>(params)...);
+    }
+};
+
+template <typename Callable>
+auto share_callable(Callable&& shared) -> _heap_bound_functor_t<decay_t<Callable>>
+{
+    return {make_shared<decay_t<Callable>>(forward<Callable>(shared))};
 }
 }  // namespace cpph
