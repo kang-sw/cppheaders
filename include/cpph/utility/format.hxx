@@ -106,7 +106,7 @@ class format_context
         template <typename... Args2_>
         std::string operator()(Args2_&&... args)
         {
-            return fmt::format(_base->_fmt, std::forward<Args2_>(args)...);
+            return fmt::format(fmt::runtime(_base->_fmt), std::forward<Args2_>(args)...);
         }
 
         operator std::string()
@@ -141,7 +141,7 @@ class format_context
 };
 
 template <typename Str_, typename... Args_>
-auto&& operator<(Str_ && str, format_context::_proxy<Args_...>&& prx)
+auto&& operator<(Str_&& str, format_context::_proxy<Args_...>&& prx)
 {
     return prx.operator>(std::forward<Str_>(str));
 }
@@ -177,7 +177,7 @@ class format_buffer : public std::string
     {
         fmt::format_to(
                 std::back_inserter(*this),
-                std::forward<Fmt_>(fmt),
+                fmt::runtime(std::forward<Fmt_>(fmt)),
                 std::forward<Args_>(args)...);
 
         return *this;
