@@ -13,7 +13,9 @@ if (MSVC)
 
             INTERFACE
             /utf-8
-            /FIciso646)
+            $<$<COMPILE_LANGUAGE:CXX>:/FIciso646>
+            $<$<COMPILE_LANGUAGE:C>:/FIiso646.h>
+    )
 endif ()
 
 add_library(kang-sw::cpph::core ALIAS ${PROJECT_NAME})
