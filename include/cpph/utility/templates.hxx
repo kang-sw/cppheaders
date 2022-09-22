@@ -352,4 +352,6 @@ y_combinator<std::decay_t<F>> make_y_combinator(F&& f)
     return {std::forward<F>(f)};
 }
 
+template <typename T>
+using add_reference_t = std::conditional_t<std::is_reference_v<T>, T, T const&>;
 }  // namespace cpph

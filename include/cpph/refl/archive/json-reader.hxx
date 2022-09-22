@@ -44,6 +44,11 @@ class reader : public archive::if_reader
     void read_key_next() override;
     entity_type type_next() const override;
     bool goto_key(string_view key);
+    void jump(string_view key)
+    {
+        if (not goto_key(key))
+            throw archive::error::reader_missing_key{this};
+    }
 
    private:
     void _prepare() const;
