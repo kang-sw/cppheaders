@@ -1,0 +1,5 @@
+#include <array>
+
+namespace cpph{
+using std::array;
+}
