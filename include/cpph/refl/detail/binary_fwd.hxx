@@ -39,7 +39,8 @@ constexpr bool _has_data_fn = false;
 template <typename T>
 constexpr bool _has_data_fn<
         T,
-        std::void_t<decltype(std::data(std::declval<T>()))>> = true;
+        std::void_t<decltype(std::data(std::declval<T>()))>>
+        = true;
 
 template <typename Container_, class = void>
 class binary;
@@ -117,5 +118,17 @@ struct chunk<T, enable_if_t<std::is_trivial_v<T> && std::is_fundamental_v<T>>> {
     operator T&() noexcept { return value; }
     operator T const&() const noexcept { return value; }
 };
+
+template <typename T, typename V>
+T& chunk_base(chunk<T, V>& chunk) noexcept
+{
+    return static_cast<T&>(chunk);
+}
+
+template <typename T, typename V>
+T const& chunk_base(chunk<T, V> const& chunk) noexcept
+{
+    return static_cast<T&>(chunk);
+}
 
 }  // namespace cpph
