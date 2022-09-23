@@ -102,7 +102,6 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                           refl::optional_property_metadata prop) const override
         {
             auto chunk_size = strm->begin_binary();
-            [[maybe_unused]] auto clean = cleanup([&] { strm->end_binary(); });
 
             if constexpr (not binary_type::is_container) {
                 strm->binary_read_some(mutable_buffer_view{data, 1});
@@ -203,6 +202,7 @@ initialize_object_metadata(refl::type_tag<binary<Container_>>)
                     }
                 }
             }
+            strm->end_binary();
         }
     } manip;
 
@@ -247,4 +247,3 @@ initialize_object_metadata(refl::type_tag<flex_buffer>)
 }  // namespace cpph
 
 //
-

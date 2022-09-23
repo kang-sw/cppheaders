@@ -31,7 +31,9 @@ template <typename Callable>
 class cleanup_t
 {
    public:
-    ~cleanup_t() { _callable(); }
+    // NOTE: As cleanup process may called during stack unrolling, internal callable MAY NOT THROW
+    //        exception !
+    ~cleanup_t() noexcept(std::is_nothrow_invocable_v<Callable>) { _callable(); }
     Callable _callable;
 };
 
