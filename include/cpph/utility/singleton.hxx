@@ -26,6 +26,7 @@
 #pragma once
 #include <atomic>
 #include <cassert>
+#include <cstddef>
 #include <type_traits>
 
 namespace cpph {

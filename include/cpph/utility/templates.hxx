@@ -38,6 +38,7 @@ using namespace std::literals;
 
 using std::initializer_list;
 using std::nothrow;
+using std::nullptr_t;
 
 using std::exchange;
 using std::invoke;
