@@ -32,8 +32,10 @@ template <typename ValTy_>
 std::string to_json(ValTy_ const& value)
 {
     streambuf::stringbuf sstr;
-    json::writer wr{&sstr, 8};
-    wr << value;
+    {
+        json::writer wr{&sstr, 8};
+        wr << value;
+    }
     return move(sstr.str());
 }
 
