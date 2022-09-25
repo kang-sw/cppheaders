@@ -22,6 +22,8 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include <cpph/streambuf/string.hxx>
+
 #include "json-reader.hxx"
 #include "json-writer.hxx"
 
@@ -29,10 +31,10 @@ namespace cpph::archive {
 template <typename ValTy_>
 std::string to_json(ValTy_ const& value)
 {
-    std::stringbuf sstr;
+    streambuf::stringbuf sstr;
     json::writer wr{&sstr, 8};
     wr << value;
-    return sstr.str();
+    return move(sstr.str());
 }
 
 template <typename ValTy_>

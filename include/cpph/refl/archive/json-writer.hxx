@@ -26,7 +26,6 @@
 
 #pragma once
 #include <charconv>
-#include <sstream>
 
 #include "../../helper/strutil.hxx"
 #include "../../streambuf/base64.hxx"
