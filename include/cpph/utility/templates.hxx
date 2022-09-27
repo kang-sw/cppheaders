@@ -355,4 +355,16 @@ y_combinator<std::decay_t<F>> make_y_combinator(F&& f)
 
 template <typename T>
 using add_reference_t = std::conditional_t<std::is_reference_v<T>, T, T const&>;
+
+// @see https://en.cppreference.com/w/cpp/utility/variant/visit
+// helper type for the visitor #4
+template <class... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+
+// explicit deduction guide (not needed as of C++20)
+template <class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
 }  // namespace cpph
