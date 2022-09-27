@@ -118,7 +118,7 @@ struct reader::impl {
         auto elem = &scopes.emplace_back(
                 reader_scope_context_t{
                         t,
-                        {context_keygen},
+                        {++context_keygen},
                         (int)pos_next++,
                         false,
                         ntok->size * (t == reader_scope_type::object ? 2 : 1),
@@ -156,17 +156,21 @@ struct reader::impl {
     {
         if (scopes.empty()) { throw error::reader_invalid_context{self}; }
 
-        auto scope = &scopes.back();
-        if (scope->context.value != key.value) { throw error::reader_invalid_context{self}; }
-        if (scope->is_key_next) { throw error::reader_invalid_context{self}; }
+        // Find scope until reach given key point
+        auto riter = std::find_if(scopes.rbegin(), scopes.rend(), [key](auto&& v) { return key.value == v.context.value; });
+        if (riter == scopes.rend()) { throw error::reader_invalid_context{self}; }
 
+        auto iter = --riter.base();
+        if (iter->is_key_next) { throw error::reader_invalid_context{self}; }
+
+        auto scope = &*iter;
         auto it_tok = tokens.begin() + scope->token_pos;
 
         auto it = std::lower_bound(
                 it_tok, tokens.end(), it_tok->end,
                 [](_jsmn::jsmntok_t const& t, int e) { return t.start < e; });
         pos_next = it - tokens.begin();
-        scopes.pop_back();
+        for (auto num_pop = scopes.end() - iter; num_pop > 0; --num_pop) { scopes.pop_back(); }
 
         if (scopes.empty()) {
             pos_next = ~size_t{};
