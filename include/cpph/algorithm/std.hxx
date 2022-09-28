@@ -296,7 +296,8 @@ constexpr owner_equal_t owner_equal{};
 template <typename Any>
 auto abs(Any&& val) noexcept
 {
-    return val < Any{} ? -val : val;
+    using value_type = std::decay_t<Any>;
+    return val < value_type{} ? -val : val;
 }
 }  // namespace algorithm
 };  // namespace cpph
