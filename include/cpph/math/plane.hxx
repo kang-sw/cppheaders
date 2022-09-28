@@ -32,8 +32,8 @@ class plane
     auto calc_u(vec_type const& P_1, vec_type const& D) const noexcept -> optional<double>
     {
         auto const P_3 = n_ * d_;
-        auto base = n_.dot(D);
         auto value = n_.dot(P_3 - P_1);
+        auto base = n_.dot(D);
 
         if (std::abs(base) < 1e-7) { return {}; }
         return value / base;
@@ -65,10 +65,11 @@ class plane
         auto fn_insert_contact =
                 [&](size_t a, size_t b) {
                     auto P_1 = vecs[a];
-                    auto D = vecs[b] - P_1;
+                    auto P_2 = vecs[b];
+                    auto D = P_2 - P_1;
                     auto u = calc_u(P_1, D);
 
-                    assert(u.has_value());
+                    assert(u.has_value() && *u <= 1.001);
                     auto C = P_1 + *u * D;
                     output(C), ++num_out_points;  // Insert contact point
                 };
@@ -80,7 +81,7 @@ class plane
                 auto idx_next = idx_now + 1;
 
                 // Insert series upper vertices
-                for (; idx_next < vecs.size() && calc_distance(idx_next) > 0; ++idx_next)
+                for (; idx_next < vecs.size() && calc_distance(vecs[idx_next]) > 0; ++idx_next)
                     output(vecs[idx_next]), ++num_out_points;
 
                 // There are no under side vertices anymore
