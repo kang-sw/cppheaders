@@ -381,7 +381,7 @@ class matrix
     }
 
     template <int NR_, int NC_>
-    constexpr value_type
+    constexpr matrix<value_type, NR_, NC_>
     cross(matx_type<NR_, NC_> const& other) const noexcept
     {
         using other_type = matx_type<NR_, NC_>;

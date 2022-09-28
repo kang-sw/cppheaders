@@ -133,10 +133,21 @@ class plane
 
    public:
     //! Normal is calculated by right-hand way
-    static plane from_triangle(array<vec_type, 3> const& vecs)
+    static optional<plane> from_triangle(array<vec_type, 3> const& p) noexcept
     {
-        // TODO
-        return {};
+        auto& [p1, p2, p3] = p;
+        vec_type A = p2 - p1;
+        vec_type B = p3 - p1;
+
+        vec_type D = (A.cross(B));
+        auto norm = math::norm(D);
+        if (norm == 0) { return {}; }
+
+        plane<double> result = {};
+        result.n_ = D / norm;
+        result.d_ = result.n_.dot(p1);
+
+        return result;
     }
 };
 
