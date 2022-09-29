@@ -27,6 +27,7 @@
 #pragma once
 #include <algorithm>
 #include <chrono>
+#include <cpph/std/chrono>
 #include <utility>
 
 //
