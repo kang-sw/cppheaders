@@ -40,39 +40,7 @@
 
 namespace cpph {
 template <typename Ty>
-constexpr bool _is_buffer_elem_v
-        = (sizeof(Ty) == 1) && std::is_trivial_v<Ty>;
-
-template <typename Array>
-class _array_reinterpret_accessor
-{
-   public:
-    template <typename RTy>
-    auto& as(size_t offset = 0) const
-    {
-        using value_type = typename Array::value_type;
-        enum {
-            is_const = std::is_const_v<value_type>
-        };
-
-        using rtype = std::conditional_t<is_const, std::add_const_t<RTy>, RTy>&;
-        auto buf = &((Array*)this)->at(offset);
-
-        // verify
-        (void)((Array*)this)->at(offset + sizeof(RTy) - 1);
-
-        return reinterpret_cast<rtype>(*buf);
-    }
-};
-
-struct _empty_base {};
-template <typename Array, typename Ty>
-using _array_view_base = std::conditional_t<_is_buffer_elem_v<Ty>,
-                                            _array_reinterpret_accessor<Array>,
-                                            _empty_base>;
-
-template <typename Ty>
-class array_view : public _array_view_base<array_view<Ty>, Ty>
+class array_view
 {
    public:
     using value_type = Ty;
@@ -85,7 +53,9 @@ class array_view : public _array_view_base<array_view<Ty>, Ty>
     constexpr array_view(Ty* p, size_t n) noexcept
             : _ptr(p), _size(n) {}
 
-    template <typename Range>
+    template <typename Range,
+              class = decltype(std::data(std::declval<Range>()),
+                               std::size(std::declval<Range>()))>
     constexpr array_view(Range&& p) noexcept
             : array_view(std::data(p), std::size(p))
     {
@@ -105,6 +75,8 @@ class array_view : public _array_view_base<array_view<Ty>, Ty>
     constexpr auto begin() const noexcept { return _ptr; }
     constexpr auto end() noexcept { return _ptr + _size; }
     constexpr auto end() const noexcept { return _ptr + _size; }
+
+    constexpr auto as_const() const noexcept { return array_view<const Ty>(data(), size()); }
 
     constexpr auto& front() const noexcept { return at(0); }
     constexpr auto& back() const noexcept { return at(_size - 1); }
