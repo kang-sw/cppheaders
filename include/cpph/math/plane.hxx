@@ -7,11 +7,12 @@
 //
 
 namespace cpph::math {
-template <typename T>
+template <typename T, size_t Dim = 3>
 class plane
 {
-    using vec_type = vector<T, 3>;
+    using vec_type = vector<T, Dim>;
     using underlying_type = T;
+    enum { dimension = Dim };
 
    private:
     vec_type n_;  // Normal
@@ -53,12 +54,11 @@ class plane
      * @param vecs Vector must be in closed form! (e.g. vecs[0] == vecs[vecs.size()-1]
      * @return
      */
-    size_t cull_(bool closed, array_view<vec_type const> vecs, void (*output)(vec_type const&)) const noexcept
+    void cull_(bool closed, array_view<vec_type const> vecs, void (*output)(vec_type const&)) const noexcept
     {
         // Must at least be line
-        if (vecs.size() < 2) { return 0; }
+        if (vecs.size() < 2) { return; }
 
-        size_t num_out_points = 0;
         bool is_currently_upper = calc_distance(vecs[0]) > 0;
         bool const first_node_upper = is_currently_upper;
 
@@ -71,18 +71,18 @@ class plane
 
                     assert(u.has_value() && *u <= 1.001);
                     auto C = P_1 + *u * D;
-                    output(C), ++num_out_points;  // Insert contact point
+                    output(C);  // Insert contact point
                 };
 
         //
         for (size_t idx_now = 0;;) {
             if (is_currently_upper) {
-                output(vecs[idx_now]), ++num_out_points;
+                output(vecs[idx_now]);
                 auto idx_next = idx_now + 1;
 
                 // Insert series upper vertices
                 for (; idx_next < vecs.size() && calc_distance(vecs[idx_next]) > 0; ++idx_next)
-                    output(vecs[idx_next]), ++num_out_points;
+                    output(vecs[idx_next]);
 
                 // There are no under side vertices anymore
                 if (idx_next == vecs.size())
@@ -118,18 +118,17 @@ class plane
         if (closed && is_currently_upper != first_node_upper) {
             fn_insert_contact(0, vecs.size() - 1);
         }
-
-        return num_out_points;
     }
 
    public:
     template <typename OutIt>
-    size_t cull(array_view<vec_type const> vecs, OutIt out, bool closed = false) const noexcept
+    OutIt cull(array_view<vec_type const> vecs, OutIt out, bool closed = false) const noexcept
     {
         static thread_local OutIt* p = nullptr;
         p = &out;
 
-        return cull_(closed, vecs, [](vec_type const& vec) { *++(*p) = vec; });
+        cull_(closed, vecs, [](vec_type const& vec) { *++(*p) = vec; });
+        return out;
     }
 
    public:
@@ -148,8 +147,53 @@ class plane
         result.n_ = D / norm;
         result.d_ = result.n_.dot(p1);
 
+        assert(!isnan(result.d_) && !isnan(math::norm(result.n_)));
         return result;
     }
 };
 
+//        {
+//            static vector<math::vec3d> temporary_vectors[2];
+//            auto& [pts_frustum, tmp] = temporary_vectors;
+//            pts_frustum.clear();
+//
+//            // Iterate each frustum
+//            for (auto& frustum : f.frustum) {
+//                tmp.clear();
+//
+//                frustum.cull(dots_view, back_inserter(tmp), closed);
+//
+//                swap(tmp, pts_frustum);
+//
+//                // Reset view to result dots ...
+//                dots_view = pts_frustum;
+//            }
+//        }
+
+template <
+        class T, size_t Dim,
+        class VectorLike,
+        class = decltype(array_view{std::declval<VectorLike>()},
+                         std::declval<VectorLike>().clear(),
+                         std::declval<VectorLike>().push_back(std::declval<vector<T, Dim>>()))>
+void cull_frustum(
+        const_array_view<plane<T, Dim>> frustum,
+        VectorLike& dots, VectorLike& out, bool is_closed = false)
+{
+    assert(&out != &dots);
+    const_array_view<vector<T, Dim>> dots_view{dots};
+
+    for (auto& pl : frustum) {
+        out.clear();
+        pl.cull(dots_view, back_inserter(out), is_closed);
+
+        swap(dots, out);
+        dots_view = dots;
+    }
+
+    if (dots_view.data() != out.data()) {
+        swap(out, dots);
+        assert(out.data() == dots_view.data());
+    }
+}
 }  // namespace cpph::math
