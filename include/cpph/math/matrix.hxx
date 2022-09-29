@@ -332,11 +332,20 @@ class matrix
         return d;
     }
 
+    bool has_nan() const noexcept
+    {
+        for (auto& v : value)
+            if (isnan(v))
+                return true;
+
+        return false;
+    }
+
     template <int R_, int C_, int NewR_, int NewC_>
     constexpr auto submatx() const noexcept
     {
-        static_assert(0 <= R_ && R_ + NewR_ < Row_);
-        static_assert(0 <= C_ && C_ + NewC_ < Col_);
+        static_assert(0 <= R_ && R_ + NewR_ <= Row_);
+        static_assert(0 <= C_ && C_ + NewC_ <= Col_);
 
         matx_type<NewR_, NewC_> result = {};
         for (int i = 0; i < R_; ++i)
@@ -392,7 +401,7 @@ class matrix
         auto [b1, b2, b3] = other.value;
 
         return matx_type<long_dim, short_dim>::create(
-                a2 * b3 - a3 * b2, a1 * b3 - a3 * b1, a1 * b2 - a2 * b1);
+                a2 * b3 - a3 * b2, a3 * b1 - a1 * b3, a1 * b2 - a2 * b1);
     }
 
    private:
