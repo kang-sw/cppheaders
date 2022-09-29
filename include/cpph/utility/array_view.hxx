@@ -39,60 +39,60 @@
 //
 
 namespace cpph {
-template <typename Ty_>
+template <typename Ty>
 constexpr bool _is_buffer_elem_v
-        = (sizeof(Ty_) == 1) && std::is_trivial_v<Ty_>;
+        = (sizeof(Ty) == 1) && std::is_trivial_v<Ty>;
 
-template <typename Array_>
+template <typename Array>
 class _array_reinterpret_accessor
 {
    public:
-    template <typename RTy_>
+    template <typename RTy>
     auto& as(size_t offset = 0) const
     {
-        using value_type = typename Array_::value_type;
+        using value_type = typename Array::value_type;
         enum {
             is_const = std::is_const_v<value_type>
         };
 
-        using rtype = std::conditional_t<is_const, std::add_const_t<RTy_>, RTy_>&;
-        auto buf = &((Array_*)this)->at(offset);
+        using rtype = std::conditional_t<is_const, std::add_const_t<RTy>, RTy>&;
+        auto buf = &((Array*)this)->at(offset);
 
         // verify
-        (void)((Array_*)this)->at(offset + sizeof(RTy_) - 1);
+        (void)((Array*)this)->at(offset + sizeof(RTy) - 1);
 
         return reinterpret_cast<rtype>(*buf);
     }
 };
 
 struct _empty_base {};
-template <typename Array_, typename Ty_>
-using _array_view_base = std::conditional_t<_is_buffer_elem_v<Ty_>,
-                                            _array_reinterpret_accessor<Array_>,
+template <typename Array, typename Ty>
+using _array_view_base = std::conditional_t<_is_buffer_elem_v<Ty>,
+                                            _array_reinterpret_accessor<Array>,
                                             _empty_base>;
 
-template <typename Ty_>
-class array_view : public _array_view_base<array_view<Ty_>, Ty_>
+template <typename Ty>
+class array_view : public _array_view_base<array_view<Ty>, Ty>
 {
    public:
-    using value_type = Ty_;
+    using value_type = Ty;
     using pointer = value_type*;
     using const_pointer = value_type const*;
     using reference = value_type&;
 
    public:
     constexpr array_view() noexcept = default;
-    constexpr array_view(Ty_* p, size_t n) noexcept
+    constexpr array_view(Ty* p, size_t n) noexcept
             : _ptr(p), _size(n) {}
 
-    template <typename Range_>
-    constexpr array_view(Range_&& p) noexcept
+    template <typename Range>
+    constexpr array_view(Range&& p) noexcept
             : array_view(std::data(p), std::size(p))
     {
     }
 
     template <size_t N_>
-    constexpr array_view(Ty_ (&p)[N_]) noexcept
+    constexpr array_view(Ty (&p)[N_]) noexcept
             : array_view(p, N_)
     {
     }
@@ -117,20 +117,20 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
         return array_view{_ptr + offset, std::min(n, _size - offset)};
     }
 
-    template <typename RTy_>
-    constexpr bool operator==(RTy_&& op) const noexcept
+    template <typename RTy>
+    constexpr bool operator==(RTy&& op) const noexcept
     {
         return std::equal(begin(), end(), std::begin(op), std::end(op));
     }
 
-    template <typename RTy_>
-    constexpr bool operator!=(RTy_&& op) const noexcept
+    template <typename RTy>
+    constexpr bool operator!=(RTy&& op) const noexcept
     {
-        return !(*this == std::forward<RTy_>(op));
+        return !(*this == std::forward<RTy>(op));
     }
 
-    template <typename RTy_>
-    constexpr bool operator<(RTy_ && op) const noexcept
+    template <typename RTy>
+    constexpr bool operator<(RTy&& op) const noexcept
     {
         return std::lexicographical_compare(begin(), end(), std::begin(op), std::end(op));
     }
@@ -161,25 +161,25 @@ class array_view : public _array_view_base<array_view<Ty_>, Ty_>
     }
 
    private:
-    Ty_* _ptr;
+    Ty* _ptr;
     size_t _size;
 };
 
-template <typename Ty_>
-array_view(Ty_*, size_t n) -> array_view<Ty_>;
+template <typename Ty>
+array_view(Ty*, size_t n) -> array_view<Ty>;
 
-template <typename Range_, typename = decltype(std::size(std::declval<Range_>()))>
-array_view(Range_&&) -> array_view<std::decay_t<decltype(*std::data(std::declval<Range_>()))>>;
+template <typename Range, typename = decltype(std::size(std::declval<Range>()))>
+array_view(Range&&) -> array_view<std::decay_t<decltype(*std::data(std::declval<Range>()))>>;
 
-template <typename Ty_>
-using const_array_view = array_view<Ty_ const>;
+template <typename Ty>
+using const_array_view = array_view<Ty const>;
 
-template <typename Ty_>
-using mutable_array_view = array_view<Ty_>;
+template <typename Ty>
+using mutable_array_view = array_view<Ty>;
 
-template <typename Ty_>
+template <typename Ty>
 constexpr bool is_binary_compatible_v
-        = (std::is_trivially_destructible_v<Ty_>)&&(std::is_trivially_copyable_v<Ty_>);
+        = (std::is_trivially_destructible_v<Ty>)&&(std::is_trivially_copyable_v<Ty>);
 
 template <>
 class array_view<void> : public array_view<char>
@@ -187,26 +187,26 @@ class array_view<void> : public array_view<char>
    public:
     array_view() noexcept = default;
 
-    template <typename Container_,
+    template <typename Container,
               typename = std::enable_if_t<is_binary_compatible_v<
-                      typename std::remove_reference_t<Container_>::value_type>>>
-    explicit array_view(Container_&& other) noexcept
+                      typename std::remove_reference_t<Container>::value_type>>>
+    explicit array_view(Container&& other) noexcept
             : array_view<char>(reinterpret_cast<char*>(std::data(other)),
                                std::size(other) * sizeof(*std::data(other)))
     {
     }
 
-    template <typename Ty_, typename = std::enable_if_t<is_binary_compatible_v<Ty_>>>
-    array_view(Ty_* data, size_t size) noexcept
+    template <typename Ty, typename = std::enable_if_t<is_binary_compatible_v<Ty>>>
+    array_view(Ty* data, size_t size) noexcept
             : array_view<char>(reinterpret_cast<char*>(data),
-                               sizeof(Ty_) * size)
+                               sizeof(Ty) * size)
     {
     }
 
-    template <typename Container_,
+    template <typename Container,
               typename = std::enable_if_t<is_binary_compatible_v<
-                      typename std::remove_reference_t<Container_>::value_type>>>
-    array_view& operator=(Container_&& other) noexcept
+                      typename std::remove_reference_t<Container>::value_type>>>
+    array_view& operator=(Container&& other) noexcept
     {
         array_view<char>::operator=(
                 array_view<char>(
@@ -222,27 +222,27 @@ class array_view<void const> : public array_view<char const>
    public:
     array_view() noexcept = default;
 
-    template <typename Container_,
+    template <typename Container,
               typename = std::enable_if_t<is_binary_compatible_v<
-                      typename std::remove_reference_t<Container_>::value_type>>>
-    explicit array_view(Container_&& other) noexcept
+                      typename std::remove_reference_t<Container>::value_type>>>
+    explicit array_view(Container&& other) noexcept
             : array_view<char const>(reinterpret_cast<char const*>(std::data(other)),
                                      std::size(other) * sizeof(*std::data(other)))
     {
     }
 
-    template <typename Ty_,
-              typename = std::enable_if_t<is_binary_compatible_v<Ty_>>>
-    array_view(Ty_ const* data, size_t size) noexcept
+    template <typename Ty,
+              typename = std::enable_if_t<is_binary_compatible_v<Ty>>>
+    array_view(Ty const* data, size_t size) noexcept
             : array_view<char const>(reinterpret_cast<char const*>(data),
-                                     sizeof(Ty_) * size)
+                                     sizeof(Ty) * size)
     {
     }
 
-    template <typename Container_,
+    template <typename Container,
               typename = std::enable_if_t<is_binary_compatible_v<
-                      typename std::remove_reference_t<Container_>::value_type>>>
-    array_view& operator=(Container_&& other) noexcept
+                      typename std::remove_reference_t<Container>::value_type>>>
+    array_view& operator=(Container&& other) noexcept
 
     {
         array_view<char const>::operator=(
@@ -262,8 +262,17 @@ class array_view<void const> : public array_view<char const>
 using const_buffer_view = array_view<void const>;
 using mutable_buffer_view = array_view<void>;
 
-template <typename Range_>
-constexpr auto view_array(Range_&& array) noexcept
+template <typename Range,
+          class = decltype(std::data(std::declval<Range>()),
+                           std::size(std::declval<Range>()),
+                           0)>
+constexpr auto view_array(Range&& array) noexcept
+{
+    return array_view{std::data(array), std::size(array)};
+}
+
+template <typename T>
+constexpr auto view_array(std::initializer_list<T> array) noexcept
 {
     return array_view{std::data(array), std::size(array)};
 }
