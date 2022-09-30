@@ -115,14 +115,6 @@ class matrix
     constexpr matrix(matrix const&) = default;
     constexpr matrix& operator=(matrix const&) = default;
 
-    constexpr matrix& operator=(value_type const& v)
-    {
-        for (int i = 0; i < length; ++i)
-            value[i] = v;
-
-        return *this;
-    }
-
     constexpr int rows() const noexcept { return Row_; }
     constexpr int cols() const noexcept { return Col_; }
     constexpr int size() const noexcept { return Row_ * Col_; }
@@ -693,7 +685,7 @@ constexpr auto trace(matrix<Ty_, R_, C_> const& mat) noexcept
  * Defines row vector
  */
 template <typename Ty_, size_t N_>
-using vector = matrix<Ty_, N_, 1>;
+using vector = matrix<Ty_, (int)N_, 1>;
 
 /**
  * Defines typical vectors

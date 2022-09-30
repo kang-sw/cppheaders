@@ -1,9 +1,11 @@
 #pragma once
 #include <cpph/std/optional>
+#include <cpph/std/vector>
 
 #include "cpph/utility/counter.hxx"
 #include "geometry.hxx"
 #include "matrix.hxx"
+#include "plane.hxx"
 
 namespace cpph::math {
 template <typename T, size_t N_K>
@@ -62,5 +64,39 @@ auto undistort_pixel(vector<T, 2> const& P_d,
     }
 
     return P_u_aprx;
+}
+
+template <class T, size_t Dim>
+void cull_frustum(
+        const_array_view<plane<T, Dim>> frustum,
+        std::vector<vector<T, Dim>>& io_dots,
+        std::vector<array<size_t, 2>>& out_seqs,
+        bool is_closed = false)
+{
+    size_t latest_sequence_begin = 0;
+    out_seqs.clear();
+    out_seqs.push_back({0, io_dots.size()});
+
+    for (auto& pl : frustum) {
+        auto current_segments = array_view{out_seqs}.subspan(latest_sequence_begin);
+        latest_sequence_begin = out_seqs.size();
+
+        for (auto [begin, end] : current_segments) {
+            auto const segment_size = end - begin;
+            auto const initial_dots_size = io_dots.size();
+
+            io_dots.reserve(io_dots.size() + segment_size * 2 + 1);  // Size never exceeds original one + 1.
+            pl.cull(array_view{io_dots}.subspan(begin, segment_size),
+                    back_inserter(io_dots),
+                    back_inserter(out_seqs),
+                    initial_dots_size,
+                    is_closed);
+
+            assert(io_dots.size() - initial_dots_size <= segment_size * 2 + 1);
+        }
+    }
+
+    // Erase temporary nodes
+    out_seqs.erase(out_seqs.begin(), out_seqs.begin() + latest_sequence_begin);
 }
 }  // namespace cpph::math
