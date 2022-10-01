@@ -71,7 +71,7 @@ enum class event_priority : uint64_t {
 };
 
 template <class T>
-using event_fwd_arg_t = conditional_t<std::is_reference_v<T>, T, T const&>;
+using event_fwd_arg_t = as_reference_t<T>;
 
 struct if_event_entity {
     virtual ~if_event_entity() = default;

@@ -20,5 +20,12 @@ using std::static_pointer_cast;
 
 template <typename T, typename Deleter = std::default_delete<T>>
 using ptr = std::unique_ptr<T, Deleter>;
+
+template<typename T>
+using sptr = std::shared_ptr<T>;
+
+template<typename T>
+using wptr = std::weak_ptr<T>;
+
 }  // namespace stdfwd
 }  // namespace cpph

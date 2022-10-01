@@ -237,6 +237,10 @@ bool ptr_equals(Ptr1_&& lhs, Ptr2_&& rhs)
     return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
 }
 
+// Make forwarded type
+template <class T>
+using as_reference_t = conditional_t<std::is_reference_v<T>, T, T const&>;
+
 // check if has less
 template <class Opr_, class X_, class Y_ = X_>
 struct has_binary_op {
