@@ -370,7 +370,7 @@ inline void reader::_prepare() const
     auto tokens = &self->tokens;
     auto parser = &self->parser;
     str->clear();
-    tokens->resize(8);
+    tokens->clear(), tokens->resize(8);
 
     // Read string from buffer, for single object next.
     _jsmn::jsmn_init(parser);
@@ -382,11 +382,10 @@ inline void reader::_prepare() const
 
         str->push_back(c);
         switch (_jsmn::jsmn_parse(parser, str->c_str(), str->size(), tokens->data(), tokens->size())) {
-            case 0:
             case _jsmn::JSMN_ERROR_NOMEM:
-            case _jsmn::JSMN_ERROR_INVAL:
-                throw error::reader_parse_failed{this};
+            case _jsmn::JSMN_ERROR_INVAL: throw error::reader_parse_failed{this};
 
+            case 0:
             default: break;
         }
     }
