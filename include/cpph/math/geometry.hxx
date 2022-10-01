@@ -64,7 +64,7 @@ enum class coord {
     _mz = -z,
 };
 
-coord operator-(coord v) noexcept { return coord(-(int)v); }
+inline coord operator-(coord v) noexcept { return coord(-(int)v); }
 
 template <typename T>
 auto convert_coord(matrix<T, 3, 3> rmat, coord src_x, coord src_y, coord src_z)
