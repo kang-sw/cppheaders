@@ -385,7 +385,7 @@ class non_null
     Ptr const ref_;
 
    public:
-    template <typename P, class = enable_if_t<is_convertible_v<P*, Ptr*>>>
+    template <typename P, class = enable_if_t<is_convertible_v<P, Ptr>>>
     non_null(P&& ptr) noexcept : ref_(std::forward<P>(ptr))
     {
         if (ref_ == Ptr{}) { abort(); }
