@@ -373,4 +373,34 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
+// Asserts non-null output parameter
+template <class T>
+class output
+{
+   public:
+    using pointer = T*;
+    using value_type = T;
+
+   private:
+    T* const ref_;
+
+   public:
+    template <typename P, class = enable_if_t<is_convertible_v<P*, T*>>>
+    output(P* ptr) noexcept : ref_(ptr)
+    {
+        if (ptr == nullptr) { abort(); }
+    }
+
+    output(nullptr_t) noexcept = delete;
+    output& operator=(const output&) noexcept = delete;
+
+   public:
+    auto operator->() const noexcept { return ref_; }
+    auto operator*() const noexcept { return *ref_; }
+};
+
+// Alias for output
+template <class T>
+using inout = output<T>;
+
 }  // namespace cpph
