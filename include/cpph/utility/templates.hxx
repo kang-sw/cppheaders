@@ -374,33 +374,44 @@ template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
 // Asserts non-null output parameter
-template <class T>
-class output
+template <class Ptr, class = decltype((void)*declval<Ptr>())>
+class non_null
 {
    public:
-    using pointer = T*;
-    using value_type = T;
+    using pointer = Ptr;
+    using value_type = std::remove_reference_t<decltype(*declval<Ptr>())>;
 
    private:
-    T* const ref_;
+    Ptr const ref_;
 
    public:
-    template <typename P, class = enable_if_t<is_convertible_v<P*, T*>>>
-    output(P* ptr) noexcept : ref_(ptr)
+    template <typename P, class = enable_if_t<is_convertible_v<P*, Ptr*>>>
+    non_null(P&& ptr) noexcept : ref_(std::forward<P>(ptr))
     {
-        if (ptr == nullptr) { abort(); }
+        if (ref_ == Ptr{}) { abort(); }
     }
 
-    output(nullptr_t) noexcept = delete;
-    output& operator=(const output&) noexcept = delete;
+    non_null() noexcept = delete;
+    non_null(nullptr_t) noexcept = delete;
+    non_null& operator=(nullptr_t) noexcept = delete;
+
+    non_null(const non_null&) noexcept = default;
+    non_null(non_null&&) noexcept = default;
+    non_null& operator=(const non_null&) noexcept = default;
+    non_null& operator=(non_null&&) noexcept = default;
+
+    pointer get() const noexcept { return ref_; }
 
    public:
-    auto operator->() const noexcept { return ref_; }
-    auto operator*() const noexcept { return *ref_; }
+    auto& operator->() const noexcept { return ref_; }
+    auto& operator*() const noexcept { return *ref_; }
 };
 
 // Alias for output
 template <class T>
-using inout = output<T>;
+using inout = non_null<T*>;
+
+template <class T>
+using out = non_null<T*>;
 
 }  // namespace cpph
