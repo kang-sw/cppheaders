@@ -284,6 +284,34 @@ auto variance(Container&& cont, Mult mult = std::multiplies<>{})
     return variance(std::begin(cont), std::end(cont), std::forward<Mult>(mult));
 }
 
+template <class T, class Eval, class = enable_if_t<is_invocable_r_v<int, Eval, T>>>
+T bsearch(T begin, T end, Eval&& eval_fn)
+{
+    for (;;) {
+        T mid = (begin + end) / 2;
+        auto eval = eval_fn(mid);
+
+        if constexpr (std::is_integral_v<T>)
+            if (begin == mid) { return mid; }
+
+        if (eval < 0) {
+            begin = mid;
+        } else if (eval > 0) {
+            end = mid;
+        } else {
+            return mid;
+        }
+    }
+}
+
+template <class A, class B>
+int compare(A const& a, B const& b)
+{
+    return a < b ? -1
+         : a > b ? 1
+                 : 0;
+}
+
 struct owner_equal_t {
     template <typename PtrA, typename PtrB>
     bool operator()(PtrA const& a, PtrB const& b) const noexcept
