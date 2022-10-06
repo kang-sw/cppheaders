@@ -277,6 +277,27 @@ class matrix
     constexpr auto begin() noexcept { return &*value; }
     constexpr auto end() noexcept { return begin() + length; }
 
+    /**
+     * Helper ... View matrix as array
+     */
+    auto& as_array() noexcept
+    {
+        if constexpr (Row_ == 1 || Col_ == 1) {
+            return (array<Ty_, Row_ * Col_>&)*this;
+        } else {
+            return (array<array<Ty_, Col_>, Row_>&)*this;
+        }
+    }
+
+    auto& as_array() const noexcept
+    {
+        if constexpr (Row_ == 1 || Col_ == 1) {
+            return (array<Ty_, Row_ * Col_> const&)*this;
+        } else {
+            return (array<array<Ty_, Col_>, Row_> const&)*this;
+        }
+    }
+
    private:
     template <typename T, T... RowN_>
     constexpr auto _retr_rows(size_t n, std::integer_sequence<T, RowN_...>) const noexcept
