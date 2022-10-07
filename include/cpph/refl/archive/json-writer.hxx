@@ -40,10 +40,21 @@ class writer : public archive::if_writer
 {
    private:
     _detail::write_context_helper _ctx;
+    char double_fmt_buf_[8] = "%.14g";
 
    public:
     int indent = -1;
     streambuf::b64_w _base64;
+
+   public:
+    void set_precision(int digits)
+    {
+        if (digits >= 0) {
+            snprintf(double_fmt_buf_, sizeof double_fmt_buf_, "%%.%df", digits);
+        } else {
+            strcpy(double_fmt_buf_, "%.28g");
+        }
+    }
 
    public:
     explicit writer(std::streambuf* buf, size_t depth_maybe = 0)
@@ -95,9 +106,9 @@ class writer : public archive::if_writer
         _on_write_value_only();
 
         char buf[32];
-        auto r = snprintf(buf, sizeof buf, "%.14g", v);
-
+        auto r = snprintf(buf, sizeof buf, double_fmt_buf_, v);
         sputn(buf, r);
+
         return *this;
     }
 
