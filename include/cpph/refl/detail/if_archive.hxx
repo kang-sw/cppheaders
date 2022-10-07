@@ -231,7 +231,10 @@ class if_writer : public if_archive_base
     /**
      * Clear internal buffer state
      */
-    void flush() { _buf->pubsync(); }
+    void flush()
+    {
+        if (_buf) { _buf->pubsync(); }
+    }
 
    public:
     template <typename ValTy_>
