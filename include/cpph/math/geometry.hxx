@@ -94,4 +94,23 @@ auto convert_coord(matrix<T, 3, 3> rmat, coord src_x, coord src_y, coord src_z)
     return rslt;
 }
 
+template <typename T, size_t R>
+bool find_nearest(
+        math::vector<T, R> const& P1, math::vector<T, R> const& D1,
+        math::vector<T, R> const& P2, math::vector<T, R> const& D2,
+        out<T> alpha_1, out<T> alpha_2,
+        T epsilon = 1e-6)
+{
+    auto D1xD2 = D1.cross(D2);
+    auto cross_sqr = norm_sqr(D1xD2);
+
+    if (abs(cross_sqr) < epsilon) { return false; }
+    auto s = (P2 - P1).cross(D2).dot(D1xD2) / cross_sqr;
+    auto t = (P1 - P2).cross(D1).dot(-D1xD2) / cross_sqr;
+
+    *alpha_1 = s;
+    *alpha_2 = t;
+    return true;
+}
+
 }  // namespace cpph::math
