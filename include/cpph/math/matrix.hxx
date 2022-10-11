@@ -97,11 +97,6 @@ class matrix
 
     constexpr matrix(value_type const* values, size_t n) noexcept : matrix(array_view{values, n}) {}
 
-    constexpr matrix(value_type const& v) noexcept : value()
-    {
-        *this = v;
-    }
-
     template <typename... Args_>
     constexpr matrix(value_type const& v, Args_&&... args) noexcept : value()
     {
