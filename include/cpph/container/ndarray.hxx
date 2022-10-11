@@ -26,9 +26,9 @@
 
 #pragma once
 #include <array>
+#include <cpph/std/vector>
 #include <numeric>
 #include <stdexcept>
-#include <cpph/std/vector>
 
 namespace cpph {
 /**
@@ -44,10 +44,8 @@ class ndarray
     using const_reference = typename std::vector<Ty_>::const_reference;
     using size_type = size_t;
     using dimension_type = std::array<size_type, Dim_>;
-    enum : size_t {
-        dimension = Dim_
-    };
-
+    static constexpr size_t dimension = Dim_;
+    
    private:
     template <size_type D_, bool Check_ = false, typename T_, typename... Args_>
     size_type _reduce_index(T_ idx, Args_... args) const
@@ -193,7 +191,7 @@ class ndarray
 
    private:
     dimension_type dim_;
-    std::array<size_type, dimension - 1> steps_;
+    std::array<size_type, size_t(dimension - 1)> steps_;
     std::vector<Ty_> data_;
 };  // namespace kangsw::inline containers
 }  // namespace cpph

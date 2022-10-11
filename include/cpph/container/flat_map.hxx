@@ -26,11 +26,82 @@
 
 #pragma once
 #include <algorithm>
+#include <cpph/std/vector>
 #include <memory>
 #include <stdexcept>
-#include <cpph/std/vector>
 
 namespace cpph {
+
+template <typename ValTy, typename Comparator = std::less<ValTy>,
+          typename Alloc = std::allocator<ValTy>>
+class flat_set
+{
+    vector<ValTy, Alloc> vals_;
+
+   public:
+    using value_type = ValTy;
+    using iterator = typename decltype(vals_)::iterator;
+    using allocator_type = Alloc;
+
+   public:
+    template <typename Keyable, typename Compare = std::less<void>>
+    auto lower_bound(Keyable const& keyv, Compare const& compare = std::less<void>{})
+    {
+        return std::lower_bound(vals_.begin(), vals_.end(), keyv, compare);
+    }
+
+    iterator insert(ValTy&& val)
+    {
+        auto iter = std::lower_bound(vals_.begin(), vals_.end(), val, Comparator{});
+        if (iter == vals_.end() || Comparator{}(*iter, val) || Comparator{}(val, *iter)) {
+            iter = vals_.insert(iter, move(val));
+        } else {
+            *iter = move(val);
+        }
+
+        return iter;
+    }
+
+    template <typename T>
+    iterator find(T const& val)
+    {
+        auto iter = std::lower_bound(vals_.begin(), vals_.end(), val, Comparator{});
+        if (iter == vals_.end() || Comparator{}(*iter, val) || Comparator{}(val, *iter)) {
+            return iter;
+        } else {
+            return vals_.end();
+        }
+    }
+
+    iterator insert(ValTy const& val)
+    {
+        return this->insert(ValTy{val});
+    }
+
+    iterator erase(iterator it)
+    {
+        return vals_.erase(it);
+    }
+
+    size_t erase(ValTy const& val)
+    {
+        auto iter = this->find(val);
+        if (iter != vals_.end()) { this->erase(iter); }
+    }
+
+    auto size() const noexcept { return vals_.size(); }
+    auto empty() const noexcept { return vals_.empty(); }
+
+    auto begin() noexcept { return vals_.begin(); }
+    auto begin() const noexcept { return vals_.begin(); }
+    auto end() noexcept { return vals_.begin(); }
+    auto end() const noexcept { return vals_.begin(); }
+    auto cbegin() const noexcept { return vals_.begin(); }
+    auto cend() const noexcept { return vals_.begin(); }
+
+    auto& vec() noexcept { return vals_; }
+    auto& vec() const noexcept { return vals_; }
+};
 
 template <typename KeyTy_, typename MapTy_,
           typename Comparator_ = std::less<KeyTy_>,
