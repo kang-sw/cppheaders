@@ -25,6 +25,7 @@
 
 #pragma once
 #include <algorithm>
+#include <cassert>
 #include <numeric>
 
 //
@@ -327,8 +328,45 @@ auto abs(Any&& val) noexcept
     using value_type = std::decay_t<Any>;
     return val < value_type{} ? -val : val;
 }
+
+template <class Rng, class OutputIt, class Pred, class Fct>
+size_t transform_if(Rng&& rng, OutputIt dest, Pred&& pred, Fct&& transform)
+{
+    auto first = std::begin(rng);
+    auto last = std::end(rng);
+    size_t count = 0;
+
+    while (first != last) {
+        if (pred(*first)) {
+            *dest++ = transform(*first);
+            ++count;
+        }
+
+        ++first;
+    }
+
+    return count;
+}
+
+template <typename RandomAccessRange, class IdxRange>
+auto swap_remove_index(RandomAccessRange& rng, IdxRange&& indices)
+{
+    auto iter_idx = std::rbegin(indices);
+    auto iter_idx_end = std::rend(indices);
+    auto iter_rm_begin = std::begin(rng);
+    auto iter_rm_back = std::end(rng);
+
+    assert(is_sorted(indices));
+    assert(std::distance(iter_idx, iter_idx_end) <= std::distance(iter_rm_begin, iter_rm_back));
+
+    for (; iter_idx != iter_idx_end; ++iter_idx) {
+        *(iter_rm_begin + *iter_idx) = std::move(*(--iter_rm_back));
+    }
+
+    return iter_rm_back;
+}
 }  // namespace algorithm
-};  // namespace cpph
+}  // namespace cpph
 
 namespace std {
 inline namespace literals {

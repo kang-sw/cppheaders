@@ -113,4 +113,17 @@ bool find_nearest(
     return true;
 }
 
+template <typename T, size_t R>
+double calc_distance_sqr(
+        math::vector<T, R> const& line_p,
+        math::vector<T, R> const& line_dir,
+        math::vector<T, R> const& point,
+        math::vector<T, R>* out_contact_pt = nullptr)
+{
+    auto dot_dir = (point - line_p);
+    auto contact = line_dir.proj(dot_dir);
+
+    if (out_contact_pt) { *out_contact_pt = line_p + contact; }
+    return norm_sqr(dot_dir - contact);
+}
 }  // namespace cpph::math
