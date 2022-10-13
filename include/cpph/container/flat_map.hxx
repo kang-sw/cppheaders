@@ -149,6 +149,12 @@ class flat_map
         return Comparator_{}(a.first, b.first);
     }
 
+    static bool _eq_fn(value_type const& a, value_type const& b) noexcept
+    {
+        Comparator_ cmp{};
+        return not cmp(a.first, b.first) && not cmp(b.first, a.first);
+    }
+
     template <class Iter1_, class Iter2_>
     static bool _less(Iter1_ const& a, Iter2_ const& b) noexcept
     {
@@ -276,7 +282,7 @@ class flat_map
         _vector.assign(begin, end);
         std::sort(_vector.begin(), _vector.end(), _sort_fn);
 
-        if (std::adjacent_find(_vector.begin(), _vector.end(), _sort_fn) != _vector.end())
+        if (std::adjacent_find(_vector.begin(), _vector.end(), _eq_fn) != _vector.end())
             throw std::logic_error{"duplicated key found!"};
     }
 
