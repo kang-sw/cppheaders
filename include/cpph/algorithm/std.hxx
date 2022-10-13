@@ -365,6 +365,35 @@ auto swap_remove_index(RandomAccessRange& rng, IdxRange&& indices)
 
     return iter_rm_back;
 }
+
+enum loop_control {
+    loop_control_continue = 0,
+    loop_control_break = 1,
+    loop_control_remove = 2,
+};
+
+template <template <class, class> class Container, class T, class Alloc, class Fn>
+void visit_swap_remove(Container<T, Alloc>& cont, Fn&& func)
+{
+    auto back_iter = cont.end();
+
+    for (auto iter = cont.begin(); iter != back_iter;) {
+        auto ctrl = func(*iter);
+
+        if (ctrl & loop_control_remove) {
+            *iter = move(*(--back_iter));
+        } else {
+            ++iter;
+        }
+
+        if (ctrl & loop_control_break) {
+            break;
+        }
+    }
+
+    cont.erase(back_iter, cont.end());
+}
+
 }  // namespace algorithm
 }  // namespace cpph
 
