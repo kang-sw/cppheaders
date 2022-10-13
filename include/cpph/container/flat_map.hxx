@@ -86,7 +86,12 @@ class flat_set
     size_t erase(ValTy const& val)
     {
         auto iter = this->find(val);
-        if (iter != vals_.end()) { this->erase(iter); }
+        if (iter != vals_.end()) {
+            this->erase(iter);
+            return 1;
+        } else {
+            return 0;
+        }
     }
 
     auto size() const noexcept { return vals_.size(); }

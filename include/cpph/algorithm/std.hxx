@@ -28,6 +28,8 @@
 #include <cassert>
 #include <numeric>
 
+#include "cpph/utility/templates.hxx"
+
 //
 
 namespace cpph {

@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <cpph/std/array>
 #include <cpph/std/optional>
 
@@ -234,7 +235,7 @@ class plane
         result.n_ = D / norm;
         result.d_ = result.n_.dot(p1);
 
-        assert(!isnan(result.d_) && !isnan(math::norm(result.n_)));
+        assert(!std::isnan(result.d_) && !std::isnan(math::norm(result.n_)));
         return result;
     }
 };
