@@ -58,7 +58,7 @@ auto undistort_pixel(vector<T, 2> const& P_d,
         P_u_aprx -= error;
     } while (max_iteration-- && (err_x > error_thres[0] || err_y > error_thres[1]));
 
-    if (isnan(err_x) || isnan(err_y)) {
+    if (std::isnan(err_x) || std::isnan(err_y)) {
         // f^-1(d) doesn't always have value ...?
         return {};
     }

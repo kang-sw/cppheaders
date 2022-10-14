@@ -86,7 +86,12 @@ class flat_set
     size_t erase(ValTy const& val)
     {
         auto iter = this->find(val);
-        if (iter != vals_.end()) { this->erase(iter); }
+        if (iter != vals_.end()) {
+            this->erase(iter);
+            return 1;
+        } else {
+            return 0;
+        }
     }
 
     auto size() const noexcept { return vals_.size(); }
@@ -147,6 +152,12 @@ class flat_map
     static bool _sort_fn(value_type const& a, value_type const& b) noexcept
     {
         return Comparator_{}(a.first, b.first);
+    }
+
+    static bool _eq_fn(value_type const& a, value_type const& b) noexcept
+    {
+        Comparator_ cmp{};
+        return not cmp(a.first, b.first) && not cmp(b.first, a.first);
     }
 
     template <class Iter1_, class Iter2_>
@@ -276,7 +287,7 @@ class flat_map
         _vector.assign(begin, end);
         std::sort(_vector.begin(), _vector.end(), _sort_fn);
 
-        if (std::adjacent_find(_vector.begin(), _vector.end(), _sort_fn) != _vector.end())
+        if (std::adjacent_find(_vector.begin(), _vector.end(), _eq_fn) != _vector.end())
             throw std::logic_error{"duplicated key found!"};
     }
 

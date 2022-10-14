@@ -412,6 +412,17 @@ class matrix
                 a2 * b3 - a3 * b2, a3 * b1 - a1 * b3, a1 * b2 - a2 * b1);
     }
 
+    template <int NR_, int NC_>
+    constexpr matrix<value_type, NR_, NC_>
+    proj(matx_type<NR_, NC_> const& other) const noexcept
+    {
+        using other_type = matx_type<NR_, NC_>;
+        static_assert(short_dim == 1 && other_type::short_dim == 1);
+        static_assert(long_dim == 3 && other_type::long_dim == 3);
+
+        return (this->dot(other) / this->dot(*this)) * (*this);
+    }
+
    private:
     template <size_t N_>
     constexpr reference _vec_at() const noexcept
