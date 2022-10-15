@@ -173,14 +173,14 @@ class matrix
 
     auto& operator[](int index) const
     {
-        assert(0 <= index && index < num_rows);
+        assert(0 <= index && index < ((1 == num_rows) ? num_cols : num_rows));
         using rtype = std::conditional_t<num_cols == 1 || num_rows == 1, value_type, row_type>;
         return *(rtype const*)_get(index, 0);
     }
 
     auto& operator[](int index) noexcept
     {
-        assert(0 <= index && index < num_rows);
+        assert(0 <= index && index < ((1 == num_rows) ? num_cols : num_rows));
         using rtype = std::conditional_t<num_cols == 1 || num_rows == 1, value_type, row_type>;
         return *(rtype*)_get(index, 0);
     }

@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include <cassert>
 #include <cpph/std/string>
 #include <streambuf>
 

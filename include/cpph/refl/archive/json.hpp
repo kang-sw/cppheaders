@@ -29,11 +29,12 @@
 
 namespace cpph::archive {
 template <typename ValTy_>
-std::string to_json(ValTy_ const& value)
+std::string to_json(ValTy_ const& value, int indent = -1)
 {
     streambuf::stringbuf sstr;
     {
         json::writer wr{&sstr, 8};
+        wr.indent = indent;
         wr << value;
     }
     return move(sstr.str());
