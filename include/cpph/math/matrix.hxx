@@ -171,18 +171,21 @@ class matrix
         return *this;
     }
 
-    auto& operator[](int index) const
+    auto const& operator[](int index) const
     {
-        assert(0 <= index && index < ((1 == num_rows) ? num_cols : num_rows));
-        using rtype = std::conditional_t<num_cols == 1 || num_rows == 1, value_type, row_type>;
-        return *(rtype const*)_get(index, 0);
+        return as_const(const_cast<matrix&>(*this).operator[](index));
     }
 
     auto& operator[](int index) noexcept
     {
         assert(0 <= index && index < ((1 == num_rows) ? num_cols : num_rows));
-        using rtype = std::conditional_t<num_cols == 1 || num_rows == 1, value_type, row_type>;
-        return *(rtype*)_get(index, 0);
+        if constexpr (num_cols == 1) {
+            return *(value_type*)_get(index, 0);
+        } else if constexpr (num_rows == 1) {
+            return *(value_type*)_get(0, index);
+        } else {
+            return *(row_type*)_get(index, 0);
+        }
     }
 
     // factory operations
