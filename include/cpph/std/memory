@@ -28,4 +28,14 @@ template<typename T>
 using wptr = std::weak_ptr<T>;
 
 }  // namespace stdfwd
+
+template<typename T>
+auto forward_shared(T&& value) -> shared_ptr<std::decay_t<T>> {
+    return std::make_shared<std::decay_t<T>>(std::forward<T>(value));
+}
+
+template<typename T>
+auto forward_unique(T&& value) -> unique_ptr<std::decay_t<T>> {
+    return std::make_unique<std::decay_t<T>>(std::forward<T>(value));
+}
 }  // namespace cpph
