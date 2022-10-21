@@ -359,8 +359,8 @@ class matrix
         static_assert(0 <= C_ && C_ + NewC_ <= Col_);
 
         matx_type<NewR_, NewC_> result = {};
-        for (int i = 0; i < R_; ++i)
-            for (int j = 0; j < C_; ++j)
+        for (int i = 0; i < NewR_; ++i)
+            for (int j = 0; j < NewC_; ++j)
                 result(i, j) = (*this)(R_ + i, C_ + j);
 
         return result;
