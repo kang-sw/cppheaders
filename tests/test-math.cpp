@@ -97,8 +97,11 @@ TEST_SUITE("math")
         auto s = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1);
         constexpr auto k = matx33f::create(3, 0, 2, 2, 0, -2, 0, 1, 1).inv();
         INFO(s.inv());
-        REQUIRE(s.inv().equals({0.2, 0.2, 0, -0.2, 0.3, 1, 0.2, -0.3, 0}, 1e-4));
-        REQUIRE((s.inv() * s).equals(matx33f::eye(), 1e-4));
+        REQUIRE(s.inv()->equals({0.2, 0.2, 0, -0.2, 0.3, 1, 0.2, -0.3, 0}, 1e-4));
+        REQUIRE((*s.inv() * s).equals(matx33f::eye(), 1e-4));
+
+        auto no_sol = matx22f::create(8, -4, -6, 3);
+        REQUIRE(not no_sol.inv());
     }
 
     TEST_CASE("matrix arithmentic")

@@ -25,6 +25,7 @@
 #pragma once
 #include <array>
 #include <cmath>
+#include <cpph/std/optional>
 #include <ostream>
 
 #include "../utility/array_view.hxx"
@@ -619,7 +620,7 @@ class matrix
      * @param out
      * @return false if there's no solution
      */
-    constexpr matrix inv() const noexcept
+    constexpr optional<matrix> inv() const noexcept
     {
         auto R = eye();
         auto s = *this;
@@ -631,7 +632,7 @@ class matrix
                 ;  // find non-zero leading coefficient
 
             if (r == Row_)
-                continue;  // there's no non-zero leading coefficient
+                return {};  // there's no non-zero leading coefficient
 
             if (r != c) {  // switch rows
                 s._swap_row(r, c);
