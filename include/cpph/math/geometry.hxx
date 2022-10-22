@@ -30,11 +30,12 @@
 
 namespace cpph::math {
 template <typename Ty_>
-matrix<Ty_, 3, 3> rodrigues(vector<Ty_, 3> v)
+matrix<Ty_, 3, 3> rodrigues(vector<Ty_, 3> v, Ty_ epsilon = 1e-9)
 {
     using mat_t = matrix<Ty_, 3, 3>;
 
     auto O = norm(v);
+    if (O < epsilon) { return matrix<Ty_, 3, 3>::eye(); }
     auto [vx, vy, vz] = (v = v / O).value;
     auto cosO = std::cos(O);
     auto sinO = std::sin(O);
