@@ -35,7 +35,7 @@ matrix<Ty_, 3, 3> rodrigues(vector<Ty_, 3> v, Ty_ epsilon = 1e-9)
     using mat_t = matrix<Ty_, 3, 3>;
 
     auto O = norm(v);
-    if (O < epsilon) { return matrix<Ty_, 3, 3>::eye(); }
+    if (O <= epsilon) { return matrix<Ty_, 3, 3>::eye(); }
     auto [vx, vy, vz] = (v = v / O).value;
     auto cosO = std::cos(O);
     auto sinO = std::sin(O);
@@ -47,9 +47,10 @@ matrix<Ty_, 3, 3> rodrigues(vector<Ty_, 3> v, Ty_ epsilon = 1e-9)
 }
 
 template <typename Ty_>
-vector<Ty_, 3> rodrigues(matrix<Ty_, 3, 3> m)
+vector<Ty_, 3> rodrigues(matrix<Ty_, 3, 3> m, Ty_ epsilon = 1e-9)
 {
     auto O = std::acos((trace(m) - (Ty_)1) / (Ty_)2);
+    if (O <= epsilon) { return {}; }
     auto v = (Ty_(1) / (Ty_(2) * std::sin(O))) * vector<Ty_, 3>(m(2, 1) - m(1, 2), m(0, 2) - m(2, 0), m(1, 0) - m(0, 1));
 
     return v * O;
