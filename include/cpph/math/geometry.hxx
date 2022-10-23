@@ -56,6 +56,20 @@ vector<Ty_, 3> rodrigues(matrix<Ty_, 3, 3> m, Ty_ epsilon = 1e-9)
     return v * O;
 }
 
+template <typename T>
+matrix<T, 3, 3> euler(vector<T, 3> axes)
+{
+    auto const cosx = std::cos(axes.x()),
+               sinx = std::sin(axes.x()),
+               cosy = std::cos(axes.y()), siny = std::sin(axes.y()),
+               cosz = std::cos(axes.z()), sinz = std::sin(axes.z());
+
+    return {
+            cosy * cosz, sinx * siny * cosz - cosx * sinz, cosx * siny * cosz + sinx * sinz,
+            cosy * sinz, sinx * siny * sinz + cosx * cosz, cosx * siny * sinz - sinx * cosz,
+            -siny, sinx * cosy, cosx * cosy};
+}
+
 enum class coord {
     zero,
     x = 1,
