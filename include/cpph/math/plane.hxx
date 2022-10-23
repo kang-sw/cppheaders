@@ -212,9 +212,24 @@ class plane
 
         cull_(
                 closed, vecs,
-                [](vec_type const& vec) { *++(*p) = vec; },
-                [](size_t begin, size_t end) { *++(*p2) = {begin, end}; },
+                [](vec_type const& vec) { *(*p)++ = vec; },
+                [](size_t begin, size_t end) { *(*p2)++ = {begin, end}; },
                 index_offset);
+
+        return out_vert;
+    }
+
+    template <typename VertOutIt>
+    VertOutIt cull(array_view<vec_type const> convex, VertOutIt out_vert, bool is_closed = false) const noexcept
+    {
+        static thread_local VertOutIt* p = nullptr;
+        p = &out_vert;
+
+        cull_(
+                is_closed, convex,
+                [](vec_type const& vec) { *(*p)++ = vec; },
+                [](size_t begin, size_t end) {},
+                0);
 
         return out_vert;
     }
