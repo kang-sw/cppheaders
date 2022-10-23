@@ -25,7 +25,7 @@ class plane
 
    public:
     auto const& n() const noexcept { return n_; }
-    auto const& d() const noexcept { return d; }
+    auto const& d() const noexcept { return d_; }
     void n(vec_type const& value) noexcept { n_ = normalize(value); }
     void d(double value) noexcept { d_ = value; }
 
