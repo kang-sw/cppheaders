@@ -124,6 +124,9 @@ class _counter<Ty_, 1>
     constexpr auto /*Ty_ const&*/ operator*() { return count_; }
     constexpr auto /*Ty_ const**/ operator->() { return &count_; }
 
+    constexpr auto operator[](std::ptrdiff_t index) const noexcept { return count_ + index; }
+    constexpr auto operator[](std::ptrdiff_t index) noexcept { return count_ + index; }
+
    private:
     Ty_ count_;
 };
