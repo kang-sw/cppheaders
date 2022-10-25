@@ -26,6 +26,7 @@
 
 #pragma once
 #include <charconv>
+#include <cmath>
 
 #include "../../helper/strutil.hxx"
 #include "../../streambuf/base64.hxx"
@@ -103,7 +104,7 @@ class writer : public archive::if_writer
 
     if_writer& write(double v) override
     {
-        if (isnan(v) || isinf(v)) { throw archive::error::writer_value_error{this}; }
+        if (std::isnan(v) || std::isinf(v)) { throw archive::error::writer_value_error{this}; }
         _on_write_value_only();
 
         char buf[32];
