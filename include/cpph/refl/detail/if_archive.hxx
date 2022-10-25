@@ -83,6 +83,7 @@ struct writer_exception : archive_exception {
 CPPH_DECLARE_EXCEPTION(writer_invalid_state, writer_exception);
 CPPH_DECLARE_EXCEPTION(writer_stream_error, writer_exception);
 CPPH_DECLARE_EXCEPTION(writer_unexpected_end_of_file, writer_stream_error);
+CPPH_DECLARE_EXCEPTION(writer_value_error, writer_stream_error);
 
 struct reader_exception : archive_exception {
     if_reader* reader;

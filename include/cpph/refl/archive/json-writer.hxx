@@ -103,6 +103,7 @@ class writer : public archive::if_writer
 
     if_writer& write(double v) override
     {
+        if (isnan(v) || isinf(v)) { throw archive::error::writer_value_error{this}; }
         _on_write_value_only();
 
         char buf[32];
